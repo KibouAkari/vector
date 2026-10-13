@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import {
+  normalizedOpenAiUsage,
+  normalizedAnthropicUsage,
+} from '../lib/provider-usage-normalization.mjs';
 
 import { safeToRetry } from '../lib/model-broker-policy.mjs';
 import {
@@ -122,45 +126,89 @@ test('shadow resolver requires background opt-in', () => {
   assert.match(background, /shadowComparison:\s+true/);
 });
 
-test('missing usage differs from reported zero', () => {
-  const usage = {
-    input_tokens: 0,
-    output_tokens: 0,
-    input_tokens_details: {
-      cached_tokens: 0,
-    },
+test('provider adapters distinguish absent usage from an explicit zero', () => {
+  const runtime = {
+    id: 'config-1',
+    provider: 'openai',
+    model: 'fixture',
   };
 
-  Object.defineProperty(
-    usage,
-    '__vectorTelemetryPresence',
-    {
-      value: {
-        inputTokens: false,
-        outputTokens: true,
-        cachedTokens: false,
-      },
-      enumerable: false,
-    }
-  );
+  for (const [adapter, normalize, raw] of [
+    ['OpenAI-compatible', normalizedOpenAiUsage, {
+      completion_tokens: 0,
+    }],
+    ['OpenAI Responses', normalizedOpenAiUsage, {
+      output_tokens: 0,
+    }],
+    ['Anthropic', normalizedAnthropicUsage, {
+      output_tokens: 0,
+    }],
+  ]) {
+    const usage = normalize(raw);
+    const metric = buildProviderMetric({
+      runtime,
+      response: { usage },
+      elapsedMs: 5,
+    });
 
+    assert.equal(metric.inputTokens, null, adapter);
+    assert.equal(metric.outputTokens, 0, adapter);
+    assert.equal(metric.cachedTokens, null, adapter);
+    assert.equal(usage.input_tokens, 0, adapter);
+
+    assert.doesNotMatch(
+      JSON.stringify(usage),
+      /__vectorTelemetryPresence/,
+      adapter
+    );
+  }
+});
+
+test('OpenAI usage preserves explicit zero and native cached tokens', () => {
+  const usage = normalizedOpenAiUsage({
+    prompt_tokens: 0,
+    input_tokens: 99,
+    completion_tokens: 0,
+    output_tokens: 50,
+    prompt_tokens_details: {
+      cached_tokens: 0,
+    },
+    cache_read_input_tokens: 11,
+  });
+  assert.equal(usage.input_tokens, 0);
+  assert.equal(usage.output_tokens, 0);
+  assert.equal(usage.input_tokens_details.cached_tokens, 0);
+
+  const native = normalizedOpenAiUsage({
+    input_tokens: 12,
+    output_tokens: 3,
+    input_tokens_details: { cached_tokens: 7 },
+  });
   const metric = buildProviderMetric({
     runtime: {
       id: 'config-1',
       provider: 'openai',
-      model: 'm',
+      model: 'fixture',
     },
-    response: { usage },
-    elapsedMs: 5,
+    response: { usage: native },
+    elapsedMs: 7,
   });
+  assert.equal(metric.inputTokens, 12);
+  assert.equal(metric.outputTokens, 3);
+  assert.equal(metric.cachedTokens, 7);
+});
 
-  assert.equal(metric.inputTokens, null);
-  assert.equal(metric.outputTokens, 0);
-  assert.equal(metric.cachedTokens, null);
+test('production adapters use the tested normalization functions', () => {
+  const runtime = source('../lib/provider-runtime.js');
 
-  assert.doesNotMatch(
-    JSON.stringify(usage),
-    /__vectorTelemetryPresence/
+  assert.match(
+    runtime,
+    /from "\.\/provider-usage-normalization\.mjs"/
+  );
+  assert.match(runtime, /normalizedOpenAiUsage\(\s*body\.usage/);
+  assert.match(
+    runtime,
+    /normalizedAnthropicUsage\(response\.usage\)/
   );
 });
 
