@@ -61,3 +61,14 @@ node --test tests/model-broker-policy.test.mjs
 
 Model names, estimated costs and latencies used by
 the tests are synthetic fixtures, not live measurements.
+
+
+## Additional safety constraints
+
+- Negative configured or observed costs are invalid, even when no
+  per-request cost ceiling has been set.
+- Only HTTP 429, 502, 503 and 504 qualify as transient HTTP failures.
+  Retry approval also requires explicit idempotency, zero visible
+  streamed output and no started side effects.
+- Retry classification is a pure decision helper; it never retries
+  a request or changes production routing itself.

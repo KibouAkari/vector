@@ -246,3 +246,43 @@ test('retry requires explicit idempotency approval', () => {
     false
   );
 });
+
+
+test('rejects negative configured model costs', () => {
+  const result = rankCandidates(
+    { allowExternal: true },
+    [
+      model('negative', { estimatedCostChf: -.04 }),
+      model('valid', { estimatedCostChf: .02 }),
+    ]
+  );
+  assert.equal(result.selected.modelId, 'valid');
+  assert.ok(result.rejected.some(
+    entry => entry.modelId === 'negative' &&
+      entry.reasons.includes('invalid-cost')
+  ));
+});
+
+test('rejects negative observed cost before ranking', () => {
+  const result = rankCandidates(
+    { allowExternal: true },
+    [model('invalid'), model('valid')],
+    { invalid: { sampleCount: 6, meanCostChf: -.03 } }
+  );
+  assert.equal(result.selected.modelId, 'valid');
+  assert.ok(result.rejected.some(
+    entry => entry.modelId === 'invalid' &&
+      entry.reasons.includes('invalid-cost')
+  ));
+});
+
+test('only allowlisted transient HTTP statuses can retry', () => {
+  for (const status of [429, 502, 503, 504]) {
+    assert.equal(safeToRetry({ status, idempotent: true }), true);
+  }
+  for (const status of [400, 401, 408, 500, 501, 505, 507, 508, 520, 599]) {
+    assert.equal(safeToRetry({ status, idempotent: true }), false);
+  }
+  assert.equal(safeToRetry({ status: 503 }), false);
+  assert.equal(safeToRetry({ status: 503, idempotent: true, streamedOutput: true }), false);
+});
