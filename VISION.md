@@ -1,42 +1,34 @@
-# Vector Vision
+# Vision
 
-## Mission
+> **Reliable intelligence. Deliberate execution.**
 
-Create a personal AI operating system that can complete
-real tasks with consistently high quality, low latency,
-controlled cost and measurable reliability.
+Vector aims to become a personal AI operating system that can
+understand goals, plan work, choose the best tools and models,
+produce verifiable artifacts and improve its capabilities
+without compromising user control.
 
-## Core principles
+## Non-negotiable principles
 
-1. Fast path first. Simple requests do not require agent teams.
-2. Quality per franc. Route using real measurements.
-3. Reliability. Recover from safe, retryable failures.
-4. Privacy. Minimize sensitive data sent externally.
-5. Approval. Critical actions require owner confirmation.
-6. Verification. Check outputs before declaring success.
-7. Learning. Promote improvements only after evaluation.
-8. UX. Precise, technical, premium and intentionally simple.
+- **Quality per franc** — optimize task success, latency and cost.
+- **Fast path first** — no agent swarm for routine requests.
+- **Verified results** — assess outputs before reporting success.
+- **Safe autonomy** — approve privileged changes and messages.
+- **Privacy by default** — minimize sensitive data leaving Vector.
+- **Graceful recovery** — health-aware fallbacks and idempotency.
+- **Learn through evaluation** — only promote tested improvements.
+- **Purposeful UX** — quiet, precise, responsive and accessible.
 
-## Long-term capabilities
+## Long-term product
 
-Vector should support:
+A unified workbench for chat, projects, task automations,
+coding and previews, document and image creation/editing,
+web research, safe server maintenance, email, WhatsApp,
+Discord and Minecraft channels, voice, multimodal media
+and owner-controlled user management.
 
-- Intelligent model selection and provider failover.
-- Specialized agents and dynamic task delegation.
-- Skill discovery, learning and controlled improvement.
-- Documents, spreadsheets, presentations and images.
-- Batch generation and editing of existing files.
-- Previews, version history and quality validation.
-- Code generation, testing and isolated app previews.
-- Secure server and GitHub engineering.
-- Email, WhatsApp, Discord and Minecraft integrations.
-- Advanced owner-managed users, permissions and budgets.
-- Voice, home automation and eventually video generation.
+## What Vector must not become
 
-## Non-goals
-
-- Spawning multiple agents for every simple question.
-- Making destructive changes without authorization.
-- Installing arbitrary external skills without review.
-- Claiming an action succeeded without verification.
-- Spending extra money without measurable benefit.
+A collection of unverified plugins; a swarm that turns short
+tasks into slow workflows; a system that edits production
+or sends messages without consent; or a dashboard that
+claims capabilities that have not been implemented.
