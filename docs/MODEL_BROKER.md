@@ -32,6 +32,8 @@ Classifies potentially retryable failures.
 Retries are prohibited after visible streaming
 or external side effects.
 
+Retries require explicit `idempotent: true` approval. The default is `false`.
+
 This function does not execute retries.
 
 ## Integration requirements

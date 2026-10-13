@@ -175,17 +175,17 @@ test('latency percentiles are deterministic', () => {
 
 test('transient errors can be retried safely', () => {
   assert.equal(
-    safeToRetry({ status: 503 }),
+    safeToRetry({ status: 503, idempotent: true }),
     true
   );
 
   assert.equal(
-    safeToRetry({ status: 429 }),
+    safeToRetry({ status: 429, idempotent: true }),
     true
   );
 
   assert.equal(
-    safeToRetry({ errorType: 'timeout' }),
+    safeToRetry({ errorType: 'timeout', idempotent: true }),
     true
   );
 });
@@ -194,6 +194,7 @@ test('do not retry after visible side effects', () => {
   assert.equal(
     safeToRetry({
       status: 503,
+      idempotent: true,
       streamedOutput: true,
     }),
     false
@@ -202,6 +203,7 @@ test('do not retry after visible side effects', () => {
   assert.equal(
     safeToRetry({
       status: 503,
+      idempotent: true,
       sideEffectsStarted: true,
     }),
     false
@@ -221,7 +223,7 @@ test('do not retry validation or auth errors', () => {
     const status of [400, 401, 402, 403, 404, 422]
   ) {
     assert.equal(
-      safeToRetry({ status }),
+      safeToRetry({ status, idempotent: true }),
       false
     );
   }
@@ -229,8 +231,18 @@ test('do not retry validation or auth errors', () => {
   assert.equal(
     safeToRetry({
       status: 503,
+      idempotent: true,
       attempts: 2,
     }),
+    false
+  );
+});
+
+test('retry requires explicit idempotency approval', () => {
+  assert.equal(safeToRetry({ status: 503 }), false);
+  assert.equal(safeToRetry({ status: 429 }), false);
+  assert.equal(
+    safeToRetry({ status: 503, idempotent: 'true' }),
     false
   );
 });
