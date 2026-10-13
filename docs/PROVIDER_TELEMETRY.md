@@ -69,3 +69,13 @@ does not consume that parameter.
 
 Do not assume per-user spending data is correct until
 that behavior is reviewed.
+
+## Review hardening
+
+- Provider HTTP status is retained on failed and retried requests.
+- Missing normalized token usage remains unknown in telemetry,
+  while existing numerical usage handling stays unchanged.
+- A dedicated PostgreSQL pool uses at most one connection and one
+  outstanding insert per process. Excess observations are dropped.
+- The isolated pool consumes one additional database connection
+  per active application process.

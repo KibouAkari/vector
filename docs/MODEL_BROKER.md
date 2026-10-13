@@ -106,3 +106,11 @@ Scope: background provider resolver only.
 
 Direct chat routing, telemetry persistence and live model
 selection remain unchanged.
+
+## Review hardening
+
+- Explicit HTTP status takes precedence over transient error labels.
+- Background jobs explicitly opt into optional shadow comparison.
+- A missing legacy-winner profile prevents comparison, while unusable
+  alternatives are skipped.
+- Perplexity is recognized as a provider family.
