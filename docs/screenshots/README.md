@@ -1,22 +1,25 @@
-# Product Screenshot Guide
+# Product screenshots
 
-Use genuine, reviewed screenshots with these filenames:
+Only **two screenshots are needed** for the first README gallery:
 
-| Filename | Subject |
-| :-- | :-- |
-| `login.png` | Cinematic login |
-| `dashboard.png` | Dashboard |
-| `chat.png` | Chat and generated files |
-| `models.png` | Provider connections |
-| `server.png` | Infrastructure overview |
+1. **`login.png`** — the actual black-hole login. Capture it without entering credentials, ideally 1600×900 or similar 16:9 framing.
+2. **`workspace.png`** — dashboard or chat with a harmless demo conversation. Hide usernames, personal/project names, customer data and financial details.
 
-## Capture guidelines
+Optional later: `models.png` (with credentials and account details concealed).
 
-1. Use a safe demo account or redact private information.
-2. Use consistent dimensions and avoid browser chrome.
-3. Remove credentials, infrastructure details and identifiers.
-4. Never substitute generated concepts for real captures.
-5. Review each image before staging and publishing.
+## Add them in under five minutes
 
-The README screenshot gallery will be activated
-after genuine, approved screenshots are available.
+Open the private GitHub repository, navigate to `docs/screenshots/`, choose **Add file → Upload files**, and upload the two PNGs. Check the preview before committing.
+
+Then add this HTML between `SCREENSHOT_GALLERY_START` and `SCREENSHOT_GALLERY_END` in the root `README.md`:
+
+```html
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/login.png" alt="Vector cinematic login" /></td>
+    <td width="50%"><img src="docs/screenshots/workspace.png" alt="Vector workspace" /></td>
+  </tr>
+</table>
+```
+
+Never include API keys, login tokens, host addresses, real customers, private chat messages or server logs. Keep screenshots genuine rather than generated UI mockups.
