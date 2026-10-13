@@ -1,3 +1,4 @@
+import { canEditProject } from "../../../../lib/identity";
 import {
   getSession
 } from "../../../../lib/auth";
@@ -47,6 +48,17 @@ export async function PATCH(
   } =
     await context.params;
 
+
+  const taskProject = await db.query(
+    "SELECT project_id FROM tasks WHERE id = $1 LIMIT 1", [id]
+  );
+  if (
+    taskProject.rowCount !== 1 ||
+    !await canEditProject(session, taskProject.rows[0].project_id)
+  ) {
+    return Response.json({ error: "Task not found." }, { status: 404 });
+  }
+
   const body =
     await request.json();
 
@@ -83,12 +95,14 @@ export async function PATCH(
           updated_at = NOW()
 
         WHERE id = $1
+          AND project_id = $3
 
         RETURNING *
       `,
       [
         id,
-        status
+        status,
+        taskProject.rows[0].project_id
       ]
     );
 

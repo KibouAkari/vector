@@ -10,6 +10,8 @@ import {
   db
 } from "../../../lib/db";
 
+import { canAccessProject } from "../../../lib/identity";
+
 import {
   humanBytes,
   initializeFileDatabase
@@ -37,6 +39,10 @@ export default async function ProjectPage({
     id
   } =
     await params;
+
+  if (!await canAccessProject(session, id)) {
+    notFound();
+  }
 
   await initializeFileDatabase();
 

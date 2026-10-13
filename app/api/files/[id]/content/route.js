@@ -1,3 +1,4 @@
+import { canAccessProject, canEditProject } from "../../../../../lib/identity";
 import {
   getSession
 } from "../../../../../lib/auth";
@@ -74,6 +75,10 @@ export async function GET(
     await getFile(
       id
     );
+  if (file && !await canAccessProject(session, file.project_id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   if (!file) {
     return Response.json(
@@ -151,6 +156,10 @@ export async function PATCH(
     await getFile(
       id
     );
+  if (file && !await canEditProject(session, file.project_id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   if (!file) {
     return Response.json(

@@ -1,3 +1,4 @@
+import { canAccessProject, canEditProject } from "../../../../../lib/identity";
 import crypto
   from "node:crypto";
 
@@ -56,6 +57,11 @@ export async function GET(
       projectId
   } =
     await context.params;
+
+  if (!await canAccessProject(session, (await context.params).id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   await initializeFileDatabase();
 
@@ -128,6 +134,11 @@ export async function POST(
       projectId
   } =
     await context.params;
+
+  if (!await canEditProject(session, (await context.params).id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   await initializeFileDatabase();
 

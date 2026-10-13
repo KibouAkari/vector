@@ -19,6 +19,21 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: vector_ci
+          POSTGRES_PASSWORD: vector_ci_password
+          POSTGRES_DB: vector_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vector_ci -d vector_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
       CI: 'true'
       NEXT_TELEMETRY_DISABLED: '1'
@@ -39,8 +54,39 @@ jobs:
       - name: Test offline model broker policy
         run: node --test tests/model-broker-*.test.mjs tests/provider-telemetry.test.mjs
 
+      - name: Test project access policy
+        run: node --test tests/project-access-policy.test.mjs tests/project-access-routes.test.mjs
+
       - name: Build the application
         run: npm run build
+
+      - name: Test authenticated API authorization against PostgreSQL
+        env:
+          DATABASE_URL: postgres://vector_ci:vector_ci_password@127.0.0.1:5432/vector_ci
+          VECTOR_SECRET: vector-ci-test-key-not-for-production
+          FILE_ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
+          FILE_STORAGE_PATH: /tmp/vector-auth-ci-files
+          VECTOR_AUTHZ_TEST_ORIGIN: http://127.0.0.1:3187
+          COOKIE_SECURE: 'false'
+        run: |
+          set -euo pipefail
+          mkdir -p "$FILE_STORAGE_PATH"
+          ./node_modules/.bin/next start -H 127.0.0.1 -p 3187 > /tmp/vector-auth-ci-next.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          READY=0
+          for attempt in $(seq 1 50); do
+            if curl --silent --output /dev/null http://127.0.0.1:3187/api/projects; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" != 1 ]; then
+            cat /tmp/vector-auth-ci-next.log
+            false
+          fi
+          node --test tests/project-access-api.integration.test.mjs
 
   secret-scan:
     name: Working tree secret scan
