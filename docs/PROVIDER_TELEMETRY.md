@@ -51,9 +51,11 @@ Merging Git code does not apply database migrations.
 
 ## Reliability
 
-Writes are best-effort, asynchronous and bounded to
-32 outstanding inserts per process. Database failures,
-shutdown or overload may result in missing observations.
+Writes are best-effort and asynchronous, with at most one
+outstanding insert and one dedicated PostgreSQL connection
+per application process. Additional observations are dropped
+while that insert is in flight. Database failures, shutdown
+or overload may result in missing observations.
 
 The model response and original provider errors are
 never changed by telemetry failures.
@@ -69,3 +71,15 @@ does not consume that parameter.
 
 Do not assume per-user spending data is correct until
 that behavior is reviewed.
+
+## Review hardening
+
+- The terminal HTTP failure retains its status when the provider call fails.
+  If an internal HTTP retry succeeds, one successful provider-call metric
+  is recorded; individual failed attempts are not currently measured.
+- Missing normalized token usage remains unknown in telemetry,
+  while existing numerical usage handling stays unchanged.
+- A dedicated PostgreSQL pool uses at most one connection and one
+  outstanding insert per process. Excess observations are dropped.
+- The isolated pool consumes one additional database connection
+  per active application process.
