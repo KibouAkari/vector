@@ -1,5 +1,6 @@
 import {
-  getSession
+  getSession,
+  hasFeature
 } from "../../../../lib/auth";
 
 import {
@@ -22,6 +23,10 @@ export async function GET() {
           401
       }
     );
+  }
+
+  if (!hasFeature(session, "server")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {

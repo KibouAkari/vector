@@ -2,7 +2,8 @@ import crypto
   from "node:crypto";
 
 import {
-  getSession
+  getSession,
+  hasFeature
 } from "../../../lib/auth";
 
 import {
@@ -46,6 +47,10 @@ export async function GET() {
     );
   }
 
+  if (!hasFeature(session, "projects")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await initializeFileDatabase();
 
   const result =
@@ -76,12 +81,21 @@ export async function GET() {
           pf.project_id =
           p.id
 
+      WHERE (
+        $1::boolean
+        OR p.owner_user_id = $2
+        OR EXISTS (
+          SELECT 1 FROM project_members pm
+          WHERE pm.project_id = p.id AND pm.user_id = $2
+        )
+      )
+
       GROUP BY
         p.id
 
       ORDER BY
         p.updated_at DESC
-    `);
+    `, [session.role === "owner", session.userId]);
 
   return Response.json({
     projects:
@@ -184,6 +198,10 @@ export async function POST(
     );
   }
 
+  if (!hasFeature(session, "projects")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await initializeFileDatabase();
 
   const id =
@@ -196,6 +214,7 @@ export async function POST(
         name,
         description,
         privacy_level,
+        owner_user_id,
         created_at,
         updated_at
       )
@@ -204,6 +223,7 @@ export async function POST(
         $2,
         $3,
         $4,
+        $5,
         NOW(),
         NOW()
       )
@@ -213,7 +233,8 @@ export async function POST(
       name,
       description ||
         null,
-      privacyLevel
+      privacyLevel,
+      session.userId
     ]
   );
 

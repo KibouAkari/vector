@@ -39,6 +39,9 @@ jobs:
       - name: Test offline model broker policy
         run: node --test tests/model-broker-*.test.mjs tests/provider-telemetry.test.mjs
 
+      - name: Test project access policy
+        run: node --test tests/project-access-policy.test.mjs
+
       - name: Build the application
         run: npm run build
 

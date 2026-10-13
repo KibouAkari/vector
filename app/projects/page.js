@@ -2,7 +2,7 @@ import Link
   from "next/link";
 
 import {
-  requireSession
+  requireFeature
 } from "../../lib/auth";
 
 import {
@@ -41,7 +41,7 @@ const PRIVACY_LABELS = {
 
 export default async function ProjectsPage() {
   const session =
-    await requireSession();
+    await requireFeature("projects");
 
   await initializeFileDatabase();
 
@@ -73,12 +73,21 @@ export default async function ProjectsPage() {
           pf.project_id =
           p.id
 
+      WHERE (
+        $1::boolean
+        OR p.owner_user_id = $2
+        OR EXISTS (
+          SELECT 1 FROM project_members pm
+          WHERE pm.project_id = p.id AND pm.user_id = $2
+        )
+      )
+
       GROUP BY
         p.id
 
       ORDER BY
         p.updated_at DESC
-    `);
+    `, [session.role === "owner", session.userId]);
 
   return (
     <div className="vector-shell">

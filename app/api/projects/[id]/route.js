@@ -1,3 +1,4 @@
+import { canManageProject } from "../../../../lib/identity";
 import {
   getSession
 } from "../../../../lib/auth";
@@ -51,6 +52,11 @@ export async function PATCH(
     id
   } =
     await context.params;
+
+  if (!await canManageProject(session, (await context.params).id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   const body =
     await request.json();
@@ -213,6 +219,11 @@ export async function DELETE(
     id
   } =
     await context.params;
+
+  if (!await canManageProject(session, (await context.params).id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   await initializeFileDatabase();
 
