@@ -223,6 +223,16 @@ test("real authenticated API permissions and project isolation", async t => {
           as, method: "POST", body: { name: "unauthorized.txt", content: "bad" },
         }, 404);
       }
+      // A project editor must be able to delete a disposable file.
+      const disposable = await seedEncryptedFile(
+        projectId, "disposable.txt", "text/plain", Buffer.from("DELETE_BY_EDITOR"), true
+      );
+      await expectStatus(`/api/files/${disposable}`, {
+        as: "editor", method: "DELETE",
+      }, 200);
+      const gone = await db.query("SELECT 1 FROM project_files WHERE id=$1", [disposable]);
+      assert.equal(gone.rowCount, 0);
+
       const unchanged = await expectStatus(`/api/files/${textFile}/content`, { as: "creator" }, 200);
       assert.equal((await unchanged.json()).content, "PRIVATE_PROJECT_CONTENT");
     });

@@ -1,4 +1,4 @@
-import { canAccessProject } from "../../../../lib/identity";
+import { canEditProject } from "../../../../lib/identity";
 import {
   getSession
 } from "../../../../lib/auth";

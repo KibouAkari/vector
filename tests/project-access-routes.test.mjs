@@ -40,3 +40,24 @@ test("host snapshot enforces server feature", () => {
   const route = read("../app/api/server/snapshot/route.js");
   assert.match(route, /!hasFeature\(session, "server"\)/);
 });
+
+
+test("every project permission reference is imported from the identity module", () => {
+  for (const [path] of guarded) {
+    if (!path.includes("/api/")) continue;
+    const src = read(path);
+    const declaration = src.match(
+      /import\s*\{([^}]+)\}\s*from\s*["'][^"']+\/lib\/identity["']/
+    );
+    assert.ok(declaration, `identity import missing in ${path}`);
+    const exported = declaration[1]
+      .split(",")
+      .map(token => token.trim());
+    const invoked = new Set(
+      src.match(/\bcan(?:Access|Edit|Manage)Project(?=\s*\()/g) || []
+    );
+    for (const name of invoked) {
+      assert.ok(exported.includes(name), `${path}: ${name} not imported`);
+    }
+  }
+});
