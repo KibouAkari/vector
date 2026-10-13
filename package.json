@@ -1,0 +1,31 @@
+{
+  "name": "vector",
+  "version": "0.3.3",
+  "private": true,
+  "description": "Vector Personal AI Infrastructure",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 3000"
+  },
+  "dependencies": {
+    "@radix-ui/react-tooltip": "1.4.0",
+    "@react-three/fiber": "9.8.0",
+    "docx": "9.7.2",
+    "exceljs": "4.4.0",
+    "ioredis": "5.7.0",
+    "lucide-react": "1.55.0",
+    "mammoth": "1.12.3",
+    "motion": "14.1.0",
+    "next": "16.4.0",
+    "pdf-lib": "1.17.1",
+    "pg": "8.16.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
+    "recharts": "3.10.1",
+    "remark-gfm": "^4.0.1",
+    "three": "0.186.0",
+    "unpdf": "1.8.1"
+  }
+}

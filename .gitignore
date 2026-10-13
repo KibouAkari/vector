@@ -1,0 +1,29 @@
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite*
+*.db
+*credentials*
+*secret*
+*.log
+*.bak
+
+# Build and runtime
+node_modules/
+.next/
+.turbo/
+.vercel/
+dist/
+build/
+coverage/
+logs/
+backups/
+uploads/
+storage/
+data/
+.DS_Store

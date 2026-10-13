@@ -1,0 +1,363 @@
+/* Vector 5.7.1 – persistent chat attachments */
+
+.v54-message-files a,
+.v54-message-files span {
+  max-width: min(420px, 100%);
+  padding: 6px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #29313a;
+  border-radius: 8px;
+  background: #12171c;
+  color: #b8c1c9;
+  font-size: 12px;
+  line-height: 1.25;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v54-message-files a:hover {
+  border-color: #3b4650;
+  color: #edf1f4;
+  background: #161c22;
+}
+
+.v54-attachments button {
+  max-width: min(420px, 100%);
+}
+
+.v54-attachments button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* VECTOR_ARTIFACT_UI_5742 */
+
+.v574-artifacts {
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.v574-artifacts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(100%, 440px);
+  padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 9px;
+  background: rgba(255,255,255,.035);
+  color: inherit;
+  text-decoration: none;
+}
+
+.v574-artifacts a:hover {
+  background: rgba(255,255,255,.065);
+  border-color: rgba(255,255,255,.18);
+}
+
+.v574-artifacts a span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v574-artifact-icon {
+  flex: 0 0 auto;
+  opacity: .72;
+}
+
+
+/* =========================================================
+   VECTOR_ARTIFACT_CARD_STYLE_57431
+   Unified generated-file card
+   ========================================================= */
+
+.v57431-artifact-list {
+  width: 100%;
+  max-width: 680px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  margin-top: 14px;
+
+  padding: 0;
+
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+
+.v57431-artifact-card {
+  width: 100%;
+  min-height: 76px;
+
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  box-sizing: border-box;
+
+  padding: 13px 14px;
+
+  color: inherit;
+  text-decoration: none;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.09);
+
+  border-radius: 16px;
+
+  background:
+    rgba(255, 255, 255, 0.035);
+
+  box-shadow:
+    0 1px 1px
+    rgba(0, 0, 0, 0.05);
+
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+
+.v57431-artifact-card:hover {
+  background:
+    rgba(255, 255, 255, 0.055);
+
+  border-color:
+    rgba(255, 255, 255, 0.15);
+
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    0 8px 24px
+    rgba(0, 0, 0, 0.12);
+
+  text-decoration: none;
+}
+
+
+.v57431-artifact-card:focus-visible {
+  outline:
+    2px solid
+    rgba(145, 177, 255, 0.85);
+
+  outline-offset:
+    3px;
+}
+
+
+.v57431-artifact-type {
+  width: 46px;
+  height: 46px;
+
+  flex:
+    0 0 46px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background:
+    rgba(255, 255, 255, 0.065);
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  font-size: 10px;
+  font-weight: 750;
+
+  letter-spacing:
+    0.055em;
+
+  line-height: 1;
+
+  color:
+    rgba(255, 255, 255, 0.82);
+}
+
+
+.v57431-artifact-info {
+  min-width: 0;
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+
+.v57431-artifact-info strong {
+  display: block;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color:
+    rgba(255, 255, 255, 0.94);
+
+  font-size: 14px;
+  font-weight: 620;
+
+  line-height: 1.25;
+}
+
+
+.v57431-artifact-info span {
+  display: block;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color:
+    rgba(255, 255, 255, 0.46);
+
+  font-size: 11.5px;
+  font-weight: 450;
+
+  line-height: 1.3;
+}
+
+
+.v57431-artifact-action {
+  flex:
+    0 0 auto;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  min-height: 36px;
+
+  padding:
+    0 11px;
+
+  border-radius:
+    10px;
+
+  background:
+    rgba(255, 255, 255, 0.055);
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.065);
+
+  color:
+    rgba(255, 255, 255, 0.76);
+
+  font-size:
+    11.5px;
+
+  font-weight:
+    570;
+
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+
+.v57431-artifact-card:hover
+.v57431-artifact-action {
+  background:
+    rgba(255, 255, 255, 0.09);
+
+  border-color:
+    rgba(255, 255, 255, 0.1);
+
+  color:
+    rgba(255, 255, 255, 0.96);
+}
+
+
+.v57431-artifact-download-icon {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  width: 18px;
+  height: 18px;
+
+  font-size:
+    16px;
+
+  line-height:
+    1;
+}
+
+
+.v57431-artifact-disabled {
+  opacity:
+    0.55;
+
+  pointer-events:
+    none;
+}
+
+
+@media (
+  max-width: 640px
+) {
+
+  .v57431-artifact-card {
+    min-height:
+      70px;
+
+    padding:
+      11px 12px;
+
+    gap:
+      11px;
+  }
+
+
+  .v57431-artifact-type {
+    width:
+      42px;
+
+    height:
+      42px;
+
+    flex-basis:
+      42px;
+  }
+
+
+  .v57431-artifact-action-label {
+    display:
+      none;
+  }
+
+
+  .v57431-artifact-action {
+    width:
+      36px;
+
+    padding:
+      0;
+
+    justify-content:
+      center;
+  }
+
+}

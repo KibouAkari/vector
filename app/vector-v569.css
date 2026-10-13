@@ -1,0 +1,158 @@
+/*
+ * Vector 5.6.9.1
+ * Complete, clean technical answers.
+ */
+
+.vector-message.assistant .v54-message-body {
+  line-height: 1.62;
+}
+
+.vector-message.assistant .v54-message-body p {
+  margin: 0 0 12px;
+}
+
+.vector-message.assistant .v54-message-body p:last-child {
+  margin-bottom: 0;
+}
+
+.vector-message.assistant .v54-message-body h1,
+.vector-message.assistant .v54-message-body h2,
+.vector-message.assistant .v54-message-body h3,
+.vector-message.assistant .v54-message-body h4 {
+  margin: 22px 0 9px;
+  color: #edf1f4;
+  line-height: 1.28;
+  letter-spacing: -.015em;
+}
+
+.vector-message.assistant .v54-message-body h1 {
+  font-size: 19px;
+}
+
+.vector-message.assistant .v54-message-body h2 {
+  font-size: 17px;
+}
+
+.vector-message.assistant .v54-message-body h3,
+.vector-message.assistant .v54-message-body h4 {
+  font-size: 15px;
+}
+
+.vector-message.assistant .v54-message-body ul,
+.vector-message.assistant .v54-message-body ol {
+  margin: 10px 0 14px;
+  padding-left: 23px;
+}
+
+.vector-message.assistant .v54-message-body li {
+  margin: 4px 0;
+}
+
+.vector-message.assistant .v54-message-body p code,
+.vector-message.assistant .v54-message-body li code {
+  padding: 2px 5px;
+  border: 1px solid #29313a;
+  border-radius: 5px;
+  background: #171c21;
+  color: #e3e8ec;
+  font-size: .91em;
+}
+
+.v569-code-block {
+  width: 100%;
+  margin: 14px 0 17px;
+  overflow: hidden;
+  border: 1px solid #29313a;
+  border-radius: 11px;
+  background: #0d1115;
+}
+
+.v569-code-head {
+  min-height: 38px;
+  padding: 0 10px 0 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #252c33;
+  background: #12171c;
+  color: #798590;
+  font-size: 11px;
+}
+
+.v569-code-head > span:first-child {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  text-transform: lowercase;
+}
+
+.v569-code-copy {
+  min-height: 28px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #8d98a2;
+  font: inherit;
+  cursor: pointer;
+}
+
+.v569-code-copy:hover {
+  background: rgba(255,255,255,.045);
+  color: #e0e5e9;
+}
+
+.v569-code-copy img {
+  width: 13px;
+  height: 13px;
+  opacity: .82;
+}
+
+.v569-code-block pre {
+  margin: 0 !important;
+  padding: 15px 16px 17px !important;
+  overflow-x: auto;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.v569-code-block pre code {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #dce2e7 !important;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  font-size: 12.5px;
+  line-height: 1.58;
+  white-space: pre;
+}
+
+@media (max-width: 760px) {
+  .v569-code-block {
+    margin-left: 0;
+    margin-right: 0;
+    border-radius: 9px;
+  }
+
+  .v569-code-block pre {
+    padding: 13px 13px 15px !important;
+  }
+}

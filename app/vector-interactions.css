@@ -1,0 +1,588 @@
+/*
+ * VECTOR_INTERACTION_FOUNDATION_583B
+ *
+ * Intentionally narrow.
+ * No global page widths.
+ * No dashboard layout overrides.
+ * No chat geometry overrides.
+ */
+
+
+:root {
+  --vx-motion-fast:
+    120ms;
+
+  --vx-motion-standard:
+    180ms;
+
+  --vx-ease-productive:
+    cubic-bezier(
+      .2,
+      0,
+      .38,
+      .9
+    );
+
+  --vx-interaction-accent:
+    #70d6ae;
+
+  --vx-interaction-accent-soft:
+    rgba(
+      112,
+      214,
+      174,
+      .11
+    );
+
+  --vx-interaction-border:
+    rgba(
+      255,
+      255,
+      255,
+      .10
+    );
+}
+
+
+/* ==========================================================
+   ICON BUTTON
+   ========================================================== */
+
+.vx-icon-button {
+  position:
+    relative;
+
+  width:
+    34px;
+
+  height:
+    34px;
+
+  display:
+    inline-grid;
+
+  flex:
+    0 0 auto;
+
+  place-items:
+    center;
+
+  padding:
+    0;
+
+  border:
+    1px solid transparent;
+
+  border-radius:
+    9px;
+
+  background:
+    transparent;
+
+  color:
+    #919aa6;
+
+  cursor:
+    pointer;
+
+  transition:
+    color var(--vx-motion-fast)
+      var(--vx-ease-productive),
+    border-color var(--vx-motion-fast)
+      var(--vx-ease-productive),
+    background var(--vx-motion-fast)
+      var(--vx-ease-productive);
+}
+
+
+.vx-icon-button svg {
+  width:
+    17px;
+
+  height:
+    17px;
+
+  stroke-width:
+    1.8;
+}
+
+
+.vx-icon-button:hover {
+  border-color:
+    rgba(
+      255,
+      255,
+      255,
+      .07
+    );
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      .045
+    );
+
+  color:
+    #e6e9ec;
+}
+
+
+.vx-icon-button[data-tone="primary"] {
+  border-color:
+    rgba(
+      112,
+      214,
+      174,
+      .25
+    );
+
+  background:
+    rgba(
+      112,
+      214,
+      174,
+      .11
+    );
+
+  color:
+    #bdf3dc;
+}
+
+
+.vx-icon-button[data-tone="primary"]:hover {
+  border-color:
+    rgba(
+      112,
+      214,
+      174,
+      .38
+    );
+
+  background:
+    rgba(
+      112,
+      214,
+      174,
+      .16
+    );
+
+  color:
+    #dcfff1;
+}
+
+
+.vx-icon-button:disabled {
+  opacity:
+    .36;
+
+  cursor:
+    default;
+}
+
+
+/* ==========================================================
+   TOOLTIP
+   ========================================================== */
+
+.vx-tooltip {
+  z-index:
+    10000;
+
+  padding:
+    6px 8px;
+
+  border:
+    1px solid rgba(
+      255,
+      255,
+      255,
+      .10
+    );
+
+  border-radius:
+    7px;
+
+  background:
+    rgba(
+      15,
+      18,
+      22,
+      .97
+    );
+
+  box-shadow:
+    0 8px 30px
+    rgba(
+      0,
+      0,
+      0,
+      .28
+    );
+
+  color:
+    #e6e9ed;
+
+  font-size:
+    11px;
+
+  font-weight:
+    540;
+
+  line-height:
+    1;
+
+  user-select:
+    none;
+
+  animation:
+    vx-tooltip-enter
+    120ms
+    var(--vx-ease-productive);
+}
+
+
+.vx-tooltip-arrow {
+  fill:
+    rgba(
+      15,
+      18,
+      22,
+      .97
+    );
+}
+
+
+@keyframes vx-tooltip-enter {
+  from {
+    opacity:
+      0;
+
+    transform:
+      translateY(
+        2px
+      )
+      scale(
+        .97
+      );
+  }
+
+  to {
+    opacity:
+      1;
+
+    transform:
+      translateY(
+        0
+      )
+      scale(
+        1
+      );
+  }
+}
+
+
+/* ==========================================================
+   SIDEBAR ICON FOUNDATION
+   ========================================================== */
+
+.v5-nav a,
+.v52-owner-nav a {
+  position:
+    relative;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    10px;
+
+  overflow:
+    hidden;
+
+  transition:
+    color var(--vx-motion-fast)
+      var(--vx-ease-productive),
+    background var(--vx-motion-fast)
+      var(--vx-ease-productive),
+    border-color var(--vx-motion-fast)
+      var(--vx-ease-productive),
+    transform var(--vx-motion-fast)
+      var(--vx-ease-productive);
+}
+
+
+.v5-nav a:hover,
+.v52-owner-nav a:hover {
+  transform:
+    translateX(
+      1px
+    );
+}
+
+
+.vx-nav-icon {
+  width:
+    16px;
+
+  height:
+    16px;
+
+  flex:
+    0 0 16px;
+
+  stroke-width:
+    1.75;
+
+  opacity:
+    .76;
+
+  transition:
+    opacity var(--vx-motion-fast)
+      var(--vx-ease-productive),
+    color var(--vx-motion-fast)
+      var(--vx-ease-productive),
+    transform var(--vx-motion-fast)
+      var(--vx-ease-productive);
+}
+
+
+.v5-nav a:hover .vx-nav-icon,
+.v52-owner-nav a:hover .vx-nav-icon,
+.v5-nav a.active .vx-nav-icon,
+.v52-owner-nav a.active .vx-nav-icon {
+  opacity:
+    1;
+}
+
+
+.v5-nav a.active .vx-nav-icon,
+.v52-owner-nav a.active .vx-nav-icon {
+  color:
+    var(--vx-interaction-accent);
+}
+
+
+.vx-nav-active-rail {
+  position:
+    absolute;
+
+  top:
+    9px;
+
+  bottom:
+    9px;
+
+  left:
+    0;
+
+  width:
+    2px;
+
+  border-radius:
+    999px;
+
+  background:
+    var(--vx-interaction-accent);
+
+  box-shadow:
+    0 0 12px
+    rgba(
+      112,
+      214,
+      174,
+      .26
+    );
+}
+
+
+.vx-mobile-menu-icon,
+.vx-mobile-close-icon {
+  width:
+    18px;
+
+  height:
+    18px;
+
+  stroke-width:
+    1.8;
+}
+
+
+/* ==========================================================
+   FOCUS
+   ========================================================== */
+
+.vx-icon-button:focus-visible,
+.v5-nav a:focus-visible,
+.v52-owner-nav a:focus-visible {
+  outline:
+    2px solid rgba(
+      112,
+      214,
+      174,
+      .42
+    );
+
+  outline-offset:
+    2px;
+}
+
+
+/* ==========================================================
+   REDUCED MOTION
+   ========================================================== */
+
+@media (
+  prefers-reduced-motion:
+    reduce
+) {
+  .vx-tooltip {
+    animation:
+      none;
+  }
+
+
+  .v5-nav a,
+  .v52-owner-nav a,
+  .vx-nav-icon,
+  .vx-icon-button {
+    transition:
+      none !important;
+  }
+
+
+  .v5-nav a:hover,
+  .v52-owner-nav a:hover {
+    transform:
+      none;
+  }
+}
+
+
+/*
+ * ==========================================================
+ * VECTOR_NAV_REFINEMENT_584
+ * ==========================================================
+ *
+ * Keep exactly one active indicator:
+ * the Motion layout rail from 5.8.3B.
+ *
+ * Historical active pseudo-elements are disabled.
+ */
+
+
+.v5-nav a.active::before,
+.v5-nav a.active::after,
+.v52-owner-nav a.active::before,
+.v52-owner-nav a.active::after {
+  display:
+    none !important;
+
+  content:
+    none !important;
+}
+
+
+.v5-nav {
+  gap:
+    1px !important;
+}
+
+
+.v5-nav a,
+.v52-owner-nav a {
+  min-height:
+    34px !important;
+
+  gap:
+    7px !important;
+
+  padding-left:
+    9px !important;
+
+  padding-right:
+    9px !important;
+}
+
+
+.vx-nav-icon {
+  width:
+    15px;
+
+  height:
+    15px;
+
+  flex-basis:
+    15px;
+}
+
+
+.vx-nav-active-rail {
+  left:
+    2px;
+
+  top:
+    10px;
+
+  bottom:
+    10px;
+
+  width:
+    2px;
+}
+
+
+.v52-owner-nav {
+  margin-top:
+    16px !important;
+}
+
+
+.v52-owner-nav > span {
+  margin-bottom:
+    5px;
+}
+
+
+/*
+ * VECTOR_SOUND_UI_584B
+ */
+
+.vx-sidebar-footer-actions {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    space-between;
+
+  gap:
+    8px;
+}
+
+
+.vx-sidebar-footer-actions
+.vx-sound-toggle {
+  width:
+    30px;
+
+  height:
+    30px;
+}
+
+
+.vx-sidebar-footer-actions
+.vx-sound-toggle svg {
+  width:
+    14px;
+
+  height:
+    14px;
+}

@@ -1,0 +1,147 @@
+/* VECTOR 5.8.5D - restrained premium chat polish. Scoped to /chat. */
+.vector-chat-page {
+  --vx585d-line: rgba(203,225,219,.075);
+  --vx585d-text: #e6eeeb;
+  --vx585d-muted: #8a9b9b;
+  --vx585d-mint: #86dcbc;
+  --vx585d-ease: cubic-bezier(.2,.72,.2,1);
+}
+
+/* Layout: light structure rather than nested competing cards. */
+.vector-chat-page .vector-chat-shell {
+  border-radius: 0;
+  box-shadow: none;
+  background: #0b0e12;
+  border-color: var(--vx585d-line);
+}
+.vector-chat-page .history-panel { background: #0d1115; }
+.vector-chat-page .history-head { padding: 18px 17px 12px; }
+.vector-chat-page .history-head strong { font-size: 13px; font-weight: 650; color: #e4ebe9; }
+.vector-chat-page .history-head button { border: 1px solid transparent; }
+.vector-chat-page .history-head button:hover { border-color: rgba(125,207,178,.22); }
+.vector-chat-page .history-search { background: #10151a; border-color: var(--vx585d-line); }
+.vector-chat-page .history-list { padding-top: 3px; }
+.vector-chat-page .history-item {
+  position: relative; margin: 2px 10px; border-radius: 9px;
+  border: 1px solid transparent; transition: background .18s var(--vx585d-ease), border-color .18s;
+}
+.vector-chat-page .history-item:hover { background: #151b20; }
+.vector-chat-page .history-item.active { background: #15201e; border-color: rgba(134,220,188,.12); box-shadow: inset 2px 0 #82d7b4; }
+.vector-chat-page .history-title { font-weight: 530; }
+.vector-chat-page .history-preview { color: #718487; }
+/* Destructive action is only revealed when needed. Keep keyboard access. */
+.vector-chat-page .history-delete {
+  opacity: 0; visibility: hidden; transform: translateX(4px);
+  transition: opacity .16s ease, transform .16s ease, background .16s ease;
+  color: #839596;
+}
+.vector-chat-page .history-item:is(:hover,:focus-within) .history-delete,
+.vector-chat-page .history-delete:focus-visible {
+  opacity: 1; visibility: visible; transform: translateX(0);
+}
+.vector-chat-page .history-delete:hover { color: #ffb6b6; background: rgba(231,111,111,.095); }
+
+/* Keep the conversation header quiet and unobtrusive. */
+.vector-chat-page .v54-chat { background: #0b0e12; }
+.vector-chat-page .v54-chat-topbar { background: rgba(11,14,18,.94); border-bottom-color: var(--vx585d-line); }
+.vector-chat-page .v54-chat-spend { background: transparent; border-color: transparent; padding: 5px 8px; }
+.vector-chat-page .v54-chat-spend span { color: #718587; }
+.vector-chat-page .v54-chat-spend strong { font-weight: 550; color: #b4c5c0; }
+.vector-chat-page .v54-brand-block strong { font-size: 13px; }
+
+/* Natural message composition and readable typography. */
+.vector-chat-page .v54-chat-content { padding-bottom: 40px; }
+.vector-chat-page .vector-message { margin-bottom: 26px; }
+.vector-chat-page .vector-message.assistant .v54-message-body { color: #dde7e4; line-height: 1.7; }
+.vector-chat-page .vector-message.assistant .v54-message-body > p { margin-bottom: 15px; }
+.vector-chat-page .vector-message.assistant .v54-message-body :is(h1,h2,h3) { color: #f0f6f2; font-weight: 640; }
+.vector-chat-page .vector-message.assistant .v54-message-body blockquote { border-left: 2px solid #5bbf99; padding: 3px 0 3px 14px; margin: 16px 0; color: #b5c6c3; background: transparent; }
+.vector-chat-page .vector-message.assistant .v54-message-body :is(ul,ol) { padding-left: 22px; margin-block: 13px 17px; }
+.vector-chat-page .vector-message.assistant .v54-message-body li { padding-left: 3px; margin-block: 5px; }
+.vector-chat-page .vector-message.user .v54-message-body { background: #181e24; border-color: rgba(229,239,236,.065); border-radius: 14px; }
+.vector-chat-page .v54-message-author { background: transparent; border-color: transparent; }
+.vector-chat-page .message-name { font-size: 12px; }
+
+/* Metadata remains readable, while tertiary actions appear on interaction. */
+.vector-chat-page .v54-meta-row { border-top-color: rgba(203,225,219,.045); }
+.vector-chat-page .v54-message-meta { color: #728587; }
+.vector-chat-page .v54-message-actions,
+.vector-chat-page .v54-user-actions {
+  opacity: .12; transition: opacity .18s ease;
+}
+.vector-chat-page .vector-message:is(:hover,:focus-within) :is(.v54-message-actions,.v54-user-actions) {
+  opacity: 1;
+}
+.vector-chat-page .v54-action-button {
+  background: transparent; padding-inline: 8px; border-radius: 7px;
+  color: #8b9f9d; transition: background .17s ease, color .17s ease;
+}
+.vector-chat-page .v54-action-button:hover { background: rgba(135,212,185,.075); color: #d5f5e6; }
+
+/* Code is an actual reading surface, not a decorative box. */
+.vector-chat-page .vx585d-code {
+  border: 1px solid rgba(196,215,210,.12);
+  border-radius: 11px; background: #0c1217;
+  overflow: hidden; margin-block: 18px;
+}
+.vector-chat-page .vx585d-code .v569-code-head {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 39px; padding-inline: 14px; background: #11181c;
+  border-bottom: 1px solid rgba(203,225,219,.08);
+}
+.vector-chat-page .vx585d-code-language { display: inline-flex; gap: 8px; align-items: center; text-transform: lowercase; font-size: 11px; font-weight: 550; color: #a0b4ae; }
+.vector-chat-page .vx585d-code .v569-code-copy { display: inline-flex; align-items: center; gap: 7px; color: #a3b5af; border-radius: 6px; }
+.vector-chat-page .vx585d-code .v569-code-copy:hover { color: #dcf8e9; background: rgba(134,220,188,.065); }
+.vector-chat-page .vx585d-code pre { margin: 0; padding: 16px 18px; font-size: 12.5px; line-height: 1.66; tab-size: 2; overflow-x: auto; }
+.vector-chat-page .vx585d-code code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* Generated files: a clean, legible full-width attachment rather than a tile. */
+.vector-chat-page .vx585-artifact-list { display: flex; flex-direction: column; max-width: 630px; gap: 9px; margin-block: 18px 12px; }
+.vector-chat-page .vx585d-file-card {
+  max-width: 630px; width: 100%; display: flex; min-height: 76px; align-items: center;
+  padding: 13px 15px; gap: 14px; background: #11191b;
+  border: 1px solid rgba(200,223,215,.11); border-radius: 12px;
+  text-decoration: none; color: #e6f1ec;
+  transition: border-color .19s var(--vx585d-ease), background .19s var(--vx585d-ease), transform .19s var(--vx585d-ease);
+}
+.vector-chat-page a.vx585d-file-card:hover { background: #16211f; border-color: rgba(134,220,188,.3); transform: translateY(-1px); }
+.vector-chat-page .vx585d-file-card .vx585-file-icon { width: 42px; height: 42px; border-radius: 10px; background: rgba(116,202,174,.065); color: #9bdac5; border-color: rgba(116,202,174,.11); }
+.vector-chat-page .vx585d-file-card .vx585-file-details { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 6px; }
+.vector-chat-page .vx585d-file-card .vx585-file-details strong {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  white-space: normal; overflow: hidden; overflow-wrap: anywhere;
+  font-weight: 570; font-size: 12.5px; line-height: 1.4; color: #e5f0eb;
+}
+.vector-chat-page .vx585d-file-card .vx585-file-details small { font-size: 11px; color: #889e9a; }
+.vector-chat-page .vx585d-file-action { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; color: #9eb3ae; transition: background .18s, color .18s; }
+.vector-chat-page a.vx585d-file-card:hover .vx585d-file-action { background: rgba(134,220,188,.075); color: #a5efd1; }
+.vector-chat-page .vx585d-image-card { max-width: min(100%,630px); }
+
+/* Composer: one simple focal surface. */
+.vector-chat-page .v54-composer-box { border-radius: 16px; background: #11171b; border-color: rgba(203,225,219,.14); box-shadow: 0 15px 36px rgba(0,0,0,.11); }
+.vector-chat-page .v54-composer-box:focus-within { border-color: rgba(134,220,188,.3); box-shadow: 0 0 0 3px rgba(134,220,188,.035); }
+.vector-chat-page .v54-tool-button { display: inline-flex; align-items: center; gap: 8px; }
+.vector-chat-page .v54-tool-button svg { color: #b3c6c0; }
+.vector-chat-page .v54-tool-button:hover svg { color: #b5f0d4; }
+.vector-chat-page .v54-thinking-toggle { background: transparent; border-color: transparent; }
+.vector-chat-page .v54-thinking-toggle button { border-radius: 7px; }
+.vector-chat-page .v54-thinking-toggle button:hover:not(.active) { background: rgba(205,230,220,.045); }
+.vector-chat-page .v54-thinking-toggle button.active { background: #27312f; }
+.vector-chat-page .v54-send-button:not(:disabled):hover { transform: translateY(-1px); }
+.vector-chat-page .v54-attachments button { border-radius: 9px; }
+.vector-chat-page .v54-attachments button svg { vertical-align: middle; }
+
+/* Keyboard/touch controls must never become invisible. */
+.vector-chat-page :is(.history-delete,.v54-action-button,.v569-code-copy,.vx585d-file-card):focus-visible { outline: 2px solid #79d6b2; outline-offset: 2px; opacity: 1; visibility: visible; }
+@media (hover:none), (pointer:coarse) {
+  .vector-chat-page .history-delete { opacity: 1; visibility: visible; transform: none; }
+  .vector-chat-page :is(.v54-message-actions,.v54-user-actions) { opacity: 1; }
+}
+@media (max-width:760px) {
+  .vector-chat-page .vector-message { margin-bottom: 20px; }
+  .vector-chat-page .vx585d-file-card { min-height: 70px; }
+  .vector-chat-page .vx585-artifact-list { max-width: 100%; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .vector-chat-page :is(.history-delete,.history-item,.v54-action-button,.vx585d-file-card,.v54-message-actions,.v54-user-actions) { transition: none !important; }
+}

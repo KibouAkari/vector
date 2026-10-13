@@ -1,0 +1,338 @@
+/*
+ * Vector 5.8.1
+ * Conversation-safe responsive workspace.
+ *
+ * Preserve Vector's existing identity:
+ * black / white / restrained green,
+ * medium information density,
+ * technical and quiet rather than decorative.
+ */
+
+:root {
+  --v581-workspace-max:
+    1320px;
+
+  --v581-reading-max:
+    980px;
+
+  --v581-composer-max:
+    1180px;
+
+  --v581-history-width:
+    clamp(
+      230px,
+      17vw,
+      286px
+    );
+
+  --v581-side-space:
+    clamp(
+      20px,
+      3.6vw,
+      66px
+    );
+}
+
+
+/*
+ * The outer chat already fills the application viewport.
+ * Give the inner workspace more useful width rather than
+ * constraining the entire interface to a small center card.
+ */
+.vector-chat-shell.v54-chat-shell {
+  grid-template-columns:
+    var(--v581-history-width)
+    minmax(
+      0,
+      1fr
+    ) !important;
+}
+
+
+/*
+ * The scroll surface uses the available monitor width.
+ * Individual message content remains intentionally bounded
+ * for readability.
+ */
+.vector-chat-content.v54-chat-content {
+  width:
+    100%;
+
+  max-width:
+    none !important;
+
+  padding-left:
+    var(--v581-side-space) !important;
+
+  padding-right:
+    var(--v581-side-space) !important;
+}
+
+
+/*
+ * Wider message workspace.
+ */
+.vector-message.v54-message {
+  width:
+    min(
+      100%,
+      var(--v581-workspace-max)
+    ) !important;
+
+  max-width:
+    var(--v581-workspace-max) !important;
+}
+
+
+/*
+ * Assistant answers should have enough room for tables,
+ * code, technical explanations and artifacts, while normal
+ * prose remains comfortable to read.
+ */
+.vector-message.assistant
+.v54-message-body {
+  width:
+    min(
+      100%,
+      var(--v581-reading-max)
+    ) !important;
+
+  max-width:
+    var(--v581-reading-max) !important;
+}
+
+
+.vector-message.assistant
+.vector-markdown {
+  width:
+    100%;
+
+  max-width:
+    920px !important;
+}
+
+
+/*
+ * User bubbles can use more space for long technical prompts
+ * without becoming giant edge-to-edge blocks.
+ */
+.vector-message.user
+.message-row {
+  max-width:
+    min(
+      82%,
+      820px
+    ) !important;
+}
+
+
+/*
+ * Composer tracks the workspace instead of remaining a small
+ * box on wide displays.
+ */
+.vector-composer.v54-composer {
+  padding-left:
+    var(--v581-side-space) !important;
+
+  padding-right:
+    var(--v581-side-space) !important;
+}
+
+
+.vector-composer
+.v54-composer-box {
+  width:
+    min(
+      100%,
+      var(--v581-composer-max)
+    );
+
+  max-width:
+    var(--v581-composer-max) !important;
+
+  margin-left:
+    auto;
+
+  margin-right:
+    auto;
+}
+
+
+/*
+ * Drag target follows the new composer width.
+ */
+.v567-drop-overlay {
+  width:
+    min(
+      var(--v581-composer-max),
+      calc(
+        100% -
+        36px
+      )
+    ) !important;
+}
+
+
+/*
+ * Architecture reservation:
+ * a future optional context pane can consume this variable
+ * without rewriting the main chat sizing model.
+ */
+.vector-chat.v54-chat {
+  --vector-context-panel-width:
+    0px;
+}
+
+
+/* Large laptop / smaller desktop */
+@media (
+  max-width:
+  1280px
+) {
+
+  :root {
+    --v581-workspace-max:
+      1120px;
+
+    --v581-reading-max:
+      900px;
+
+    --v581-composer-max:
+      1040px;
+
+    --v581-history-width:
+      220px;
+
+    --v581-side-space:
+      clamp(
+        20px,
+        3vw,
+        42px
+      );
+  }
+}
+
+
+/* Tablet / compact laptop */
+@media (
+  max-width:
+  980px
+) {
+
+  :root {
+    --v581-reading-max:
+      820px;
+
+    --v581-composer-max:
+      900px;
+
+    --v581-history-width:
+      205px;
+
+    --v581-side-space:
+      24px;
+  }
+
+  .vector-message.user
+  .message-row {
+    max-width:
+      min(
+        86%,
+        760px
+      ) !important;
+  }
+}
+
+
+/* Mobile */
+@media (
+  max-width:
+  760px
+) {
+
+  :root {
+    --v581-side-space:
+      13px;
+  }
+
+  .vector-chat-shell.v54-chat-shell {
+    display:
+      block !important;
+  }
+
+  .vector-chat-content.v54-chat-content {
+    padding-left:
+      13px !important;
+
+    padding-right:
+      13px !important;
+  }
+
+  .vector-message.v54-message {
+    width:
+      100% !important;
+
+    max-width:
+      100% !important;
+  }
+
+  .vector-message.assistant
+  .v54-message-body {
+    width:
+      100% !important;
+
+    max-width:
+      100% !important;
+  }
+
+  .vector-message.assistant
+  .vector-markdown {
+    max-width:
+      100% !important;
+  }
+
+  .vector-message.user
+  .message-row {
+    max-width:
+      91% !important;
+  }
+
+  .vector-composer.v54-composer {
+    padding-left:
+      10px !important;
+
+    padding-right:
+      10px !important;
+  }
+
+  .vector-composer
+  .v54-composer-box {
+    width:
+      100%;
+
+    max-width:
+      100% !important;
+  }
+}
+
+
+/* Narrow phones */
+@media (
+  max-width:
+  430px
+) {
+
+  .vector-chat-content.v54-chat-content {
+    padding-left:
+      10px !important;
+
+    padding-right:
+      10px !important;
+  }
+
+  .vector-message.user
+  .message-row {
+    max-width:
+      94% !important;
+  }
+}

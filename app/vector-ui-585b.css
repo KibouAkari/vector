@@ -1,0 +1,152 @@
+
+/* ============================================================
+   VECTOR 5.8.5B
+   Global Premium UI Foundation
+   ============================================================ */
+
+:root {
+  --vx585-accent: #70d6ae;
+  --vx585-border: rgba(205, 235, 227, .085);
+  --vx585-ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+/* ------------------------------------------------------------
+   Remove redundant labels above page and panel titles
+   ------------------------------------------------------------ */
+
+.vx85-dashboard-kicker,
+.vx85-panel-header > div:first-child > span:first-child,
+.workspace-header .eyebrow,
+.control-header > .eyebrow,
+.simple-page-head > div:first-child > span:first-child,
+.v562-head > div:first-child > span:first-child,
+.v55-page-head > div:first-child > span:first-child,
+.v52-page-head > div:first-child > span:first-child {
+  display: none !important;
+}
+
+/* Do not reserve space for removed headings */
+
+.vx85-dashboard-header {
+  min-height: 104px;
+  padding-top: 0;
+}
+
+.vx85-panel-header > div:first-child > strong {
+  margin-top: 0;
+}
+
+/* ------------------------------------------------------------
+   Dashboard donut tooltip repair
+   ------------------------------------------------------------ */
+
+.vx85-distribution-panel {
+  overflow: visible;
+}
+
+.vx85-distribution-panel .vx85-donut-wrap {
+  position: relative;
+}
+
+.vx85-distribution-panel .vx85-donut {
+  isolation: isolate;
+  overflow: visible;
+}
+
+/* Render chart and tooltip over the centre value */
+
+.vx85-distribution-panel
+.vx85-donut > .recharts-responsive-container {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+}
+
+.vx85-distribution-panel .vx85-donut-center {
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Tooltip receives the highest local stacking level */
+
+.vx85-distribution-panel .recharts-tooltip-wrapper {
+  z-index: 30 !important;
+  pointer-events: none !important;
+}
+
+.vx85-distribution-panel .vx85-model-tooltip {
+  position: relative;
+  z-index: 31;
+
+  min-width: 160px;
+
+  border-color: rgba(112, 214, 174, .18);
+  background: rgba(12, 18, 21, .98);
+}
+
+/* Improve readability of hover data */
+
+.vx85-distribution-panel .vx85-model-tooltip strong {
+  font-size: 12px;
+}
+
+.vx85-distribution-panel .vx85-model-tooltip span {
+  font-size: 11px;
+}
+
+/* ------------------------------------------------------------
+   Shared premium interactions
+   ------------------------------------------------------------ */
+
+:is(
+  .vx85-panel,
+  .server-card,
+  .v52-user-row,
+  .v55-activity-row,
+  .v562-provider-row,
+  .project-card
+) {
+  transition:
+    border-color 180ms var(--vx585-ease),
+    background-color 180ms var(--vx585-ease),
+    box-shadow 180ms var(--vx585-ease);
+}
+
+:is(
+  .vx85-panel,
+  .server-card,
+  .v52-user-row,
+  .v55-activity-row,
+  .v562-provider-row,
+  .project-card
+):hover {
+  border-color: rgba(170, 216, 203, .16);
+}
+
+/* Accessible keyboard navigation */
+
+.vector-shell :is(
+  button,
+  a,
+  input,
+  select,
+  textarea
+):focus-visible {
+  outline: 2px solid rgba(112, 214, 174, .8);
+  outline-offset: 3px;
+}
+
+/* Respect reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  :is(
+    .vx85-panel,
+    .server-card,
+    .v52-user-row,
+    .v55-activity-row,
+    .v562-provider-row,
+    .project-card
+  ) {
+    transition: none !important;
+  }
+}

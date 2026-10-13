@@ -1,0 +1,60 @@
+/* Vector 5.6.3 — account isolation / BYOK */
+
+.v563-provider-scope {
+  min-width: 150px;
+  display: grid;
+  gap: 3px;
+}
+
+.v563-provider-scope span {
+  color: #aeb7bf;
+  font-size: 11px;
+}
+
+.v563-provider-scope small {
+  color: #68747e;
+  font-size: 10px;
+}
+
+.v563-workspace-available {
+  color: #78848e;
+  font-size: 11px;
+  text-align: right;
+}
+
+.v563-provider-options {
+  display: grid;
+  gap: 2px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.v563-provider-options .v562-enabled {
+  margin: 0 !important;
+  padding: 10px 2px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255,255,255,.045) !important;
+  border-radius: 0 !important;
+}
+
+.v563-provider-options .v562-enabled:last-child {
+  border-bottom: 0 !important;
+}
+
+.v563-share-note {
+  margin: 9px 0 0;
+  color: #707b85;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .v563-provider-scope {
+    min-width: 0;
+  }
+
+  .v563-workspace-available {
+    text-align: left;
+  }
+}

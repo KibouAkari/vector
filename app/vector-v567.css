@@ -1,0 +1,103 @@
+/* Vector 5.6.7.3 */
+
+.vector-chat-page {
+  padding: 0 !important;
+  max-width: none !important;
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+
+.vector-chat-shell,
+.vector-chat-shell.v54-chat-shell {
+  height: 100vh !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.vector-chat,
+.vector-chat.v54-chat {
+  height: 100% !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.v54-running-state {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 30px;
+  color: #aab2b9 !important;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.v54-pulse {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px;
+  border-radius: 50% !important;
+  border: 1.5px solid rgba(255,255,255,.16) !important;
+  border-top-color: rgba(255,255,255,.72) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  animation: v5673Spin .82s linear infinite !important;
+}
+
+@keyframes v5673Spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.v54-running-state + small {
+  display: none !important;
+}
+
+.v54-composer {
+  position: relative;
+}
+
+.v54-composer.v567-drag-active .v54-composer-box {
+  border-color: #46515c !important;
+  background: #14191e !important;
+}
+
+.v567-drop-overlay {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: 18px;
+  width: min(900px, calc(100% - 36px));
+  min-height: 112px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  border: 1px dashed rgba(255,255,255,.28);
+  border-radius: 15px;
+  background: rgba(13,16,20,.96);
+  color: #e5e9ec;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+@media (max-width: 760px) {
+  .vector-chat-page,
+  .vector-chat-shell,
+  .vector-chat-shell.v54-chat-shell {
+    height: 100dvh !important;
+  }
+
+  .v567-drop-overlay {
+    width: calc(100% - 20px);
+    bottom: 10px;
+  }
+}
