@@ -1,3 +1,4 @@
+import { canAccessProject } from "../../../../lib/identity";
 import {
   getSession
 } from "../../../../lib/auth";
@@ -75,6 +76,10 @@ export async function DELETE(
 
   const file =
     result.rows[0];
+  if (!await canEditProject(session, file.project_id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   await removeEncryptedFile(
     file

@@ -1,3 +1,4 @@
+import { canEditProject } from "../../../../../../lib/identity";
 import crypto from "node:crypto";
 
 import {
@@ -52,6 +53,11 @@ export async function POST(
       projectId
   } =
     await context.params;
+
+  if (!await canEditProject(session, (await context.params).id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   const body =
     await request.json();

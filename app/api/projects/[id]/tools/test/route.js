@@ -1,3 +1,4 @@
+import { canEditProject } from "../../../../../../lib/identity";
 import {
   getSession
 } from "../../../../../../lib/auth";
@@ -35,6 +36,11 @@ export async function POST(
       projectId
   } =
     await context.params;
+
+  if (!await canEditProject(session, (await context.params).id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   const toolContext =
     createToolContext({

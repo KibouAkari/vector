@@ -1,3 +1,4 @@
+import { canAccessProject } from "../../../../../lib/identity";
 import {
   getSession
 } from "../../../../../lib/auth";
@@ -72,6 +73,10 @@ export async function GET(
 
   const file =
     result.rows[0];
+  if (!await canAccessProject(session, file.project_id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   if (
     !file.previewable

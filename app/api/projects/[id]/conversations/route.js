@@ -1,3 +1,4 @@
+import { canAccessProject } from "../../../../../lib/identity";
 import {
   getSession
 } from "../../../../../lib/auth";
@@ -35,6 +36,11 @@ export async function GET(
     id
   } =
     await context.params;
+
+  if (!await canAccessProject(session, (await context.params).id)) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
 
   await initializeDatabase();
 
