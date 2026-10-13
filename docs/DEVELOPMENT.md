@@ -27,7 +27,7 @@ git push -u origin HEAD
 
 Open a pull request and provide verification evidence.
 
-**There is no automatic production deployment from a push.**
+**Deployment policy:** pushes and pull requests must not deploy to production without explicit release approval. This has not yet been verified against external webhooks or server-side automation. See [Deployment verification](DEPLOYMENT.md).
 
 ## Verification checklist
 

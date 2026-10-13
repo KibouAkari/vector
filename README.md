@@ -206,6 +206,8 @@ reviewed pull request.
 
 **Pushing to GitHub must not automatically modify production.**
 
+This is a required policy; external deployment hooks have not yet been audited. See [Deployment verification](docs/DEPLOYMENT.md).
+
 [Development guide →](docs/DEVELOPMENT.md) ·
 [Contributing →](CONTRIBUTING.md) ·
 [Design system →](docs/DESIGN_SYSTEM.md)

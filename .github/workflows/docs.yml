@@ -5,8 +5,15 @@ on:
     paths:
       - 'README.md'
       - 'VISION.md'
+      - 'CHANGELOG.md'
+      - 'CONTRIBUTING.md'
+      - 'AGENTS.md'
       - 'docs/**'
+      - 'scripts/check_docs.py'
+      - 'scripts/tests/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
       - '.github/workflows/docs.yml'
+      - 'public/vector-assets/brand/vector-mark.svg'
   workflow_dispatch:
 
 permissions:
@@ -15,30 +22,16 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate SVG assets and README references
+      - name: Test documentation validator
         run: |
-          python3 - <<'PYCHECK'
-          from pathlib import Path
-          from xml.etree import ElementTree
-          import re
+          python3 -m unittest discover \
+            -s scripts/tests \
+            -p 'test_*.py' -v
 
-          root = Path('.')
-
-          for path in (root / 'docs/assets').glob('*.svg'):
-              ElementTree.parse(path)
-
-          text = (root / 'README.md').read_text()
-
-          for path in re.findall(
-              r'(?:src|href)="(docs/[^"#]+)"',
-              text
-          ):
-              assert (root / path).is_file(), (
-                  f'Missing asset: {path}'
-              )
-
-          print('Documentation validated')
-          PYCHECK
+      - name: Validate documentation links and assets
+        run: |
+          python3 scripts/check_docs.py --root .
