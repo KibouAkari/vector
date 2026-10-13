@@ -1,238 +1,87 @@
 <div align="center">
-  <a href="VISION.md">
-    <img src="public/vector-assets/brand/vector-mark.svg"
-         width="80" alt="Vector logo" />
-  </a>
 
-  <h1>Vector</h1>
+<img src="docs/assets/vector-readme-logo.svg" width="88" alt="Vector logo" />
 
-  <p><strong>
-    Reliable intelligence. Deliberate execution.
-  </strong></p>
+# Vector
 
-  <p>
-    A private AI workbench built for meaningful work,
-    measurable quality and controlled autonomy.
-  </p>
+**A personal AI workbench for reliable, controlled execution.**
 
-  <p>
-    <a href="VISION.md"><strong>Vision</strong></a> ·
-    <a href="docs/ARCHITECTURE.md"><strong>Architecture</strong></a> ·
-    <a href="docs/ROADMAP.md"><strong>Roadmap</strong></a> ·
-    <a href="docs/DEVELOPMENT.md"><strong>Development</strong></a> ·
-    <a href="docs/THIRD_PARTY.md"><strong>Credits</strong></a>
-  </p>
+Self-hosted · Private development · Built with Next.js
 
-  <p>
-    <img
-      src="https://img.shields.io/badge/Status-Active%20development-8de0b7?style=flat-square&amp;labelColor=11181b"
-      alt="Active development" />
-    <img
-      src="https://img.shields.io/badge/Next.js-16.4-eeeeee?style=flat-square&amp;labelColor=11181b"
-      alt="Next.js 16.4" />
-    <img
-      src="https://img.shields.io/badge/React-19.3-eeeeee?style=flat-square&amp;labelColor=11181b"
-      alt="React 19.3" />
-    <img
-      src="https://img.shields.io/badge/Deployment-Self--hosted-8de0b7?style=flat-square&amp;labelColor=11181b"
-      alt="Self-hosted" />
-  </p>
+[Vision](VISION.md) &nbsp;·&nbsp; [Architecture](docs/ARCHITECTURE.md) &nbsp;·&nbsp; [Roadmap](docs/ROADMAP.md) &nbsp;·&nbsp; [Security](docs/SECURITY.md)
+
 </div>
 
 ---
 
-## Overview
+## A workspace, not another chat wrapper
 
-**Vector is a personal AI workspace in active development.**
+Vector brings conversations, project work, model providers and file workflows into one application. Its goal is simple: **finish useful work with predictable quality, sensible costs and clear human control.**
 
-It brings conversations, project work, provider management,
-file workflows and background execution into one intentionally
-restrained interface.
+The experience is deliberately restrained: dark surfaces, clear typography, precise interactions and no ornamental dashboards.
 
-The long-term goal is an AI operating system that can plan,
-act, verify and improve — while keeping its owner in control.
+## Inside Vector
 
-Vector favors **the simplest execution path that can
-reliably finish the job**.
+**Conversations and projects.** Work in persistent chat threads, organize tasks in projects and inspect generated files without switching between tools.
 
-A rewrite should not launch an agent team. A generated document
-should not require a browser agent. Complex research, coding
-and infrastructure work can use specialized tools with
-approval boundaries.
+**Models and execution.** Configure providers, inspect usage and run background work. Routing, agent execution and workflow modules already exist; their advanced behavior is being benchmarked and improved.
 
-### Explore
+**Control and visibility.** Privacy checks, permissions, approvals and server inspection are part of the existing application. Critical automation is designed to remain subject to owner approval.
 
-| | | |
-| :-- | :-- | :-- |
-| [**The product**](#the-product) | [**Architecture**](#architecture) | [**Development**](#development) |
-| [**Capabilities**](#capabilities) | [**Safety and privacy**](#safety-and-privacy) | [**Credits**](#acknowledgements) |
+The interface is under active development. The current implementation is not presented as a complete autonomous system.
 
-## The product
+## The interface
 
-Vector uses a dark, understated design language:
-precise hierarchy, real information, quiet mint accents
-and motion with a purpose.
+Vector includes a cinematic black-hole login, workspace dashboard, conversations, model administration and a server view. Only genuine, privacy-reviewed product captures will be shown here.
 
-It is built for everyday use rather than
-presentation-only dashboards.
+[Where to add screenshots and what to capture →](docs/screenshots/README.md)
 
-<!-- VECTOR_SCREENSHOTS_START -->
-> **Screenshots are being prepared.** Genuine, privacy-reviewed captures of the login, dashboard, chat, models and server views will be added here. No fabricated interface imagery is used.
-<!-- VECTOR_SCREENSHOTS_END -->
+<!-- SCREENSHOT_GALLERY_START -->
+<!-- Add reviewed screenshots here after uploading to docs/screenshots/. -->
+<!-- SCREENSHOT_GALLERY_END -->
 
-[Product screenshot guidelines →](docs/screenshots/README.md)
+## How Vector works
 
-## Capabilities
+Vector chooses its execution strategy based on the work, rather than running an agent team for every request.
 
-The following areas are **present in today's application source**.
-Completeness, reliability and user access vary by feature;
-future capabilities are not represented as shipped.
+**Fast path** — a direct model call for a question, summary or rewrite.
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="docs/assets/chat.svg" width="28" alt="" />
-      <h3>Conversations &amp; projects</h3>
-      Chat threads, project workspaces and background tasks
-      in a unified UI.
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/assets/routing.svg" width="28" alt="" />
-      <h3>Models &amp; usage</h3>
-      Provider connections, model configuration
-      and usage tracking.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <img src="docs/assets/artifact.svg" width="28" alt="" />
-      <h3>Files &amp; artifacts</h3>
-      File upload, generation and rendering foundations
-      for document workflows.
-    </td>
-    <td valign="top">
-      <img src="docs/assets/security.svg" width="28" alt="" />
-      <h3>Permissions &amp; approvals</h3>
-      Privacy checks, configurable permissions
-      and owner-controlled actions.
-    </td>
-  </tr>
-</table>
+**Artifact path** — structured generation and deterministic renderers for documents and other files.
 
-### Where Vector is heading
+**Agent path** — tools, investigation and verification for work that genuinely needs multiple steps. Privileged actions require an approval boundary.
 
-| Focus | Intended outcome |
-| :-- | :-- |
-| **Intelligent routing** | Choose models with measured quality, latency, cost, provider health and privacy constraints. |
-| **Artifact Studio** | Create and edit batches of documents and images, preview changes and preserve existing file structure. |
-| **Agent orchestration** | Delegate only when useful; use isolated tools, verified results and safe retries. |
-| **Skills & improvement** | Discover, scan, test and evaluate skills before activation. |
-| **Connected channels** | Email, WhatsApp, Discord, Minecraft and voice under the same approval system. |
-| **Developer workbench** | Test code in isolated environments and publish controlled previews. |
+Provider quality, cost, latency, privacy and availability are intended to guide routing decisions. That advanced policy layer is still being developed and evaluated.
 
-[Full roadmap →](docs/ROADMAP.md)
+[Technical architecture and target stack →](docs/ARCHITECTURE.md)
 
-## Architecture
+## Technology
 
-A single request should follow one of three execution paths.
-The diagram below is a **static SVG**, not an interactive
-Mermaid canvas.
-
-<div align="center">
-  <img src="docs/assets/vector-architecture.svg"
-       width="100%"
-       alt="Vector architecture showing entry points, policy checks, fast, artifact and agent paths, and the provider and execution layer." />
-</div>
-
-| Path | Best for | Operating principle |
-| :-- | :-- | :-- |
-| **Fast** | Questions, rewriting and routine analysis | Direct provider call; avoid unnecessary orchestration. |
-| **Artifact** | Documents, spreadsheets, images and presentations | Structured content and deterministic renderers where possible. |
-| **Agent** | Research, coding, tool use and infrastructure | Plan, execute, verify and require approval for elevated actions. |
-
-**Target components under evaluation:**
-
-Mastra vs Pydantic AI, LiteLLM vs TensorZero, AG-UI-style
-events, a curated Agent Skills registry, Docling, Langfuse,
-Promptfoo and selective MCP tools.
-
-These are **not all installed today**.
-
-[Read the detailed architecture →](docs/ARCHITECTURE.md)
-
-## Safety and privacy
-
-- **Owner approval:** production changes, outbound messages
-  and privileged actions require authorization.
-- **Sensitive data:** reduce external exposure, with local
-  classification and redaction where appropriate.
-- **Reliable retries:** never replay an irreversible operation
-  without idempotency protections.
-- **No unverified success:** test the output and report
-  the actual result.
-- **Private by default:** the production deployment configuration,
-  user data and credentials are not part of this repository.
-
-[Security model →](docs/SECURITY.md)
-
-## Repository layout
+The current source contains a **Next.js 16 / React 19** application, with **PostgreSQL**, **Redis**, and application modules for providers, background jobs, artifacts and security policies.
 
 ```text
-app/          Next.js UI and API routes
-components/   UI elements, motion and cinematic experience
-lib/          Providers, agents, workflows, artifacts and policies
-public/       Static assets and attributed third-party resources
-docs/         Architecture, roadmap, design system and security
-.github/      Pull request templates and documentation checks
+app/          UI, pages and API routes
+components/   Interface and cinematic experience
+lib/          Providers, routing, jobs, agents and artifacts
+public/       Brand and third-party assets
+docs/         Architecture, development and security
 ```
 
-## Development
+This repository is a **sanitized application snapshot**, not a turnkey deployment. The production environment has configuration and services that are intentionally excluded.
 
-This private repository is a **sanitized application source
-snapshot**, not a complete, one-command production deployment.
+[Development guide](docs/DEVELOPMENT.md) · [Engineering checks](docs/ENGINEERING_CI.md)
 
-The live Hetzner environment has additional configuration
-and services that are intentionally excluded.
+## What comes next
 
-```bash
-# In an isolated development environment
-npm ci
-npm run build
-```
+Immediate work focuses on reliable model selection, provider fallbacks and measurable quality. Artifact editing, selective agent orchestration, curated skills and additional communication channels follow in later phases.
 
-New work should start on a feature branch, pass tests
-and security checks, and enter `main` through a
-reviewed pull request.
+[See the planned milestones →](docs/ROADMAP.md)
 
-**Pushing to GitHub must not automatically modify production.**
+## Security and acknowledgements
 
-This is a required policy; external deployment hooks have not yet been audited. See [Deployment verification](docs/DEPLOYMENT.md).
+Production changes and outgoing messages require explicit approval under Vector's intended operating policy. Deployment integrations outside this repository are **not yet fully audited**. [Read the deployment policy](docs/DEPLOYMENT.md).
 
-[Development guide →](docs/DEVELOPMENT.md) ·
-[Contributing →](CONTRIBUTING.md) ·
-[Design system →](docs/DESIGN_SYSTEM.md)
-
-## Acknowledgements
-
-The cinematic login experience draws on the
-[Gargantua black-hole renderer by hasnain7abbas](https://github.com/hasnain7abbas/gargantua-blackhole),
-with modifications for Vector.
-
-The vendored Three.js code and application dependencies
-retain their respective licenses and attribution requirements.
-
-The architecture also takes inspiration from several
-open-source projects. References and proposed integrations
-are separated from code actually incorporated into Vector.
-
-[Third-party credits and notices →](docs/THIRD_PARTY.md)
+The cinematic black-hole experience is adapted from [Gargantua by hasnain7abbas](https://github.com/hasnain7abbas/gargantua-blackhole). Vendored libraries retain their own licensing requirements. [Credits and third-party notices](docs/THIRD_PARTY.md).
 
 ---
 
-<div align="center">
-  <sub>
-    <strong>Vector</strong> · Private, self-hosted,
-    under active development · No general
-    open-source license selected
-  </sub>
-</div>
+<div align="center"><sub>Vector · Private project in active development · No general open-source license selected</sub></div>
