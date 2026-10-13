@@ -37,7 +37,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Test offline model broker policy
-        run: node --test tests/model-broker-*.test.mjs
+        run: node --test tests/model-broker-*.test.mjs tests/provider-telemetry.test.mjs
 
       - name: Build the application
         run: npm run build
