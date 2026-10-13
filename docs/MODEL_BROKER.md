@@ -72,3 +72,37 @@ the tests are synthetic fixtures, not live measurements.
   streamed output and no started side effects.
 - Retry classification is a pure decision helper; it never retries
   a request or changes production routing itself.
+
+## 5.9.3D: Background routing shadow comparison
+
+The application contains an optional comparison at the
+existing `resolveProviderForTask` boundary, after tenant
+visibility and capability filtering.
+
+The feature is **disabled by default**.
+
+`VECTOR_MODEL_BROKER_SHADOW=1` enables a read-only
+comparison. It does not change the returned provider,
+make a second provider request, or store prompts.
+
+Comparison errors cannot interrupt existing routing.
+
+Logs contain only comparison results, candidate counts,
+known provider families and an evidence label. Review
+server log access before enabling this flag in production.
+
+At least two candidates with usable catalog profiles
+are required. Explicit provider preferences are respected.
+
+Catalog quality estimates are not verified quality results.
+Catalog speed is not observed latency, and no reliable
+per-request CHF cost measurements are available here.
+
+The shadow evaluation does not independently establish
+privacy consent. It only examines the existing resolver's
+already-authorized candidates.
+
+Scope: background provider resolver only.
+
+Direct chat routing, telemetry persistence and live model
+selection remain unchanged.
