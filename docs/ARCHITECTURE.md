@@ -1,104 +1,79 @@
-# Vector Architecture
+# Architecture
 
-## Current application
+> This document separates **existing source modules**
+> from the **target stack**.
 
-Next.js and React provide the web interface and APIs.
-PostgreSQL and Redis support persistent and runtime state.
+The presence of a source module is not proof that
+the complete feature is production-ready.
 
-Vector already contains model routing, agent, workflow,
-artifact, privacy, permission and background-job modules.
+## Existing foundation
 
-The implementation of each capability must be verified
-before treating it as complete.
+- **Next.js 16 / React 19** application and API routes.
+- **PostgreSQL / Redis** and background-job modules.
+- Model routing, provider configuration and usage modules.
+- Agent execution, workflows and artifacts.
+- Privacy, permission, approval and cost-control modules.
+- Docker-backed deployment managed outside this Git snapshot.
 
 ## Target execution model
 
-```text
-Web / Email / WhatsApp / Discord / Voice
-                   |
-           Identity & Permissions
-                   |
-            Privacy / Budget
-                   |
-            Task Classification
-              /    |     \\
-          Fast  Artifact  Agent
-          Path    Path     Path
-              \\    |     /
-            Events & Telemetry
-                   |
-          Tools / Sandbox / Approval
+```mermaid
+flowchart LR
+    UI[Web · Projects · Channels] --> P[Policy and intent router]
+    P --> F[FAST · direct provider]
+    P --> A[ARTIFACT · deterministic renderer]
+    P --> G[AGENT · runtime and tools]
+    F --> R[Cost · health · quality router]
+    A --> R
+    G --> R
+    G --> X[Sandbox / HITL approval]
 ```
 
-## Product and interface
+## Stack candidates
 
-Next.js, the Vector design system and selectively chosen
-assistant-ui primitives.
+| Layer | Approach |
+| :-- | :-- |
+| UI | Vector Design System and selected assistant-ui primitives |
+| Run state | Conversation-scoped AG-UI-style events |
+| Agents | Mastra vs Pydantic AI benchmark; select one |
+| Provider gateway | LiteLLM vs TensorZero benchmark; select one |
+| Model selection | vLLM Semantic Router concepts and Vector telemetry |
+| Skills | Agent Skills standard, curated Vector registry |
+| Evaluations | Promptfoo, Langfuse, OpenTelemetry and custom fixtures |
+| Security | Vector Permissions, Presidio, MCP Scan candidates |
+| Tools | MCP registry; search → fetch → extract → browser |
+| Documents | Existing renderers, Docling, future lossless OOXML edits |
+| Execution | Sandboxes and approved host-agent actions |
 
-Conversation-scoped AG-UI-style events provide run state.
+Heavy services should run on demand to conserve Hetzner resources.
 
-## Agent runtime
+## Agent policy
 
-Mastra and Pydantic AI will be compared against real tasks.
-Only one primary runtime should be selected.
+- Simple rewrites use one model call.
+- Documents use structured content and deterministic rendering.
+- Research may run independent researchers and synthesize evidence.
+- Coding uses exploration, implementation and testing.
+- Reviewers run when justified, not on every trivial task.
+- Critical changes require explicit owner approval.
 
-Simple requests use a direct model fast path.
+## Skill lifecycle
 
-## Provider infrastructure
+Discover → Source/license check → Schema validation →
+Security scan → Sandbox → Offline evaluation →
+Compare against existing skill → Approval → Activation.
 
-Benchmark LiteLLM and TensorZero before making a decision.
+## Web capability ladder
 
-Dynamic routing should consider:
+1. Search with SearXNG.
+2. Fetch and parse using HTTP/readability.
+3. Extract with Firecrawl or Docling when needed.
+4. Interact using Playwright MCP or Browser Use when justified.
 
-- Model capability and privacy requirements.
-- Task complexity and predicted answer quality.
-- Provider health and previous success rate.
-- P50 and P95 response latency.
-- Token costs and cache probability.
-- User permissions, budget and preferences.
+## Reliability and privacy
 
-## Skills
+Check capabilities, privacy, budget and provider health before
+routing. Record predicted and actual cost, task success,
+P50/P95 latency and fallback outcomes.
 
-Agent Skills standard with a curated Vector registry.
-
-Skill lifecycle:
-
-Discover → Validate → License check → Security scan
-→ Sandbox → Offline evaluation → Comparison
-→ Approval if required → Activation.
-
-Separate Builder Skills from Runtime Skills.
-
-## Web access
-
-1. SearXNG search.
-2. HTTP fetch and readability.
-3. Firecrawl or Docling extraction.
-4. Playwright MCP / Browser Use when interaction is needed.
-
-## Observability and evaluation
-
-Langfuse, OpenTelemetry and Promptfoo are evaluation
-candidates alongside Vector-specific measurements.
-
-## Security
-
-Presidio, MCP Scan, permission enforcement, approval
-workflows, audit logging and isolated execution.
-
-## Artifacts
-
-Existing renderers remain the foundation.
-
-Docling provides document input intelligence.
-
-A future lossless OOXML edit engine should preserve
-existing files, formatting and unchanged content.
-
-## Infrastructure
-
-Use expensive or resource-intensive services on demand.
-
-Developer execution should be isolated in a sandbox,
-with trusted host operations going through an approved
-host agent.
+Never replay an irreversible action without appropriate
+idempotency safeguards and authorization.

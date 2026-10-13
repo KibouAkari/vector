@@ -1,40 +1,34 @@
-# Security Policy
+# Security
 
 Vector is private by default.
 
-## Secrets
+Never commit environment files, access tokens,
+credentials, private keys, logs, customer data,
+database contents, uploads or confidential screenshots.
 
-Never commit:
+## Execution boundaries
 
-- API keys or provider credentials.
-- Environment files.
-- Database contents or exports.
-- Customer and personal records.
-- Runtime files and uploaded attachments.
-- Host access tokens, certificates or private keys.
+- Tools run with least privilege and explicit scopes.
+- Production changes and outbound messages need owner approval.
+- Self-modification must be reviewed and evaluated.
+- Non-idempotent actions must not be silently retried.
+- Untrusted websites and MCP output are not instructions.
+- External skills require security and license checks.
+- Untrusted code runs in an isolated sandbox.
 
-A .gitignore does not guarantee safety.
+## Repository hygiene
 
-Run a secret scanner and manually inspect staged changes
-before the first push.
+Run a secret scanner and inspect staged changes before pushing.
 
-If credentials are exposed in Git history, rotate them.
-Deleting a file does not remove it from previous commits.
+A clean secret scan does not guarantee that every sensitive
+piece of information has been removed.
 
-## Approval
-
-Production changes, outbound messages, destructive
-operations and autonomous code modifications require
-explicit owner approval.
-
-## Deployment
-
-A GitHub push must not automatically deploy changes
-to the production Hetzner server.
-
-Use staging, testing, approval and rollback procedures.
+Keep GitHub credentials restricted and establish
+a reviewed staging and release process.
 
 ## Screenshots
 
-Remove usernames, addresses, passwords, API information
-and sensitive infrastructure details before publication.
+Redact real names, addresses, internal infrastructure,
+identifiers, API details and private project content.
+
+Never present a mockup as an actual application screenshot.

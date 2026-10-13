@@ -1,17 +1,22 @@
-# Vector Screenshots
+# Product Screenshot Guide
 
-Screenshots will be added after privacy review.
+Use genuine, reviewed screenshots with these filenames:
 
-Planned files:
+| Filename | Subject |
+| :-- | :-- |
+| `login.png` | Cinematic login |
+| `dashboard.png` | Dashboard |
+| `chat.png` | Chat and generated files |
+| `models.png` | Provider connections |
+| `server.png` | Infrastructure overview |
 
-- dashboard.png
-- chat.png
-- models.png
-- server.png
-- login.png
+## Capture guidelines
 
-Use actual Vector screenshots and remove sensitive
-information before committing.
+1. Use a safe demo account or redact private information.
+2. Use consistent dimensions and avoid browser chrome.
+3. Remove credentials, infrastructure details and identifiers.
+4. Never substitute generated concepts for real captures.
+5. Review each image before staging and publishing.
 
-After the images have been reviewed, the main README
-can include a screenshot gallery.
+The README screenshot gallery will be activated
+after genuine, approved screenshots are available.

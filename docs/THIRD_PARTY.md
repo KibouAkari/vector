@@ -1,50 +1,51 @@
-# Third-party Credits
+# Credits & Third-party Notices
 
-## Gargantua Black Hole
+## Gargantua — Black Hole Renderer
 
-**Upstream:** hasnain7abbas
+- **Author:** [hasnain7abbas](https://github.com/hasnain7abbas)
+- **Project:** [gargantua-blackhole](https://github.com/hasnain7abbas/gargantua-blackhole)
+- **Usage:** Cinematic login and intro rendering foundation,
+  adapted to the Vector experience.
+- **License:** The upstream README states MIT.
 
-Repository:
-https://github.com/hasnain7abbas/gargantua-blackhole
+Verify the complete original license notices before public
+distribution. Preserve original attribution and applicable
+copyright notices.
 
-Vector's cinematic login renderer was adapted from this
-project, including its WebGL2 black-hole rendering concepts.
+Vector currently includes:
+`public/vector-gargantua/README.md`,
+`public/vector-gargantua/UPSTREAM_COMMIT.txt`,
+and vendored rendering assets.
 
-Vector adds custom styling, camera control and transitions.
+## Three.js and JavaScript dependencies
 
-**License:** MIT, as stated in the upstream README.
+Vector includes `public/vector-gargantua/vendor/three.min.js`
+and Node.js dependencies.
 
-A standalone LICENSE file was not found during the
-documentation review on 2026-10-13.
+Their own license obligations remain in effect.
+Perform a dependency and license audit before making
+the repository public.
 
-Original legal notices must be preserved and licensing
-rechecked before public redistribution.
+## Evaluated, not necessarily installed
 
-Attribution alone does not replace license compliance.
+The following projects are architectural references or
+integration candidates, not necessarily incorporated code:
 
-## JavaScript dependencies
-
-Node.js dependencies and their original authors retain
-their respective licenses.
-
-See package.json and the lockfile when available.
-
-The black-hole scene also makes use of Three.js technology.
-
-## Evaluated and planned projects
-
-The following are architecture references or planned
-integrations, not necessarily installed components:
-
-Mastra, Pydantic AI, LiteLLM, TensorZero,
-vLLM Semantic Router, AG-UI, assistant-ui, Langfuse,
-OpenTelemetry, Promptfoo, Docling, Agent Skills,
-Hermes, Superpowers, Presidio, MCP Scan, SearXNG,
-Firecrawl, Playwright MCP, Browser Use and Daytona.
-
-Add detailed notices if their code or assets are
-incorporated into Vector.
+- Mastra and Pydantic AI.
+- LiteLLM and TensorZero.
+- vLLM Semantic Router.
+- AG-UI and assistant-ui.
+- Langfuse and Promptfoo.
+- Docling and Agent Skills.
+- Presidio and MCP Scan.
+- Hermes Agent, OpenClaw and Superpowers.
+- SearXNG and Firecrawl.
+- Playwright MCP, Browser Use and Daytona.
 
 ## Vector license
 
-No overall open-source license is currently granted.
+No general open-source license has been selected
+for Vector itself.
+
+Third-party licenses remain applicable regardless
+of the visibility of this repository.

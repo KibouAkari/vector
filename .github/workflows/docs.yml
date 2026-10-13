@@ -1,0 +1,44 @@
+name: Documentation
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'VISION.md'
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate SVG assets and README references
+        run: |
+          python3 - <<'PYCHECK'
+          from pathlib import Path
+          from xml.etree import ElementTree
+          import re
+
+          root = Path('.')
+
+          for path in (root / 'docs/assets').glob('*.svg'):
+              ElementTree.parse(path)
+
+          text = (root / 'README.md').read_text()
+
+          for path in re.findall(
+              r'(?:src|href)="(docs/[^"#]+)"',
+              text
+          ):
+              assert (root / path).is_file(), (
+                  f'Missing asset: {path}'
+              )
+
+          print('Documentation validated')
+          PYCHECK
