@@ -51,10 +51,12 @@ async function request(route, { as, method = "GET", body } = {}) {
 
 async function expectStatus(route, options, status) {
   const response = await request(route, options);
-  assert.equal(
-    response.status, status,
-    `${options?.as || "anonymous"} ${options?.method || "GET"} ${route}: ${response.status} ${(await response.text()).slice(0, 260)}`
-  );
+  if (response.status !== status) {
+    const details = (await response.text()).slice(0, 260);
+    assert.fail(
+      `${options?.as || "anonymous"} ${options?.method || "GET"} ${route}: ${response.status}, expected ${status}: ${details}`
+    );
+  }
   return response;
 }
 
