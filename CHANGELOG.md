@@ -6,6 +6,14 @@ Production deployments are tracked separately.
 
 ## 2026-10-14
 
+### Operations: safeguard persistent production application source
+
+- Add a one-time guarded maintenance utility to synchronize the host app build source with the already tested 5.9.5 release.
+- Pin the existing application Docker image in the base Compose file without changing other services.
+- Preserve full original source and Compose backups, validate the rendered configuration, and attempt restoration if the host changes fail.
+- Document the recovery paths and verify the Python maintenance script in CI.
+- No database migration, external model calls, automatic production deployment, or telemetry activation.
+
 ### UI: workspace navigation and model intelligence refinement (#18)
 
 - Keep the home dashboard as the only global usage dashboard and move per-provider intelligence beneath API connections.
