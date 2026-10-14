@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { revokeSessionAndNavigate } from "../lib/logout-navigation.mjs";
 
 /**
  * Force a new document after logout. A client-side route transition can
@@ -16,17 +17,10 @@ export default function LogoutButton() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store"
+      await revokeSessionAndNavigate({
+        request: fetch,
+        navigate: destination => window.location.replace(destination)
       });
-
-      if (!response.ok) {
-        throw new Error("Sign out was not confirmed.");
-      }
-
-      window.location.replace("/login");
     } catch {
       setError("Could not sign out. Please try again.");
       setPending(false);
