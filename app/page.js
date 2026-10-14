@@ -50,6 +50,17 @@ export default async function Home() {
   const session =
     await requireSession();
 
+  // Scope all dashboard reads to the authenticated account.
+  // The platform owner retains the global operational overview.
+  const scopedQuery = (sql, includeProjectPermission = false) =>
+    query(sql, includeProjectPermission
+      ? [
+          session.role === "owner",
+          session.userId,
+          session.role === "owner" || session.features?.projects === true
+        ]
+      : [session.role === "owner", session.userId]);
+
 
   await initializeModelConfigs();
 
@@ -62,7 +73,7 @@ export default async function Home() {
   ] =
     await Promise.all([
 
-      query(`
+      scopedQuery(`
         SELECT
           COUNT(*)::int
             AS requests,
@@ -107,10 +118,11 @@ export default async function Home() {
         WHERE
           created_at >
           NOW() - INTERVAL '30 days'
+          AND ($1::boolean OR user_id = $2)
       `),
 
 
-      query(`
+      scopedQuery(`
         SELECT
           COALESCE(
             provider,
@@ -167,6 +179,7 @@ export default async function Home() {
         WHERE
           created_at >
           NOW() - INTERVAL '30 days'
+          AND ($1::boolean OR user_id = $2)
 
         GROUP BY
           provider,
@@ -178,7 +191,7 @@ export default async function Home() {
       `),
 
 
-      query(`
+      scopedQuery(`
         WITH days AS (
           SELECT
             generate_series(
@@ -252,6 +265,7 @@ export default async function Home() {
             usage.created_at <
               days.day
               + INTERVAL '1 day'
+            AND ($1::boolean OR usage.user_id = $2)
 
         GROUP BY
           days.day
@@ -261,20 +275,33 @@ export default async function Home() {
       `),
 
 
-      query(`
+      scopedQuery(`
         SELECT
           id,
           name,
           description,
           updated_at
 
-        FROM projects
+        FROM projects p
+
+        WHERE (
+          $1::boolean
+          OR (
+            $3::boolean AND (
+              p.owner_user_id = $2
+              OR EXISTS (
+                SELECT 1 FROM project_members pm
+                WHERE pm.project_id = p.id AND pm.user_id = $2
+              )
+            )
+          )
+        )
 
         ORDER BY
           updated_at DESC
 
         LIMIT 5
-      `)
+      `, true)
 
     ]);
 

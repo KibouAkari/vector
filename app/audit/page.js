@@ -1,4 +1,4 @@
-import { requireSession } from "../../lib/auth";
+import { requireFeature } from "../../lib/auth";
 import { db } from "../../lib/db";
 import Sidebar from "../../components/sidebar";
 import ActivityClient from "./activity-client";
@@ -6,7 +6,7 @@ import ActivityClient from "./activity-client";
 export const dynamic = "force-dynamic";
 
 export default async function AuditPage() {
-  const session = await requireSession();
+  const session = await requireFeature("activity");
 
   let result;
 

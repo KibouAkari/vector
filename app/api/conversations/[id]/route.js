@@ -1,5 +1,6 @@
 import {
-  getSession
+  getSession,
+  hasFeature
 } from "../../../../lib/auth";
 
 import {
@@ -67,6 +68,10 @@ export async function GET(
         status: 401
       }
     );
+  }
+
+  if (!hasFeature(session, "chat")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const {
@@ -183,6 +188,10 @@ export async function DELETE(
         status: 401
       }
     );
+  }
+
+  if (!hasFeature(session, "chat")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const {

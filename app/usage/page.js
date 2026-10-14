@@ -1,5 +1,5 @@
 import {
-  requireSession
+  requireOwner
 } from "../../lib/auth";
 
 import {
@@ -18,7 +18,7 @@ function money(value) {
 
 export default async function UsagePage() {
   const session =
-    await requireSession();
+    await requireOwner();
 
   const limits =
     getCostLimits();

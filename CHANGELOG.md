@@ -6,6 +6,14 @@ Production deployments are tracked separately.
 
 ## 2026-10-14
 
+### Security: isolate dashboard data and enforce feature access (#17)
+
+- Scope home usage, charts, models and recent projects to each member; preserve the global view for the platform owner.
+- Hide all project summaries from accounts without project access, including shared membership leftovers.
+- Require feature permission for chat, attachments, activity, Models & APIs and their relevant HTTP APIs; restrict global usage controls to the owner.
+- Add authenticated HTTP regression coverage for tenant isolation, project visibility and denied features.
+- No database migration, telemetry activation or production deployment in this pull request.
+
 ### docs: standardize changelog and release documentation (#16)
 
 - Restore dated and commit-attributed entries for PR #13, #14 and #15.

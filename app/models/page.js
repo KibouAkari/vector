@@ -1,6 +1,6 @@
 import "./model-intelligence.css";
 import {
-  requireSession
+  requireFeature
 } from "../../lib/auth";
 
 import Sidebar
@@ -16,7 +16,7 @@ export const dynamic =
 
 export default async function ModelsPage() {
   const session =
-    await requireSession();
+    await requireFeature("models");
 
   return (
     <div className="vector-shell">
