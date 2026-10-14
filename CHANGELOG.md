@@ -12,6 +12,7 @@ Production deployments are tracked separately.
 - Present unavailable pages as optional locked navigation items with friendly messages; permissions remain enforced on the server.
 - Improve the Models & APIs and Audit log labels and provide a themed missing-page experience.
 - Redesign the user-management form for accessible account, budget and feature controls.
+- Prevent user-editor request races and make project sharing updates transactional; validate grant selections and add an isolated PostgreSQL regression test.
 - Display account expiry as local wall-clock time so editing and saving an unchanged expiry preserves its instant.
 - Replace soft login/logout navigation with full document transitions to discard previous-account UI state; add regression coverage.
 - Test logout response ordering and failure cases with a mocked server request, preventing navigation when session revocation fails.
