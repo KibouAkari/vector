@@ -204,6 +204,32 @@ function IconButton({ label, onClick, disabled = false }) {
   );
 }
 
+
+function groupConversationHistory(items) {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const day = 24 * 60 * 60 * 1000;
+  const categories = [
+    { title: "Today", list: [] },
+    { title: "Yesterday", list: [] },
+    { title: "Previous 7 days", list: [] },
+    { title: "Older", list: [] }
+  ];
+
+  for (const conversation of items) {
+    const timestamp = new Date(
+      conversation.updated_at || conversation.updatedAt ||
+      conversation.created_at || conversation.createdAt || 0
+    ).getTime();
+    const group = timestamp >= midnight ? 0
+      : timestamp >= midnight - day ? 1
+      : timestamp >= midnight - 7 * day ? 2 : 3;
+    categories[group].list.push(conversation);
+  }
+
+  return categories.filter(group => group.list.length);
+}
+
 export default function ChatClient({
   displayName,
   userId
@@ -1541,40 +1567,39 @@ export default function ChatClient({
           />
         </div>
 
-        <div className="history-list">
-          {conversations.map((conversation) => (
-            <div
-              key={conversation.id}
-              className={
-                conversation.id === conversationId
-                  ? "history-item active"
-                  : "history-item"
-              }
-            >
-              <button
-                type="button"
-                className="history-open"
-                onClick={() => loadConversation(conversation.id)}
-              >
-                <span className="history-title">
-                  {conversation.title || "New chat"}
-                </span>
-
-                <span className="history-preview">
-                  {shortText(conversation.preview)}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="history-delete"
-                onClick={() => deleteConversation(conversation.id)}
-                aria-label={`Delete ${conversation.title || "conversation"}`}
-                title="Delete conversation"
-              >
-                <Trash2 size={15} strokeWidth={1.8} aria-hidden="true" />
-              </button>
+        <div className="history-list vux-history">
+          {conversations.length === 0 && (
+            <div className="vux-history-empty">
+              {search.trim() ? "No matching conversations." :
+                "Your conversations will appear here."}
             </div>
+          )}
+          {groupConversationHistory(conversations).map(group => (
+            <section className="vux-history-group" key={group.title}
+              aria-label={group.title}>
+              <h3>{group.title}</h3>
+              {group.list.map(conversation => (
+                <div key={conversation.id}
+                  className={conversation.id === conversationId
+                    ? "history-item active" : "history-item"}>
+                  <button type="button" className="history-open"
+                    onClick={() => loadConversation(conversation.id)}>
+                    <span className="history-title">
+                      {conversation.title || "New chat"}
+                    </span>
+                    <span className="history-preview">
+                      {shortText(conversation.preview)}
+                    </span>
+                  </button>
+                  <button type="button" className="history-delete"
+                    onClick={() => deleteConversation(conversation.id)}
+                    aria-label={`Delete ${conversation.title || "conversation"}`}
+                    title="Delete conversation">
+                    <Trash2 size={15} strokeWidth={1.8} aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+            </section>
           ))}
         </div>
       </aside>
