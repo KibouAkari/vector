@@ -33,6 +33,12 @@ def die(message):
 def compose_config(file):
     return json.loads(command('docker', 'compose', '-f', str(file), 'config', '--format', 'json'))
 
+def write_candidate(path, content):
+    # The Compose configuration may contain inline secrets.
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, 'w') as stream:
+        stream.write(content)
+
 print('=== VECTOR PERSISTENT RELEASE SOURCE PIN ===')
 if os.geteuid() != 0:
     die('Run as root.')
@@ -84,7 +90,7 @@ for path in (release, stage, backup, candidate):
     if path.exists():
         die(f'Output already exists; refusing overwrite: {path}')
 
-candidate.write_text(candidate_text)
+write_candidate(candidate, candidate_text)
 try:
     proposed = compose_config(candidate)
     expected = copy.deepcopy(base)
@@ -146,7 +152,9 @@ try:
     swapped_old = True
     stage.rename(LIVE)
     swapped_new = True
-    candidate.write_text(candidate_text)
+    write_candidate(candidate, candidate_text)
+    shutil.copymode(COMPOSE, candidate)
+    os.chown(candidate, COMPOSE.stat().st_uid, COMPOSE.stat().st_gid)
     candidate.replace(COMPOSE)
     compose_pinned = True
 
