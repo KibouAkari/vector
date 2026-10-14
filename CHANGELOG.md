@@ -1,30 +1,44 @@
 # Changelog
 
-This changelog summarizes the commits in the available repository history.
-It covers the initial sanitized application snapshot and the changes through
-`8dad487` on 2026-10-14.
-
-## Unreleased
-
-### Added
-- Owner-only Model Intelligence dashboard within Models & APIs.
-- Seven-day and 30-day provider observations including request counts,
-  success rates, latency and reported token usage.
-- Read-only, owner-scoped metrics API with missing-data indicators.
-- Offline regression tests and CI coverage for the dashboard.
-
-### Security and testing
-- Add real authenticated HTTP and isolated PostgreSQL tests for
-  owner-only access, tenant isolation, date windows and missing data.
-- Verify input-only and output-only token observations independently.
-
-### Operational notes
-- Model routing and provider credentials remain unchanged.
-- Telemetry remains opt-in; its database migration is not applied.
-- Per-connection CHF costs are not displayed until reliable attribution
-  is available.
+This changelog documents merged changes by date, commit and pull request.
+Entries are listed newest first and describe changes actually merged into
+the repository. Production deployments are tracked separately.
 
 ## 2026-10-14
+
+### `b714f5a` — feat: add owner-only Model Intelligence dashboard (#15)
+
+- Add Model Intelligence to the existing Models & APIs interface.
+- Display 7-day and 30-day provider statistics, including request counts,
+  success rates, response latency and reported token usage.
+- Introduce a read-only API with server-side owner authorization and
+  provider-credential isolation.
+- Add authenticated PostgreSQL integration tests for access controls,
+  tenant isolation, date filtering and missing telemetry data.
+- Correct token-completeness reporting to distinguish input and output
+  samples instead of treating them as paired observations.
+- Pass application build, security scanning and documentation checks.
+- Keep provider telemetry opt-in; no migration or production deployment
+  is performed by merging this pull request.
+
+### `74a9436` — docs: add product screenshots to README (#14)
+
+- Embed the existing Vector login and dashboard screenshots into
+  the README with captions and descriptive alternative text.
+- Update screenshot documentation to match the actual filenames.
+- Preserve privacy guidance for published screenshots.
+
+### `c5bc109` — chore: add Vector screenshot assets
+
+- Add the login and workspace dashboard image files to the repository.
+- These assets were added separately before pull request #14.
+
+### `ba81d16` — docs: complete changelog history (#13)
+
+- Expand the changelog to cover previously undocumented repository commits.
+- Add commit-specific summaries for the initial application snapshot,
+  documentation, security, CI, model broker and telemetry development.
+- Preserve chronological traceability without claiming a production release.
 
 ### `8dad487` — Document available commits and add MIT attribution license (#12)
 

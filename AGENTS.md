@@ -19,3 +19,4 @@ Before proposing changes, read:
 8. Review license and security implications of external tools.
 9. Document rollback instructions for risky modifications.
 10. Never claim success without observed verification.
+11. Update `CHANGELOG.md` in every change PR; include the date, PR number when known, and accurately verified changes.

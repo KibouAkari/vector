@@ -4,6 +4,7 @@ Brief motivation and concise summary.
 
 ## Verification
 
+- [ ] `CHANGELOG.md` updated with the changes in this PR
 - [ ] Build and relevant tests completed
 - [ ] No secrets or private records included
 - [ ] Mobile and accessibility checked, if UI changed
