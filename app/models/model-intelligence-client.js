@@ -259,14 +259,12 @@ export default function ModelIntelligence({
 
                   {row.attempts > 0 && ready && (
                     <small>
-                      {Math.min(
-                        row.inputSamples,
-                        row.outputSamples
-                      )}
-                      {' / '}
+{row.inputSamples}
+                      {' input / '}
+                      {row.outputSamples}
+                      {' output samples across '}
                       {row.attempts}
-                      {' '}
-                      requests with both token counts
+                      {' requests'}
                     </small>
                   )}
                 </td>
