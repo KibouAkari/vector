@@ -1691,7 +1691,7 @@ export default function ChatClient({
                       </div>
 
                         {message.attachments?.length > 0 && (
-                          <div className="v54-message-files vx585-artifact-list">
+                          <div className="vx585-artifact-list vx600-uploaded-artifacts">
                             {message.attachments.map((attachment, fileIndex) => (
                               <VectorChatArtifact
                                 key={attachment?.id || attachment?.name || fileIndex}
