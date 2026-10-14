@@ -739,10 +739,10 @@ export default function ModelsClient() {
         <div>
 
           <span>
-            Models & APIs
+            Connections and routing
           </span>
 
-          <h1>Models</h1>
+          <h1>Models & APIs</h1>
 
           <p>
             {
@@ -806,9 +806,6 @@ export default function ModelsClient() {
         </div>
       )}
 
-      {!loading && role === "owner" && (
-        <ModelIntelligence providers={providers} />
-      )}
 
       <div className="vx587-model-workspace">
       <section className="v562-auto">
@@ -1010,6 +1007,10 @@ export default function ModelsClient() {
       </section>
 
       </div>
+
+      {!loading && role === "owner" && (
+        <ModelIntelligence providers={providers} />
+      )}
 
       {
         editing && (

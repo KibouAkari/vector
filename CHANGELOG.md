@@ -6,6 +6,18 @@ Production deployments are tracked separately.
 
 ## 2026-10-14
 
+### UI: workspace navigation and model intelligence refinement (#18)
+
+- Keep the home dashboard as the only global usage dashboard and move per-provider intelligence beneath API connections.
+- Present unavailable pages as optional locked navigation items with friendly messages; permissions remain enforced on the server.
+- Improve the Models & APIs and Audit log labels and provide a themed missing-page experience.
+- Redesign the user-management form for accessible account, budget and feature controls.
+- Prevent user-editor request races and make project sharing updates transactional; validate grant selections and add an isolated PostgreSQL regression test.
+- Display account expiry as local wall-clock time so editing and saving an unchanged expiry preserves its instant.
+- Replace soft login/logout navigation with full document transitions to discard previous-account UI state; add regression coverage.
+- Test logout response ordering and failure cases with a mocked server request, preventing navigation when session revocation fails.
+- No telemetry migration, provider calls or automatic production deployment.
+
 ### Security: isolate dashboard data and enforce feature access (#17)
 
 - Scope home usage, charts, models and recent projects to each member; preserve the global view for the platform owner.

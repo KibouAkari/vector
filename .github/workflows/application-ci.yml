@@ -57,6 +57,9 @@ jobs:
       - name: Test project access policy
         run: node --test tests/project-access-policy.test.mjs tests/project-access-routes.test.mjs
 
+      - name: Test account switch navigation
+        run: node --test tests/account-switch-navigation.test.mjs
+
       - name: Build the application
         run: npm run build
 

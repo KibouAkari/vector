@@ -187,8 +187,8 @@ export default function ModelIntelligence({
         !error &&
         report?.status === 'not-configured' && (
           <p className="vmi-notice">
-            Telemetry storage has not been configured.
-            No performance data is available yet.
+            Detailed model analytics are not active yet.
+            Your connections and automatic routing remain available.
           </p>
         )}
 
@@ -203,6 +203,7 @@ export default function ModelIntelligence({
           </p>
         )}
 
+      {ready && attempts > 0 && (
       <div className="vmi-scroll">
         <table className="vmi-table">
           <thead>
@@ -281,14 +282,15 @@ export default function ModelIntelligence({
           </tbody>
         </table>
       </div>
+      )}
 
-      <footer className="vmi-footnote">
+      {ready && attempts > 0 && <footer className="vmi-footnote">
         Includes recorded requests made using your
         provider connections, including shared usage.
         Missing and dropped samples are not estimated.
         CHF spending cannot yet be attributed reliably
         to individual connections.
-      </footer>
+      </footer>}
     </section>
   );
 }

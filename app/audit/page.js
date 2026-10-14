@@ -71,7 +71,7 @@ export default async function AuditPage() {
         <header className="v55-page-head">
           <div>
             <span>Activity</span>
-            <h1>History</h1>
+            <h1>Audit log</h1>
             <p>
               {session.role === "owner"
                 ? "Events across Vector and all users."
