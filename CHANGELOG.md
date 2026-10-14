@@ -10,7 +10,7 @@ Production deployments are tracked separately.
 
 - Scope home usage, charts, models and recent projects to each member; preserve the global view for the platform owner.
 - Hide all project summaries from accounts without project access, including shared membership leftovers.
-- Require feature permission for chat, activity, Models & APIs and their relevant HTTP APIs; restrict global usage controls to the owner.
+- Require feature permission for chat, attachments, activity, Models & APIs and their relevant HTTP APIs; restrict global usage controls to the owner.
 - Add authenticated HTTP regression coverage for tenant isolation, project visibility and denied features.
 - No database migration, telemetry activation or production deployment in this pull request.
 

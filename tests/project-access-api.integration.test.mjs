@@ -32,7 +32,7 @@ const users = {
   viewer: { role: "member", features: { projects: true } },
   editor: { role: "member", features: { projects: true } },
   outsider: { role: "member", features: { projects: true } },
-  disabled: { role: "member", features: { projects: false, server: false } },
+  disabled: { role: "member", features: { chat: false, projects: false, server: false, models: false, activity: false } },
 };
 const cookies = {};
 const password = "ci-integration-password-only";
@@ -219,9 +219,18 @@ test("real authenticated API permissions and project isolation", async t => {
       }
       await expectStatus("/api/models", { as: "disabled" }, 403);
       await expectStatus("/api/models", { as: "creator" }, 403);
-      await expectStatus("/api/conversations", { as: "disabled" }, 200);
+      await expectStatus("/api/conversations", { as: "disabled" }, 403);
       await expectStatus("/api/projects", { as: "disabled" }, 403);
       await expectStatus(`/projects/${projectId}`, { as: "disabled" }, 404);
+      await expectStatus("/api/chat", { as: "disabled", method: "POST", body: {message: "blocked"} }, 403);
+      await expectStatus("/api/chat/attachments", { as: "disabled" }, 403);
+      await expectStatus("/api/chat/attachments", { as: "disabled", method: "POST" }, 403);
+      await expectStatus("/api/chat/attachments/not-an-attachment", { as: "disabled", method: "DELETE" }, 403);
+      await expectStatus("/api/chat/attachments/not-an-attachment/raw", { as: "disabled" }, 403);
+      const disabledChatPage = await request("/chat", { as: "disabled" });
+      assert.ok([302,303,307,308].includes(disabledChatPage.status), "chat-disabled page must redirect");
+      const permittedChatPage = await request("/chat", { as: "creator" });
+      assert.equal(permittedChatPage.status, 200, "chat-enabled account keeps access");
     });
 
     await t.test("project mutations require ownership, not viewer/editor", async () => {

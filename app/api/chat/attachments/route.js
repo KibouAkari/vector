@@ -1,5 +1,6 @@
 import {
-  getSession
+  getSession,
+  hasFeature
 } from "../../../../lib/auth";
 
 import {
@@ -59,6 +60,10 @@ export async function GET(request) {
         status: 401
       }
     );
+  }
+
+  if (!hasFeature(session, "chat")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   await initializeChatAttachmentDatabase();
@@ -133,6 +138,10 @@ export async function POST(request) {
         status: 401
       }
     );
+  }
+
+  if (!hasFeature(session, "chat")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   await initializeChatAttachmentDatabase();
