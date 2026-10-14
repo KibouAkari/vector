@@ -53,6 +53,8 @@ if command('docker', 'inspect', '--format', '{{.Image}}', 'vector-app') != APP_I
     die('Production app image differs from the tested image.')
 if command('docker', 'image', 'inspect', '--format', '{{.Id}}', TAG) != APP_ID:
     die('Versioned image tag is missing or differs from the running image.')
+if LIVE.is_mount():
+    die('The live app directory is a mount point; refusing to rename it.')
 
 for name in ('vector-worker', 'vector-runner'):
     item = json.loads(command('docker', 'inspect', name))[0]
@@ -124,6 +126,11 @@ for name in tracked:
     while parent != LIVE:
         if parent.is_symlink():
             die(f'Symlinked destination directory for {name}')
+        parent = parent.parent
+    parent = src.parent
+    while parent != REPO:
+        if parent.is_symlink():
+            die(f'Symlinked source directory for {name}')
         parent = parent.parent
 
 release.mkdir(mode=0o700, parents=True)
