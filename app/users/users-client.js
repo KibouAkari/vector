@@ -25,6 +25,12 @@ const initialUser = () => ({
   }
 });
 
+const toLocalDateTimeInput = value => {
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString().slice(0, 16);
+};
+
 const presetFeatures = (name, existing = {}) => ({
   chat: true,
   projects: name === "collaborator",
@@ -69,7 +75,7 @@ export default function UsersClient({ currentUserId }) {
       monthlyBudgetChf: user.monthlyBudgetChf ?? "",
       totalBudgetChf: user.totalBudgetChf ?? "",
       expiresAt: user.expiresAt
-        ? new Date(user.expiresAt).toISOString().slice(0, 16) : "",
+        ? toLocalDateTimeInput(user.expiresAt) : "",
       features: { ...user.features }
     } : initialUser());
     try {

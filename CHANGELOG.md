@@ -12,6 +12,7 @@ Production deployments are tracked separately.
 - Present unavailable pages as optional locked navigation items with friendly messages; permissions remain enforced on the server.
 - Improve the Models & APIs and Audit log labels and provide a themed missing-page experience.
 - Redesign the user-management form for accessible account, budget and feature controls.
+- Display account expiry as local wall-clock time so editing and saving an unchanged expiry preserves its instant.
 - Replace soft login/logout navigation with full document transitions to discard previous-account UI state; add regression coverage.
 - No telemetry migration, provider calls or automatic production deployment.
 
