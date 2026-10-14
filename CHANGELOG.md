@@ -13,6 +13,7 @@ This changelog records the commits available in this repository history.
 
 ### `5945c33` — security: enforce project membership and server resource access (#10)
 
+- Check in the sanitized application snapshot and its supporting documentation, migrations, CI workflows, and test suites.
 - Require project membership and owner privileges for protected project operations.
 - Apply access checks to file, task, tool, conversation, and related server-resource routes.
 - Add authenticated project API integration coverage using isolated PostgreSQL, and run it in CI only when its fixture is available.
