@@ -158,6 +158,38 @@ test("real authenticated API permissions and project isolation", async t => {
       projectId, "image.png", "image/png", Buffer.from("TEST_IMAGE_BYTES"), false
     );
 
+    await t.test("failed sharing updates preserve existing project access", async () => {
+      const route = `/api/users/${users.viewer.id}/projects`;
+      const before = await db.query(
+        "SELECT project_id, access_role FROM project_members WHERE user_id=$1 ORDER BY project_id",
+        [users.viewer.id]
+      );
+      assert.ok(before.rows.some(row => row.project_id === projectId));
+
+      // A mixed valid/invalid selection must not delete old memberships.
+      await expectStatus(route, {
+        as: "admin",
+        method: "PUT",
+        body: {
+          projectIds: [projectId, "ci-missing-project-" + crypto.randomUUID()],
+          accessRole: "viewer"
+        }
+      }, 400);
+
+      const after = await db.query(
+        "SELECT project_id, access_role FROM project_members WHERE user_id=$1 ORDER BY project_id",
+        [users.viewer.id]
+      );
+      assert.deepEqual(after.rows, before.rows);
+
+      // Only the owner may change another account's project grants.
+      await expectStatus(route, {
+        as: "outsider",
+        method: "PUT",
+        body: { projectIds: [], accessRole: "viewer" }
+      }, 403);
+    });
+
     await t.test("project listings include only owned/shared projects", async () => {
       for (const [as, allowed, forbidden] of [
         ["creator", projectId, otherId],
