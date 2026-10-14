@@ -44,8 +44,11 @@ integration candidates, not necessarily incorporated code:
 
 ## Vector license
 
-No general open-source license has been selected
-for Vector itself.
+Vector's original project material is licensed under the
+[MIT License](../LICENSE), copyright © 2026 KibouAkari.
+Copies or substantial portions must retain the copyright and
+permission notices in that license.
 
-Third-party licenses remain applicable regardless
-of the visibility of this repository.
+This license does not replace or override licenses and notices
+for third-party code, assets or dependencies. Verify and preserve
+those terms separately before redistribution.
