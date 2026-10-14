@@ -1691,35 +1691,14 @@ export default function ChatClient({
                       </div>
 
                         {message.attachments?.length > 0 && (
-                          <div className="v54-message-files">
-                            {message.attachments.map((attachment) => {
-                              const item =
-                                typeof attachment === "string"
-                                  ? {
-                                      id: null,
-                                      name: attachment
-                                    }
-                                  : attachment;
-
-                              return item.id ? (
-                                <a
-                                  key={item.id}
-                                  href={
-                                    item.downloadUrl ||
-                                    `/api/chat/attachments/${item.id}/raw`
-                                  }
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title="Download attachment"
-                                >
-                                  {item.name}
-                                </a>
-                              ) : (
-                                <span key={item.name}>
-                                  {item.name}
-                                </span>
-                              );
-                            })}
+                          <div className="v54-message-files vx585-artifact-list">
+                            {message.attachments.map((attachment, fileIndex) => (
+                              <VectorChatArtifact
+                                key={attachment?.id || attachment?.name || fileIndex}
+                                attachment={attachment}
+                                onPreview={setPreviewImage}
+                              />
+                            ))}
                           </div>
                         )}
                     </>
