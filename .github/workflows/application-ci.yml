@@ -63,6 +63,9 @@ jobs:
       - name: Validate persistent deployment maintenance script
         run: python3 -m py_compile scripts/deploy/pin-live-app-595.py
 
+      - name: Test chat UI grouping and download links
+        run: node --test tests/chat-history-ui.test.mjs
+
       - name: Build the application
         run: npm run build
 

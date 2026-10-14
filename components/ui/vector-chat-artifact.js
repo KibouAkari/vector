@@ -2,7 +2,7 @@
 
 import {
   Download, File, FileArchive, FileSpreadsheet, FileText,
-  Image as ImageIcon, Maximize2, ExternalLink
+  Image as ImageIcon, Maximize2
 } from "lucide-react";
 
 function describe(name, mime) {
@@ -47,17 +47,28 @@ export default function VectorChatArtifact({ attachment, onPreview }) {
     </article>
   );
 
-  const contents = <>
-    <span className="vx586-artifact-icon" aria-hidden="true"><Icon size={20} strokeWidth={1.6} /></span>
-    <span className="vx586-artifact-content"><strong title={name}>{name}</strong><small>{kind}{size ? ` · ${size}` : ""}</small></span>
-    {url ? <span className="vx586-artifact-download" aria-hidden="true"><Download size={15} strokeWidth={1.8} /><span>Download</span></span>
-      : <span className="vx586-artifact-quiet" aria-hidden="true"><ExternalLink size={16}/></span>}
-  </>;
-
-  return url ?
-    <a className="vx586-artifact" href={url} download={name} target="_blank" rel="noreferrer"
-      aria-label={`Download ${name}`} title={`Download ${name}`}>
-      {contents}
-    </a>
-    : <div className="vx586-artifact vx586-artifact-unavailable" title="No downloadable file available">{contents}</div>;
+  return (
+    <article className={url ? "vx600-document" : "vx600-document vx600-document-unavailable"}>
+      <div className="vx600-document-icon" aria-hidden="true">
+        <Icon size={22} strokeWidth={1.6} />
+      </div>
+      <div className="vx600-document-info">
+        <strong title={name}>{name}</strong>
+        <span>{kind}{size ? ` · ${size}` : ""}</span>
+      </div>
+      <span className="vx600-document-extension" aria-label={`File type: ${ext}`}>
+        {ext.toUpperCase().slice(0, 6)}
+      </span>
+      {url ? (
+        <a className="vx600-document-download"
+          href={url} download={name} rel="noreferrer"
+          aria-label={`Download ${name}`} title={`Download ${name}`}>
+          <Download size={15} strokeWidth={1.9} aria-hidden="true" />
+          <span>Download</span>
+        </a>
+      ) : (
+        <span className="vx600-document-missing">Unavailable</span>
+      )}
+    </article>
+  );
 }
