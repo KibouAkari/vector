@@ -52,7 +52,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Test offline model broker policy
-        run: node --test tests/model-broker-*.test.mjs tests/provider-telemetry.test.mjs
+        run: node --test tests/model-broker-*.test.mjs tests/provider-telemetry.test.mjs tests/model-intelligence-summary.test.mjs
 
       - name: Test project access policy
         run: node --test tests/project-access-policy.test.mjs tests/project-access-routes.test.mjs

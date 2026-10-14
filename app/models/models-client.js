@@ -1,5 +1,7 @@
 "use client";
 
+import ModelIntelligence from "./model-intelligence-client";
+
 import { Cloud, Cpu, BrainCircuit, Sparkles, PlugZap, RefreshCw, Pencil, ShieldCheck, CheckCircle2, ChevronRight } from "lucide-react";
 
 import {
@@ -802,6 +804,10 @@ export default function ModelsClient() {
             ).length} available routes
           </span>
         </div>
+      )}
+
+      {!loading && role === "owner" && (
+        <ModelIntelligence providers={providers} />
       )}
 
       <div className="vx587-model-workspace">

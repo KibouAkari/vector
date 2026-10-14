@@ -1,3 +1,4 @@
+import "./model-intelligence.css";
 import {
   requireSession
 } from "../../lib/auth";
