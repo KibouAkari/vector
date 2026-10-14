@@ -52,11 +52,14 @@ export default async function Home() {
 
   // Scope all dashboard reads to the authenticated account.
   // The platform owner retains the global operational overview.
-  const scopedQuery = (sql) => query(sql, [
-    session.role === "owner",
-    session.userId,
-    session.role === "owner" || session.features?.projects === true
-  ]);
+  const scopedQuery = (sql, includeProjectPermission = false) =>
+    query(sql, includeProjectPermission
+      ? [
+          session.role === "owner",
+          session.userId,
+          session.role === "owner" || session.features?.projects === true
+        ]
+      : [session.role === "owner", session.userId]);
 
 
   await initializeModelConfigs();
@@ -298,7 +301,7 @@ export default async function Home() {
           updated_at DESC
 
         LIMIT 5
-      `)
+      `, true)
 
     ]);
 
