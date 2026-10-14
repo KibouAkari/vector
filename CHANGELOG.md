@@ -14,6 +14,7 @@ Production deployments are tracked separately.
 - Redesign the user-management form for accessible account, budget and feature controls.
 - Display account expiry as local wall-clock time so editing and saving an unchanged expiry preserves its instant.
 - Replace soft login/logout navigation with full document transitions to discard previous-account UI state; add regression coverage.
+- Test logout response ordering and failure cases with a mocked server request, preventing navigation when session revocation fails.
 - No telemetry migration, provider calls or automatic production deployment.
 
 ### Security: isolate dashboard data and enforce feature access (#17)
