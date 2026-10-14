@@ -87,6 +87,7 @@ jobs:
             false
           fi
           node --test tests/project-access-api.integration.test.mjs
+          node --test tests/usage-attribution.integration.test.mjs
 
   secret-scan:
     name: Working tree secret scan
