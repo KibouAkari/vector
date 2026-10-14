@@ -6,6 +6,14 @@ the repository. Production deployments are tracked separately.
 
 ## 2026-10-14
 
+### docs: standardize changelog and release documentation (#16)
+
+- Restore dated and commit-attributed entries for PR #13, #14 and #15.
+- Document the separately committed screenshot assets.
+- Add changelog requirements to development instructions and PR reviews.
+- Update telemetry documentation and record the production preflight.
+- No production deployment, database migration or service change.
+
 ### `b714f5a` — feat: add owner-only Model Intelligence dashboard (#15)
 
 - Add Model Intelligence to the existing Models & APIs interface.
