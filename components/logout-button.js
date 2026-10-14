@@ -1,31 +1,49 @@
 "use client";
 
-import {
-  useRouter
-} from "next/navigation";
+import { useState } from "react";
 
+/**
+ * Force a new document after logout. A client-side route transition can
+ * retain server-component payloads fetched for the previous account.
+ */
 export default function LogoutButton() {
-  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
 
   async function logout() {
-    await fetch(
-      "/api/auth/logout",
-      {
-        method: "POST"
-      }
-    );
+    if (pending) return;
+    setPending(true);
+    setError("");
 
-    router.push("/login");
-    router.refresh();
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error("Sign out was not confirmed.");
+      }
+
+      window.location.replace("/login");
+    } catch {
+      setError("Could not sign out. Please try again.");
+      setPending(false);
+    }
   }
 
   return (
-    <button
-      type="button"
-      className="logout-button"
-      onClick={logout}
-    >
-      Sign out
-    </button>
+    <>
+      <button
+        type="button"
+        className="logout-button"
+        onClick={logout}
+        disabled={pending}
+      >
+        {pending ? "Signing out…" : "Sign out"}
+      </button>
+      {error && <span role="alert" className="vux-logout-error">{error}</span>}
+    </>
   );
 }
