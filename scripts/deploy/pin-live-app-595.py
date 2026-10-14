@@ -27,6 +27,15 @@ def command(*args):
 def fingerprint(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
+def paths_overlap(first, second):
+    return first == second or first in second.parents or second in first.parents
+
+def local_build_context(context):
+    if not isinstance(context, str) or '://' in context or context.startswith('git@'):
+        return None
+    path = Path(context)
+    return (path if path.is_absolute() else COMPOSE.parent / path).resolve()
+
 def die(message):
     raise RuntimeError(message)
 
@@ -56,18 +65,22 @@ if command('docker', 'image', 'inspect', '--format', '{{.Id}}', TAG) != APP_ID:
 if LIVE.is_mount():
     die('The live app directory is a mount point; refusing to rename it.')
 
-for name in ('vector-worker', 'vector-runner'):
+app_source = LIVE.resolve()
+for name in ('vector-app', 'vector-worker', 'vector-runner'):
     item = json.loads(command('docker', 'inspect', name))[0]
     for mount in item.get('Mounts', []):
-        source = Path(mount.get('Source', '/'))
-        if source == LIVE or LIVE in source.parents:
-            die(f'{name} mounts the application source: {source}')
+        source = mount.get('Source')
+        if not isinstance(source, str) or not source:
+            die(f'{name} has a mount without a local source.')
+        resolved_source = Path(source).resolve()
+        if paths_overlap(app_source, resolved_source):
+            die(f'{name} has a mount overlapping the application source: {resolved_source}')
 
 base = compose_config(COMPOSE)
 app = base.get('services', {}).get('app', {})
 build = app.get('build') or {}
 context = build.get('context') if isinstance(build, dict) else build
-if context != str(LIVE) or app.get('image'):
+if local_build_context(context) != app_source or app.get('image'):
     die('Base Compose app context or image differs from inspection.')
 env = app.get('environment') or {}
 if isinstance(env, dict) and str(env.get('VECTOR_PROVIDER_TELEMETRY', '0')).lower() not in ('0', 'false'):
@@ -79,10 +92,12 @@ for name, service in base['services'].items():
         continue
     other = service.get('build') or {}
     other_context = other.get('context') if isinstance(other, dict) else other
-    if other_context == str(LIVE):
-        die(f'Other service shares the app build context: {name}')
+    resolved_context = local_build_context(other_context)
+    if resolved_context is not None and paths_overlap(app_source, resolved_context):
+        die(f'Other service build context overlaps the app source: {name}')
 
-original = COMPOSE.read_text()
+original_bytes = COMPOSE.read_bytes()
+original = original_bytes.decode().replace('\r\n', '\n').replace('\r', '\n')
 pattern = re.compile(r'(?m)^(  app:[ \t]*(?:#[^\n]*)?)$')
 matches = list(pattern.finditer(original))
 if len(matches) != 1 or len(re.findall(r'(?m)^services:[ \t]*(?:#[^\n]*)?$', original)) != 1:
@@ -136,6 +151,8 @@ for name in tracked:
 release.mkdir(mode=0o700, parents=True)
 backup_compose = release / 'docker-compose.original.yml'
 shutil.copy2(COMPOSE, backup_compose)
+if backup_compose.read_bytes() != original_bytes:
+    die('Compose was edited before its backup was created.')
 backup_compose.chmod(0o600)
 release_manifest = release / 'MANIFEST.txt'
 release_manifest.write_text(
@@ -181,7 +198,7 @@ try:
         die('Production container changed unexpectedly.')
 except Exception:
     if compose_pinned:
-        shutil.copy2(backup_compose, COMPOSE)
+        shutil.copyfile(backup_compose, COMPOSE)
     if swapped_new and LIVE.exists():
         LIVE.rename(stage)
     if swapped_old and backup.exists():
