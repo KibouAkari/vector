@@ -52,6 +52,21 @@ After a successful run, the original source is retained under
 manifest plus the original Compose file are saved under
 `/root/vector-workspace/releases/vector-595-persistent-<UTC timestamp>`.
 
+## Production status (2026-10-14)
+
+The operator ran the previously reviewed `083bbd2` revision of this
+maintenance script successfully after the 5.9.5 application release.
+The reported outcome was a synchronized app source directory, a versioned
+image pin in base Compose and no container recreation. Backups were saved
+with UTC timestamp `20261014T204744Z`.
+
+Review feedback subsequently hardened the script to reject additional mount
+and build-context overlaps and to preserve Compose backup consistency and
+permissions. **Do not rerun it against an already pinned installation**:
+the preflight intentionally rejects a base Compose service with an image.
+Instead, verify the source hashes, running image, base Compose image, and
+backup existence read-only before making further changes.
+
 ## Future releases
 
 The image pin remains intentionally versioned. For a later reviewed release,
