@@ -17,6 +17,8 @@ import ReactMarkdown
 import remarkGfm
   from "remark-gfm";
 
+import ProjectFilesWorkspace from "./project-files-workspace";
+
 const PRIVACY_NAMES = {
   public:
     "Public",
@@ -188,7 +190,8 @@ export default function ProjectWorkbench({
   tasks,
   conversations,
   activity,
-  stats
+  stats,
+  canEdit = false
 }) {
   const router =
     useRouter();
@@ -283,30 +286,6 @@ export default function ProjectWorkbench({
     );
 
   const [
-    preview,
-    setPreview
-  ] =
-    useState(
-      null
-    );
-
-  const [
-    editorContent,
-    setEditorContent
-  ] =
-    useState(
-      ""
-    );
-
-  const [
-    editing,
-    setEditing
-  ] =
-    useState(
-      false
-    );
-
-  const [
     uploading,
     setUploading
   ] =
@@ -328,22 +307,6 @@ export default function ProjectWorkbench({
   ] =
     useState(
       false
-    );
-
-  const [
-    newFilename,
-    setNewFilename
-  ] =
-    useState(
-      ""
-    );
-
-  const [
-    newFileContent,
-    setNewFileContent
-  ] =
-    useState(
-      ""
     );
 
   const [
@@ -464,6 +427,7 @@ export default function ProjectWorkbench({
           data.files ||
           []
         );
+        router.refresh();
       }
     } catch {
       // Keep current state if refresh fails.
@@ -681,6 +645,7 @@ export default function ProjectWorkbench({
   async function uploadFiles(
     selected
   ) {
+    if (!canEdit || uploading) return;
     const items =
       Array.from(
         selected ||
@@ -741,7 +706,7 @@ export default function ProjectWorkbench({
           items.length === 1
             ? ""
             : "s"
-        } encrypted and indexed.`
+        } uploaded.`
       );
 
       await refreshFiles();
@@ -760,197 +725,6 @@ export default function ProjectWorkbench({
       setUploading(
         false
       );
-    }
-  }
-
-  async function openFile(
-    file
-  ) {
-    const mime =
-      String(
-        file.mime_type ||
-        ""
-      );
-
-    if (
-      mime.startsWith(
-        "image/"
-      ) ||
-      mime ===
-      "application/pdf"
-    ) {
-      setPreview({
-        type:
-          mime ===
-          "application/pdf"
-            ? "pdf"
-            : "image",
-
-        name:
-          file.original_name,
-
-        url:
-          `/api/files/${file.id}/raw`,
-
-        file
-      });
-
-      setTab(
-        "files"
-      );
-
-      return;
-    }
-
-    if (
-      file.previewable
-    ) {
-      const response =
-        await fetch(
-          `/api/files/${file.id}/content`
-        );
-
-      const data =
-        await response.json();
-
-      if (
-        response.ok
-      ) {
-        setPreview({
-          type:
-            "text",
-
-          name:
-            file.original_name,
-
-          file
-        });
-
-        setEditorContent(
-          data.content
-        );
-
-        setEditing(
-          false
-        );
-      }
-
-      return;
-    }
-
-    setToast({
-      title:
-        "Stored securely",
-      body:
-        "This file type is stored encrypted. Rich analysis arrives through the multimodal/file agents."
-    });
-  }
-
-  async function saveTextFile() {
-    if (
-      !preview?.file?.id
-    ) {
-      return;
-    }
-
-    const response =
-      await fetch(
-        `/api/files/${preview.file.id}/content`,
-        {
-          method:
-            "PATCH",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body:
-            JSON.stringify({
-              content:
-                editorContent
-            })
-        }
-      );
-
-    if (
-      response.ok
-    ) {
-      setEditing(
-        false
-      );
-
-      notifyDone(
-        "File saved",
-        `${preview.name} encrypted and re-indexed.`
-      );
-
-      await refreshFiles();
-    }
-  }
-
-  async function createFile() {
-    if (
-      !newFilename.trim()
-    ) {
-      return;
-    }
-
-    const response =
-      await fetch(
-        `/api/projects/${project.id}/files/create`,
-        {
-          method:
-            "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body:
-            JSON.stringify({
-              name:
-                newFilename.trim(),
-
-              content:
-                newFileContent
-            })
-        }
-      );
-
-    const data =
-      await response.json();
-
-    if (
-      response.ok
-    ) {
-      setCreateFileOpen(
-        false
-      );
-
-      setNewFilename(
-        ""
-      );
-
-      setNewFileContent(
-        ""
-      );
-
-      notifyDone(
-        "File created",
-        "The new file is encrypted and indexed."
-      );
-
-      await refreshFiles();
-
-    } else {
-      setToast({
-        title:
-          "Could not create file",
-        body:
-          data.error
-      });
     }
   }
 
@@ -1219,7 +993,13 @@ export default function ProjectWorkbench({
   }
 
   return (
-    <div className="project-workbench">
+    <div className="project-workbench vp-workspace">
+      <input ref={uploadRef} hidden multiple type="file"
+        disabled={!canEdit || uploading}
+        onChange={event => {
+          uploadFiles(event.target.files);
+          event.target.value = "";
+        }} />
 
       {
         toast && (
@@ -1372,7 +1152,7 @@ export default function ProjectWorkbench({
 
                 <strong>
                   {
-                    stats.totalFiles
+                    localFiles.length
                   }
                 </strong>
               </div>
@@ -1408,7 +1188,7 @@ export default function ProjectWorkbench({
 
                 <strong>
                   {
-                    stats.storage
+                    bytes(localFiles.reduce((total, file) => total + Number(file.size_bytes || 0), 0))
                   }
                 </strong>
               </div>
@@ -1471,6 +1251,7 @@ export default function ProjectWorkbench({
 
                   <button
                     type="button"
+                    disabled={!canEdit || uploading}
                     onClick={
                       () =>
                         uploadRef
@@ -1493,6 +1274,7 @@ export default function ProjectWorkbench({
 
                   <button
                     type="button"
+                    disabled={!canEdit}
                     onClick={
                       () => {
                         setCreateFileOpen(
@@ -2072,366 +1854,19 @@ export default function ProjectWorkbench({
         )
       }
 
-      {
-        tab ===
-        "files" && (
-          <section className="project-files-workbench">
-
-            <div className="files-toolbar">
-
-              <div>
-
-                <strong>
-                  Project files
-                </strong>
-
-                <span>
-                  {
-                    localFiles.length
-                  }
-                  {" files · "}
-                  {
-                    stats.storage
-                  }
-                </span>
-
-              </div>
-
-              <div>
-
-                <input
-                  ref={
-                    uploadRef
-                  }
-                  hidden
-                  multiple
-                  type="file"
-                  onChange={
-                    (
-                      event
-                    ) =>
-                      uploadFiles(
-                        event.target.files
-                      )
-                  }
-                />
-
-                <button
-                  type="button"
-                  onClick={
-                    () =>
-                      setCreateFileOpen(
-                        true
-                      )
-                  }
-                >
-                  + File
-                </button>
-
-                <button
-                  type="button"
-                  disabled={
-                    uploading
-                  }
-                  onClick={
-                    () =>
-                      uploadRef
-                        .current
-                        ?.click()
-                  }
-                >
-                  ↑ Upload
-                </button>
-
-              </div>
-
-            </div>
-
-            {
-              createFileOpen && (
-                <div className="create-file-panel">
-
-                  <input
-                    value={
-                      newFilename
-                    }
-                    placeholder="filename.js"
-                    onChange={
-                      (
-                        event
-                      ) =>
-                        setNewFilename(
-                          event.target.value
-                        )
-                    }
-                  />
-
-                  <textarea
-                    rows="10"
-                    value={
-                      newFileContent
-                    }
-                    placeholder="Start writing…"
-                    onChange={
-                      (
-                        event
-                      ) =>
-                        setNewFileContent(
-                          event.target.value
-                        )
-                    }
-                  />
-
-                  <div>
-
-                    <button
-                      onClick={
-                        () =>
-                          setCreateFileOpen(
-                            false
-                          )
-                      }
-                    >
-                      Cancel
-                    </button>
-
-                    <button
-                      onClick={
-                        createFile
-                      }
-                    >
-                      Create
-                    </button>
-
-                  </div>
-
-                </div>
-              )
-            }
-
-            <div className="file-browser-layout">
-
-              <div className="project-file-browser">
-
-                {
-                  localFiles.map(
-                    (
-                      file
-                    ) => (
-                      <button
-                        type="button"
-                        className={
-                          preview?.file?.id ===
-                          file.id
-                            ? "project-file-entry selected"
-                            : "project-file-entry"
-                        }
-                        key={
-                          file.id
-                        }
-                        onClick={
-                          () =>
-                            openFile(
-                              file
-                            )
-                        }
-                      >
-
-                        <span className="project-file-icon">
-
-                          {
-                            String(
-                              file.mime_type ||
-                              ""
-                            ).startsWith(
-                              "image/"
-                            )
-                              ? "IMG"
-                              : file.mime_type ===
-                                "application/pdf"
-                                ? "PDF"
-                                : (
-                                    file.extension ||
-                                    "FILE"
-                                  )
-                                    .slice(
-                                      0,
-                                      4
-                                    )
-                                    .toUpperCase()
-                          }
-
-                        </span>
-
-                        <span>
-
-                          <strong>
-                            {
-                              file.original_name
-                            }
-                          </strong>
-
-                          <small>
-                            {
-                              bytes(
-                                file.size_bytes
-                              )
-                            }
-                          </small>
-
-                        </span>
-
-                      </button>
-                    )
-                  )
-                }
-
-              </div>
-
-              <div className="project-file-editor">
-
-                {
-                  !preview && (
-                    <div className="file-editor-empty">
-
-                      <span>
-                        ◫
-                      </span>
-
-                      Select a file to preview
-                      or edit it.
-
-                    </div>
-                  )
-                }
-
-                {
-                  preview?.type ===
-                  "image" && (
-                    <div className="image-preview">
-
-                      <img
-                        src={
-                          preview.url
-                        }
-                        alt={
-                          preview.name
-                        }
-                      />
-
-                    </div>
-                  )
-                }
-
-                {
-                  preview?.type ===
-                  "pdf" && (
-                    <iframe
-                      className="pdf-preview"
-                      src={
-                        preview.url
-                      }
-                      title={
-                        preview.name
-                      }
-                    />
-                  )
-                }
-
-                {
-                  preview?.type ===
-                  "text" && (
-                    <div className="text-editor">
-
-                      <div className="text-editor-head">
-
-                        <strong>
-                          {
-                            preview.name
-                          }
-                        </strong>
-
-                        <div>
-
-                          {
-                            editing
-                              ? (
-                                <>
-                                  <button
-                                    onClick={
-                                      () =>
-                                        setEditing(
-                                          false
-                                        )
-                                    }
-                                  >
-                                    Cancel
-                                  </button>
-
-                                  <button
-                                    onClick={
-                                      saveTextFile
-                                    }
-                                  >
-                                    Save
-                                  </button>
-                                </>
-                              )
-                              : (
-                                <button
-                                  onClick={
-                                    () =>
-                                      setEditing(
-                                        true
-                                      )
-                                  }
-                                >
-                                  Edit
-                                </button>
-                              )
-                          }
-
-                        </div>
-
-                      </div>
-
-                      {
-                        editing
-                          ? (
-                            <textarea
-                              value={
-                                editorContent
-                              }
-                              onChange={
-                                (
-                                  event
-                                ) =>
-                                  setEditorContent(
-                                    event.target.value
-                                  )
-                              }
-                            />
-                          )
-                          : (
-                            <pre>
-                              {
-                                editorContent
-                              }
-                            </pre>
-                          )
-                      }
-
-                    </div>
-                  )
-                }
-
-              </div>
-
-            </div>
-
-          </section>
-        )
-      }
+      <div hidden={tab !== "files"}>
+        <ProjectFilesWorkspace
+          key={project.id}
+          projectId={project.id}
+          files={localFiles}
+          canEdit={canEdit}
+          uploading={uploading}
+          onUpload={() => uploadRef.current?.click()}
+          onFilesChanged={refreshFiles}
+          openCreate={createFileOpen}
+          onCreateOpenChange={setCreateFileOpen}
+        />
+      </div>
 
       {
         tab ===
@@ -2668,3 +2103,4 @@ export default function ProjectWorkbench({
     </div>
   );
 }
+

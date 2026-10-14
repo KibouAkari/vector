@@ -66,6 +66,9 @@ jobs:
       - name: Test chat UI grouping and download links
         run: node --test tests/chat-history-ui.test.mjs
 
+      - name: Test project file browsing and downloads
+        run: node --test tests/project-file-view.test.mjs
+
       - name: Build the application
         run: npm run build
 
@@ -115,3 +118,4 @@ jobs:
             -v "$GITHUB_WORKSPACE:/repo:ro" \
             ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
             dir --redact /repo
+
