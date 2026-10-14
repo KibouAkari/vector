@@ -6,7 +6,7 @@ Production deployments are tracked separately.
 
 ## 2026-10-14
 
-### Security: isolate dashboard data and enforce feature access (PR pending)
+### Security: isolate dashboard data and enforce feature access (#17)
 
 - Scope home usage, charts, models and recent projects to each member; preserve the global view for the platform owner.
 - Hide all project summaries from accounts without project access, including shared membership leftovers.
