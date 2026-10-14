@@ -84,4 +84,4 @@ The cinematic black-hole experience is adapted from [Gargantua by hasnain7abbas]
 
 ---
 
-<div align="center"><sub>Vector · Private project in active development · No general open-source license selected</sub></div>
+<div align="center"><sub>Vector · MIT licensed · Copyright © 2026 KibouAkari · <a href="LICENSE">License</a></sub></div>
