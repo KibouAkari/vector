@@ -60,6 +60,9 @@ jobs:
       - name: Test account switch navigation
         run: node --test tests/account-switch-navigation.test.mjs
 
+      - name: Test chat UI grouping and download links
+        run: node --test tests/chat-history-ui.test.mjs
+
       - name: Build the application
         run: npm run build
 
