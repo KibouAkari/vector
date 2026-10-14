@@ -4,6 +4,26 @@ This changelog summarizes the commits in the available repository history.
 It covers the initial sanitized application snapshot and the changes through
 `8dad487` on 2026-10-14.
 
+## Unreleased
+
+### Added
+- Owner-only Model Intelligence dashboard within Models & APIs.
+- Seven-day and 30-day provider observations including request counts,
+  success rates, latency and reported token usage.
+- Read-only, owner-scoped metrics API with missing-data indicators.
+- Offline regression tests and CI coverage for the dashboard.
+
+### Security and testing
+- Add real authenticated HTTP and isolated PostgreSQL tests for
+  owner-only access, tenant isolation, date windows and missing data.
+- Verify input-only and output-only token observations independently.
+
+### Operational notes
+- Model routing and provider credentials remain unchanged.
+- Telemetry remains opt-in; its database migration is not applied.
+- Per-connection CHF costs are not displayed until reliable attribution
+  is available.
+
 ## 2026-10-14
 
 ### `8dad487` — Document available commits and add MIT attribution license (#12)
@@ -15,7 +35,7 @@ It covers the initial sanitized application snapshot and the changes through
 
 - Persist the owning user ID with provider usage events, including background jobs.
 - Centralize usage-event persistence and per-user total/monthly cost aggregation.
-- Add a user-and-date usage index and create the privacy-events table.
+- Add a user-and-date usage index for efficient per-user budget checks.
 - Add isolated-PostgreSQL tests for attribution and per-user budget separation, and run them in application CI.
 
 ## 2026-10-13
