@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft, ArrowRight, Check, ChevronRight, KeyRound,
   Shield, UserRoundPlus, X
@@ -46,6 +46,8 @@ export default function UsersClient({ currentUserId }) {
   const [editing, setEditing] = useState(null);
   const [step, setStep] = useState(0);
   const [shares, setShares] = useState([]);
+  const [sharesStatus, setSharesStatus] = useState("idle");
+  const sharesRequestRef = useRef(0);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -62,9 +64,11 @@ export default function UsersClient({ currentUserId }) {
   }, []);
 
   async function open(user) {
+    const requestId = ++sharesRequestRef.current;
     setStep(0);
     setError("");
     setShares([]);
+    setSharesStatus("loading");
     setEditing(user ? {
       id: user.userId,
       username: user.username,
@@ -85,12 +89,16 @@ export default function UsersClient({ currentUserId }) {
       const response = await fetch(endpoint, { cache: "no-store" });
       if (!response.ok) throw new Error("Could not load project permissions.");
       const data = await response.json();
+      if (requestId !== sharesRequestRef.current) return;
       setShares((data.projects || []).map(project => ({
         ...project,
         shared: Boolean(project.shared)
       })));
+      setSharesStatus("ready");
     } catch (err) {
-      setError(err.message);
+      if (requestId !== sharesRequestRef.current) return;
+      setSharesStatus("error");
+      setError("Could not load project access. Close the editor and retry before saving.");
     }
   }
 
@@ -148,6 +156,10 @@ export default function UsersClient({ currentUserId }) {
 
     const issue = validateAccess();
     if (issue) { setError(issue); return; }
+    if (sharesStatus !== "ready") {
+      setError("Project permissions must finish loading successfully before saving.");
+      return;
+    }
     setError("");
     setSaving(true);
 
@@ -289,6 +301,7 @@ export default function UsersClient({ currentUserId }) {
             </div>
 
             {error && <p className="vux-form-error" role="alert">{error}</p>}
+            {sharesStatus === "loading" && <p className="vux-empty" role="status">Loading project permissions…</p>}
 
             <form onSubmit={submit} className="vux-user-form">
               {step === 0 ? (
@@ -422,7 +435,8 @@ export default function UsersClient({ currentUserId }) {
                   onClick={() => step === 0 ? setEditing(null) : (setStep(0), setError(""))}>
                   {step === 0 ? "Cancel" : <><ArrowLeft size={15} /> Back</>}
                 </button>
-                <button className="vux-main-action" type="submit" disabled={saving}>
+                <button className="vux-main-action" type="submit"
+                  disabled={saving || (step === 1 && sharesStatus !== "ready")}>
                   {step === 0
                     ? <>Next: permissions <ArrowRight size={15} /></>
                     : saving ? "Saving…" : editing.id ? "Save changes" : "Create account"}
