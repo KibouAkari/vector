@@ -22,7 +22,6 @@ It covers the initial sanitized application snapshot and the changes through
 
 ### `5945c33` — security: enforce project membership and server resource access (#10)
 
-- Add the sanitized application snapshot, supporting documentation, migrations, CI workflows and tests.
 - Require project membership and owner privileges for protected project operations.
 - Apply access checks to file, task, tool, conversation and related server-resource routes.
 - Add authenticated project API integration coverage against isolated PostgreSQL and run it in CI when its fixture is available.
