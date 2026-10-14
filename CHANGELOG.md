@@ -13,6 +13,11 @@ It covers the initial sanitized application snapshot and the changes through
 - Read-only, owner-scoped metrics API with missing-data indicators.
 - Offline regression tests and CI coverage for the dashboard.
 
+### Security and testing
+- Add real authenticated HTTP and isolated PostgreSQL tests for
+  owner-only access, tenant isolation, date windows and missing data.
+- Verify input-only and output-only token observations independently.
+
 ### Operational notes
 - Model routing and provider credentials remain unchanged.
 - Telemetry remains opt-in; its database migration is not applied.
