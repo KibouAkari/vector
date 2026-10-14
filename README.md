@@ -32,12 +32,21 @@ The interface is under active development. The current implementation is not pre
 
 ## The interface
 
-Vector includes a cinematic black-hole login, workspace dashboard, conversations, model administration and a server view. Only genuine, privacy-reviewed product captures will be shown here.
-
-[Where to add screenshots and what to capture →](docs/screenshots/README.md)
+Vector includes a cinematic black-hole login, workspace dashboard, conversations, model administration and a server view. The captures below show the login and workspace dashboard.
 
 <!-- SCREENSHOT_GALLERY_START -->
-<!-- Add reviewed screenshots here after uploading to docs/screenshots/. -->
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/vector-login.png" alt="Vector's cinematic black-hole login screen" />
+      <p align="center"><strong>Cinematic login</strong></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/vector-dashboard.png" alt="Vector workspace dashboard with usage overview, charts and recent projects" />
+      <p align="center"><strong>Workspace dashboard</strong></p>
+    </td>
+  </tr>
+</table>
 <!-- SCREENSHOT_GALLERY_END -->
 
 ## How Vector works
