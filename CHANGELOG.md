@@ -6,6 +6,15 @@ Production deployments are tracked separately.
 
 ## 2026-10-14
 
+### UI: chat conversation history and file downloads
+
+- Group the user's existing chat history into readable local-date sections without changing data access.
+- Give history rows a clearer visual hierarchy, accessible selection state and useful empty results.
+- Unify uploaded and generated chat files under readable download cards with filenames, types and sizes.
+- Extend the scoped chat design without creating another dashboard or changing the homepage.
+- Add unit regression checks for date grouping and download actions.
+- No database migration, provider calls, or production deployment.
+
 ### UI: workspace navigation and model intelligence refinement (#18)
 
 - Keep the home dashboard as the only global usage dashboard and move per-provider intelligence beneath API connections.
