@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowUp, Check, Copy, Menu, Plus, RefreshCw, Search, Square, Trash2, X, Sparkles, Paperclip, Code2, CheckCheck, PanelLeft, FileText, LoaderCircle } from "lucide-react";
+import { ArrowUp, Check, Copy, Menu, Plus, RefreshCw, Search, Square, Trash2, X, Sparkles, Paperclip, Code2, CheckCheck, PanelLeft, FileText, LoaderCircle, MessageSquareText } from "lucide-react";
 import VectorChatArtifact from "../../components/ui/vector-chat-artifact";
+import { conversationGroups } from "../../lib/chat-history-groups.mjs";
 
 const MODE_OPTIONS = [
   { value: "quick", label: "Low" },
@@ -1519,7 +1520,10 @@ export default function ChatClient({
 
       <aside id="vector-chat-history" className={historyOpen ? "history-panel open" : "history-panel"}>
         <div className="history-head">
-          <strong>Chats</strong>
+          <div className="vx600-history-heading">
+            <strong>Conversations</strong>
+            <small>{conversations.length} recent</small>
+          </div>
 
           <button
             type="button"
@@ -1541,41 +1545,45 @@ export default function ChatClient({
           />
         </div>
 
-        <div className="history-list">
-          {conversations.map((conversation) => (
-            <div
-              key={conversation.id}
-              className={
-                conversation.id === conversationId
-                  ? "history-item active"
-                  : "history-item"
-              }
-            >
-              <button
-                type="button"
-                className="history-open"
-                onClick={() => loadConversation(conversation.id)}
-              >
-                <span className="history-title">
-                  {conversation.title || "New chat"}
-                </span>
-
-                <span className="history-preview">
-                  {shortText(conversation.preview)}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="history-delete"
-                onClick={() => deleteConversation(conversation.id)}
-                aria-label={`Delete ${conversation.title || "conversation"}`}
-                title="Delete conversation"
-              >
-                <Trash2 size={15} strokeWidth={1.8} aria-hidden="true" />
-              </button>
-            </div>
+        <div className="history-list vx600-history-list">
+          {conversationGroups(conversations).map(group => (
+            <section className="vx600-history-group" key={group.label} aria-label={group.label}>
+              <h2 className="vx600-history-group-label">{group.label}</h2>
+              {group.items.map(conversation => (
+                <div key={conversation.id}
+                  className={conversation.id === conversationId
+                    ? "history-item active vx600-history-item"
+                    : "history-item vx600-history-item"}>
+                  <button type="button" className="history-open"
+                    aria-current={conversation.id === conversationId ? "page" : undefined}
+                    onClick={() => loadConversation(conversation.id)}>
+                    <span className="vx600-history-icon" aria-hidden="true">
+                      <MessageSquareText size={15} />
+                    </span>
+                    <span className="vx600-history-text">
+                      <span className="history-title">{conversation.title || "New chat"}</span>
+                      <span className="history-preview">
+                        {shortText(conversation.preview) || "Open conversation"}
+                      </span>
+                    </span>
+                  </button>
+                  <button type="button" className="history-delete"
+                    onClick={() => deleteConversation(conversation.id)}
+                    aria-label={`Delete ${conversation.title || "conversation"}`}
+                    title="Delete conversation">
+                    <Trash2 size={15} strokeWidth={1.8} aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+            </section>
           ))}
+          {conversations.length === 0 && (
+            <div className="vx600-history-empty">
+              <MessageSquareText size={22} strokeWidth={1.5} aria-hidden="true" />
+              <strong>{search ? "No matching conversations" : "Your story starts here"}</strong>
+              <span>{search ? "Try a different search term." : "Start a chat to see it here."}</span>
+            </div>
+          )}
         </div>
       </aside>
 
