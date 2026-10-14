@@ -26,7 +26,7 @@ The telemetry writer never stores:
 - Raw exception messages
 - Conversation content or task instructions
 
-No API or user-facing dashboard is provided in this phase.
+PR #15 added an owner-only Model Intelligence dashboard and read-only metrics API. Real observations remain unavailable until the telemetry migration and collection are separately approved, deployed and verified.
 
 ## Cost accounting
 
@@ -65,12 +65,7 @@ been deployed, enabled and verified.
 
 ## Follow-up
 
-Investigate `recordUsage()` user attribution: existing
-callers pass `userId`, but its current function signature
-does not consume that parameter.
-
-Do not assume per-user spending data is correct until
-that behavior is reviewed.
+PR #11 addressed per-user attribution of billable usage events. Historical events without an owner remain unattributed. Provider-request telemetry does not contain CHF costs, so per-connection monetary totals must not be inferred.
 
 ## Review hardening
 

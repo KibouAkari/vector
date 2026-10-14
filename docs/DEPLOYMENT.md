@@ -26,3 +26,23 @@ Until this review is complete, treat the production
 deployment boundary as **unverified**.
 
 Do not enable unattended deployment from GitHub.
+
+## Read-only production inventory — 2026-10-14
+
+The server-side preflight reported:
+
+- Vector Compose project at `/opt/vector/docker-compose.yml`.
+- Five running Vector containers: app, worker, runner, Redis and PostgreSQL.
+- Application source directory at `/opt/vector/app`; not a Git checkout.
+- `vector-host-agent.service` is enabled.
+- No matching Vector deployment timers were listed by the initial check.
+- The production application's code revision was not independently verified.
+
+These observations do not establish that automated deployment is absent.
+
+Before a release, confirm Compose build sources, application-file
+differences, persistent volumes, backup and restore procedures,
+deployment automation, and a safe rollback strategy.
+
+No database migration or production deployment was authorized
+by this documentation update.

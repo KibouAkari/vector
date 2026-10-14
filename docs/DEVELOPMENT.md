@@ -29,6 +29,18 @@ Open a pull request and provide verification evidence.
 
 **Deployment policy:** pushes and pull requests must not deploy to production without explicit release approval. This has not yet been verified against external webhooks or server-side automation. See [Deployment verification](DEPLOYMENT.md).
 
+## Changelog policy
+
+Every feature, fix, security or documentation PR must update
+`CHANGELOG.md` in the same change.
+
+- Use chronological headings such as `## 2026-10-14`.
+- Identify the PR number once it has been assigned.
+- Add the verified merge commit after merging, when available.
+- Do not invent commit hashes, release dates or deployments.
+- Describe technical changes, user impact and relevant limitations.
+- Record production deployment separately from GitHub merges.
+
 ## Verification checklist
 
 - Builds and relevant tests succeed.
