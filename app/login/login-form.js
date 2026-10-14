@@ -7,11 +7,6 @@ import {
 
 
 import {
-  useRouter
-} from "next/navigation";
-
-
-import {
   ArrowRight,
   Eye,
   EyeOff,
@@ -33,10 +28,6 @@ import { runVectorGravityTransition } from "../../components/ui/vector-gravity-t
 export default function LoginForm({
   defaultUsername
 }) {
-  const router =
-    useRouter();
-
-
   const [
     username,
     setUsername
@@ -193,11 +184,8 @@ export default function LoginForm({
         );
       }
 
-      router.replace(
-        "/"
-      );
-
-      router.refresh();
+      // Start a new document, not a soft navigation with a cached owner UI.
+      window.location.replace("/");
 
     } catch {
       setError(
