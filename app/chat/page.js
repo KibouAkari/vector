@@ -1,11 +1,11 @@
-import { requireSession } from "../../lib/auth";
+import { requireFeature } from "../../lib/auth";
 import Sidebar from "../../components/sidebar";
 import ChatClient from "./chat-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChatPage() {
-  const session = await requireSession();
+  const session = await requireFeature("chat");
 
   return (
     <div className="vector-shell">

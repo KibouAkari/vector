@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 
 import {
-  getSession
+  getSession,
+  hasFeature
 } from "../../../lib/auth";
 
 import {
@@ -159,6 +160,10 @@ export async function GET() {
         status: 401
       }
     );
+  }
+
+  if (!hasFeature(session, "models")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   await initializeModelConfigs();
@@ -393,6 +398,10 @@ export async function POST(
         status: 401
       }
     );
+  }
+
+  if (!hasFeature(session, "models")) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   await initializeModelConfigs();

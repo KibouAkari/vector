@@ -179,6 +179,51 @@ test("real authenticated API permissions and project isolation", async t => {
       await expectStatus(`/projects/${projectId}`, { as: "outsider" }, 404);
     });
 
+    await t.test("dashboard data and disabled features stay tenant-scoped", async () => {
+      const ownerOnlyModel = "ci-owner-only-model-" + crypto.randomUUID();
+      const creatorOnlyModel = "ci-creator-only-model-" + crypto.randomUUID();
+      const disabledOnlyModel = "ci-disabled-only-model-" + crypto.randomUUID();
+
+      for (const [as, model] of [
+        ["admin", ownerOnlyModel],
+        ["creator", creatorOnlyModel],
+        ["disabled", disabledOnlyModel],
+      ]) {
+        await db.query(
+          `INSERT INTO usage_events (id, provider, model, user_id, input_tokens, output_tokens, cost_chf)
+           VALUES ($1, 'test', $2, $3, 3, 4, 0.001)`,
+          [crypto.randomUUID(), model, users[as].id]
+        );
+      }
+
+      const disabledPage = await (await expectStatus("/", { as: "disabled" }, 200)).text();
+      assert.ok(disabledPage.includes(disabledOnlyModel), "member sees own spend");
+      for (const secret of [ownerOnlyModel, creatorOnlyModel, "creator-private-project", "outsider-project"]) {
+        assert.ok(!disabledPage.includes(secret), `chat-only account leaked: ${secret}`);
+      }
+
+      const creatorPage = await (await expectStatus("/", { as: "creator" }, 200)).text();
+      assert.ok(creatorPage.includes(creatorOnlyModel), "creator sees own spend");
+      assert.ok(creatorPage.includes("creator-private-project"), "creator sees own project");
+      assert.ok(!creatorPage.includes(ownerOnlyModel), "other-user spend hidden");
+      assert.ok(!creatorPage.includes("outsider-project"), "other-user project hidden");
+
+      const ownerPage = await (await expectStatus("/", { as: "admin" }, 200)).text();
+      assert.ok(ownerPage.includes(ownerOnlyModel), "owner sees operational usage");
+      assert.ok(ownerPage.includes("creator-private-project"), "owner sees operational projects");
+
+      for (const route of ["/models", "/audit", "/api/models", "/usage"]) {
+        const response = await request(route, { as: "disabled" });
+        assert.ok([302,303,307,308,403].includes(response.status),
+          `feature-disabled account unexpectedly accessed ${route}: ${response.status}`);
+      }
+      await expectStatus("/api/models", { as: "disabled" }, 403);
+      await expectStatus("/api/models", { as: "creator" }, 403);
+      await expectStatus("/api/conversations", { as: "disabled" }, 200);
+      await expectStatus("/api/projects", { as: "disabled" }, 403);
+      await expectStatus(`/projects/${projectId}`, { as: "disabled" }, 404);
+    });
+
     await t.test("project mutations require ownership, not viewer/editor", async () => {
       for (const as of ["viewer", "editor", "outsider", "disabled"]) {
         await expectStatus(`/api/projects/${projectId}`, {

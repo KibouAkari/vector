@@ -74,8 +74,8 @@ const ITEMS = [
 
   [
     "/models",
-    "Models",
-    null,
+    "Models & APIs",
+    "models",
     SlidersHorizontal
   ],
 
