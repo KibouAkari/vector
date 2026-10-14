@@ -6,7 +6,7 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
-### Projects: file workspace and original downloads
+### Projects: file workspace and original downloads (#21)
 
 - Add a larger file browser with search, sorting, images, PDF and bounded text previews.
 - Provide authenticated original downloads for every stored file format, enforcing existing project access rules.
