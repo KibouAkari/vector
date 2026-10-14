@@ -54,6 +54,13 @@ if command('docker', 'inspect', '--format', '{{.Image}}', 'vector-app') != APP_I
 if command('docker', 'image', 'inspect', '--format', '{{.Id}}', TAG) != APP_ID:
     die('Versioned image tag is missing or differs from the running image.')
 
+for name in ('vector-worker', 'vector-runner'):
+    item = json.loads(command('docker', 'inspect', name))[0]
+    for mount in item.get('Mounts', []):
+        source = Path(mount.get('Source', '/'))
+        if source == LIVE or LIVE in source.parents:
+            die(f'{name} mounts the application source: {source}')
+
 base = compose_config(COMPOSE)
 app = base.get('services', {}).get('app', {})
 build = app.get('build') or {}
