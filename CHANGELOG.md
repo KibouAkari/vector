@@ -1,8 +1,8 @@
 # Changelog
 
-This changelog documents merged changes by date, commit and pull request.
-Entries are listed newest first and describe changes actually merged into
-the repository. Production deployments are tracked separately.
+This changelog documents repository changes by date, with commit and pull
+request identifiers when available. Entries are listed newest first.
+Production deployments are tracked separately.
 
 ## 2026-10-14
 
