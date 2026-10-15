@@ -6,7 +6,16 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
-### CPU inference pilot and tested accounting release preparation
+### Bounded local workers and evaluation (#28)
+
+- Record the owner's successful isolated Hermes/Qwen CPU pilot and accounting release. Keep short-fixture timing distinct from general model quality or speed guarantees.
+- Add feature-gated server-scoped extraction/summarization workers with fixed models, explicit current-job evidence, no tools or independent memory/retrieval, two attempts per job and global nonblocking PostgreSQL admission.
+- Bound UTF-8 input, context, output, request duration and response size; reject incomplete/non-JSON extraction and unsolicited tool calls. Never retry or automatically switch a worker to a paid provider.
+- Account for reported native Ollama tokens, including cache counts when present, through the existing per-response usage scope before result validation. Keep outputs visibly unverified and missing usage incomplete.
+- Add offline authorization, isolation, budgeting, scheduler cleanup, HTTP-bound and ledger tests, plus an isolated real-model evaluator and application staging wrapper pinned to the current live image. No production activation, schema changes or dependencies.
+
+
+### CPU inference pilot and tested accounting release preparation (#27)
 
 - Prepare an isolated Ollama 0.40.4 install pinned to its Linux/amd64 digest, plus checksum-verified publisher Hermes 3 8B Q4_K_M and Qwen3 0.6B Q8_0 model imports.
 - Bound CPU, RAM, concurrency, context, output and idle weight retention; publish no ports or host execution capabilities. Add synthetic cold/warm extraction measurements, local token telemetry, explicit unloading and a pilot-only rollback.
