@@ -77,6 +77,14 @@ jobs:
           python3 tests/local-inference-pilot.test.py
           python3 -m py_compile scripts/deploy/local-inference-pilot.py
           bash -n scripts/deploy/release-ranking-cost.sh
+          python3 -m py_compile scripts/deploy/evaluate-local-workers.py
+          python3 tests/local-worker-evaluation.test.py
+          python3 -m py_compile scripts/deploy/compare-local-models.py
+          python3 tests/local-model-comparison.test.py
+          python3 -m py_compile scripts/diagnostics/local-worker-wiring.py
+          python3 tests/local-worker-wiring.test.py
+          bash -n scripts/deploy/stage-local-workers.sh
+          node --test tests/local-workers.test.mjs
 
       - name: Test local JSON ranking aggregation and cost metadata
         run: |
@@ -121,6 +129,7 @@ jobs:
           fi
           node --test tests/project-access-api.integration.test.mjs
           node --test tests/usage-attribution.integration.test.mjs
+          node --test tests/local-workers-db.integration.test.mjs
           node --test tests/model-intelligence-api.integration.test.mjs
 
   secret-scan:

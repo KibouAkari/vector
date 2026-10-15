@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import crypto from 'node:crypto';
 import {withProviderUsageScope,captureProviderUsage,providerUsageEvent,providerUsageTotals} from '../lib/provider-call-usage.mjs';
 import {normalizedOpenAiUsage,normalizedAnthropicUsage} from '../lib/provider-usage-normalization.mjs';
+import {runLocalWorker} from '../lib/local-worker-core.mjs';
 
 function load(path, bindings, names) {
   const source=readFileSync(new URL(path,import.meta.url),'utf8')
@@ -159,4 +160,46 @@ test('actual worker records each provider response once on both success and post
     assert.equal(persisted.length,2,'no aggregate third charge');
     assert.ok(persisted.every(e=>e.userId==='fixture-user' && e.metadata.jobId==='fixture-job'));
   }
+});
+
+test('artifact provider failover shares the two-attempt local-worker budget',async()=>{
+  const fallback={...runtime,id:'fixture-fallback',provider:'anthropic'};
+  const budgets=[],failed=[];
+  let agentAttempts=0,workerCalls=0;
+  const workerArgs={role:'extract',task:'Return the value.',evidence:'value 3',fields:[{name:'value',type:'integer'}]};
+  const {executeAgentJob}=load('../lib/background-executor.js',{
+    crypto,withProviderUsageScope,providerUsageEvent,providerUsageTotals,
+    MODEL_PRICING:{},calculateModelCost:()=>({chf:0}),usdToChf:x=>x,
+    calculateConfiguredProviderCost:()=>({chf:0}),
+    db:{query:async()=>({rows:[],rowCount:0})},
+    recordUsage:async()=>{},writeAudit:async()=>{},
+    buildVisionInputs:async()=>[],heartbeatAgentJob:async()=>{},getAgentJob:async()=>({status:'running'}),
+    completeAgentJob:async()=>{},failAgentJob:async result=>{failed.push(result);},
+    bindGeneratedArtifactsToMessage:async()=>[],
+    resolveProviderForTask:async({excludeProviderIds})=>excludeProviderIds.length?fallback:runtime,
+    classifyExecution:()=>({class:'artifact',reason:'fixture',requirements:{server:true},limits:{rounds:2}}),
+    runVectorAgent:async({localWorkerBudget})=>{
+      agentAttempts++;
+      const workerContext={userId:'fixture-user',jobId:'fixture-job',allowLocalWorkers:true,localWorkerBudget};
+      const dependencies={enabled:true,exclusive:execute=>execute(),request:async()=>({
+        done:true,done_reason:'stop',message:{content:'{"value":3}'},prompt_eval_count:1,eval_count:1
+      }),record:async()=>{}};
+      if(agentAttempts===1){
+        budgets.push(localWorkerBudget);
+        await runLocalWorker(workerArgs,workerContext,dependencies);workerCalls++;
+        await runLocalWorker(workerArgs,workerContext,dependencies);workerCalls++;
+        throw new Error('Provider returned HTTP 503');
+      }
+      budgets.push(localWorkerBudget);
+      await runLocalWorker(workerArgs,workerContext,dependencies);
+    }
+  },['executeAgentJob']);
+  const job={id:'fixture-job',user_id:'fixture-user',payload:{conversationId:'fixture-thread',mode:'normal',
+    safeOriginalMessage:'Create a PDF',messages:[{role:'user',content:'Create a PDF'}]}};
+  await assert.rejects(executeAgentJob(job),/two calls/);
+  assert.equal(agentAttempts,2);
+  assert.equal(workerCalls,2);
+  assert.equal(budgets[0],budgets[1]);
+  assert.equal(budgets[0].calls,2);
+  assert.equal(failed.length,1);
 });

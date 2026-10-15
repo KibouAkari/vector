@@ -1,6 +1,6 @@
 # Local inference rollout
 
-Status: isolated installation and smoke benchmark prepared; no observed server installation or Vector activation yet.
+Status: Ollama and three models are installed. Qwen3 1.7B and Hermes passed the eight-fixture comparison. Final actual-worker qualification and production activation remain pending.
 
 ## Execution model
 
@@ -120,3 +120,150 @@ and competing-service latency observations. The pilot does not yet implement
 this scheduler, worker routing, embeddings, new MCP servers, or cloud review.
 Use the existing PostgreSQL retrieval first; evaluate a separate vector database
 only when corpus size and retrieval tests justify the operational cost.
+
+
+## Observed pilot and first worker integration (#28)
+
+The owner's server run completed successfully on 2026-10-15. Hermes generated
+about 5 tokens/s (16.168 s cold, 2.371 s warm for an eleven-token fixture); Qwen
+about 35–36 tokens/s (1.942 s cold, 0.407 s warm for thirteen tokens). Both returned
+correct missing-value JSON in that one fixture. These are short smoke measurements,
+not throughput or reliability guarantees for long prompts or real security tasks.
+After explicit unloading, no model weights were loaded and the idle service used
+about 214 MiB. Ollama advertises completion only for this Hermes import and tool
+support for Qwen. This does not validate Qwen's tool-call accuracy.
+
+The first code integration is `server_local_worker`, behind
+`VECTOR_LOCAL_WORKERS=1` and the existing server permission. Disabled by default.
+The requesting job must carry an authenticated user/job identity and the server
+permission; all evidence is passed explicitly from that job. Workers perform no
+additional retrieval, read no global/project memory, inherit no tools and cannot
+spawn other workers. Project/skill context can be included only in the compact
+already-authorized evidence passed by the parent agent. This is bounded delegation,
+not a new autonomous memory or skill system.
+
+Two roles use fixed model IDs: `extract` uses Qwen and requires a JSON object;
+`summarize` uses Hermes. The combined serialized task/evidence may not exceed
+2048 UTF-8 bytes, with explicit rejection rather than truncation. Native requests
+use 4096 context tokens, 192 maximum output tokens, two threads, a 90-second timeout
+and no retry or cloud fallback. This context differs from the initial pilot and
+must be validated by the new evaluation. One PostgreSQL session advisory lock
+limits admission across processes; busy tasks fail promptly. Two attempts are
+allowed per shared job context, including failures. Ollama additionally retains
+its server-side single-request/single-model limits.
+
+Provider-reported local tokens enter the existing per-response job ledger before
+output validation, at zero API rates. Unknown usage remains explicitly incomplete.
+Local infrastructure/energy is not included in API spend. Transport failures
+without a usage response cannot produce a measured token count. Outputs are marked
+interpretation only, not independently verified. The parent decides whether review
+is justified. A paid parent orchestration call is still paid; this feature does
+not yet make arbitrary Auto chats fully local or guarantee a cost saving per task.
+
+`scripts/deploy/evaluate-local-workers.py` runs the actual worker core in a
+short-lived container on the inference-only network. It checks installed runtime
+and model digests, uses only synthetic English/German fixtures, captures accounting
+in memory without database writes, verifies the app container was unchanged, and
+unloads models/removes the evaluator afterwards. It requires an idle inference
+service and exact `VECTOR_LOCAL_WORKER_REV`. There is no Vector activation.
+`scripts/deploy/stage-local-workers.sh` separately validates the application build,
+unit tests, restored isolated PostgreSQL fixture and existing HTTP permissions,
+with the feature disabled and no real model calls. Both results are required
+before a source/image-pinned application release and persistent network/env
+activation. No production connection or provider row is added by this PR.
+
+Rollback after a future activation: disable `VECTOR_LOCAL_WORKERS`, remove only
+the added app/worker connections to the inference network and use the release's
+source/image rollback. Leave model storage intact. No schema migration or new
+package dependency is introduced by worker integration.
+
+
+### First integration test and corrective evaluation
+
+The owner ran exact revision 17c3e62: application staging passed, but Qwen failed
+both extraction fixtures (arrays instead of scalar/null; translated keys/string
+numbers). Hermes passed its fixture. Activation remains blocked. Fast generation
+alone is insufficient for selecting an extractor.
+
+Extraction now requires one to eight explicit `fields` entries with fixed names
+and integer/number/string/boolean types. Each permits null for absent evidence.
+The native Ollama `format` receives the resulting closed JSON schema, the prompt
+includes that schema, and Vector independently validates exact keys and types.
+No silent renaming, coercion or empty-array repair is allowed. Reported usage is
+still recorded before validation failures. This guarantees only structure; factual
+values still require the expanded real-model fixtures and source checks.
+Summary calls now require explicit fields too, as described below. The tool contract was not yet activated.
+
+The first production fingerprint comparison also reported a difference. Because
+that evaluator did not save its snapshots, the logs do not identify which field
+changed. Docker mount/alias ordering is now normalized, but a genuine previous
+change is not ruled out. New evaluations first require the confirmed live app
+image, save private before/after JSON snapshots and name every changed field.
+Offline tests verify reordered lists compare equal while actual image, container,
+restart, mount-permission and address changes remain detectable. No production
+repair or restart is attempted by evaluation.
+
+
+### Candidate comparison after the second model test
+
+The owner ran 370150d. Application staging passed and canonical fingerprints
+confirmed unchanged production. Qwen 0.6B passed four of five extraction fixtures,
+but returned zero for unmeasured deaths. Hermes invented service names and arrays
+in the summary fixture. Neither observed failure is accepted or changed to a pass.
+Both roles now require explicit nullable output fields. A prose summary can use
+`fields: [{name: "summary", type: "string"}]`; structured summaries use typed fields.
+The same local validator applies to both roles, with reported usage retained even
+when validation rejects the output.
+
+`scripts/deploy/compare-local-models.py` compares all three candidates against
+eight fixed synthetic tasks, retaining the previous six exact expected answers
+and adding unrecorded/explicit-zero regressions. The additional candidate is
+[official Qwen3 1.7B Q8_0](https://huggingface.co/Qwen/Qwen3-1.7B-GGUF), Apache-2.0,
+revision `90862c4b9d2787eaed51d12237eafdfe7c5f6077`, file size 1834426016 bytes,
+SHA-256 `061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a`.
+This is an evaluation candidate, not an assertion of better accuracy or speed.
+
+The comparison reuses the existing digest-pinned Ollama service, resource limits
+and live app image solely as a disposable Node runtime. It verifies the original
+model digests and import mount, imports the new artifact only under a separate
+model name, and records its model digest for safe repeat runs. No existing model
+is overwritten; mismatching import evidence fails explicitly. Model weights and
+imports remain stored for later evaluation/explicit removal. All weights are
+unloaded and the evaluator removed on completion. Private before/after app
+snapshots and the full comparison report are saved in its release directory.
+
+The comparison does not run a new application build or activate Vector. Candidate
+requests deliberately override the native payload's model ID inside this isolated
+harness; production worker model IDs remain fixed. Accounting records use each
+actual candidate ID and stay in memory without writing the Vector database.
+A candidate must pass every fixture to be listed as passing. This finite test
+suite still does not certify arbitrary task reliability. Model selection, final
+actual-worker tests and application staging/release follow the measured results.
+
+
+### Selected configuration awaiting final qualification
+
+The owner's d283467 comparison passed its guards and recorded all 24 native calls
+at zero API fees. Qwen3 1.7B Q8_0 and Hermes 8B Q4_K_M each passed eight of eight
+synthetic tasks. Qwen 0.6B passed six and is not selected for extraction.
+Measured median warm completion times across these short fixtures were about
+2.894 seconds for Qwen 1.7B and 8.993 seconds for Hermes; median generation rates
+were about 13.8 and 5.0 tokens/s respectively. These are corpus-specific smoke
+results, not latency/accuracy promises for arbitrary workloads.
+
+The proposed worker configuration now fixes `extract` to `vector-qwen3:1.7b-q8`
+and retains `summarize` as `vector-hermes3:8b-q4km`. The actual-worker evaluator
+checks the observed 1.7B model digest
+`97f1ed78571eac64f6b5b7413d9bc5f50fc95ab13ad4403cd813aebb9ba3a5b0`
+and uses the same eight expectations without a model override, including the
+scoped usage callback and result validation. Exact final-source application
+staging and this actual-worker qualification remain required before activation.
+
+`scripts/diagnostics/local-worker-wiring.py` reads the persistent Compose and
+container metadata to prepare the network/feature release. It prints only an
+allowlist of image/network names, YAML shape, local-worker flag state and Compose
+hash. Unexpected flag values are redacted; full YAML, resolved credentials and
+other environment values are never printed. The probe performs no configuration,
+network, image or process changes. Tests verify credential redaction and layout
+handling. Run it after final qualification so persistent activation can use the
+observed configuration and existing source/image backup/rollback workflow.

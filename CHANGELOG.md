@@ -6,7 +6,33 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
-### CPU inference pilot and tested accounting release preparation
+### Bounded local workers and evaluation (#28)
+
+- The owner's d283467 comparison completed with unchanged production, unloaded weights and all 24 native usage records. Qwen3 1.7B and Hermes each passed eight of eight synthetic cases; Qwen 0.6B passed six. Select the pinned 1.7B model for the proposed extraction role, retaining Hermes for structured summaries. These short fixtures do not certify general task accuracy.
+- Run the same eight fixtures through the actual scoped worker/accounting core for final qualification, verify the observed 1.7B Ollama manifest digest, and retain the comparison's original expected values without duplicated fixtures.
+- Add a read-only deployment shape probe for the subsequent persistent network/feature release. Report only allowlisted image/network/layout/flag metadata and the Compose hash; never print resolved credentials or full YAML. No production activation or configuration mutation.
+
+
+- The 370150d owner staging passed and its evaluator confirmed unchanged production, but model quality still blocked activation: Qwen passed four of five extractions and invented a zero for an unmeasured value; Hermes invented service names/array structures. Keep both failed cases and their original expected facts in the evaluation.
+- Apply the closed output-field schema to Hermes summaries as well as extraction; prose summaries use an explicit string field. Continue treating all results as unverified interpretation rather than equating schema validity with truth.
+- Add an isolated eight-fixture comparison across existing Qwen 0.6B, official checksum/revision-pinned Qwen3 1.7B Q8_0 and Hermes. Import the additional 1.83 GB artifact without changing existing models, preserve token telemetry, production snapshots and cleanup, and never auto-select or activate a candidate. Reuse installed runtime/app images without an application rebuild.
+- Add an offline comparison-harness regression proving the observed wrong-zero/array responses remain failures, all native token counts are retained and only a fully passing candidate is listed. Actual new-model quality and latency remain pending server evidence.
+
+
+- The owner's first application staging passed, while the subsequent real-model evaluation correctly blocked activation: Qwen returned wrong arrays/field names and Hermes passed its fixture. Retain these failures rather than calling the initial worker evaluation successful.
+- Require explicit nullable extraction field names/types, send a native JSON schema and validate every returned key/type locally before accepting interpretation. Shorten role prompts and expand real-model checks to zero, missing values and different English/German counts. Schemas constrain structure, not factual accuracy.
+- Canonicalize Docker mount/alias ordering in evaluator fingerprints, save private before/after snapshots, and report exactly which fields changed. Preserve detection of actual image, container, restart, mount-permission and network changes. The earlier unsaved difference cannot be retrospectively attributed to ordering alone.
+
+
+- Record the owner's successful isolated Hermes/Qwen CPU pilot and accounting release. Keep short-fixture timing distinct from general model quality or speed guarantees.
+- Add feature-gated server-scoped extraction/summarization workers with fixed models, explicit current-job evidence, no tools or independent memory/retrieval, two attempts per job and global nonblocking PostgreSQL admission.
+- Preserve the two-call worker budget across artifact provider failover, and explicitly set staged evaluator directory permissions so restrictive umasks do not block the evaluation container.
+- Bound UTF-8 input, context, output, request duration and response size; reject incomplete/non-JSON extraction and unsolicited tool calls. Never retry or automatically switch a worker to a paid provider.
+- Account for reported native Ollama tokens, including cache counts when present, through the existing per-response usage scope before result validation. Keep outputs visibly unverified and missing usage incomplete.
+- Add offline authorization, isolation, budgeting, scheduler cleanup, HTTP-bound and ledger tests, plus an isolated real-model evaluator and application staging wrapper pinned to the current live image. No production activation, schema changes or dependencies.
+
+
+### CPU inference pilot and tested accounting release preparation (#27)
 
 - Prepare an isolated Ollama 0.40.4 install pinned to its Linux/amd64 digest, plus checksum-verified publisher Hermes 3 8B Q4_K_M and Qwen3 0.6B Q8_0 model imports.
 - Bound CPU, RAM, concurrency, context, output and idle weight retention; publish no ports or host execution capabilities. Add synthetic cold/warm extraction measurements, local token telemetry, explicit unloading and a pilot-only rollback.
