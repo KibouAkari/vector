@@ -7,6 +7,7 @@ import { assertRequestedArtifactFormat, toolsForArtifactFormat } from '../lib/ar
 // Exercise the real runtime functions with local provider/host/renderer doubles.
 // No provider calls, databases, host sockets or file generation are needed.
 function loadRuntime(path, bindings, names) {
+  bindings={restoreLocalToolArguments:(_name,args)=>args,protectToolEvidence:async()=>null,...bindings};
   const source = readFileSync(new URL(path, import.meta.url), 'utf8')
     .replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm, '')
     .replace(/^export\s+/gm, '');
