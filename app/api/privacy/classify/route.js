@@ -1,7 +1,9 @@
 import crypto from "crypto";
+import {detectPrivateLocally,privacyReviewEnabled} from '../../../../lib/privacy-review';
+import {makePrivacyPlan} from '../../../../lib/privacy-review-core.mjs';
 
 import {
-  getSession
+  getSession,hasFeature
 } from "../../../../lib/auth";
 
 import {
@@ -34,10 +36,19 @@ export async function POST(request) {
   const body =
     await request.json();
 
-  const result =
-    classifyPrivacy(
-      body.text || ""
-    );
+  if (!hasFeature(session,'chat')) return Response.json({error:'Forbidden'},{status:403});
+  if (typeof body.text !== 'string' || body.text.length > 100000) {
+    return Response.json({error:'Text must be at most 100000 characters.'},{status:400});
+  }
+
+  let result;
+  if (privacyReviewEnabled()) {
+    try {
+      const plan = makePrivacyPlan(body.text,await detectPrivateLocally(body.text,{userId:session.userId}));
+      result={classification:plan.totalFindings?'confidential':'internal',findings:plan.findings,
+        totalFindings:plan.totalFindings,wasRedacted:plan.wasSanitized,originalLength:body.text.length,redacted:plan.sanitized};
+    } catch { return Response.json({error:'Local privacy scan unavailable'},{status:503,headers:{'Cache-Control':'no-store'}}); }
+  } else result=classifyPrivacy(body.text);
 
   await initializeDatabase();
 

@@ -6,6 +6,15 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
+### Local privacy review and explicit external-send consent (#30)
+
+- Add an opt-in `VECTOR_PRIVACY_REVIEW=1` path. A fixed private Qwen endpoint identifies exact sensitive spans locally, combined with deterministic credential/email rules. Preserve original wording around reversible, conversation-stable opaque placeholders and keep mappings in the existing encrypted vault. Include local detector tokens in the usage ledger at zero API rates, even when returned output is rejected.
+- Review the prompt, authorized history and locally retrieved text context before message writes/enqueue. Require encrypted, expiring, account/content/context-bound confirmation before either masking or explicitly sending detected values unchanged. Display a compact accessible dialog with findings, masked credentials, preview, cancellation and both choices. Retain drafts on cancellation and discard stale chat-switch UI updates.
+- Restore private values only for authorized local display and allowlisted local tools/renderers. Guard provider input centrally and examine subsequent tool evidence locally; new unapproved sensitive tool data blocks unchanged-send jobs. Never restore originals into web/sandbox tool arguments. Reject forged, expired or cross-account review tokens, incomplete detector responses and uninspectable-image masking; images require explicit unchanged-send permission.
+- Add a separate native local text-chat path with no cloud routing, search, tools or failover, including local-only projects. It skips privacy warnings and uses a bounded 6 KB context. Local workers under a cloud parent remain external jobs and require the same review. Keep existing behavior while the feature flag is off.
+- Add runtime, route/permission, reversal, fail-closed and local-only regressions, plus a six-fixture server qualification script using the actual detector with synthetic names and credentials. The evaluator checks model pins, captures native usage, releases the shared inference lock and unloads weights without changing production or writing database data. Real model quality, browser interaction and production activation remain pending their observed checks; detecting every possible identity or retaining identical task quality cannot be guaranteed.
+
+
 ### Persistent local-worker deployment (#29)
 
 - Owner activation ab2220c succeeded at 15:42 Europe/Zurich, confirming the persistent feature flag/private network, runtime/model pins, idle weights and healthy application. Harden saved rollback recovery for a positively confirmed missing app container; keep inspection errors and different images blocked. Require the inference runtime to use only its private network, and explicitly compare canonical mount lists. These maintenance-script improvements do not require a new app image or another activation.

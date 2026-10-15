@@ -89,6 +89,13 @@ jobs:
           bash -n scripts/deploy/stage-local-workers.sh
           node --test tests/local-workers.test.mjs
 
+      - name: Test explicit local privacy review and isolated execution
+        run: |
+          node --test tests/privacy-review.test.mjs tests/privacy-routes.test.mjs
+          python3 tests/privacy-evaluation.test.py
+          python3 -m py_compile scripts/deploy/evaluate-privacy-review.py
+          bash -n scripts/deploy/stage-privacy-review.sh
+
       - name: Test local JSON ranking aggregation and cost metadata
         run: |
           node --test tests/server-json-rankings.test.mjs

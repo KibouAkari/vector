@@ -1,3 +1,4 @@
+import {reviewPrivacyRequest} from '../../../lib/privacy-review';
 import crypto from "node:crypto";
 
 import {
@@ -225,13 +226,26 @@ export async function POST(
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const body =
+    await request.json();
+
+  const originalMessage =
+    String(
+      body.message || ""
+    ).trim();
+
+  const requestedMode =
+    String(
+      body.mode || "auto"
+    );
+
   const userBudget =
     await assertUserBudget(
       session
     );
 
   if (
-    !userBudget.allowed
+    !userBudget.allowed && requestedMode !== 'local'
   ) {
     return Response.json(
       {
@@ -246,19 +260,6 @@ export async function POST(
       }
     );
   }
-
-  const body =
-    await request.json();
-
-  const originalMessage =
-    String(
-      body.message || ""
-    ).trim();
-
-  const requestedMode =
-    String(
-      body.mode || "auto"
-    );
 
   let conversationId =
     body.conversationId
@@ -360,13 +361,25 @@ export async function POST(
           ].join("")
         : originalMessage;
 
-    const privacy =
-      sanitizeForExternal(
-        rawAgentMessage
-      );
-
-    const safeAgentMessage =
-      privacy.sanitized;
+    // Authorize before reading history or disclosing any privacy finding.
+    if (conversationId) {
+      const owned = await db.query(`SELECT id FROM conversations WHERE id=$1 AND user_id=$2 AND project_id IS NULL LIMIT 1`,
+        [conversationId, session.userId]);
+      if (!owned.rowCount) return Response.json({error:'Conversation not found'}, {status:404});
+    }
+    const priorHistory = conversationId ? (await db.query(`SELECT id,role,content FROM messages
+      WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT 24`,[conversationId])).rows.reverse() : [];
+    let privacy;
+    try {
+      privacy = await reviewPrivacyRequest({text:[rawAgentMessage,...priorHistory.map(m=>m.content)].join('\n\n'),
+        body,session,scope:'chat',conversationId,destination:requestedMode==='local'?'local':'cloud',
+        uninspectable:attachmentBundle.attachments.some(a=>String(a.mimeType).startsWith('image/'))});
+    } catch {
+      return Response.json({error:'PRIVACY_REVIEW_FAILED',message:'Die lokale Datenschutzprüfung konnte nicht abgeschlossen werden. Es wurde nichts extern versendet. Bitte erneut prüfen oder den lokalen Textmodus wählen.'},
+        {status:503,headers:{'Cache-Control':'no-store'}});
+    }
+    if (privacy.response) return privacy.response;
+    const safeAgentMessage = privacy.apply(rawAgentMessage);
 
     const markerIndex =
       safeAgentMessage.indexOf(
@@ -383,23 +396,16 @@ export async function POST(
             .trim()
         : safeAgentMessage;
 
-  const mode =
-    determineTaskMode({
-      message:
-        safeAgentMessage,
-      requestedMode
-    });
+  const mode = privacy.destination === 'local' ? 'local' : determineTaskMode({message:safeAgentMessage,requestedMode});
 
-  const useWebSearch =
-    shouldUseWebSearch({
+  const useWebSearch = privacy.destination !== 'local' && shouldUseWebSearch({
       message:
         safeAgentMessage,
       requestedMode:
         mode
     });
 
-  const model =
-    getModelForMode(mode);
+  const model = privacy.destination === 'local' ? 'vector-qwen3:1.7b-q8' : getModelForMode(mode);
 
   const maxOutputTokens =
     getMaximumOutputTokens(
@@ -476,9 +482,7 @@ export async function POST(
         0
     });
 
-  if (
-    !costDecision.allowed
-  ) {
+  if (privacy.destination !== 'local' && !costDecision.allowed) {
     return Response.json(
       {
         error:
@@ -580,7 +584,7 @@ export async function POST(
         session.userId,
       conversationId,
       message:
-        safeAgentMessage
+        safeAgentMessage + '\nprivacy:' + privacy.destination + ':' + (body.privacyDecision || 'replace')
     });
 
     const duplicate =
@@ -692,42 +696,9 @@ export async function POST(
       )
     );
 
-  const historyResult =
-    await db.query(
-      `
-        SELECT
-          id,
-          role,
-          content
-        FROM messages
-        WHERE conversation_id = $1
-        ORDER BY created_at DESC
-        LIMIT $2
-      `,
-      [
-        conversationId,
-        historyLimit
-      ]
-    );
-
-  const history =
-    historyResult.rows
-      .reverse()
-      .map(
-        (row) => ({
-          role:
-            row.role ===
-              "assistant"
-              ? "assistant"
-              : "user",
-
-          content:
-            row.id ===
-              userMessageId
-              ? safeAgentMessage
-              : row.content
-        })
-      );
+  // Use exactly the reviewed snapshot; never re-read unreviewed concurrent history.
+  const history = [...priorHistory.map(row=>({role:row.role==='assistant'?'assistant':'user',
+    content:privacy.apply(row.content)})),{role:'user',content:safeAgentMessage}];
 
   const jobId =
     await enqueueAgentJob({
@@ -739,6 +710,8 @@ export async function POST(
       requestHash,
 
       payload: {
+        privacyPolicy:privacy.policy,
+        privacyDestination:privacy.destination,
         userId:
           session.userId,
 

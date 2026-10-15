@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {usePrivacySend} from '../../components/ui/privacy-review-dialog';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ArrowUp, Check, Copy, Menu, Plus, RefreshCw, Search, Square, Trash2, X, Sparkles, Paperclip, Code2, CheckCheck, PanelLeft, FileText, LoaderCircle, MessageSquareText } from "lucide-react";
@@ -11,7 +12,8 @@ const MODE_OPTIONS = [
   { value: "quick", label: "Low" },
   { value: "normal", label: "Normal" },
   { value: "deep", label: "High" },
-  { value: "research", label: "Search" }
+  { value: "research", label: "Search" },
+  { value: "local", label: "Lokal" }
 ];
 
 function formatMoney(value) {
@@ -215,6 +217,7 @@ export default function ChatClient({
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("normal");
   const [activeJob, setActiveJob] = useState(null);
+  const {privacySend,privacyDialog} = usePrivacySend(`${userId}:${conversationId || "new"}`);
 
 
   /*
@@ -1151,6 +1154,8 @@ export default function ChatClient({
     sendInFlightRef.current =
       true;
 
+    const sendVersion=conversationLoadRef.current;
+
     setSubmitting(true);
 
     const tempId =
@@ -1188,42 +1193,17 @@ export default function ChatClient({
     );
 
     try {
-      const response =
-        await fetch(
-          "/api/chat",
-          {
-            method:
-              "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
-
-            body:
-              JSON.stringify({
-                message:
-                  text,
-
-                conversationId:
-                  conversationIdRef.current ||
-                  conversationId,
-
-                mode,
-
-                attachmentIds:
-                  attachmentSnapshot.map(
-                    (attachment) =>
-                      attachment.id
-                  )
-              })
-          }
-        );
+      const response = await privacySend('/api/chat',{
+        message:text,conversationId:conversationIdRef.current || conversationId,mode,
+        attachmentIds:attachmentSnapshot.map(attachment=>attachment.id)
+      });
 
       const data =
         await response.json();
 
+      if (sendVersion!==conversationLoadRef.current) return;
       if (!response.ok) {
+        setInput(text);
         setMessages(
           (current) =>
             current.filter(
@@ -1233,6 +1213,7 @@ export default function ChatClient({
             )
         );
 
+        if (data.privacyCancelled) return;
         setError(
           data.message ||
           data.reason ||
@@ -1509,6 +1490,7 @@ export default function ChatClient({
 
   return (
     <div className={`vector-chat-shell v54-chat-shell ${historyCollapsed ? "vx586-history-collapsed" : ""}`}>
+      {privacyDialog}
       {historyOpen && (
         <button
           type="button"
