@@ -6,6 +6,14 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
+### Chat: finish documents after bounded tool investigation (#24)
+
+- Render explicitly requested PDF/DOCX files after the final no-tools provider turn when the tool investigation reaches its configured limit.
+- Preserve the existing renderer, completeness checks, format enforcement, usage accounting and bounded provider-call count.
+- Propagate existing artifact state without duplicate rendering; reject empty document content and renderer failures instead of returning text-only success.
+- Add regression coverage that reproduces the missing artifact before the fix and verifies PDF/DOCX generation, failures and reuse after the tool-round limit.
+- No production deployment, provider calls or schema changes performed during development.
+
 ### Server: container resource control center (#23)
 
 - Add separate top-five CPU and absolute-memory rankings plus a searchable, sortable container resource table.
@@ -207,5 +215,6 @@ Production deployments are tracked separately.
 
 - Add the sanitized application snapshot, Docker build, initial README, vision and contribution guidance.
 - Establish the initial application, API routes, libraries, database migrations and asset structure.
+
 
 
