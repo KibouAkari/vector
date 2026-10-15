@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Activity, ArrowUpRight, Boxes, CheckCircle2, ChevronDown,
-  Clock3, Cpu, HardDrive, ListTree, MemoryStick, Network,
-  RefreshCw, Server, Terminal, WifiOff
+  Activity, Boxes, ChevronDown, Clock3, Cpu, HardDrive,
+  MemoryStick, Network, RefreshCw, Terminal, WifiOff
 } from "lucide-react";
+
+import {
+  resourceBytes, resourcePercent, sortedContainers, topContainers
+} from "../../lib/server-resources.mjs";
 
 function lines(text) {
   return String(text || "").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
@@ -55,6 +58,55 @@ function Metric({ icon: Icon, label, value, detail }) {
   </article>;
 }
 
+function ResourceRanking({containers, metric}) {
+  const cpu = metric === 'cpu';
+  const ranked = topContainers(containers, metric);
+  const field = cpu ? 'cpuPercent' : 'memoryBytes';
+  const maximum = ranked[0]?.[field] || 0;
+  const Icon = cpu ? Cpu : MemoryStick;
+  return <section className="vsc-ranking" aria-label={`Top five containers by ${cpu ? 'CPU' : 'memory'}`}>
+    <h2><Icon size={17} aria-hidden="true"/> Top 5 by {cpu ? 'CPU' : 'memory'}</h2>
+    <p>{cpu ? 'Current CPU use. Values can exceed 100% across multiple cores.' : 'Current memory use in bytes, independent of container memory limits.'}</p>
+    {ranked.length ? <ol className="vsc-rank-list">{ranked.map(row => <li key={row.id}>
+      <div><strong title={row.name}>{row.name}</strong><span>{cpu ? resourcePercent(row.cpuPercent) : resourceBytes(row.memoryBytes)}</span></div>
+      <div className="vsc-rank-track" aria-hidden="true"><span style={{width:`${maximum > 0 ? row[field] / maximum * 100 : 0}%`}}/></div>
+    </li>)}</ol> : <p className="vsc-unavailable">No measurements available for this ranking.</p>}
+  </section>;
+}
+
+function ContainerResources({resources, stale}) {
+  const [sort, setSort] = useState('memory');
+  const [query, setQuery] = useState('');
+  const containers = resources?.available ? resources.containers : [];
+  const rows = sortedContainers(containers, sort, query);
+  return <>
+    <div className="vsc-rankings">
+      <ResourceRanking containers={containers} metric="cpu"/>
+      <ResourceRanking containers={containers} metric="memory"/>
+    </div>
+    <section className="vsc-containers" aria-label="Container resource overview">
+      <div className="vsc-containers-header"><div><h2><Boxes size={17} aria-hidden="true"/> Container resources</h2>
+        <p>{stale ? 'Last successful snapshot' : 'One-shot sample'} · Docker containers only. Host services are listed separately below.</p>
+      </div><span className="vsc-refresh-mode">Refreshes every 30 seconds while visible</span></div>
+      {!resources?.available ? <p className="vsc-unavailable">Container resource sampling is unavailable. Host information remains available below. Try refreshing.</p> : <>
+        <div className="vsc-filters">
+          <input type="search" aria-label="Find container" placeholder="Find a container…" value={query} onChange={event => setQuery(event.target.value)}/>
+          <label>Sort by<select value={sort} onChange={event => setSort(event.target.value)}><option value="memory">Memory usage</option><option value="cpu">CPU usage</option><option value="name">Name</option></select></label>
+        </div>
+        <div className="vsc-table-scroll"><table className="vsc-table">
+          <caption className="sr-only">Current Docker container resource measurements</caption>
+          <thead><tr><th scope="col">Container</th><th scope="col">CPU</th><th scope="col">Memory</th><th scope="col">Reported memory limit</th><th scope="col">PIDs</th><th scope="col">Network I/O</th><th scope="col">Block I/O</th></tr></thead>
+          <tbody>{rows.map(row => <tr key={row.id}>
+            <td>{row.name}</td><td>{resourcePercent(row.cpuPercent)}</td><td>{resourceBytes(row.memoryBytes)}</td><td>{resourceBytes(row.memoryLimitBytes)}</td><td>{row.pids ?? 'Unavailable'}</td><td>{row.networkIO ?? 'Unavailable'}</td><td>{row.blockIO ?? 'Unavailable'}</td>
+          </tr>)}</tbody>
+        </table></div>
+        {!rows.length && <p className="vsc-unavailable">{query ? 'No matching containers.' : 'No running containers in this sample.'}</p>}
+        <p className="vsc-note">Bars compare containers with the largest measured value in each ranking. Network and block I/O are cumulative counters reported by Docker, not transfer rates. A reported memory limit may reflect host capacity when no dedicated container limit is set.</p>
+      </>}
+    </section>
+  </>;
+}
+
 export default function ServerClient() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -69,7 +121,9 @@ export default function ServerClient() {
     inFlight.current = true;
     if (isManual && active.current) setRefreshing(true);
     try {
-      const response = await fetch("/api/server/snapshot", { cache: "no-store" });
+      const response = await fetch("/api/server/snapshot", {
+        cache: "no-store", signal: AbortSignal.timeout(20000)
+      });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Server context unavailable");
       if (active.current) {
@@ -88,20 +142,22 @@ export default function ServerClient() {
   useEffect(() => {
     active.current = true;
     void load();
-    const timer = window.setInterval(() => void load(), 15000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void load();
+    }, 30000);
     return () => { active.current = false; window.clearInterval(timer); };
   }, []);
 
   const memory = memorySummary(data?.memory);
   const disks = storageRows(data?.disk);
   const containers = dockerRows(data?.docker);
-  const ports = lines(data?.listeningPorts);
+  const ports = lines(data?.listeningPorts ?? data?.ports);
   const services = lines(data?.services);
   const hasSnapshot = Boolean(data);
 
   return <div className="vx586-server">
     <header className="simple-page-head vx586-server-head">
-      <div><h1>Server</h1><p>Read-only infrastructure snapshot from your connected Hetzner host.</p></div>
+      <div><h1>Server Control Center</h1><p>Host status, resource usage and the services running on your server.</p></div>
       <button type="button" className="vx586-refresh" onClick={() => void load(true)} disabled={refreshing}>
         <RefreshCw size={16} className={refreshing ? "vx586-spin" : ""} aria-hidden="true" /> Refresh
       </button>
@@ -114,7 +170,7 @@ export default function ServerClient() {
     {loading && !hasSnapshot ? <div className="vx586-server-loading" role="status"><RefreshCw size={19} className="vx586-spin" /> Loading server information…</div>
     : !hasSnapshot ? <div className="vx586-server-empty"><WifiOff size={23} /><strong>No server snapshot available</strong><p>Check the host agent or try refreshing.</p></div>
     : <>
-      <div className="vx586-server-status"><span className="vx586-server-status-dot" />
+      <div className="vx586-server-status" data-stale={Boolean(error)}><span className="vx586-server-status-dot" />
         <strong>{error ? "Last snapshot" : "Connected"}</strong>
         <span>Read only · Host changes require approval</span>
         {updatedAt && <time dateTime={updatedAt.toISOString()}>Updated {updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</time>}
@@ -124,8 +180,15 @@ export default function ServerClient() {
         <Metric icon={Clock3} label="Uptime" value={String(data.uptime || "").replace(/^up\s*/i, "") || "Unknown"} detail="Host availability" />
         <Metric icon={MemoryStick} label="Memory" value={memory?.used || "See details"} detail={memory ? `of ${memory.total} total` : "Resource usage"} />
         <Metric icon={HardDrive} label="Volumes" value={String(disks.length || "—")} detail="Mounted disks reported" />
-        <Metric icon={Boxes} label="Containers" value={containers.length ? String(containers.length) : "—"} detail="Rows in Docker snapshot" />
+        <Metric icon={Boxes} label="Containers" value={data.containerResources?.available ? String(data.containerResources.runningCount) : containers.length ? String(containers.length) : "—"} detail={data.containerResources?.available ? "Running in resource sample" : "Rows in Docker snapshot"} />
       </div>
+
+      <div className="vsc-context">
+        <p><strong>Last reboot</strong> · Exact timestamp is not reported by the host agent.</p>
+        <p><strong>Recent activity</strong> · This snapshot does not include event logs.</p>
+      </div>
+
+      <ContainerResources resources={data.containerResources} stale={Boolean(error)}/>
 
       <div className="vx586-server-panels">
         <DetailPanel icon={MemoryStick} title="Memory" description="Host memory allocation" raw={data.memory}>
@@ -151,7 +214,7 @@ export default function ServerClient() {
             : <p className="vx586-empty-inline">No service details reported.</p>}
           {services.length > 7 && <small className="vx586-more">+{services.length - 7} more in raw output</small>}
         </DetailPanel>
-        <DetailPanel icon={Network} title="Listening ports" description="Open listeners in the snapshot" raw={data.listeningPorts}>
+        <DetailPanel icon={Network} title="Listening ports" description="Open listeners in the snapshot" raw={data.listeningPorts ?? data.ports}>
           {ports.length && !/^No data$/i.test(ports[0]) ? <div className="vx586-terminal-list">{ports.slice(0, 8).map((line, i) => <div key={i}><span className="vx586-line-dot" /><code title={line}>{line}</code></div>)}</div>
             : <p className="vx586-empty-inline">No port information was returned.</p>}
         </DetailPanel>
@@ -159,3 +222,4 @@ export default function ServerClient() {
     </>}
   </div>;
 }
+
