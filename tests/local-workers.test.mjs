@@ -15,7 +15,7 @@ function load(path, bindings, names) {
 
 test('roles select fixed models and send no tools or cross-user memory',()=>{
   const payload=localWorkerPayload({...args,model:'cloud',tools:['shell'],userId:'other-user'});
-  assert.equal(payload.model,'vector-qwen3:0.6b-q8');
+  assert.equal(payload.model,'vector-qwen3:1.7b-q8');
   assert.equal(payload.tools,undefined);
   assert.equal(payload.options.num_thread,2);
   assert.equal(payload.options.num_ctx,4096);

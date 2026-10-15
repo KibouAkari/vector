@@ -239,3 +239,31 @@ actual candidate ID and stay in memory without writing the Vector database.
 A candidate must pass every fixture to be listed as passing. This finite test
 suite still does not certify arbitrary task reliability. Model selection, final
 actual-worker tests and application staging/release follow the measured results.
+
+
+### Selected configuration awaiting final qualification
+
+The owner's d283467 comparison passed its guards and recorded all 24 native calls
+at zero API fees. Qwen3 1.7B Q8_0 and Hermes 8B Q4_K_M each passed eight of eight
+synthetic tasks. Qwen 0.6B passed six and is not selected for extraction.
+Measured median warm completion times across these short fixtures were about
+2.894 seconds for Qwen 1.7B and 8.993 seconds for Hermes; median generation rates
+were about 13.8 and 5.0 tokens/s respectively. These are corpus-specific smoke
+results, not latency/accuracy promises for arbitrary workloads.
+
+The proposed worker configuration now fixes `extract` to `vector-qwen3:1.7b-q8`
+and retains `summarize` as `vector-hermes3:8b-q4km`. The actual-worker evaluator
+checks the observed 1.7B model digest
+`97f1ed78571eac64f6b5b7413d9bc5f50fc95ab13ad4403cd813aebb9ba3a5b0`
+and uses the same eight expectations without a model override, including the
+scoped usage callback and result validation. Exact final-source application
+staging and this actual-worker qualification remain required before activation.
+
+`scripts/diagnostics/local-worker-wiring.py` reads the persistent Compose and
+container metadata to prepare the network/feature release. It prints only an
+allowlist of image/network names, YAML shape, local-worker flag state and Compose
+hash. Unexpected flag values are redacted; full YAML, resolved credentials and
+other environment values are never printed. The probe performs no configuration,
+network, image or process changes. Tests verify credential redaction and layout
+handling. Run it after final qualification so persistent activation can use the
+observed configuration and existing source/image backup/rollback workflow.

@@ -16,6 +16,7 @@ ROOT = Path('/root/vector-workspace/releases')
 SERVICE = 'vector-local-inference'
 IMAGE = 'ollama/ollama@sha256:7434bb6d6a423b8c4060c4cf0bfa1b49a6540d080d6a3c98acc2cbe36a786158'
 MODELS = {
+    'vector-qwen3:1.7b-q8': '97f1ed78571eac64f6b5b7413d9bc5f50fc95ab13ad4403cd813aebb9ba3a5b0',
     'vector-hermes3:8b-q4km': 'ddd98889feddbec419ccb27c2839214c100ce4ebae74f16b12fe17f5c6572a20',
     'vector-qwen3:0.6b-q8': '4a1154fa3f6bd4afad6cfce6e0e15094204d48f5053646a8e0d815c6c49d224a',
 }
@@ -39,7 +40,11 @@ const fixtures=[
   {role:'extract',task:'Return the measured memory and temperature, or null if not supplied.',
    evidence:'This note contains no resource measurements.',fields:[{name:'memory_mb',type:'number'},{name:'temperature',type:'number'}],expected:{memory_mb:null,temperature:null}},
   {role:'summarize',fields:[{name:'dienste',type:'integer'},{name:'status',type:'string'}],task:'Fasse die Angaben ausschliesslich als JSON mit den Schluesseln dienste und status zusammen. status soll den Wert unbekannt haben, wenn keine Messung vorhanden ist.',
-   evidence:'3 Dienste sind vorhanden. Ihr Status wurde nicht gemessen.',expected:{dienste:3,status:'unbekannt'}}
+   evidence:'3 Dienste sind vorhanden. Ihr Status wurde nicht gemessen.',expected:{dienste:3,status:'unbekannt'}},
+  {role:'extract',task:'Return exactly players and deaths. Missing values must be null.',
+   evidence:'There are 14 players. Deaths were not recorded.',fields:[{name:'players',type:'integer'},{name:'deaths',type:'integer'}],expected:{players:14,deaths:null}},
+  {role:'extract',task:'Return exactly players and deaths.',
+   evidence:'Players: 5. Deaths recorded as 0.',fields:[{name:'players',type:'integer'},{name:'deaths',type:'integer'}],expected:{players:5,deaths:0}}
 ];
 await withProviderUsageScope(async(runtime,response)=>{
   const event=providerUsageEvent({runtime,response,userId:'synthetic-evaluation',jobId:'synthetic-evaluation',exchangeRate:1});

@@ -8,6 +8,11 @@ Production deployments are tracked separately.
 
 ### Bounded local workers and evaluation (#28)
 
+- The owner's d283467 comparison completed with unchanged production, unloaded weights and all 24 native usage records. Qwen3 1.7B and Hermes each passed eight of eight synthetic cases; Qwen 0.6B passed six. Select the pinned 1.7B model for the proposed extraction role, retaining Hermes for structured summaries. These short fixtures do not certify general task accuracy.
+- Run the same eight fixtures through the actual scoped worker/accounting core for final qualification, verify the observed 1.7B Ollama manifest digest, and retain the comparison's original expected values without duplicated fixtures.
+- Add a read-only deployment shape probe for the subsequent persistent network/feature release. Report only allowlisted image/network/layout/flag metadata and the Compose hash; never print resolved credentials or full YAML. No production activation or configuration mutation.
+
+
 - The 370150d owner staging passed and its evaluator confirmed unchanged production, but model quality still blocked activation: Qwen passed four of five extractions and invented a zero for an unmeasured value; Hermes invented service names/array structures. Keep both failed cases and their original expected facts in the evaluation.
 - Apply the closed output-field schema to Hermes summaries as well as extraction; prose summaries use an explicit string field. Continue treating all results as unverified interpretation rather than equating schema validity with truth.
 - Add an isolated eight-fixture comparison across existing Qwen 0.6B, official checksum/revision-pinned Qwen3 1.7B Q8_0 and Hermes. Import the additional 1.83 GB artifact without changing existing models, preserve token telemetry, production snapshots and cleanup, and never auto-select or activate a candidate. Reuse installed runtime/app images without an application rebuild.

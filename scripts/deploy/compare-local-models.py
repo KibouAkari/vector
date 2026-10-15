@@ -24,12 +24,6 @@ import {providerUsageEvent} from './lib/provider-call-usage.mjs';
 import {normalizedOpenAiUsage} from './lib/provider-usage-normalization.mjs';
 import crypto from 'node:crypto';
 __FIXTURES__
-fixtures.push(
-  {role:'extract',task:'Return exactly players and deaths. Missing values must be null.',
-   evidence:'There are 14 players. Deaths were not recorded.',fields:[{name:'players',type:'integer'},{name:'deaths',type:'integer'}],expected:{players:14,deaths:null}},
-  {role:'extract',task:'Return exactly players and deaths.',
-   evidence:'Players: 5. Deaths recorded as 0.',fields:[{name:'players',type:'integer'},{name:'deaths',type:'integer'}],expected:{players:5,deaths:0}}
-);
 const results=[],events=[];
 for(const model of __MODELS__){
   console.error('Compare candidate:',model);
