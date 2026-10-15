@@ -10,6 +10,7 @@ Production deployments are tracked separately.
 
 - Record the owner's successful isolated Hermes/Qwen CPU pilot and accounting release. Keep short-fixture timing distinct from general model quality or speed guarantees.
 - Add feature-gated server-scoped extraction/summarization workers with fixed models, explicit current-job evidence, no tools or independent memory/retrieval, two attempts per job and global nonblocking PostgreSQL admission.
+- Preserve the two-call worker budget across artifact provider failover, and explicitly set staged evaluator directory permissions so restrictive umasks do not block the evaluation container.
 - Bound UTF-8 input, context, output, request duration and response size; reject incomplete/non-JSON extraction and unsolicited tool calls. Never retry or automatically switch a worker to a paid provider.
 - Account for reported native Ollama tokens, including cache counts when present, through the existing per-response usage scope before result validation. Keep outputs visibly unverified and missing usage incomplete.
 - Add offline authorization, isolation, budgeting, scheduler cleanup, HTTP-bound and ledger tests, plus an isolated real-model evaluator and application staging wrapper pinned to the current live image. No production activation, schema changes or dependencies.
