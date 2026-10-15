@@ -6,6 +6,15 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
+### CPU inference pilot and tested accounting release preparation
+
+- Prepare an isolated Ollama 0.40.4 install pinned to its Linux/amd64 digest, plus checksum-verified publisher Hermes 3 8B Q4_K_M and Qwen3 0.6B Q8_0 model imports.
+- Bound CPU, RAM, concurrency, context, output and idle weight retention; publish no ports or host execution capabilities. Add synthetic cold/warm extraction measurements, local token telemetry, explicit unloading and a pilot-only rollback.
+- Document measured CPU constraints, model licenses and the remaining integration/evaluation gates for user-scoped local worker roles. No installed-model speed, task reliability or Vector activation is claimed.
+- Prepare the accounting release wrapper pinned to the user-observed passing 5e3f304 staging image and identical merged a7af796 source tree. No production deployment is performed by CI.
+- Four offline pilot tests cover artifact integrity, isolation limits, extraction failure and proxy isolation. CI also parses both deployment scripts; no paid requests or model downloads in CI.
+
+
 ### Runtime and accounting: local rankings and per-response usage (#26)
 
 - Persist provider-reported usage per response for background jobs before subsequent renderer/workflow failures; retain usage from planning, review, repair and prior provider attempts. Deduplicate stored events by provider configuration, account and response ID instead of adding a second job aggregate charge.
