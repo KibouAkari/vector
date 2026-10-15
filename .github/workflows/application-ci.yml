@@ -75,6 +75,7 @@ jobs:
       - name: Test local JSON ranking aggregation and cost metadata
         run: |
           node --test tests/server-json-rankings.test.mjs
+          node --test tests/provider-call-usage.test.mjs
           bash -n scripts/deploy/stage-json-rankings.sh
 
       - name: Test PDF ranking rendering and provider completion metadata

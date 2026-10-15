@@ -33,16 +33,7 @@ async function query(
   sql,
   params = []
 ) {
-  try {
-    return (
-      await db.query(
-        sql,
-        params
-      )
-    ).rows;
-  } catch {
-    return [];
-  }
+  return (await db.query(sql, params)).rows;
 }
 
 
@@ -77,6 +68,10 @@ export default async function Home() {
         SELECT
           COUNT(*)::int
             AS requests,
+
+          COUNT(*) FILTER (WHERE metadata->>'kind' = 'provider-call')::int AS provider_calls,
+          COUNT(*) FILTER (WHERE metadata->>'kind' IS DISTINCT FROM 'provider-call')::int AS legacy_entries,
+          COUNT(*) FILTER (WHERE metadata->>'costStatus' = 'incomplete')::int AS incomplete_calls,
 
           COALESCE(
             SUM(input_tokens),
@@ -116,8 +111,8 @@ export default async function Home() {
         FROM usage_events
 
         WHERE
-          created_at >
-          NOW() - INTERVAL '30 days'
+          created_at >=
+          ((NOW() AT TIME ZONE 'UTC')::date - INTERVAL '29 days') AT TIME ZONE 'UTC'
           AND ($1::boolean OR user_id = $2)
       `),
 
@@ -177,8 +172,8 @@ export default async function Home() {
         FROM usage_events
 
         WHERE
-          created_at >
-          NOW() - INTERVAL '30 days'
+          created_at >=
+          ((NOW() AT TIME ZONE 'UTC')::date - INTERVAL '29 days') AT TIME ZONE 'UTC'
           AND ($1::boolean OR user_id = $2)
 
         GROUP BY
@@ -195,10 +190,10 @@ export default async function Home() {
         WITH days AS (
           SELECT
             generate_series(
-              CURRENT_DATE
+              (NOW() AT TIME ZONE 'UTC')::date
                 - INTERVAL '29 days',
 
-              CURRENT_DATE,
+              (NOW() AT TIME ZONE 'UTC')::date,
 
               INTERVAL '1 day'
             )::date
@@ -259,12 +254,11 @@ export default async function Home() {
 
           ON
             usage.created_at >=
-              days.day
+              days.day::timestamp AT TIME ZONE 'UTC'
 
             AND
             usage.created_at <
-              days.day
-              + INTERVAL '1 day'
+              (days.day + INTERVAL '1 day') AT TIME ZONE 'UTC'
             AND ($1::boolean OR usage.user_id = $2)
 
         GROUP BY
@@ -340,6 +334,9 @@ export default async function Home() {
             displayName
           }
           totals={{
+            providerCalls: Number(total.provider_calls || 0),
+            legacyEntries: Number(total.legacy_entries || 0),
+            incompleteCalls: Number(total.incomplete_calls || 0),
             requests:
               Number(
                 total.requests ||
@@ -532,3 +529,4 @@ export default async function Home() {
     </div>
   );
 }
+

@@ -48,12 +48,15 @@ def main():
 
     def prepare():
         stage = original_prepare()
-        stage['FILES'] += ('lib/server-json-rankings.mjs', 'lib/background-executor.js')
+        stage['FILES'] += ('lib/server-json-rankings.mjs', 'lib/background-executor.js',
+            'lib/provider-call-usage.mjs', 'lib/provider-runtime.js', 'lib/provider-usage-normalization.mjs',
+            'lib/workflow-runtime.js', 'lib/db.js', 'lib/usage.js', 'lib/usage-store.mjs',
+            'app/page.js', 'components/dashboard-client.js')
         original_command = stage['command']
 
         def command(*args, **kwargs):
             if '--test' in args and 'tests/project-file-view.test.mjs' in args:
-                args = (*args, 'tests/server-json-rankings.test.mjs')
+                args = (*args, 'tests/server-json-rankings.test.mjs', 'tests/provider-call-usage.test.mjs')
             return original_command(*args, **kwargs)
 
         stage['command'] = command

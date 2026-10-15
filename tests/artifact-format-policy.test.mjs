@@ -252,6 +252,17 @@ test('bounded continuation never persists a document that remains truncated or r
   await assert.rejects(empty.run(),/no document continuation/);
   assert.equal(empty.calls.render.length,0);
 });
+
+test('limit finalization recovers a reasoning-only final response once before rendering',async()=>{
+  const fixture=limitFixture({finalText:'',finalStatus:'incomplete',
+    continuations:[{text:'# Fixture\n\nComplete recovered document.',status:'completed'}]});
+  const result=await fixture.run();
+  assert.equal(fixture.calls.provider.length,3);
+  assert.equal(fixture.calls.render.length,1);
+  assert.deepEqual(result.providerCalls.map(call=>call.phase),['agent-turn','limit-finalization','limit-empty-recovery']);
+  assert.equal(result.inputTokens,30);
+  assert.equal(result.outputTokens,30);
+});
 test('normal no-tool and empty-response recovery paths also complete partial documents',async()=>{
   for(const emptyFirst of [false,true]){
     const {calls,tools}=runtimeFixture();
