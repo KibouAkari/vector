@@ -100,6 +100,38 @@ class ActivationTests(unittest.TestCase):
                 self.assertEqual(ups, [1])
                 self.assertEqual(idles, [1])
                 self.assertEqual(json.loads(record_path.read_text())['status'], 'rolled-back')
+                # A recreate failure may leave no app container. Inventory must
+                # confirm absence, then rollback must still restore/recreate it.
+                live.write_bytes(candidate)
+                def missing(name):
+                    if len(ups) == 1:
+                        raise RuntimeError('inspection failed')
+                    return app
+                h['obj'] = missing
+                h['run'] = lambda *args: b''
+                m.rollback(h, record_path, manual=True)
+                self.assertEqual(live.read_bytes(), original)
+                self.assertEqual(ups, [1, 1])
+
+    def test_inspection_failure_requires_confirmed_absence(self):
+        def failed(*args): raise RuntimeError('inspection failed')
+        for inventory in (lambda *args: b'present-id\n', failed):
+            with self.subTest(inventory=inventory):
+                with self.assertRaises(RuntimeError):
+                    m.app_image_or_missing({'obj': failed, 'run': inventory})
+
+    def test_inference_rejects_any_additional_network(self):
+        m.private_inference_only({'NetworkSettings': {'Networks': {m.NETWORK: {}}}})
+        for networks in ({}, {'other': {}}, {m.NETWORK: {}, 'other': {}}):
+            with self.subTest(networks=networks):
+                with self.assertRaises(RuntimeError):
+                    m.private_inference_only({'NetworkSettings': {'Networks': networks}})
+
+    def test_mount_order_is_irrelevant_but_permissions_and_sources_matter(self):
+        left = [{'Source': '/a', 'RW': False}, {'Source': '/b', 'RW': True}]
+        self.assertTrue(m.mounts_equal(left, list(reversed(left))))
+        self.assertFalse(m.mounts_equal(left, [{'Source': '/a', 'RW': True}, left[1]]))
+        self.assertFalse(m.mounts_equal(left, [{'Source': '/c', 'RW': False}, left[1]]))
 
     def test_empty_external_ipam_is_equivalent_without_mutating_input(self):
         expected = {'networks': {m.NETWORK: {'name': m.NETWORK, 'external': True}}}

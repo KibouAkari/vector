@@ -120,6 +120,29 @@ def activation_config(value):
     return value
 
 
+def app_image_or_missing(h):
+    try:
+        return h['obj']('vector-app')['Image']
+    except RuntimeError:
+        # Inspection failure alone is not evidence of absence. A successful
+        # exact-name inventory must independently confirm no container exists.
+        existing = h['run']('docker', 'container', 'ls', '--all', '--no-trunc',
+                            '--filter', 'name=^/vector-app$', '--format', '{{.ID}}')
+        if existing.strip():
+            raise RuntimeError('Application inspection failed for an existing container.')
+        return None
+
+
+def private_inference_only(inference):
+    if set(inference['NetworkSettings']['Networks']) != {NETWORK}:
+        raise RuntimeError('Inference runtime has unexpected network attachments.')
+
+
+def mounts_equal(left, right):
+    return sorted(left, key=lambda item: json.dumps(item, sort_keys=True)) == sorted(
+        right, key=lambda item: json.dumps(item, sort_keys=True))
+
+
 def rollback(h, record_path, manual=False):
     record = json.loads(record_path.read_text())
     if record.get('commit') != MERGED or record.get('image_id') != IMAGE:
@@ -130,7 +153,7 @@ def rollback(h, record_path, manual=False):
         raise RuntimeError('Activation backup changed.')
     if COMPOSE.is_symlink() or COMPOSE.read_bytes() not in (original, candidate):
         raise RuntimeError('Compose changed; refusing rollback overwrite.')
-    if h['obj']('vector-app')['Image'] != IMAGE:
+    if app_image_or_missing(h) not in (None, IMAGE):
         raise RuntimeError('Another application release is running.')
     if manual:
         h['idle']()
@@ -175,6 +198,7 @@ def main():
         if h['obj']('vector-app')['Image'] != IMAGE or not h['healthy'](IMAGE, attempts=1):
             raise RuntimeError('Qualified app image is not healthy.')
         inference = h['obj'](NETWORK)
+        private_inference_only(inference)
         if inference['Image'] != INFERENCE_IMAGE or not inference['State']['Running'] or inference['HostConfig'].get('PortBindings'):
             raise RuntimeError('Private inference runtime differs.')
         network = json.loads(h['run']('docker', 'network', 'inspect', NETWORK))[0]
@@ -223,7 +247,7 @@ def main():
             app = h['obj']('vector-app')
             if (set(app['NetworkSettings']['Networks']) != {'vector-internal', NETWORK}
                     or 'VECTOR_LOCAL_WORKERS=1' not in app['Config']['Env']
-                    or app['Mounts'] != before['Mounts']
+                    or not mounts_equal(app['Mounts'], before['Mounts'])
                     or activation_config(h['config'](COMPOSE)) != expected):
                 raise RuntimeError('Persistent activation verification failed.')
             # Read native metadata from the actual app network; no inference, cloud or DB write.
