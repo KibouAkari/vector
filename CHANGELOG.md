@@ -6,6 +6,17 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
+### Server: container resource control center
+
+- Add separate top-five CPU and absolute-memory rankings plus a searchable, sortable container resource table.
+- Fetch the existing host agent's one-shot Docker statistics only after the existing server permission check; keep host information available if resource sampling fails.
+- Normalize the host agent's `ports` field for the existing server UI and preserve the original snapshot fields.
+- Distinguish missing measurements from zero, retain CPU values above 100%, and explain cumulative I/O counters and host-sized memory limits.
+- Refresh visible pages every 30 seconds, mark retained snapshots stale on failure, and explicitly report that exact reboot time and event logs are not supplied.
+- Add offline tests for actual endpoint authorization, partial failures, measurement normalization and ranking behavior.
+- No host actions, new host agent capabilities, database migrations, provider calls or production deployment.
+
+
 ### Chat: preserve explicitly requested document formats (#22)
 
 - Exclude the XLSX-only server dataset exporter from PDF and DOCX requests.

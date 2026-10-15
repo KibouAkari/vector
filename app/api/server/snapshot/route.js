@@ -4,8 +4,13 @@ import {
 } from "../../../../lib/auth";
 
 import {
-  hostSnapshot
+  hostSnapshot,
+  hostInspect
 } from "../../../../lib/host-agent";
+
+import { normalizeContainerResources } from "../../../../lib/server-resources.mjs";
+
+export const dynamic = "force-dynamic";
 
 
 export async function GET() {
@@ -30,9 +35,23 @@ export async function GET() {
   }
 
   try {
-    return Response.json(
-      await hostSnapshot()
-    );
+    const [snapshot, resources] = await Promise.allSettled([
+      hostSnapshot(),
+      hostInspect({ action: "docker_stats" })
+    ]);
+
+    if (snapshot.status !== "fulfilled") {
+      throw new Error("Host snapshot unavailable.");
+    }
+
+    return Response.json({
+      ...snapshot.value,
+      listeningPorts: snapshot.value.listeningPorts ?? snapshot.value.ports,
+      containerResources: normalizeContainerResources(
+        resources.status === "fulfilled" ? resources.value : null,
+        new Date().toISOString()
+      )
+    }, { headers: { "Cache-Control": "no-store" } });
 
   } catch (
     error
@@ -40,7 +59,7 @@ export async function GET() {
     return Response.json(
       {
         error:
-          error.message
+          "Host snapshot unavailable."
       },
       {
         status:
@@ -49,3 +68,4 @@ export async function GET() {
     );
   }
 }
+
