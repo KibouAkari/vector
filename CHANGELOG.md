@@ -6,6 +6,21 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
+### Runtime and accounting: local rankings and per-response usage (#26)
+
+- Persist provider-reported usage per response for background jobs before subsequent renderer/workflow failures; retain usage from planning, review, repair and prior provider attempts. Deduplicate stored events by provider configuration, account and response ID instead of adding a second job aggregate charge.
+- Honor configured OpenAI pricing, preserve USD estimates, FX and rate snapshots in an additive usage metadata column, account for request/search fees per response, and visibly flag missing usage or rates. Do not equate local estimates with provider invoices or rewrite historical amounts without evidence.
+- Preserve normalized reasoning and cache-write details, include Anthropic cache reads/writes in total input, retain the original execution's usage when repairing a workflow, and add one empty-response recovery after a reasoning-only tool-limit finalization.
+- Distinguish provider responses from legacy aggregate entries on the dashboard and use the same thirty UTC calendar days for summary, model breakdown and daily series.
+- Propagate dashboard query errors instead of reporting fabricated zero usage, and document the hardware-first local-inference rollout with a read-only capacity probe. No local model is installed or activated by this change.
+- Offline regression coverage exercises the actual provider adapter, background executor success/failure, workflow repair, idempotency inputs, concurrent account isolation and missing-price cases. PostgreSQL-backed CI verifies metadata persistence and duplicate suppression. This adds schema metadata but no dependencies, live model requests or model installation.
+
+- Add a read-only, bounded JSON ranking tool that verifies the entire source dataset locally and returns only top-N numeric values, units, coverage and read-time metadata. Names can be resolved from a complete local identity map.
+- Keep missing/nonnumeric values explicit, reject incomplete sources and unsafe numeric values, and preserve existing Host Agent boundaries, privacy filtering and artifact completeness checks.
+- Prefer local aggregation for ranking reports, serialize tool envelopes without decorative whitespace, and expose per-call token/cache/reasoning/stop metadata and tool output character counts for subsequent cost analysis.
+- Route empty reasoning-only document responses through the existing single empty-response recovery instead of spending continuation calls on a nonexistent document fragment. Do not increase normal output caps or change providers.
+- Offline fixtures verify five ten-row rankings over 43 synthetic files, source completeness, compact model inputs, accounting and document recovery. Live savings and production behavior require staging and a measured live task; no percentage saving is promised.
+
 ### Artifacts: render ranking bars and complete truncated documents (#25)
 
 - Render explicit block-bar table cells as proportional vector graphics instead of unsupported question-mark glyphs; preserve supplied bar quantities.
@@ -223,6 +238,7 @@ Production deployments are tracked separately.
 
 - Add the sanitized application snapshot, Docker build, initial README, vision and contribution guidance.
 - Establish the initial application, API routes, libraries, database migrations and asset structure.
+
 
 
 

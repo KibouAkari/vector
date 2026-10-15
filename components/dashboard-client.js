@@ -657,7 +657,7 @@ export default function DashboardClient({
 
           <p>
             Your Vector usage over the
-            last 30 days.
+            last 30 calendar days, in UTC.
           </p>
 
         </div>
@@ -704,13 +704,13 @@ export default function DashboardClient({
       >
 
         <MetricCard
-          label="Requests"
+          label="Usage entries"
           value={
             integer(
               totals.requests
             )
           }
-          detail="AI requests · 30 days"
+          detail={`${integer(totals.providerCalls || 0)} provider responses · ${integer(totals.legacyEntries || 0)} legacy entries`}
           icon={Activity}
           reduced={reduced}
         />
@@ -736,13 +736,13 @@ export default function DashboardClient({
 
 
         <MetricCard
-          label="Spend"
+          label="Estimated spend"
           value={
             money(
               totals.spend
             )
           }
-          detail="Observed Vector cost"
+          detail={totals.incompleteCalls ? `${integer(totals.incompleteCalls)} entries need reconciliation` : "Recorded usage · configured prices"}
           icon={WalletCards}
           reduced={reduced}
         />
@@ -756,7 +756,7 @@ export default function DashboardClient({
               3
             )
           }
-          detail="Cost per request"
+          detail="Cost per recorded entry"
           icon={Coins}
           reduced={reduced}
         />
@@ -796,7 +796,7 @@ export default function DashboardClient({
                   ],
                   [
                     "requests",
-                    "Requests"
+                    "Entries"
                   ],
                   [
                     "tokens",
@@ -866,7 +866,7 @@ export default function DashboardClient({
                   : (
                       trendMetric ===
                       "requests"
-                        ? "requests"
+                        ? "entries"
                         : "tokens"
                     )
               }
@@ -1068,7 +1068,7 @@ export default function DashboardClient({
                 [
                   [
                     "requests",
-                    "Calls"
+                    "Entries"
                   ],
                   [
                     "tokens",
@@ -1205,7 +1205,7 @@ export default function DashboardClient({
                   {
                     distributionMetric ===
                     "requests"
-                      ? "requests"
+                      ? "entries"
                       : (
                           distributionMetric ===
                           "tokens"
@@ -1315,7 +1315,7 @@ export default function DashboardClient({
               </span>
 
               <span>
-                Requests
+                Entries
               </span>
 
               <span>
@@ -1327,7 +1327,7 @@ export default function DashboardClient({
               </span>
 
               <span>
-                Avg / req
+                Avg / entry
               </span>
 
               <span>
@@ -1457,8 +1457,8 @@ export default function DashboardClient({
           <footer className="vx85-economics-footer">
 
             <span>
-              Cost figures use the actual CHF amount
-              recorded by Vector.
+              Estimates use recorded provider tokens and configured prices.
+              Provider invoices are not yet reconciled. Older entries may group multiple calls.
             </span>
 
             <span>
@@ -1583,3 +1583,4 @@ export default function DashboardClient({
     </motion.div>
   );
 }
+

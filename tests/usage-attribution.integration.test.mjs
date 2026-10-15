@@ -58,18 +58,36 @@ test("usage events belong to the correct user and budgets stay isolated", async 
     assert.equal(b.total, 4.25);
     assert.deepEqual(empty, { total: 0, month: 0 });
 
+    const bill = {eventId:'fixture-idempotent-provider-call', provider:'ci-usage-test', model:'offline-fixture',
+      userId:userA,inputTokens:10,outputTokens:3,cachedTokens:2,costChf:0.1,
+      metadata:{kind:'provider-call',jobId:'fixture-job',costStatus:'estimated',costUsd:0.125,usdToChfRate:0.8}};
+    await writeUsageEvent(db,bill);
+    await writeUsageEvent(db,bill);
+    const billed=await db.query('SELECT COUNT(*)::int AS count, MAX(metadata::text)::jsonb AS metadata FROM usage_events WHERE id=$1',[bill.eventId]);
+    assert.equal(billed.rows[0].count,1);
+    assert.equal(billed.rows[0].metadata.kind,'provider-call');
+    assert.ok(Math.abs((await getUserUsageTotals(db,userA)).total-1.15)<0.000001);
+
+    const dashboardSource=readFileSync(new URL('../app/page.js',import.meta.url),'utf8');
+    const queries=[...dashboardSource.matchAll(/scopedQuery\(`([\s\S]*?)`\)/g)].map(match=>match[1]);
+    assert.equal(queries.length,3);
+    const [summary,models,days]=await Promise.all(queries.map(sql=>db.query(sql,[false,userA])));
+    const timelineSpend=days.rows.reduce((sum,row)=>sum+Number(row.spend_chf),0);
+    assert.ok(Math.abs(Number(summary.rows[0].spend_chf)-timelineSpend)<0.000001);
+    assert.ok(Math.abs(Number(summary.rows[0].spend_chf)-models.rows.reduce((sum,row)=>sum+Number(row.spend_chf),0))<0.000001);
+    assert.equal(summary.rows[0].provider_calls,1);
+    assert.equal(summary.rows[0].legacy_entries,2);
+
     const usageSource = readFileSync(new URL("../lib/usage.js", import.meta.url), "utf8");
     assert.match(usageSource, /userId\s*=\s*null/);
     assert.match(usageSource, /writeUsageEvent\(db,/);
 
     const worker = readFileSync(new URL("../lib/background-executor.js", import.meta.url), "utf8");
-    assert.equal((worker.match(/await recordUsage\(\{/g) || []).length, 2);
-    assert.equal(
-      (worker.match(/userId:\s*payload\.userId\s*\|\|\s*job\.user_id\s*\|\|\s*null/g) || []).length,
-      2,
-      "both successful calls and failed artifact requests need user fallback"
-    );
+    assert.match(worker,/withProviderUsageScope/);
+    assert.match(worker,/await recordUsage\(event\)/);
+    assert.match(worker,/if \(!usageScope.events.length\) await recordUsage/);
   } finally {
     await db.end();
   }
 });
+

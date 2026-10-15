@@ -72,6 +72,12 @@ jobs:
       - name: Test requested artifact format enforcement
         run: node --test tests/artifact-format-policy.test.mjs
 
+      - name: Test local JSON ranking aggregation and cost metadata
+        run: |
+          node --test tests/server-json-rankings.test.mjs
+          node --test tests/provider-call-usage.test.mjs
+          bash -n scripts/deploy/stage-json-rankings.sh
+
       - name: Test PDF ranking rendering and provider completion metadata
         run: node --test tests/pdf-ranking-renderer.test.mjs tests/provider-completion.test.mjs
 
@@ -127,5 +133,6 @@ jobs:
             -v "$GITHUB_WORKSPACE:/repo:ro" \
             ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
             dir --redact /repo
+
 
 
