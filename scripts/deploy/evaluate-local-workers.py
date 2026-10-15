@@ -99,7 +99,10 @@ def main():
     name = 'vector-local-worker-eval-' + uuid.uuid4().hex[:8]
     directory = ROOT / (name + '-' + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
     directory.mkdir(mode=0o755)
-    (directory / 'lib').mkdir(mode=0o755)
+    os.chmod(directory, 0o755)
+    library = directory / 'lib'
+    library.mkdir(mode=0o755)
+    os.chmod(library, 0o755)
     for source in FILES:
         destination = directory / source
         destination.write_text(run('git', '-C', str(REPO), 'show', revision + ':' + source) + '\n')

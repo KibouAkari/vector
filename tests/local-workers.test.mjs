@@ -123,9 +123,11 @@ test('actual agent overwrites spoofed worker permissions and preserves current-j
     process.env.VECTOR_LOCAL_WORKERS='1';
     for(const allowServer of [true,false]){
       let count=0;
+      const localWorkerBudget={calls:0};
       const tools=load('../lib/tool-runtime.js',{crypto,executeLocalWorker:async(a,c)=>{
         const result=await runLocalWorker(a,c,{...options,record:async()=>{}}); count++;
-        assert.equal(c.userId,'current-user');assert.equal(c.jobId,'current-job');return result;
+        assert.equal(c.userId,'current-user');assert.equal(c.jobId,'current-job');
+        assert.equal(c.localWorkerBudget,localWorkerBudget);return result;
       }},['getVectorTools','createToolContext','executeVectorTool']);
       let round=0;
       const {runVectorAgent}=load('../lib/agent-runtime.js',{
@@ -138,8 +140,9 @@ test('actual agent overwrites spoofed worker permissions and preserves current-j
       const result=await runVectorAgent({model:'fixture',mode:'normal',messages:[{role:'user',content:'Interpret server evidence.'}],
         originalUserMessage:'Interpret server evidence.',maxOutputTokens:300,allowServer,
         providedToolContext:{...tools.createToolContext({userId:'current-user',jobId:'current-job',conversationId:'fixture'}),allowLocalWorkers:true},
-        userId:'current-user',jobId:'current-job',conversationId:'fixture',executionClass:'tool',toolDomains:{server:true},roundLimit:2});
+        localWorkerBudget,userId:'current-user',jobId:'current-job',conversationId:'fixture',executionClass:'tool',toolDomains:{server:true},roundLimit:2});
       assert.equal(count,allowServer?1:0);
+      assert.equal(localWorkerBudget.calls,allowServer?1:0);
       assert.equal(result.toolTrace.find(t=>t.tool==='server_local_worker').success,allowServer);
     }
   } finally {if(previous===undefined)delete process.env.VECTOR_LOCAL_WORKERS;else process.env.VECTOR_LOCAL_WORKERS=previous;}
