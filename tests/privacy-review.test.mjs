@@ -65,7 +65,8 @@ function loadRuntime({fail=false,truncated=false}={}) {
   const deps={crypto,AsyncLocalStorage,...core,requestLocalChat,withLocalWorkerSlot:execute=>execute(),
     getPrivacyMappings:async id=>vault.get(id)||[],savePrivacyMappings:async({conversationId,mappings})=>vault.set(conversationId,mappings),
     providerUsageEvent:({userId,response})=>({userId,inputTokens:response.usage.input_tokens,outputTokens:response.usage.output_tokens,costChf:0}),
-    normalizedOpenAiUsage:value=>({input_tokens:value.prompt_tokens,output_tokens:value.completion_tokens}),recordUsage:async event=>usage.push(event)};
+    normalizedOpenAiUsage:value=>({input_tokens:value.prompt_tokens,output_tokens:value.completion_tokens}),recordUsage:async event=>usage.push(event),
+    captureProviderUsage:async(_runtime,response)=>usage.push({inputTokens:response.usage.input_tokens,outputTokens:response.usage.output_tokens,costChf:0})};
   const api=new Function(...Object.keys(deps),source+'\nreturn {reviewPrivacyRequest,withJobPrivacy,protectProviderPayload,protectToolEvidence,restoreLocalToolArguments};')(...Object.values(deps));
   return {...api,vault,usage,requests};
 }

@@ -7,7 +7,7 @@ import {normalizedOpenAiUsage,normalizedAnthropicUsage} from '../lib/provider-us
 import {runLocalWorker} from '../lib/local-worker-core.mjs';
 
 function load(path, bindings, names) {
-  bindings={protectProviderPayload:payload=>payload,...bindings};
+  bindings={protectProviderPayload:payload=>payload,withJobPrivacy:(_payload,execute)=>execute(),...bindings};
   const source=readFileSync(new URL(path,import.meta.url),'utf8')
     .replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'').replace(/^export\s+/gm,'');
   return new Function(...Object.keys(bindings),source+`\nreturn {${names.join(',')}};`)(...Object.values(bindings));
