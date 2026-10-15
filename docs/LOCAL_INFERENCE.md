@@ -1,6 +1,6 @@
 # Local inference rollout
 
-Status: isolated installation and smoke benchmark prepared; no observed server installation or Vector activation yet.
+Status: Ollama and three models are installed. Qwen3 1.7B and Hermes passed the eight-fixture comparison. Final actual-worker qualification and production activation remain pending.
 
 ## Execution model
 
