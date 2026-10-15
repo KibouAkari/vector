@@ -77,6 +77,12 @@ def build_harness(existing):
     return HARNESS.replace('__FIXTURES__', existing[start:end]).replace('__MODELS__', json.dumps(MODELS))
 
 
+def baseline_models_match(manifest, expected):
+    # The candidate may not exist yet: this script is also its verified installer.
+    return all(name == CANDIDATE['name'] or manifest.get(name) == digest
+        for name, digest in expected.items())
+
+
 def main():
     revision = os.environ.get('VECTOR_LOCAL_WORKER_REV', '')
     if os.geteuid() != 0 or not re.fullmatch('[0-9a-f]{40}', revision):
@@ -119,7 +125,7 @@ def main():
     if api('/api/ps').get('models'):
         raise RuntimeError('Inference service is busy; compare during an idle period.')
     manifest={m['name']:m['digest'] for m in api('/api/tags')['models']}
-    if any(manifest.get(n)!=d for n,d in evaluation.MODELS.items()):
+    if not baseline_models_match(manifest, evaluation.MODELS):
         raise RuntimeError('Existing model digests changed.')
     before=evaluation.production_fingerprint()
     evaluation.private_json(directory/'production-before.json',before)

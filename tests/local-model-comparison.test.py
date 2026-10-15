@@ -17,6 +17,15 @@ def load(name, source):
 
 
 class ComparisonTests(unittest.TestCase):
+    def test_selection_does_not_prevent_installing_a_missing_candidate(self):
+        comparison = load('comparison', 'scripts/deploy/compare-local-models.py')
+        expected = {'vector-hermes3:8b-q4km':'pinned-hermes',
+            'vector-qwen3:0.6b-q8':'pinned-small',comparison.CANDIDATE['name']:'pinned-candidate'}
+        manifest = {'vector-hermes3:8b-q4km':'pinned-hermes','vector-qwen3:0.6b-q8':'pinned-small'}
+        self.assertTrue(comparison.baseline_models_match(manifest,expected))
+        manifest['vector-hermes3:8b-q4km']='changed'
+        self.assertFalse(comparison.baseline_models_match(manifest,expected))
+
     def test_actual_harness_keeps_failed_null_and_summary_cases_and_selects_only_a_fully_passing_candidate(self):
         comparison = load('comparison', 'scripts/deploy/compare-local-models.py')
         evaluation = load('evaluation', 'scripts/deploy/evaluate-local-workers.py')
