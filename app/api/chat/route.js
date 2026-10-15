@@ -367,8 +367,10 @@ export async function POST(
         [conversationId, session.userId]);
       if (!owned.rowCount) return Response.json({error:'Conversation not found'}, {status:404});
     }
+    const configuredHistory=Number(process.env.VECTOR_CHAT_HISTORY_MESSAGES || 24);
+    const historyLimit=Number.isFinite(configuredHistory)?Math.max(2,Math.min(40,configuredHistory)):24;
     const priorHistory = conversationId ? (await db.query(`SELECT id,role,content FROM messages
-      WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT 24`,[conversationId])).rows.reverse() : [];
+      WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT $2`,[conversationId,historyLimit-1])).rows.reverse() : [];
     let privacy;
     try {
       privacy = await reviewPrivacyRequest({text:[rawAgentMessage,...priorHistory.map(m=>m.content)].join('\n\n'),
@@ -682,19 +684,6 @@ export async function POST(
         }
       );
     }
-
-  const historyLimit =
-    Math.max(
-      2,
-      Math.min(
-        40,
-        Number(
-          process.env
-            .VECTOR_CHAT_HISTORY_MESSAGES ||
-          24
-        )
-      )
-    );
 
   // Use exactly the reviewed snapshot; never re-read unreviewed concurrent history.
   const history = [...priorHistory.map(row=>({role:row.role==='assistant'?'assistant':'user',

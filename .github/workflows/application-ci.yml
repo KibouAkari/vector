@@ -139,6 +139,7 @@ jobs:
           fi
           node --test tests/project-access-api.integration.test.mjs
           node --test tests/usage-attribution.integration.test.mjs
+          node --test tests/privacy-vault.integration.test.mjs
           node --test tests/local-workers-db.integration.test.mjs
           node --test tests/model-intelligence-api.integration.test.mjs
 

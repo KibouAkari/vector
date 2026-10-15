@@ -34,6 +34,20 @@ test('normal chat reviews attachment and owned history before writes or enqueue'
   assert.equal(api.reviews[0].destination,'cloud');
   assert.ok(api.queries.every(([sql])=>! /INSERT|UPDATE/.test(sql)));
 });
+test('reviewed history reserves one message slot and respects the configured limit',async()=>{
+  const previous=process.env.VECTOR_CHAT_HISTORY_MESSAGES;
+  try {
+    for(const [configured,expected] of [['2',1],['40',39],['invalid',23]]) {
+      process.env.VECTOR_CHAT_HISTORY_MESSAGES=configured;
+      const api=route('../app/api/chat/route.js');
+      await api.POST(new Request('http://vector.test',{method:'POST',body:JSON.stringify({message:'Hi',conversationId:'c'})}));
+      assert.equal(api.queries.find(([sql])=>/FROM messages/.test(sql))[1][1],expected);
+    }
+  } finally {
+    if(previous===undefined)delete process.env.VECTOR_CHAT_HISTORY_MESSAGES;
+    else process.env.VECTOR_CHAT_HISTORY_MESSAGES=previous;
+  }
+});
 test('conversation privacy metadata is never disclosed to a different account',async()=>{
   const api=route('../app/api/chat/route.js',{owned:false});
   const response=await api.POST(new Request('http://vector.test/api/chat',{method:'POST',body:JSON.stringify({message:'Hi',conversationId:'other'})}));
@@ -50,10 +64,11 @@ test('project access is checked before findings and local-only projects select t
 });
 test('fully local executor uses native inference only and retains zero-cost token usage',async()=>{
   const calls=[],events=[],finished=[],failed=[];
-  let nativeFails=false;
+  let nativeFails=false,cancelled=false;
   const {executeLocalPrivateJob}=load('../lib/local-private-chat.js',{crypto,providerUsageTotals,
     db:{query:async(...args)=>calls.push(args)},restorePrivateValues:async({text})=>text,
     withLocalWorkerSlot:execute=>execute(),heartbeatAgentJob:async()=>{},
+    getAgentJob:async()=>({status:cancelled?'cancelled':'running'}),
     requestLocalChat:async payload=>{calls.push(payload);if(nativeFails)throw Error('local unavailable');
       return {done:true,done_reason:'stop',message:{content:'Hallo Erika Muster'},prompt_eval_count:30,eval_count:5};},
     normalizedOpenAiUsage:u=>({input_tokens:u.prompt_tokens,output_tokens:u.completion_tokens}),
@@ -66,4 +81,12 @@ test('fully local executor uses native inference only and retains zero-cost toke
   assert.equal(calls[0].model,'vector-qwen3:1.7b-q8');assert.equal(calls[0].tools,undefined);
   assert.equal(finished.length,1);nativeFails=true;
   await assert.rejects(executeLocalPrivateJob(job,{events}),/local unavailable/);assert.equal(finished.length,1);assert.equal(failed.length,1);
+  nativeFails=false;cancelled=true;
+  const writesBefore=calls.filter(Array.isArray).length;
+  assert.deepEqual(await executeLocalPrivateJob(job,{events}),{cancelled:true});
+  assert.equal(calls.filter(Array.isArray).length,writesBefore);
+  assert.equal(finished.length,1);assert.equal(events.length,2,'cancelled inference still records native usage');
+  nativeFails=true;
+  assert.deepEqual(await executeLocalPrivateJob(job,{events}),{cancelled:true});
+  assert.equal(failed.length,1,'late native errors cannot overwrite cancellation');
 });

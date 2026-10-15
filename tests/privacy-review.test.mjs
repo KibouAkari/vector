@@ -29,6 +29,23 @@ test('same original reuses its conversation token and substrings are restored in
   assert.equal(core.literalReplace('<A>',mappings,true),'<B>');
 });
 
+test('email-shaped credentials promote every legacy alias without revealing them in previews',()=>{
+  const value='erika@example.invalid';
+  const input=`Passwort: "${value}"`;
+  const existing=[{value,type:'EMAIL',placeholder:'<EMAIL_A1B2C3>'},
+    {value,type:'PASSWORD',placeholder:'<PASSWORD_A1B2C4>'},
+    {value,type:'EMAIL',placeholder:'<EMAIL_A1B2C5>'}];
+  for(const previous of [[],[existing[0]],existing]) {
+    const plan=core.makePrivacyPlan(input,core.deterministicFindings(input),previous);
+    assert.equal(plan.selected.length,1);
+    assert.match(plan.selected[0].type,/PASSWORD|KEY|TOKEN/);
+    assert.equal(core.displayFinding(plan.selected[0]).displayValue,'••••••••');
+    for(const mapping of plan.mappings) assert.match(mapping.type,/PASSWORD|KEY|TOKEN/);
+    if(previous.length) assert.equal(plan.selected[0].placeholder,previous[0].placeholder);
+    assert.ok(plan.sanitized.includes(plan.selected[0].placeholder));
+  }
+});
+
 test('tickets are encrypted, authenticated, expire and bind user, scope and content fingerprint',()=>{
   const value={kind:'review',userId:'alice',fingerprint:'a',expires:200,secret};
   const token=core.sealPrivacy(value,key);
@@ -51,7 +68,7 @@ test('invented findings, unexpected types and placeholders are rejected',()=>{
   assert.equal(core.displayFinding({type:'PASSWORD',value:secret,placeholder:'x'}).displayValue,'••••••••');
 });
 
-function loadRuntime({fail=false,truncated=false}={}) {
+function loadRuntime({fail=false,truncated=false,extraFindings=[]}={}) {
   const source=readFileSync(new URL('../lib/privacy-review.js',import.meta.url),'utf8')
     .replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm,'').replace(/^export\s+/gm,'');
   const vault=new Map();const usage=[];const requests=[];
@@ -60,7 +77,7 @@ function loadRuntime({fail=false,truncated=false}={}) {
     if(fail)throw Error('native service unavailable');
     const chunk=JSON.parse(payload.messages[1].content).text;
     return {done:true,done_reason:truncated?'length':'stop',prompt_eval_count:45,eval_count:12,
-      message:{content:JSON.stringify({findings:learned.filter(f=>chunk.includes(f.value))})}};
+      message:{content:JSON.stringify({findings:[...learned,...extraFindings].filter(f=>chunk.includes(f.value))})}};
   };
   const deps={crypto,AsyncLocalStorage,...core,requestLocalChat,withLocalWorkerSlot:execute=>execute(),
     getPrivacyMappings:async id=>vault.get(id)||[],savePrivacyMappings:async({conversationId,mappings})=>vault.set(conversationId,mappings),
@@ -148,5 +165,54 @@ test('new tool evidence requires explicit masking consent and preserves JSON esc
     const parsed=JSON.parse(safe.sanitized);
     assert.ok(!safe.sanitized.includes('another synthetic phrase'));
     assert.equal(core.literalReplace(parsed.message,safe.mappings,true),original.message);
+    const outbound=runtime.protectProviderPayload({input:[{type:'function_call_output',call_id:'user',output:safe.sanitized}]});
+    assert.doesNotThrow(()=>JSON.parse(outbound.input[0].output));
+    assert.equal(outbound.input[0].call_id,'user');
+  });
+});
+
+test('masking never changes roles, tool names, identifiers or content-part types',async()=>{
+  const runtime=loadRuntime();
+  const request={...args(),text:'password=user',body:{message:'password=user'}};
+  const data=await (await runtime.reviewPrivacyRequest(request)).response.json();
+  const plan=await runtime.reviewPrivacyRequest({...request,body:{...request.body,privacyDecision:'replace',privacyReviewToken:data.privacyReview.token}});
+  runtime.vault.set('chat',plan.mappings);
+  await runtime.withJobPrivacy({userId:'alice',conversationId:'chat',privacyPolicy:plan.policy},async()=>{
+    const out=runtime.protectProviderPayload({model:'user',input:[
+      {role:'user',type:'message',id:'user',content:[{type:'input_text',text:'password=user'}]},
+      {type:'function_call',id:'user',call_id:'user',name:'user',arguments:'{"name":"user"}'}]});
+    assert.equal(out.model,'user');assert.equal(out.input[0].role,'user');assert.equal(out.input[0].id,'user');
+    assert.equal(out.input[0].content[0].type,'input_text');assert.ok(!out.input[0].content[0].text.endsWith('=user'));
+    assert.equal(out.input[1].call_id,'user');assert.equal(out.input[1].name,'user');
+    assert.notEqual(JSON.parse(out.input[1].arguments).name,'user');
+  });
+});
+
+test('unchanged-send cannot export a vaulted identity absent from this job approval',async()=>{
+  const runtime=loadRuntime();
+  const previous=core.makePrivacyPlan('Erika Muster',learned).mappings;
+  runtime.vault.set('chat',previous);
+  const request={...args(),text:'password=another-synthetic-value',conversationId:'chat',body:{message:'password=another-synthetic-value'}};
+  const data=await (await runtime.reviewPrivacyRequest(request)).response.json();
+  const plan=await runtime.reviewPrivacyRequest({...request,body:{...request.body,privacyDecision:'original',privacyReviewToken:data.privacyReview.token}});
+  await runtime.withJobPrivacy({userId:'alice',conversationId:'chat',privacyPolicy:plan.policy},async()=>{
+    await assert.rejects(runtime.protectToolEvidence('{"name":"Erika Muster"}'),/Datenschutzfreigabe/);
+    assert.throws(()=>runtime.protectProviderPayload({input:[{role:'user',content:'Erika Muster'}]}),/freigegebene/);
+  });
+});
+
+test('sensitive numeric tool leaves are inspected and masked consistently',async()=>{
+  const runtime=loadRuntime({extraFindings:[{type:'ACCOUNT',value:'81234567'}]});
+  const request={...args(),text:'Passwort: "unrelated-synthetic-value"',body:{message:'Passwort: "unrelated-synthetic-value"'}};
+  const data=await (await runtime.reviewPrivacyRequest(request)).response.json();
+  const plan=await runtime.reviewPrivacyRequest({...request,body:{...request.body,privacyDecision:'replace',privacyReviewToken:data.privacyReview.token}});
+  runtime.vault.set('chat',plan.mappings);
+  await runtime.withJobPrivacy({userId:'alice',conversationId:'chat',privacyPolicy:plan.policy},async()=>{
+    const safe=await runtime.protectToolEvidence('{"account":81234567,"summary":"not a measurement"}');
+    const parsed=JSON.parse(safe.sanitized);
+    assert.equal(typeof parsed.account,'string');assert.match(parsed.account,/<VEC_ACCOUNT_/);
+    assert.ok(!safe.sanitized.includes('81234567'));
+    const out=runtime.protectProviderPayload({input:[{type:'function_call_output',call_id:'c',output:'{"account":81234567}'}]});
+    assert.ok(!out.input[0].output.includes('81234567'));
   });
 });
