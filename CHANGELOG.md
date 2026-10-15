@@ -6,6 +6,14 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
+### Runtime: calculate server JSON rankings locally
+
+- Add a read-only, bounded JSON ranking tool that verifies the entire source dataset locally and returns only top-N numeric values, units, coverage and read-time metadata. Names can be resolved from a complete local identity map.
+- Keep missing/nonnumeric values explicit, reject incomplete sources and unsafe numeric values, and preserve existing Host Agent boundaries, privacy filtering and artifact completeness checks.
+- Prefer local aggregation for ranking reports, serialize tool envelopes without decorative whitespace, and expose per-call token/cache/reasoning/stop metadata and tool output character counts for subsequent cost analysis.
+- Route empty reasoning-only document responses through the existing single empty-response recovery instead of spending continuation calls on a nonexistent document fragment. Do not increase normal output caps or change providers.
+- Offline fixtures verify five ten-row rankings over 43 synthetic files, source completeness, compact model inputs, accounting and document recovery. Live savings and production behavior require staging and a measured live task; no percentage saving is promised.
+
 ### Artifacts: render ranking bars and complete truncated documents (#25)
 
 - Render explicit block-bar table cells as proportional vector graphics instead of unsupported question-mark glyphs; preserve supplied bar quantities.
@@ -223,6 +231,7 @@ Production deployments are tracked separately.
 
 - Add the sanitized application snapshot, Docker build, initial README, vision and contribution guidance.
 - Establish the initial application, API routes, libraries, database migrations and asset structure.
+
 
 
 
