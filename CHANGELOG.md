@@ -6,7 +6,7 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
-### Chat: finish documents after bounded tool investigation
+### Chat: finish documents after bounded tool investigation (#24)
 
 - Render explicitly requested PDF/DOCX files after the final no-tools provider turn when the tool investigation reaches its configured limit.
 - Preserve the existing renderer, completeness checks, format enforcement, usage accounting and bounded provider-call count.
