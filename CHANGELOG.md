@@ -6,7 +6,7 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
-### Chat: preserve explicitly requested document formats
+### Chat: preserve explicitly requested document formats (#22)
 
 - Exclude the XLSX-only server dataset exporter from PDF and DOCX requests.
 - Reject wrong-format tool calls before host reads or file generation, and reject mismatched cached or rendered artifacts.
