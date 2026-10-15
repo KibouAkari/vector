@@ -6,6 +6,13 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
+### Chat: preserve explicitly requested document formats
+
+- Exclude the XLSX-only server dataset exporter from PDF and DOCX requests.
+- Reject wrong-format tool calls before host reads or file generation, and reject mismatched cached or rendered artifacts.
+- Preserve deterministic PDF/DOCX rendering after source collection; keep spreadsheet exports available for spreadsheet tasks.
+- Add offline regression coverage for the actual agent and tool execution paths. Production deployment and visual review remain separate.
+
 ### Projects: file workspace and original downloads (#21)
 
 - Add a larger file browser with search, sorting, images, PDF and bounded text previews.
@@ -189,4 +196,5 @@ Production deployments are tracked separately.
 
 - Add the sanitized application snapshot, Docker build, initial README, vision and contribution guidance.
 - Establish the initial application, API routes, libraries, database migrations and asset structure.
+
 
