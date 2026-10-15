@@ -6,7 +6,7 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
-### Server: container resource control center
+### Server: container resource control center (#23)
 
 - Add separate top-five CPU and absolute-memory rankings plus a searchable, sortable container resource table.
 - Fetch the existing host agent's one-shot Docker statistics only after the existing server permission check; keep host information available if resource sampling fails.
