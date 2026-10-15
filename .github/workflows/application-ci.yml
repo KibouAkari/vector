@@ -72,6 +72,12 @@ jobs:
       - name: Test requested artifact format enforcement
         run: node --test tests/artifact-format-policy.test.mjs
 
+      - name: Test isolated CPU inference pilot
+        run: |
+          python3 tests/local-inference-pilot.test.py
+          python3 -m py_compile scripts/deploy/local-inference-pilot.py
+          bash -n scripts/deploy/release-ranking-cost.sh
+
       - name: Test local JSON ranking aggregation and cost metadata
         run: |
           node --test tests/server-json-rankings.test.mjs

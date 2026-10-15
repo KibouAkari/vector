@@ -1,6 +1,6 @@
 # Local inference rollout
 
-Status: hardware assessment and evaluation plan, not an installed or activated model.
+Status: isolated installation and smoke benchmark prepared; no observed server installation or Vector activation yet.
 
 ## Execution model
 
@@ -59,3 +59,64 @@ these checks, with a fallback and a reversible activation plan.
 - [Qwen3 8B model card](https://huggingface.co/Qwen/Qwen3-8B)
 - [Nous Hermes 3 8B GGUF](https://huggingface.co/NousResearch/Hermes-3-Llama-3.1-8B-GGUF)
 - [Dolphin 3.0 Llama 3.1 8B](https://huggingface.co/dphn/Dolphin3.0-Llama3.1-8B)
+
+
+## CPU pilot (2026-10-15)
+
+Measured host: i7-7700, eight logical CPUs, 62.59 GiB RAM, 42.97 GiB available,
+Intel integrated graphics and no NVIDIA GPU. Existing swap usage means headroom
+must be monitored rather than treating all RAM as unused.
+
+`scripts/deploy/local-inference-pilot.py` installs Ollama 0.40.4 by the immutable
+Linux/amd64 image digest and imports two publisher GGUF artifacts by exact commit,
+size and SHA-256. The model files total approximately 5.56 GB; imports and Ollama
+storage retain separate copies. Allow at least 20 GiB free disk space.
+
+| Model | Intended evaluation role | License |
+| --- | --- | --- |
+| Nous Hermes 3 Llama 3.1 8B Q4_K_M | Bounded summaries and technical interpretation | Llama 3.1 community license and use policy, inherited by the fine-tune |
+| Qwen3 0.6B Q8_0 | Short extraction and classification; non-thinking mode | Apache-2.0 |
+
+Hermes model weights and the separate Nous Hermes Agent application are different
+components. This pilot installs weights in Ollama and adds no independent agent
+application or unrestricted shell. The small Qwen model is an evaluation helper,
+not an assertion of equivalent quality or uncensored behavior.
+
+The service uses a dedicated internal Docker network with no published ports,
+no host or Docker socket, read-only imports/root filesystem, bounded logs,
+12 GiB memory without container swap, two CPU equivalents, two inference threads,
+one loaded model and one concurrent request. Context defaults to 2048 tokens,
+output to 256, and inactivity unloads weights after five minutes. The API process
+stays available; an unloaded model has a cold-load delay. No Vector network,
+container, provider setting, database or user memory is modified.
+
+The script performs public synthetic missing-value extraction once cold and once
+warm per model, records token counts, load time, elapsed time and generation rate,
+and explicitly unloads weights. This is a smoke test, not a tool-calling,
+German/security evaluation, statistical performance study or task-quality approval.
+`pilot-result.json` is stored under `/root/vector-workspace/local-inference`.
+On test failure the new inference container is stopped. Existing pilot resources
+are never silently replaced; inspect a failed run before retrying.
+
+Run the script only through `/root/vector-workspace/bin/run`. To roll back this
+pilot, run `sh /root/vector-workspace/local-inference/rollback.sh`. It stops/removes
+only the named inference container and network, retaining imported model files
+and the dedicated volume. It does not alter production.
+
+### Following the measured pilot
+
+Add bounded worker roles to Vector's existing job execution rather than replacing
+its framework: a small extractor, a Hermes summarizer and a selective cloud
+reviewer. The shared CPU scheduler must enforce global concurrency one even
+across user jobs. Different roles can reuse one model; multiple installed models
+do not imply simultaneous inference. Bound total subtask count, context, output,
+time and delegation depth. A subagent must inherit the initiating user's project,
+retrieval, skill and tool scope, with no escalation or user-memory mixing.
+Cloud review is conditional and budgeted, not automatic. Deterministic server
+scans stay in the existing Host Agent. Local workers receive compact evidence.
+
+Activation requires the measured pilot, adapter/tool-call and permission tests,
+and competing-service latency observations. The pilot does not yet implement
+this scheduler, worker routing, embeddings, new MCP servers, or cloud review.
+Use the existing PostgreSQL retrieval first; evaluate a separate vector database
+only when corpus size and retrieval tests justify the operational cost.
