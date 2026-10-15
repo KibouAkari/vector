@@ -119,3 +119,70 @@ test('grounded document requests finish as documents even if a provider attempts
     }
   }
 });
+
+function limitFixture({format='pdf', finalText='# Fixture rankings\n\n| Rank | Player | Score |\n| --- | --- | --- |\n| 1 | Fixture player | 42 |', renderFailure=false, existing=false}={}) {
+  const {calls, tools}=runtimeFixture();
+  const execute=tools.executeVectorTool;
+  const {runVectorAgent}=loadRuntime('../lib/agent-runtime.js',{
+    ...tools, assertRequestedArtifactFormat, toolsForArtifactFormat,
+    executeVectorTool:async input=>{
+      if(renderFailure && input.name==='artifact_create')throw new Error('Fixture renderer failed');
+      return execute(input);
+    },
+    sanitizeForExternal:text=>({sanitized:text,mappings:[]}),
+    savePrivacyMappings:async()=>{},
+    requestProviderResponse:async({payload})=>{
+      calls.provider.push(payload);
+      const output=calls.provider.length===1
+        ? [{type:'function_call',call_id:'last-read',name:'server_inspect',arguments:'{"action":"read","path":"/srv/fixture/rankings.json"}'}]
+        : [{type:'message',content:finalText?[{type:'output_text',text:finalText}]:[]}];
+      return {id:'response-'+calls.provider.length,status:'completed',output,usage:{input_tokens:10,output_tokens:10}};
+    }
+  },['runVectorAgent']);
+  const context=tools.createToolContext({userId:'fixture',conversationId:'fixture',jobId:'fixture'});
+  if(existing){context.artifactCreated=true;context.lastArtifact={artifact:{id:'existing',format}};}
+  const request=`Kannst du ein weiteres ${format.toUpperCase()} erstellen, mit Top-10-Ranglisten aus den Serverdaten?`;
+  return {calls,context,run:()=>runVectorAgent({
+    model:'fixture-model',mode:'normal',messages:[{role:'user',content:request}],
+    originalUserMessage:request,maxOutputTokens:2048,conversationId:'fixture',
+    userId:'fixture',jobId:'fixture',providedToolContext:context,allowServer:true,
+    executionClass:'artifact',toolDomains:{server:true},roundLimit:1
+  })};
+}
+
+test('a document is rendered after the final permitted tool round',async()=>{
+  for(const format of ['pdf','docx']){
+    const fixture=limitFixture({format});
+    const result=await fixture.run();
+    assert.equal(result.finalizedAfterLimit,true);
+    assert.equal(result.artifactCreated,true);
+    assert.equal(result.artifact.artifact.format,format);
+    assert.equal(fixture.calls.render.length,1);
+    assert.match(fixture.calls.render[0].content,/Fixture player/);
+    assert.equal(fixture.calls.provider.length,2);
+    assert.deepEqual(fixture.calls.provider[1].tools,[]);
+    assert.equal(result.inputTokens,20);
+    assert.equal(result.outputTokens,20);
+    assert.ok(result.toolTrace.some(item=>item.tool==='artifact_create'&&item.success===true));
+  }
+});
+
+test('limit finalization rejects empty document content and renderer errors without claiming completion',async()=>{
+  const empty=limitFixture({finalText:''});
+  await assert.rejects(empty.run(),/no document content/);
+  assert.equal(empty.calls.render.length,0);
+  assert.equal(empty.context.artifactCreated,undefined);
+  const broken=limitFixture({renderFailure:true});
+  await assert.rejects(broken.run(),/Fixture renderer failed/);
+  assert.equal(broken.context.artifactCreated,undefined);
+  assert.equal(broken.calls.provider.length,2);
+});
+
+test('limit finalization preserves an existing document without generating a duplicate',async()=>{
+  const fixture=limitFixture({existing:true});
+  const result=await fixture.run();
+  assert.equal(result.artifactCreated,true);
+  assert.equal(result.artifact.artifact.id,'existing');
+  assert.equal(fixture.calls.render.length,0);
+});
+
