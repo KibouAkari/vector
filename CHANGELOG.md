@@ -6,7 +6,7 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
-### Runtime: calculate server JSON rankings locally
+### Runtime: calculate server JSON rankings locally (#26)
 
 - Add a read-only, bounded JSON ranking tool that verifies the entire source dataset locally and returns only top-N numeric values, units, coverage and read-time metadata. Names can be resolved from a complete local identity map.
 - Keep missing/nonnumeric values explicit, reject incomplete sources and unsafe numeric values, and preserve existing Host Agent boundaries, privacy filtering and artifact completeness checks.
