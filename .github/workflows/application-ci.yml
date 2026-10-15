@@ -72,6 +72,9 @@ jobs:
       - name: Test requested artifact format enforcement
         run: node --test tests/artifact-format-policy.test.mjs
 
+      - name: Test PDF ranking rendering and provider completion metadata
+        run: node --test tests/pdf-ranking-renderer.test.mjs tests/provider-completion.test.mjs
+
       - name: Test server resources and authorization
         run: node --test tests/server-resources.test.mjs
 

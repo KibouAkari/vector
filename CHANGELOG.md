@@ -6,6 +6,14 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
+### Artifacts: render ranking bars and complete truncated documents
+
+- Render explicit block-bar table cells as proportional vector graphics instead of unsupported question-mark glyphs; preserve supplied bar quantities.
+- Continue provider-declared truncated PDF/DOCX content with tools disabled at most twice, using the original per-call token cap and accounting for all continuation usage.
+- Reject unfinished or empty continuations before artifact persistence, and preserve completion metadata in compatible-chat and Anthropic adapters.
+- Add synthetic real-renderer and agent/provider regression tests; no user records, real model requests, new dependencies or schema changes.
+- Production deployment and the original live request remain unverified by this change.
+
 ### Chat: finish documents after bounded tool investigation (#24)
 
 - Render explicitly requested PDF/DOCX files after the final no-tools provider turn when the tool investigation reaches its configured limit.
