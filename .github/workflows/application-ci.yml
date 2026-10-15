@@ -83,6 +83,9 @@ jobs:
           python3 tests/local-model-comparison.test.py
           python3 -m py_compile scripts/diagnostics/local-worker-wiring.py
           python3 tests/local-worker-wiring.test.py
+          python3 tests/local-worker-activation.test.py
+          python3 -m py_compile scripts/deploy/activate-local-workers.py
+          bash -n scripts/deploy/release-local-workers.sh
           bash -n scripts/deploy/stage-local-workers.sh
           node --test tests/local-workers.test.mjs
 
