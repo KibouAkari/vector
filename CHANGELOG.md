@@ -6,6 +6,15 @@ Production deployments are tracked separately.
 
 ## 2026-10-15
 
+### Persistent local-worker deployment (#29)
+
+- Owner activation ab2220c succeeded at 15:42 Europe/Zurich, confirming the persistent feature flag/private network, runtime/model pins, idle weights and healthy application. Harden saved rollback recovery for a positively confirmed missing app container; keep inspection errors and different images blocked. Require the inference runtime to use only its private network, and explicitly compare canonical mount lists. These maintenance-script improvements do not require a new app image or another activation.
+- Owner source/image release 37130b5 succeeded with healthy app and unchanged supporting containers. Feature activation stopped before cutover because Compose included an extra `ipam` field on the external inference network; its private diagnostic confirmed this was the only differing path and the production Compose file was unchanged. Permit only an empty IPAM object at that exact external network in both preflight and post-cutover comparisons, with regressions retaining rejection of every nonempty IPAM configuration and unrelated change. Retrying activation remains pending owner evidence.
+- The owner's final b7bf796 actual-worker evaluation passed all eight unchanged synthetic fixtures, accounting for 1,157 input and 117 output tokens with zero local API cost. Exact-source isolated application staging passed, with production unchanged. PR #28 is merged as 37130b5 and its pinned image was subsequently released and activated.
+- Pin the tested application image and reuse the established backup, source-tree equivalence, idle-job, health and automatic rollback release flow. Guard the observed original Compose hash before release.
+- Prepare persistent activation of the app's local-worker flag and attachment to the existing private inference network. Preserve raw YAML/environment substitutions, compare the entire resolved candidate against the strictly permitted change, and keep other container identities fixed. Verify runtime version/model digests and unloaded weights from the app without inference, cloud calls or database writes.
+- Save a separate guarded feature rollback; execute it before an optional source/image rollback. Test configuration preservation, ambiguous layout rejection, the canonical permitted delta and refusal to overwrite later deployment changes.
+
 ### Bounded local workers and evaluation (#28)
 
 - The owner's d283467 comparison completed with unchanged production, unloaded weights and all 24 native usage records. Qwen3 1.7B and Hermes each passed eight of eight synthetic cases; Qwen 0.6B passed six. Select the pinned 1.7B model for the proposed extraction role, retaining Hermes for structured summaries. These short fixtures do not certify general task accuracy.
