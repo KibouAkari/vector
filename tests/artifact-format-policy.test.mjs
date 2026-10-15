@@ -120,7 +120,7 @@ test('grounded document requests finish as documents even if a provider attempts
   }
 });
 
-function limitFixture({format='pdf', finalText='# Fixture rankings\n\n| Rank | Player | Score |\n| --- | --- | --- |\n| 1 | Fixture player | 42 |', renderFailure=false, existing=false}={}) {
+function limitFixture({format='pdf', finalText='# Fixture rankings\n\n| Rank | Player | Score |\n| --- | --- | --- |\n| 1 | Fixture player | 42 |', renderFailure=false, existing=false, finalStatus='completed', continuations=[]}={}) {
   const {calls, tools}=runtimeFixture();
   const execute=tools.executeVectorTool;
   const {runVectorAgent}=loadRuntime('../lib/agent-runtime.js',{
@@ -136,7 +136,16 @@ function limitFixture({format='pdf', finalText='# Fixture rankings\n\n| Rank | P
       const output=calls.provider.length===1
         ? [{type:'function_call',call_id:'last-read',name:'server_inspect',arguments:'{"action":"read","path":"/srv/fixture/rankings.json"}'}]
         : [{type:'message',content:finalText?[{type:'output_text',text:finalText}]:[]}];
-      return {id:'response-'+calls.provider.length,status:'completed',output,usage:{input_tokens:10,output_tokens:10}};
+      if (calls.provider.length > 2) {
+        const part = continuations[calls.provider.length - 3] || {text:'', status:'incomplete'};
+        return {id:'continued-'+calls.provider.length,status:part.status,
+          incomplete_details:part.status==='incomplete'?{reason:'max_output_tokens'}:null,
+          output:[{type:'message',content:[{type:'output_text',text:part.text}]}],
+          usage:{input_tokens:10,output_tokens:10,input_tokens_details:{cached_tokens:2}}};
+      }
+      return {id:'response-'+calls.provider.length,status:calls.provider.length===2?finalStatus:'completed',
+        incomplete_details:calls.provider.length===2 && finalStatus==='incomplete'?{reason:'max_output_tokens'}:null,
+        output,usage:{input_tokens:10,output_tokens:10}};
     }
   },['runVectorAgent']);
   const context=tools.createToolContext({userId:'fixture',conversationId:'fixture',jobId:'fixture'});
@@ -186,3 +195,60 @@ test('limit finalization preserves an existing document without generating a dup
   assert.equal(fixture.calls.render.length,0);
 });
 
+
+test('truncated document continuation finishes the same table before rendering and accounts for usage',async()=>{
+  for(const format of ['pdf','docx']){
+    const fixture=limitFixture({format,finalText:'# Complete fixture\n\n| Rank | Player | Value |\n| --- | --- | --- |\n| 1 | Player A | 1',
+      finalStatus:'incomplete',continuations:[{text:'23 |\n\n## Other category\n\nAll ten results verified.',status:'completed'}]});
+    const result=await fixture.run();
+    assert.equal(result.artifactCreated,true);
+    assert.equal(fixture.calls.render.length,1);
+    assert.match(fixture.calls.render[0].content,/Player A \| 123 \|/);
+    assert.match(fixture.calls.render[0].content,/Other category/);
+    assert.equal(fixture.calls.provider.length,3);
+    assert.deepEqual(fixture.calls.provider[2].tools,[]);
+    assert.equal(fixture.calls.provider[2].max_output_tokens,2048);
+    assert.equal(result.inputTokens,30);
+    assert.equal(result.outputTokens,30);
+    assert.equal(result.cachedTokens,2);
+  }
+});
+test('bounded continuation never persists a document that remains truncated or returns no continuation',async()=>{
+  const partial=limitFixture({finalStatus:'incomplete',continuations:[
+    {text:'still partial',status:'incomplete'},{text:'still partial',status:'incomplete'}]});
+  await assert.rejects(partial.run(),/no partial document was saved/);
+  assert.equal(partial.calls.render.length,0);
+  assert.equal(partial.calls.provider.length,4);
+  const empty=limitFixture({finalStatus:'incomplete'});
+  await assert.rejects(empty.run(),/no document continuation/);
+  assert.equal(empty.calls.render.length,0);
+});
+test('normal no-tool and empty-response recovery paths also complete partial documents',async()=>{
+  for(const emptyFirst of [false,true]){
+    const {calls,tools}=runtimeFixture();
+    const {runVectorAgent}=loadRuntime('../lib/agent-runtime.js',{
+      ...tools,assertRequestedArtifactFormat,toolsForArtifactFormat,
+      sanitizeForExternal:text=>({sanitized:text,mappings:[]}),savePrivacyMappings:async()=>{},
+      requestProviderResponse:async({payload})=>{
+        calls.provider.push(payload);
+        const n=calls.provider.length;
+        const empty=emptyFirst && n===1;
+        const partial=n===(emptyFirst?2:1);
+        return {id:'fixture-'+n,status:partial?'incomplete':'completed',
+          incomplete_details:partial?{reason:'max_output_tokens'}:null,
+          output:empty?[]:[{type:'message',content:[{type:'output_text',
+            text:partial?'# Fixture\n\nBeginning':' and complete ending.'}]}],
+          usage:{input_tokens:10,output_tokens:10}};
+      }
+    },['runVectorAgent']);
+    const request='Erstelle ein PDF mit einer kurzen Zusammenfassung.';
+    const result=await runVectorAgent({model:'fixture',mode:'normal',
+      messages:[{role:'user',content:request}],originalUserMessage:request,
+      maxOutputTokens:2048,conversationId:'fixture',userId:'fixture',jobId:'fixture',
+      executionClass:'artifact',roundLimit:2});
+    assert.equal(result.artifactCreated,true);
+    assert.equal(calls.render.length,1);
+    assert.match(calls.render[0].content,/Beginning and complete ending/);
+    assert.equal(calls.provider.length,emptyFirst?3:2);
+  }
+});
