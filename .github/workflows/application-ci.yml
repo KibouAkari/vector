@@ -79,6 +79,8 @@ jobs:
           bash -n scripts/deploy/release-ranking-cost.sh
           python3 -m py_compile scripts/deploy/evaluate-local-workers.py
           python3 tests/local-worker-evaluation.test.py
+          python3 -m py_compile scripts/deploy/compare-local-models.py
+          python3 tests/local-model-comparison.test.py
           bash -n scripts/deploy/stage-local-workers.sh
           node --test tests/local-workers.test.mjs
 

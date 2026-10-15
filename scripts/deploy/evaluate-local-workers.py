@@ -38,7 +38,7 @@ const fixtures=[
    evidence:'Es sind 12 Benutzer angemeldet und 2 Abstuerze gemeldet.',fields:[{name:'benutzer',type:'integer'},{name:'abstuerze',type:'integer'}],expected:{benutzer:12,abstuerze:2}},
   {role:'extract',task:'Return the measured memory and temperature, or null if not supplied.',
    evidence:'This note contains no resource measurements.',fields:[{name:'memory_mb',type:'number'},{name:'temperature',type:'number'}],expected:{memory_mb:null,temperature:null}},
-  {role:'summarize',fields:[],task:'Fasse die Angaben ausschliesslich als JSON mit den Schluesseln dienste und status zusammen. status soll den Wert unbekannt haben, wenn keine Messung vorhanden ist.',
+  {role:'summarize',fields:[{name:'dienste',type:'integer'},{name:'status',type:'string'}],task:'Fasse die Angaben ausschliesslich als JSON mit den Schluesseln dienste und status zusammen. status soll den Wert unbekannt haben, wenn keine Messung vorhanden ist.',
    evidence:'3 Dienste sind vorhanden. Ihr Status wurde nicht gemessen.',expected:{dienste:3,status:'unbekannt'}}
 ];
 await withProviderUsageScope(async(runtime,response)=>{

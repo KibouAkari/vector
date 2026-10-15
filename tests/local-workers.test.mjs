@@ -20,7 +20,7 @@ test('roles select fixed models and send no tools or cross-user memory',()=>{
   assert.equal(payload.options.num_thread,2);
   assert.equal(payload.options.num_ctx,4096);
   assert.ok(!JSON.stringify(payload).includes('other-user'));
-  assert.equal(localWorkerPayload({...args,role:'summarize',fields:[]}).model,'vector-hermes3:8b-q4km');
+  assert.equal(localWorkerPayload({...args,role:'summarize'}).model,'vector-hermes3:8b-q4km');
   assert.throws(()=>localWorkerPayload({...args,role:'__proto__'}));
   assert.throws(()=>localWorkerPayload({...args,evidence:'ü'.repeat(1500)}),/No data was truncated/);
 });
@@ -163,4 +163,19 @@ test('constrained extraction rejects observed wrong arrays, translated keys and 
   assert.throws(()=>extractionSchema([{name:'constructor',type:'string'}]));
   assert.throws(()=>localWorkerPayload({...args,fields:[]}));
   assert.equal(localWorkerPayload(args).format.additionalProperties,false);
+});
+
+
+test('Hermes summaries use the same closed output contract and reject invented array structures',async()=>{
+  const summary={role:'summarize',task:'Summarize service count and unknown state as JSON.',
+    evidence:'3 services; state unknown',fields:[{name:'dienste',type:'integer'},{name:'status',type:'string'}]};
+  const payload=localWorkerPayload(summary);
+  assert.equal(payload.model,'vector-hermes3:8b-q4km');
+  assert.deepEqual(payload.format.required,['dienste','status']);
+  const good={...body(),message:{content:'{"dienste":3,"status":"unbekannt"}'}};
+  const result=await runLocalWorker(summary,context(),{...options,request:async()=>good});
+  assert.equal(result.data.dienste,3);
+  await assert.rejects(runLocalWorker(summary,context(),{...options,request:async()=>({...body(),
+    message:{content:'{"dienste":["Dienst 1","Dienst 2","Dienst 3"],"status":["unbekannt"]}'}})}),/field type/);
+  await assert.rejects(runLocalWorker({...summary,fields:[]},context(),options),/explicit output fields/);
 });

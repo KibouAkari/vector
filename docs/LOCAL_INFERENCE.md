@@ -192,7 +192,7 @@ includes that schema, and Vector independently validates exact keys and types.
 No silent renaming, coercion or empty-array repair is allowed. Reported usage is
 still recorded before validation failures. This guarantees only structure; factual
 values still require the expanded real-model fixtures and source checks.
-Summary calls use `fields: []`. The tool contract was not yet activated.
+Summary calls now require explicit fields too, as described below. The tool contract was not yet activated.
 
 The first production fingerprint comparison also reported a difference. Because
 that evaluator did not save its snapshots, the logs do not identify which field
@@ -202,3 +202,40 @@ image, save private before/after JSON snapshots and name every changed field.
 Offline tests verify reordered lists compare equal while actual image, container,
 restart, mount-permission and address changes remain detectable. No production
 repair or restart is attempted by evaluation.
+
+
+### Candidate comparison after the second model test
+
+The owner ran 370150d. Application staging passed and canonical fingerprints
+confirmed unchanged production. Qwen 0.6B passed four of five extraction fixtures,
+but returned zero for unmeasured deaths. Hermes invented service names and arrays
+in the summary fixture. Neither observed failure is accepted or changed to a pass.
+Both roles now require explicit nullable output fields. A prose summary can use
+`fields: [{name: "summary", type: "string"}]`; structured summaries use typed fields.
+The same local validator applies to both roles, with reported usage retained even
+when validation rejects the output.
+
+`scripts/deploy/compare-local-models.py` compares all three candidates against
+eight fixed synthetic tasks, retaining the previous six exact expected answers
+and adding unrecorded/explicit-zero regressions. The additional candidate is
+[official Qwen3 1.7B Q8_0](https://huggingface.co/Qwen/Qwen3-1.7B-GGUF), Apache-2.0,
+revision `90862c4b9d2787eaed51d12237eafdfe7c5f6077`, file size 1834426016 bytes,
+SHA-256 `061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a`.
+This is an evaluation candidate, not an assertion of better accuracy or speed.
+
+The comparison reuses the existing digest-pinned Ollama service, resource limits
+and live app image solely as a disposable Node runtime. It verifies the original
+model digests and import mount, imports the new artifact only under a separate
+model name, and records its model digest for safe repeat runs. No existing model
+is overwritten; mismatching import evidence fails explicitly. Model weights and
+imports remain stored for later evaluation/explicit removal. All weights are
+unloaded and the evaluator removed on completion. Private before/after app
+snapshots and the full comparison report are saved in its release directory.
+
+The comparison does not run a new application build or activate Vector. Candidate
+requests deliberately override the native payload's model ID inside this isolated
+harness; production worker model IDs remain fixed. Accounting records use each
+actual candidate ID and stay in memory without writing the Vector database.
+A candidate must pass every fixture to be listed as passing. This finite test
+suite still does not certify arbitrary task reliability. Model selection, final
+actual-worker tests and application staging/release follow the measured results.

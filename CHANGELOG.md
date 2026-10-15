@@ -8,6 +8,12 @@ Production deployments are tracked separately.
 
 ### Bounded local workers and evaluation (#28)
 
+- The 370150d owner staging passed and its evaluator confirmed unchanged production, but model quality still blocked activation: Qwen passed four of five extractions and invented a zero for an unmeasured value; Hermes invented service names/array structures. Keep both failed cases and their original expected facts in the evaluation.
+- Apply the closed output-field schema to Hermes summaries as well as extraction; prose summaries use an explicit string field. Continue treating all results as unverified interpretation rather than equating schema validity with truth.
+- Add an isolated eight-fixture comparison across existing Qwen 0.6B, official checksum/revision-pinned Qwen3 1.7B Q8_0 and Hermes. Import the additional 1.83 GB artifact without changing existing models, preserve token telemetry, production snapshots and cleanup, and never auto-select or activate a candidate. Reuse installed runtime/app images without an application rebuild.
+- Add an offline comparison-harness regression proving the observed wrong-zero/array responses remain failures, all native token counts are retained and only a fully passing candidate is listed. Actual new-model quality and latency remain pending server evidence.
+
+
 - The owner's first application staging passed, while the subsequent real-model evaluation correctly blocked activation: Qwen returned wrong arrays/field names and Hermes passed its fixture. Retain these failures rather than calling the initial worker evaluation successful.
 - Require explicit nullable extraction field names/types, send a native JSON schema and validate every returned key/type locally before accepting interpretation. Shorten role prompts and expand real-model checks to zero, missing values and different English/German counts. Schemas constrain structure, not factual accuracy.
 - Canonicalize Docker mount/alias ordering in evaluator fingerprints, save private before/after snapshots, and report exactly which fields changed. Preserve detection of actual image, container, restart, mount-permission and network changes. The earlier unsaved difference cannot be retrospectively attributed to ordering alone.
