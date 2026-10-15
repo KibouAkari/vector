@@ -2,7 +2,6 @@
 """Evaluate actual worker code against installed models in a disposable container.
 Uses synthetic evidence only. Does not activate Vector or write its database.
 """
-import ast
 import datetime
 import json
 import os
@@ -30,10 +29,16 @@ const results=[];
 const events=[];
 const fixtures=[
   {role:'extract',task:'Return exactly the JSON keys players and deaths.',
-   evidence:'Players: 3. Deaths were not measured.',expected:{players:3,deaths:null}},
+   evidence:'Players: 3. Deaths were not measured.',fields:[{name:'players',type:'integer'},{name:'deaths',type:'integer'}],expected:{players:3,deaths:null}},
   {role:'extract',task:'Extrahiere ausschliesslich die JSON Schluessel dienste und temperatur.',
-   evidence:'Es laufen 7 Dienste. Die Temperatur ist unbekannt.',expected:{dienste:7,temperatur:null}},
-  {role:'summarize',task:'Fasse die Angaben ausschliesslich als JSON mit den Schluesseln dienste und status zusammen. status soll den Wert unbekannt haben, wenn keine Messung vorhanden ist.',
+   evidence:'Es laufen 7 Dienste. Die Temperatur ist unbekannt.',fields:[{name:'dienste',type:'integer'},{name:'temperatur',type:'number'}],expected:{dienste:7,temperatur:null}},
+  {role:'extract',task:'Return the count of alerts and the unknown latency in milliseconds.',
+   evidence:'Alerts: 0. Latency was not measured.',fields:[{name:'alerts',type:'integer'},{name:'latency_ms',type:'number'}],expected:{alerts:0,latency_ms:null}},
+  {role:'extract',task:'Extrahiere die Anzahl Benutzer und Abstuerze.',
+   evidence:'Es sind 12 Benutzer angemeldet und 2 Abstuerze gemeldet.',fields:[{name:'benutzer',type:'integer'},{name:'abstuerze',type:'integer'}],expected:{benutzer:12,abstuerze:2}},
+  {role:'extract',task:'Return the measured memory and temperature, or null if not supplied.',
+   evidence:'This note contains no resource measurements.',fields:[{name:'memory_mb',type:'number'},{name:'temperature',type:'number'}],expected:{memory_mb:null,temperature:null}},
+  {role:'summarize',fields:[],task:'Fasse die Angaben ausschliesslich als JSON mit den Schluesseln dienste und status zusammen. status soll den Wert unbekannt haben, wenn keine Messung vorhanden ist.',
    evidence:'3 Dienste sind vorhanden. Ihr Status wurde nicht gemessen.',expected:{dienste:3,status:'unbekannt'}}
 ];
 await withProviderUsageScope(async(runtime,response)=>{
@@ -42,18 +47,22 @@ await withProviderUsageScope(async(runtime,response)=>{
 },async()=>{
   for(const [index,fixture] of fixtures.entries()){
     const {expected,...args}=fixture;
-    const result=await runLocalWorker(args,{userId:'synthetic-evaluation',jobId:'synthetic-fixture-'+index,allowLocalWorkers:true},
-      {enabled:true,exclusive:execute=>execute()});
-    let passed=false;
-    try {assert.deepEqual(JSON.parse(result.text),expected);passed=true;}catch{}
-    results.push({...result,fixture_passed:passed});
+    try {
+      const result=await runLocalWorker(args,{userId:'synthetic-evaluation',jobId:'synthetic-fixture-'+index,allowLocalWorkers:true},
+        {enabled:true,exclusive:execute=>execute()});
+      let passed=false;
+      try {assert.deepEqual(JSON.parse(result.text),expected);passed=true;}catch{}
+      results.push({...result,fixture_index:index,expected,fixture_passed:passed});
+    } catch(error) {
+      results.push({fixture_index:index,worker_role:args.role,expected,fixture_passed:false,error:error.message});
+    }
   }
 });
 console.log(JSON.stringify({results,accounted_calls:events.length,
   input_tokens:events.reduce((n,e)=>n+e.inputTokens,0),output_tokens:events.reduce((n,e)=>n+e.outputTokens,0),
   api_cost_chf:events.reduce((n,e)=>n+e.costChf,0),usage_complete:events.every(e=>e.metadata.usageKnown),
   ledger_writes:false,cloud_calls:0,vector_activated:false,
-  passed:results.every(r=>r.fixture_passed) && events.length===3 && events.every(e=>e.metadata.usageKnown)}));
+  passed:results.every(r=>r.fixture_passed) && events.length===fixtures.length && events.every(e=>e.metadata.usageKnown)}));
 '''
 
 
@@ -65,9 +74,36 @@ def inspect(name):
     return json.loads(run('docker', 'inspect', name))[0]
 
 
-def production_fingerprint():
-    info = inspect('vector-app')
-    return {key:info[key] for key in ('Id','Image','Mounts')}, info['State']['StartedAt'], sorted(info['NetworkSettings']['Networks'])
+def production_fingerprint(info=None):
+    info = inspect('vector-app') if info is None else info
+    # Docker does not promise a stable Mounts/alias list order.
+    networks = {}
+    for name, network in info['NetworkSettings']['Networks'].items():
+        networks[name] = {key: network.get(key) for key in
+            ('NetworkID', 'EndpointID', 'IPAddress', 'GlobalIPv6Address')}
+        networks[name]['Aliases'] = sorted(network.get('Aliases') or [])
+    return {
+        'container_id': info['Id'], 'image_id': info['Image'],
+        'configured_image': info['Config']['Image'], 'started_at': info['State']['StartedAt'],
+        'running': info['State']['Running'],
+        'mounts': sorted(info['Mounts'], key=lambda item: json.dumps(item, sort_keys=True)),
+        'networks': networks,
+    }
+
+
+def private_json(path, value):
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'w') as output:
+        json.dump(value, output, indent=2)
+        output.write('\n')
+
+
+def create_evaluation_directory(directory):
+    directory.mkdir(mode=0o755)
+    directory.chmod(0o755)
+    library = directory / 'lib'
+    library.mkdir(mode=0o755)
+    library.chmod(0o755)
 
 
 def main():
@@ -96,13 +132,12 @@ def main():
     if api('/api/ps').get('models'):
         raise RuntimeError('Models are already in use; evaluate during an idle period.')
     before = production_fingerprint()
+    if before['image_id'] != 'sha256:0131e29a797cb74b04ceeeea6765cc0ccc46e331e62b4b8fe73a98794df8ea28' or not before['running']:
+        raise RuntimeError('Current production app differs from the confirmed running release. Actual image: ' + before['image_id'])
     name = 'vector-local-worker-eval-' + uuid.uuid4().hex[:8]
     directory = ROOT / (name + '-' + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
-    directory.mkdir(mode=0o755)
-    os.chmod(directory, 0o755)
-    library = directory / 'lib'
-    library.mkdir(mode=0o755)
-    os.chmod(library, 0o755)
+    create_evaluation_directory(directory)
+    private_json(directory / 'production-before.json', before)
     for source in FILES:
         destination = directory / source
         destination.write_text(run('git', '-C', str(REPO), 'show', revision + ':' + source) + '\n')
@@ -129,17 +164,21 @@ def main():
             subprocess.run(['docker','rm','-f',name], check=True, stdout=subprocess.DEVNULL)
         for model in MODELS:
             api('/api/generate', {'model':model,'keep_alive':0})
-        unchanged = production_fingerprint() == before
+        after = production_fingerprint()
+        private_json(directory / 'production-after.json', after)
+        unchanged = after == before
+        changed_fields = [key for key in before if before[key] != after.get(key)]
         if report is not None:
             report['production_unchanged'] = unchanged
+            report['production_changed_fields'] = changed_fields
             report['loaded_models_after_unload'] = len(api('/api/ps').get('models', []))
             report['passed'] = report['passed'] and unchanged and report['loaded_models_after_unload'] == 0
             path = directory / 'worker-result.json'
-            path.write_text(json.dumps(report,indent=2) + '\n')
+            private_json(path, report)
             print('Report:', path, flush=True)
             print(json.dumps(report,indent=2), flush=True)
         if not unchanged:
-            raise RuntimeError('Production fingerprint changed during evaluation; inspect concurrent maintenance.')
+            raise RuntimeError('Production fingerprint changed in: ' + ', '.join(changed_fields) + '. Inspect the saved before/after snapshots.')
     if not report or not report['passed']:
         raise RuntimeError('Worker fixtures did not pass. Vector remains unactivated.')
 

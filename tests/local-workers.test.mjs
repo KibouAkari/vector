@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {localWorkerPayload,runLocalWorker,requestLocalChat} from '../lib/local-worker-core.mjs';
+import {localWorkerPayload,runLocalWorker,requestLocalChat,extractionSchema,validateExtraction} from '../lib/local-worker-core.mjs';
 import {withProviderUsageScope,providerUsageEvent} from '../lib/provider-call-usage.mjs';
-const args = {role:'extract',task:'Return players and deaths as JSON.',evidence:'players 3; deaths unknown'};
+const args = {role:'extract',task:'Return players and deaths as JSON.',evidence:'players 3; deaths unknown',fields:[{name:'players',type:'integer'},{name:'deaths',type:'integer'}]};
 const context = () => ({userId:'fixture-user',jobId:'fixture-job',allowLocalWorkers:true});
 const body = () => ({done:true,done_reason:'stop',message:{content:'{"players":3,"deaths":null}'},prompt_eval_count:60,eval_count:13});
 const options = {enabled:true,exclusive: execute=>execute(),request:async()=>body()};
@@ -20,7 +20,7 @@ test('roles select fixed models and send no tools or cross-user memory',()=>{
   assert.equal(payload.options.num_thread,2);
   assert.equal(payload.options.num_ctx,4096);
   assert.ok(!JSON.stringify(payload).includes('other-user'));
-  assert.equal(localWorkerPayload({...args,role:'summarize'}).model,'vector-hermes3:8b-q4km');
+  assert.equal(localWorkerPayload({...args,role:'summarize',fields:[]}).model,'vector-hermes3:8b-q4km');
   assert.throws(()=>localWorkerPayload({...args,role:'__proto__'}));
   assert.throws(()=>localWorkerPayload({...args,evidence:'ü'.repeat(1500)}),/No data was truncated/);
 });
@@ -126,8 +126,7 @@ test('actual agent overwrites spoofed worker permissions and preserves current-j
       const localWorkerBudget={calls:0};
       const tools=load('../lib/tool-runtime.js',{crypto,executeLocalWorker:async(a,c)=>{
         const result=await runLocalWorker(a,c,{...options,record:async()=>{}}); count++;
-        assert.equal(c.userId,'current-user');assert.equal(c.jobId,'current-job');
-        assert.equal(c.localWorkerBudget,localWorkerBudget);return result;
+        assert.equal(c.userId,'current-user');assert.equal(c.jobId,'current-job');assert.equal(c.localWorkerBudget,localWorkerBudget);return result;
       }},['getVectorTools','createToolContext','executeVectorTool']);
       let round=0;
       const {runVectorAgent}=load('../lib/agent-runtime.js',{
@@ -146,4 +145,22 @@ test('actual agent overwrites spoofed worker permissions and preserves current-j
       assert.equal(result.toolTrace.find(t=>t.tool==='server_local_worker').success,allowServer);
     }
   } finally {if(previous===undefined)delete process.env.VECTOR_LOCAL_WORKERS;else process.env.VECTOR_LOCAL_WORKERS=previous;}
+});
+
+
+test('constrained extraction rejects observed wrong arrays, translated keys and number strings',async()=>{
+  const schema=extractionSchema(args.fields);
+  for(const invalid of [{players:[],deaths:[]},{service:'7',temperature:'unbekannt'},
+    {players:'3',deaths:null},{players:3},{players:3,deaths:null,extra:0},{players:3.5,deaths:null}]) {
+    assert.throws(()=>validateExtraction(invalid,schema));
+    let recorded=0;
+    await assert.rejects(runLocalWorker(args,context(),{...options,record:async()=>{recorded++;},
+      request:async()=>({...body(),message:{content:JSON.stringify(invalid)}})}));
+    assert.equal(recorded,1);
+  }
+  assert.deepEqual(validateExtraction({players:0,deaths:null},schema),{players:0,deaths:null});
+  assert.throws(()=>extractionSchema([{name:'x',type:'integer'},{name:'x',type:'integer'}]));
+  assert.throws(()=>extractionSchema([{name:'constructor',type:'string'}]));
+  assert.throws(()=>localWorkerPayload({...args,fields:[]}));
+  assert.equal(localWorkerPayload(args).format.additionalProperties,false);
 });

@@ -166,7 +166,7 @@ test('artifact provider failover shares the two-attempt local-worker budget',asy
   const fallback={...runtime,id:'fixture-fallback',provider:'anthropic'};
   const budgets=[],failed=[];
   let agentAttempts=0,workerCalls=0;
-  const workerArgs={role:'extract',task:'Return the value.',evidence:'value 3'};
+  const workerArgs={role:'extract',task:'Return the value.',evidence:'value 3',fields:[{name:'value',type:'integer'}]};
   const {executeAgentJob}=load('../lib/background-executor.js',{
     crypto,withProviderUsageScope,providerUsageEvent,providerUsageTotals,
     MODEL_PRICING:{},calculateModelCost:()=>({chf:0}),usdToChf:x=>x,

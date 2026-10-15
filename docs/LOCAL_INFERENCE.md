@@ -176,3 +176,29 @@ Rollback after a future activation: disable `VECTOR_LOCAL_WORKERS`, remove only
 the added app/worker connections to the inference network and use the release's
 source/image rollback. Leave model storage intact. No schema migration or new
 package dependency is introduced by worker integration.
+
+
+### First integration test and corrective evaluation
+
+The owner ran exact revision 17c3e62: application staging passed, but Qwen failed
+both extraction fixtures (arrays instead of scalar/null; translated keys/string
+numbers). Hermes passed its fixture. Activation remains blocked. Fast generation
+alone is insufficient for selecting an extractor.
+
+Extraction now requires one to eight explicit `fields` entries with fixed names
+and integer/number/string/boolean types. Each permits null for absent evidence.
+The native Ollama `format` receives the resulting closed JSON schema, the prompt
+includes that schema, and Vector independently validates exact keys and types.
+No silent renaming, coercion or empty-array repair is allowed. Reported usage is
+still recorded before validation failures. This guarantees only structure; factual
+values still require the expanded real-model fixtures and source checks.
+Summary calls use `fields: []`. The tool contract was not yet activated.
+
+The first production fingerprint comparison also reported a difference. Because
+that evaluator did not save its snapshots, the logs do not identify which field
+changed. Docker mount/alias ordering is now normalized, but a genuine previous
+change is not ruled out. New evaluations first require the confirmed live app
+image, save private before/after JSON snapshots and name every changed field.
+Offline tests verify reordered lists compare equal while actual image, container,
+restart, mount-permission and address changes remain detectable. No production
+repair or restart is attempted by evaluation.

@@ -78,6 +78,7 @@ jobs:
           python3 -m py_compile scripts/deploy/local-inference-pilot.py
           bash -n scripts/deploy/release-ranking-cost.sh
           python3 -m py_compile scripts/deploy/evaluate-local-workers.py
+          python3 tests/local-worker-evaluation.test.py
           bash -n scripts/deploy/stage-local-workers.sh
           node --test tests/local-workers.test.mjs
 

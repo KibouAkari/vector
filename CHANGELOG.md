@@ -8,6 +8,11 @@ Production deployments are tracked separately.
 
 ### Bounded local workers and evaluation (#28)
 
+- The owner's first application staging passed, while the subsequent real-model evaluation correctly blocked activation: Qwen returned wrong arrays/field names and Hermes passed its fixture. Retain these failures rather than calling the initial worker evaluation successful.
+- Require explicit nullable extraction field names/types, send a native JSON schema and validate every returned key/type locally before accepting interpretation. Shorten role prompts and expand real-model checks to zero, missing values and different English/German counts. Schemas constrain structure, not factual accuracy.
+- Canonicalize Docker mount/alias ordering in evaluator fingerprints, save private before/after snapshots, and report exactly which fields changed. Preserve detection of actual image, container, restart, mount-permission and network changes. The earlier unsaved difference cannot be retrospectively attributed to ordering alone.
+
+
 - Record the owner's successful isolated Hermes/Qwen CPU pilot and accounting release. Keep short-fixture timing distinct from general model quality or speed guarantees.
 - Add feature-gated server-scoped extraction/summarization workers with fixed models, explicit current-job evidence, no tools or independent memory/retrieval, two attempts per job and global nonblocking PostgreSQL admission.
 - Preserve the two-call worker budget across artifact provider failover, and explicitly set staged evaluator directory permissions so restrictive umasks do not block the evaluation container.
