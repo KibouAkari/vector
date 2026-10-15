@@ -1,5 +1,6 @@
 import Link
   from "next/link";
+import { Folder, FolderOpen } from "lucide-react";
 
 import {
   requireFeature
@@ -90,7 +91,7 @@ export default async function ProjectsPage() {
     `, [session.role === "owner", session.userId]);
 
   return (
-    <div className="vector-shell">
+    <div className="vector-shell vector-projects-page">
 
       <Sidebar
         session={
@@ -113,9 +114,7 @@ export default async function ProjectsPage() {
             </h1>
 
             <p>
-              Organize chats, files,
-              repositories and future agents
-              around real work.
+              Keep your conversations, files and tasks together.
             </p>
 
           </div>
@@ -131,7 +130,7 @@ export default async function ProjectsPage() {
               <section className="projects-empty">
 
                 <div className="projects-empty-icon">
-                  ◇
+                  <FolderOpen size={30} strokeWidth={1.4} aria-hidden="true" />
                 </div>
 
                 <h2>
@@ -139,9 +138,7 @@ export default async function ProjectsPage() {
                 </h2>
 
                 <p>
-                  Projects keep files,
-                  conversations and future
-                  agent work together.
+                  Bring your files and ideas into one workspace.
                 </p>
 
               </section>
@@ -167,7 +164,7 @@ export default async function ProjectsPage() {
                         <div className="project-card-top">
 
                           <div className="project-symbol">
-                            →
+                            <Folder size={23} strokeWidth={1.5} aria-hidden="true" />
                           </div>
 
                           <span
@@ -239,3 +236,4 @@ export default async function ProjectsPage() {
     </div>
   );
 }
+

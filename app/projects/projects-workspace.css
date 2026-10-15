@@ -1,0 +1,98 @@
+.vector-projects-page .workspace-main,
+.vector-projects-page .workbench-main{min-width:0;max-width:none}
+.vector-projects-page .workspace-header{align-items:center;gap:24px;margin-bottom:30px}
+.vector-projects-page .workspace-header h1{letter-spacing:-.045em}
+.vector-projects-page .workspace-header p{max-width:580px;color:#9bb0aa;line-height:1.7}
+.vector-projects-page .projects-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,285px),1fr));gap:18px}
+.vector-projects-page .project-card{min-width:0;background:#10171a;border:1px solid #24332f;border-radius:16px;padding:25px;transition:background .18s,border-color .18s,transform .18s}
+.vector-projects-page .project-card:hover{background:#141e20;border-color:#486b5e;transform:translateY(-2px)}
+.vector-projects-page .project-card h2{font-size:19px;letter-spacing:-.03em;overflow-wrap:anywhere}
+.vector-projects-page .project-card p{line-height:1.65;color:#9bb0aa;overflow-wrap:anywhere}
+.vector-projects-page .project-symbol{display:grid;place-items:center;background:#1b2c27;color:#a1d6be;border-radius:11px;width:45px;height:45px}
+.vector-projects-page .projects-empty{border:1px dashed #344b42;background:transparent;min-height:330px;border-radius:18px}
+.vector-projects-page .projects-empty-icon{display:grid;place-items:center;color:#8fbaa8}
+.vector-projects-page .vp-workspace{max-width:none;min-width:0}
+.vector-projects-page .workbench-header{gap:20px;padding-bottom:25px}
+.vector-projects-page .workbench-project{min-width:0}
+.vector-projects-page .workbench-project h1{overflow-wrap:anywhere;letter-spacing:-.04em}
+.vector-projects-page .workbench-project p{max-width:740px;line-height:1.65}
+.vector-projects-page .workbench-tabs{overflow-x:auto;gap:8px;scrollbar-width:thin;margin-bottom:24px}
+.vector-projects-page .workbench-tabs button{white-space:nowrap;min-height:43px;border-radius:9px}
+.vector-projects-page .project-action-grid button:disabled{opacity:.45;cursor:not-allowed}
+.vector-projects-page .vp-files{min-width:0;color:#e9f1ed}
+.vector-projects-page .vp-files h2{margin:0;font-size:19px;letter-spacing:-.03em}
+.vector-projects-page .vp-files-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:19px}
+.vector-projects-page .vp-files-toolbar p{color:#91a69d;font-size:12px;margin:7px 0 0}
+.vector-projects-page .vp-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.vector-projects-page .vp-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:39px;padding:0 13px;border:1px solid #34473f;border-radius:9px;background:#18211f;color:#d8e8df;text-decoration:none;font-family:inherit;font-size:12px;font-weight:500;line-height:1.4;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s}
+.vector-projects-page .vp-button:hover{background:#23312b;border-color:#658c78}
+.vector-projects-page .vp-button-primary{background:#b6e8ce;border-color:#b6e8ce;color:#0b2116}
+.vector-projects-page .vp-button-primary:hover{background:#ceefdd;border-color:#ceefdd}
+.vector-projects-page .vp-button:disabled{opacity:.5;cursor:wait}
+.vector-projects-page .vp-button:focus-visible,
+.vector-projects-page .vp-file-row:focus-visible,
+.vector-projects-page .vp-icon-button:focus-visible{outline:2px solid #a3dfbd;outline-offset:3px}
+.vector-projects-page .vp-read-only{font-size:12px;color:#a0b3a8}
+.vector-projects-page .vp-file-layout{display:grid;grid-template-columns:minmax(245px,300px) minmax(0,1fr);border:1px solid #293b33;border-radius:16px;overflow:hidden;min-height:590px;background:#0f1619}
+.vector-projects-page .vp-file-list{min-width:0;background:#111b1d;border-right:1px solid #293b33}
+.vector-projects-page .vp-file-filters{padding:17px;display:grid;gap:12px;border-bottom:1px solid #273831}
+.vector-projects-page .vp-search{display:flex;align-items:center;gap:9px;border:1px solid #34483f;border-radius:9px;padding:0 11px;color:#8aa797;background:#0c1517}
+.vector-projects-page .vp-search input{width:100%;min-width:0;min-height:39px;border:0;background:transparent;color:#e6f0e9;outline:none;font:inherit;font-size:12px}
+.vector-projects-page .vp-search:focus-within{outline:2px solid #91cbaa;outline-offset:2px}
+.vector-projects-page .vp-sort{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:#91a79b}
+.vector-projects-page .vp-sort select{min-width:0;border:0;background:#172322;color:#c7d9ce;border-radius:6px;padding:7px 9px;font-size:11px}
+.vector-projects-page .vp-file-rows{padding:8px;max-height:690px;overflow-y:auto;scrollbar-width:thin}
+.vector-projects-page .vp-file-row{width:100%;min-width:0;display:flex;align-items:center;gap:11px;text-align:left;background:transparent;color:inherit;border:1px solid transparent;border-radius:10px;padding:12px 9px;cursor:pointer;margin-bottom:3px}
+.vector-projects-page .vp-file-row:hover{background:#1a2926}
+.vector-projects-page .vp-file-row.is-selected{background:#20382e;border-color:#3d5f4c}
+.vector-projects-page .vp-file-row:disabled{cursor:default}
+.vector-projects-page .vp-file-symbol{display:grid;place-items:center;flex:0 0 32px;height:36px;color:#98c3ad}
+.vector-projects-page .vp-file-name{display:grid;gap:5px;min-width:0;flex:1}
+.vector-projects-page .vp-file-name strong{font-size:12px;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vector-projects-page .vp-file-name small{font-size:10px;color:#91a89a}
+.vector-projects-page .vp-file-extension{font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#87a38f;flex:0 0 auto}
+.vector-projects-page .vp-file-detail{display:flex;flex-direction:column;min-width:0;outline:none}
+.vector-projects-page .vp-detail-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 21px;border-bottom:1px solid #293b33;min-height:83px}
+.vector-projects-page .vp-detail-header>div{min-width:0;display:grid;gap:7px}
+.vector-projects-page .vp-detail-header strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vector-projects-page .vp-detail-header small{font-size:11px;color:#92a89c}
+.vector-projects-page .vp-empty{display:flex;flex:1;min-height:340px;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:35px 22px;gap:13px;color:#86aa97}
+.vector-projects-page .vp-empty h3{font-size:17px;letter-spacing:-.025em;font-weight:550;margin:5px 0 0;color:#d4e6da}
+.vector-projects-page .vp-empty p{font-size:12px;line-height:1.8;color:#91a89b;max-width:340px;margin:0;overflow-wrap:anywhere}
+.vector-projects-page .vp-list-empty{min-height:230px;padding:28px 15px}
+.vector-projects-page .vp-list-empty strong{font-size:12px;color:#c3d7c9}
+.vector-projects-page .vp-image-preview{display:grid;place-items:center;min-height:430px;padding:25px;flex:1;background:#0b1114;overflow:auto}
+.vector-projects-page .vp-image-preview img{display:block;max-width:100%;max-height:650px;object-fit:contain;border-radius:5px}
+.vector-projects-page .vp-pdf-preview{width:100%;height:70vh;min-height:470px;flex:1;border:0;background:#14191c}
+.vector-projects-page .vp-text-preview{display:flex;flex-direction:column;flex:1;min-width:0}
+.vector-projects-page .vp-editor-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;min-height:60px;border-bottom:1px solid #24362c}
+.vector-projects-page .vp-editor-toolbar>span{font-size:11px;line-height:1.6;color:#9aafa1}
+.vector-projects-page .vp-code-preview,
+.vector-projects-page .vp-code-editor{font:12px/1.8 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2;color:#d3e3d9;min-height:430px;max-height:70vh;width:100%;margin:0;padding:23px;border:0;border-radius:0;background:#0c1316;overflow:auto;box-sizing:border-box;white-space:pre}
+.vector-projects-page .vp-code-editor{resize:vertical;outline:2px solid #668d74;outline-offset:-2px;flex:1}
+.vector-projects-page .vp-file-notice{margin:0;padding:13px 20px;color:#c6dfce;font-size:12px;border-top:1px solid #2a4132;overflow-wrap:anywhere}
+.vector-projects-page .vp-create-file{display:grid;gap:15px;background:#14201d;border:1px solid #385644;border-radius:13px;padding:21px;margin:0 0 20px}
+.vector-projects-page .vp-create-heading{display:flex;align-items:center;justify-content:space-between}
+.vector-projects-page .vp-create-heading h3{font-size:15px;font-weight:550;margin:0}
+.vector-projects-page .vp-icon-button{display:grid;place-items:center;width:33px;height:33px;background:transparent;border:1px solid #3b5244;border-radius:8px;color:#bad1c1;cursor:pointer}
+.vector-projects-page .vp-create-file label{display:grid;gap:8px;font-size:12px;color:#abc3b3}
+.vector-projects-page .vp-create-file input,
+.vector-projects-page .vp-create-file textarea{width:100%;padding:12px;background:#0b1514;color:#deede3;border:1px solid #3c5344;border-radius:8px;font-family:inherit;font-size:13px;line-height:1.6;box-sizing:border-box}
+.vector-projects-page .vp-error{font-size:12px;color:#efb3a8;margin:0;overflow-wrap:anywhere}
+.vector-projects-page .vp-spin{animation:vp-spin 1s linear infinite}
+@keyframes vp-spin{to{transform:rotate(360deg)}}
+@media(min-width:1500px){.vector-projects-page .vp-file-layout{grid-template-columns:330px minmax(0,1fr)}}
+@media(max-width:950px){.vector-projects-page .vp-file-layout{grid-template-columns:240px minmax(0,1fr)}.vector-projects-page .vp-detail-header{align-items:flex-start;flex-direction:column}}
+@media(max-width:700px){
+  .vector-projects-page .workspace-header,.vector-projects-page .workbench-header{align-items:flex-start;flex-direction:column}
+  .vector-projects-page .vp-files-toolbar{align-items:flex-start;flex-direction:column;gap:14px}
+  .vector-projects-page .vp-file-layout{grid-template-columns:minmax(0,1fr)}
+  .vector-projects-page .vp-file-list{border-right:0;border-bottom:1px solid #293b33}
+  .vector-projects-page .vp-file-rows{max-height:250px}
+  .vector-projects-page .vp-file-filters{grid-template-columns:minmax(0,1fr);padding:13px}
+  .vector-projects-page .vp-detail-header{flex-direction:row;padding:16px;align-items:center}
+  .vector-projects-page .vp-editor-toolbar{align-items:flex-start;flex-direction:column;padding:12px 16px}
+  .vector-projects-page .vp-code-preview,.vector-projects-page .vp-code-editor{padding:16px;min-height:320px}
+  .vector-projects-page .vp-empty{min-height:270px}
+}
+@media(prefers-reduced-motion:reduce){.vector-projects-page .project-card,.vector-projects-page .vp-button{transition:none}.vector-projects-page .project-card:hover{transform:none}.vector-projects-page .vp-spin{animation:none}}

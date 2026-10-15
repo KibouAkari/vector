@@ -158,6 +158,23 @@ test("real authenticated API permissions and project isolation", async t => {
       projectId, "image.png", "image/png", Buffer.from("TEST_IMAGE_BYTES"), false
     );
 
+    await t.test("original file downloads enforce project access and preserve bytes", async () => {
+      const download = `/api/files/${textFile}/download`;
+      await expectStatus(download, {}, 401);
+      for (const as of ["outsider", "disabled"]) {
+        await expectStatus(download, {as}, 404);
+      }
+      for (const as of ["creator", "viewer", "editor", "admin"]) {
+        const response = await expectStatus(download, {as}, 200);
+        assert.equal(await response.text(), "PRIVATE_PROJECT_CONTENT");
+        assert.equal(response.headers.get("content-type"), "application/octet-stream");
+        assert.match(response.headers.get("content-disposition"), /^attachment;/);
+        assert.equal(response.headers.get("cache-control"), "private, no-store");
+      }
+      const binary = await expectStatus(`/api/files/${imageFile}/download`, {as: "viewer"}, 200);
+      assert.deepEqual(Buffer.from(await binary.arrayBuffer()), Buffer.from("TEST_IMAGE_BYTES"));
+    });
+
     await t.test("failed sharing updates preserve existing project access", async () => {
       const route = `/api/users/${users.viewer.id}/projects`;
       const before = await db.query(
@@ -381,3 +398,4 @@ test("real authenticated API permissions and project isolation", async t => {
     await db.end();
   }
 });
+

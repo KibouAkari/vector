@@ -10,7 +10,7 @@ import {
   db
 } from "../../../lib/db";
 
-import { canAccessProject } from "../../../lib/identity";
+import { canAccessProject, canEditProject } from "../../../lib/identity";
 
 import {
   humanBytes,
@@ -43,6 +43,8 @@ export default async function ProjectPage({
   if (!await canAccessProject(session, id)) {
     notFound();
   }
+
+  const canEdit = await canEditProject(session, id);
 
   await initializeFileDatabase();
 
@@ -280,7 +282,7 @@ export default async function ProjectPage({
     );
 
   return (
-    <div className="vector-shell">
+    <div className="vector-shell vector-projects-page">
 
       <Sidebar
         session={
@@ -291,6 +293,7 @@ export default async function ProjectPage({
       <main className="main workbench-main">
 
         <ProjectWorkbench
+          canEdit={canEdit}
           project={
             project
           }
@@ -338,3 +341,4 @@ export default async function ProjectPage({
     </div>
   );
 }
+

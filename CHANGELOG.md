@@ -4,6 +4,20 @@ This changelog documents repository changes by date, with commit and pull
 request identifiers when available. Entries are listed newest first.
 Production deployments are tracked separately.
 
+## 2026-10-15
+
+### Projects: file workspace and original downloads (#21)
+
+- Add a larger file browser with search, sorting, images, PDF and bounded text previews.
+- Provide authenticated original downloads for every stored file format, enforcing existing project access rules.
+- Keep partial text previews read-only and prevent stale preview requests from replacing a newer selection.
+- Present text editing and file creation only to users with write access; preserve backend authorization.
+- Keep the file workspace mounted across project tabs so unsaved edits survive tab changes.
+- Refresh file counts and storage totals after uploads and saves; make overview uploads work before opening Files.
+- Scope the visual changes to Projects and retain the main dashboard.
+- Add file behavior and download-handler tests plus PostgreSQL-backed access checks in CI.
+- No production deployment, explicit database migration, provider requests or telemetry activation.
+
 ## 2026-10-14
 
 ### UI: chat conversation history and file downloads
@@ -175,3 +189,4 @@ Production deployments are tracked separately.
 
 - Add the sanitized application snapshot, Docker build, initial README, vision and contribution guidance.
 - Establish the initial application, API routes, libraries, database migrations and asset structure.
+
