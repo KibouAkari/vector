@@ -4,6 +4,7 @@ umask 077
 
 python3 - "$@" <<'RANKING_COST_STAGING_PYTHON'
 import ast
+import os
 import re
 import sys
 from pathlib import Path
@@ -11,9 +12,9 @@ from pathlib import Path
 SCRIPT = Path('/root/vector-workspace/archive/phases/vector-control-staging.sh')
 
 def main():
-    if len(sys.argv) != 2 or not re.fullmatch(r'[0-9a-f]{40}', sys.argv[1]):
-        raise RuntimeError('Pass the exact reviewed commit SHA as the only argument.')
-    revision = sys.argv[1]
+    revision = sys.argv[1] if len(sys.argv) == 2 else os.environ.get('VECTOR_STAGING_REV', '')
+    if len(sys.argv) > 2 or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        raise RuntimeError('Provide the exact reviewed commit as argument or VECTOR_STAGING_REV.')
     if not SCRIPT.is_file() or SCRIPT.is_symlink():
         raise RuntimeError('Archived control staging script missing or symlinked.')
     source = SCRIPT.read_text()
