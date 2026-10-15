@@ -51,7 +51,8 @@ def download(model):
     partial = ROOT / (model['file'] + '.partial')
     url = f"https://huggingface.co/{model['repo']}/resolve/{model['revision']}/{model['file']}"
     # No shell installers or model repository Python code are executed.
-    run('curl', '--fail', '--location', '--proto', '=https', '--proto-redir', '=https',
+    print('Download and verify:', model['file'], flush=True)
+    run('curl', '--silent', '--show-error', '--fail', '--location', '--proto', '=https', '--proto-redir', '=https',
         '--connect-timeout', '20', '--max-time', '1800', '--retry', '2', '--output', str(partial), url)
     if not verified(partial, model):
         raise RuntimeError('Downloaded GGUF checksum/size mismatch.')
@@ -106,6 +107,11 @@ def evaluate(base, model, phase):
 def main():
     if os.geteuid() != 0:
         raise RuntimeError('Run through the root workspace runner.')
+    if os.uname().machine not in ('x86_64', 'amd64'):
+        raise RuntimeError('Pinned runtime is Linux/amd64 only.')
+    memory = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
+    if int(memory['MemAvailable'].strip().split()[0]) < 16 * 1024**2:
+        raise RuntimeError('At least 16 GiB currently available RAM required.')
     if ROOT.exists():
         raise RuntimeError('Pilot directory already exists; inspect previous run instead of replacing it.')
     if shutil.disk_usage('/root').free < 20 * 1024**3:
