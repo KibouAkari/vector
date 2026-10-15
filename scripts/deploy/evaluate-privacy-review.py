@@ -15,12 +15,18 @@ IMAGE = 'sha256:d1b5b1f6c463627ba1daa20d44e9450c3862cdc4c80df245e0f94f1187f675bf
 FILES = ['lib/privacy-rules.mjs', 'lib/privacy-review-core.mjs', 'lib/privacy-review.js',
          'lib/local-worker-core.mjs', 'lib/provider-call-usage.mjs', 'lib/provider-usage-normalization.mjs']
 
+CANDIDATES = [
+    {'name': 'vector-qwen3:1.7b-q8', 'digest': '97f1ed78571eac64f6b5b7413d9bc5f50fc95ab13ad4403cd813aebb9ba3a5b0'},
+    {'name': 'vector-hermes3:8b-q4km', 'digest': 'ddd98889feddbec419ccb27c2839214c100ce4ebae74f16b12fe17f5c6572a20'},
+]
+
 HARNESS = r'''
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import pg from 'pg';
 const files=FILES_JSON;
+const candidate=CANDIDATE_JSON;
 const uri=source=>'data:text/javascript;base64,'+Buffer.from(source).toString('base64');
 const rules=uri(files['lib/privacy-rules.mjs']);
 const core=await import(uri(files['lib/privacy-review-core.mjs'].replace("'./privacy-rules.mjs'",JSON.stringify(rules))));
@@ -32,14 +38,15 @@ const workers=await import(uri(files['lib/local-worker-core.mjs']
 const {providerUsageEvent}=await import(usage);
 const {normalizedOpenAiUsage}=await import(normalization);
 const events=[];
-const deps={crypto,AsyncLocalStorage,...core,requestLocalChat:workers.requestLocalChat,
+const deps={crypto,AsyncLocalStorage,...core,
+  localScanPayload:text=>({...core.localScanPayload(text),model:candidate.name}),requestLocalChat:workers.requestLocalChat,
   withLocalWorkerSlot:execute=>execute(),providerUsageEvent,normalizedOpenAiUsage,
   recordUsage:async event=>events.push(event)};
 const source=files['lib/privacy-review.js'].replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm,'').replace(/^export\s+/gm,'');
 const {detectPrivateLocally}=new Function(...Object.keys(deps),source+'\nreturn {detectPrivateLocally};')(...Object.values(deps));
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,max:1,connectionTimeoutMillis:5000});
 const client=await pool.connect();let locked=false;
-const report={cases:[],cloud_calls:0,ledger_writes:false,production_activated:false};
+const report={model:candidate.name,model_digest:candidate.digest,cases:[],cloud_calls:0,ledger_writes:false,production_activated:false};
 try {
   const idle=await client.query("SELECT COUNT(*)::int AS count FROM agent_jobs WHERE status IN ('queued','running')");
   assert.equal(idle.rows[0].count,0,'Wait until Vector jobs are idle.');
@@ -47,7 +54,7 @@ try {
   assert.equal(locked,true,'Local model is busy.');
   const get=async path=>{const response=await fetch('http://vector-local-inference:11434'+path,{redirect:'error',signal:AbortSignal.timeout(10000)});assert.ok(response.ok);return response.json();};
   const tags=await get('/api/tags');
-  assert.ok(tags.models.some(m=>m.name===core.LOCAL_PRIVACY_MODEL&&m.digest==='97f1ed78571eac64f6b5b7413d9bc5f50fc95ab13ad4403cd813aebb9ba3a5b0'));
+  assert.ok(tags.models.some(m=>m.name===candidate.name&&m.digest===candidate.digest));
   assert.equal((await get('/api/ps')).models.length,0,'Expected idle weights.');
   const cases=[
     {id:'german-name-email-password',text:'Bitte schreibe Erika Muster eine E-Mail an erika@example.invalid. Passwort: "synthetic privacy phrase".',expected:['Erika Muster','erika@example.invalid','synthetic privacy phrase']},
@@ -97,7 +104,7 @@ try {
     if(locked){
       try {
         const unloaded=await fetch('http://vector-local-inference:11434/api/generate',{method:'POST',redirect:'error',
-          headers:{'Content-Type':'application/json'},body:JSON.stringify({model:core.LOCAL_PRIVACY_MODEL,keep_alive:0}),signal:AbortSignal.timeout(15000)});
+          headers:{'Content-Type':'application/json'},body:JSON.stringify({model:candidate.name,keep_alive:0}),signal:AbortSignal.timeout(15000)});
         assert.ok(unloaded.ok);
         const ps=await fetch('http://vector-local-inference:11434/api/ps',{signal:AbortSignal.timeout(10000)});
         assert.equal((await ps.json()).models.length,0);
@@ -107,12 +114,19 @@ try {
   } finally {client.release();await pool.end();}
 }
 
+assert.ok(events.every(event=>event.model===candidate.name),'Usage must identify the actual candidate.');
 report.calls=events.length;
 report.input_tokens=events.reduce((n,e)=>n+e.inputTokens,0);
 report.output_tokens=events.reduce((n,e)=>n+e.outputTokens,0);
 report.api_cost_chf=events.reduce((n,e)=>n+e.costChf,0);
 console.log(JSON.stringify(report));
 '''
+
+
+def render_harness(files, candidate):
+    if candidate not in CANDIDATES:
+        raise RuntimeError('Unapproved comparison model.')
+    return HARNESS.replace('FILES_JSON', json.dumps(files)).replace('CANDIDATE_JSON', json.dumps(candidate))
 
 
 def run(*args, data=None, timeout=30):
@@ -143,8 +157,24 @@ def main():
     before = fingerprint()
     if before['/vector-app']['image'] != IMAGE or before['/vector-local-inference']['networks'] != ['vector-local-inference']:
         raise RuntimeError('Production image or private inference network changed.')
-    code = HARNESS.replace('FILES_JSON', json.dumps(files))
-    result = json.loads(run('docker','exec','-i','vector-app','node','--input-type=module', data=code.encode(),timeout=600))
+    comparison = os.environ.get('VECTOR_PRIVACY_COMPARE_MODELS', '0')
+    if comparison not in ('0', '1'):
+        raise RuntimeError('Invalid comparison mode.')
+    candidates = CANDIDATES if comparison == '1' else CANDIDATES[:1]
+    results = []
+    for candidate in candidates:
+        print('Evaluate installed model:', candidate['name'], flush=True)
+        code = render_harness(files, candidate)
+        evaluated = json.loads(run('docker','exec','-i','vector-app','node','--input-type=module', data=code.encode(),timeout=600))
+        results.append(evaluated)
+    if comparison == '1':
+        qualified = [item['model'] for item in results if item.get('passed')]
+        result = dict(models=results, qualified_models=qualified, passed=bool(qualified),
+                      cloud_calls=0, ledger_writes=False, production_activated=False,
+                      api_cost_chf=sum(item['api_cost_chf'] for item in results),
+                      loaded_models_after_unload=results[-1]['loaded_models_after_unload'])
+    else:
+        result = results[0]
     result.update(revision=revision,production_unchanged=fingerprint()==before)
     result['passed'] = result.get('passed',False) and result['production_unchanged']
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
