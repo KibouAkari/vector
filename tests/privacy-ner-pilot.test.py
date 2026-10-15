@@ -3,6 +3,9 @@ import json
 from pathlib import Path
 import subprocess
 import unittest
+import tempfile
+import hashlib
+import stat
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -51,6 +54,32 @@ class NERTests(unittest.TestCase):
     def test_rewritten_name_is_rejected_instead_of_repaired(self):
         def invalid(cases):cases[3]['findings'][0]['value']='Zoe Beispiel'
         self.assertNotEqual(self.verify(invalid).returncode,0)
+
+    def access_helper(self):
+        namespace={}
+        exec(pilot.WEIGHT_ACCESS,namespace)
+        return namespace['normalize_weight_access']
+
+    def test_weight_access_changes_only_mode_after_checksum_verification(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'entity').mkdir()
+            weights=root/'entity/model.safetensors'
+            content=b'synthetic-public-weight-bytes'
+            weights.write_bytes(content);weights.chmod(0o600)
+            before=weights.read_bytes()
+            observed=self.access_helper()(root,hashlib.sha256(content).hexdigest())
+            self.assertEqual(observed['mode_before'],'0o600')
+            self.assertEqual(observed['mode_after'],'0o444')
+            self.assertEqual(weights.read_bytes(),before)
+            self.assertEqual(stat.S_IMODE(weights.stat().st_mode),0o444)
+            weights.chmod(0o600)
+            with self.assertRaises(RuntimeError):self.access_helper()(root,'0'*64)
+            self.assertEqual(stat.S_IMODE(weights.stat().st_mode),0o600)
+            weights.unlink()
+            with self.assertRaises(RuntimeError):self.access_helper()(root)
+            outside=root/'outside';outside.write_bytes(content)
+            weights.symlink_to(outside)
+            with self.assertRaises(RuntimeError):self.access_helper()(root)
 
     def test_inference_has_no_network_and_bounded_resources(self):
         args=pilot.limited_container('owned-test','sha256:test','/work/qualify.py',Path('/tmp/synthetic'),True)

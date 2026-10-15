@@ -72,10 +72,36 @@ manifest=dict(original_config_sha256=original,downloaded_weights_sha256=download
 Path('/work/setup-manifest.json').write_text(json.dumps(manifest,indent=2))
 '''
 
+WEIGHT_ACCESS = r'''
+import hashlib,json,stat
+from pathlib import Path
+
+def normalize_weight_access(root,expected_hash=None):
+    path=root/'entity/model.safetensors'
+    if root.is_symlink() or (root/'entity').is_symlink() or path.is_symlink():
+        raise RuntimeError('Unexpected symlink in model weights path.')
+    if not path.is_file():
+        raise RuntimeError('Weights are missing even for the image owner. No permission fix applied.')
+    with path.open('rb') as handle:
+        actual=hashlib.file_digest(handle,'sha256').hexdigest()
+    if expected_hash is not None and actual!=expected_hash:
+        raise RuntimeError('Weights checksum differs from the original setup manifest.')
+    before=stat.S_IMODE(path.stat().st_mode)
+    path.chmod(0o444)
+    return dict(file=str(path),sha256=actual,mode_before=oct(before),mode_after=oct(stat.S_IMODE(path.stat().st_mode)))
+'''
+
+# Safetensors atomically saves via a private 0600 temporary file. Public model
+# assets need explicit read permission for the isolated inference UID.
+SETUP += '\n' + WEIGHT_ACCESS + "\nnormalize_weight_access(Path('/models'))\n"
+
 INFERENCE = r'''
 import json,os,resource,time
 from pathlib import Path
 assert os.environ.get('HF_HUB_OFFLINE')=='1'
+# Fail with the actual OS error before library fallback can hide access errors.
+with Path('/models/entity/model.safetensors').open('rb') as weights:
+    assert weights.read(8), 'Empty model weights'
 import torch
 from gliner import GLiNER
 torch.set_num_threads(2);torch.set_num_interop_threads(1);torch.manual_seed(42)
@@ -199,12 +225,43 @@ def main():
         image='vector-privacy-ner:pilot-'+suffix
         owned=[]
         try:
-            print('Download isolated Python runtime and CPU-only dependencies.',flush=True)
-            command('docker','pull',BASE_IMAGE,timeout=600,live=True)
-            metadata=json.loads(command('docker','image','inspect',BASE_IMAGE))[0]
-            base_id=metadata['Id']
-            owned.append(setup)
-            command(*limited_container(setup,base_id,'/work/setup.py',work),timeout=2400,live=True)
+            reuse=os.environ.get('VECTOR_PRIVACY_NER_REUSE_RELEASE','')
+            weight_access=None
+            if reuse:
+                previous=Path(reuse)
+                if previous.is_symlink() or previous.parent!=ROOT/'releases' or not re.fullmatch(
+                        r'vector-privacy-ner-pilot-[0-9]{8}t[0-9]{6}z-[a-f0-9]{6}',previous.name):
+                    raise RuntimeError('Unexpected pilot reuse path.')
+                manifest_path=previous/'input/setup-manifest.json'
+                if manifest_path.is_symlink() or not manifest_path.is_file():
+                    raise RuntimeError('Original setup manifest is missing.')
+                manifest=json.loads(manifest_path.read_text())
+                if manifest.get('downloaded_weights_sha256')!='3003753fba99e40645cf088c7367a2c6211fc174897dc64f1f9c147c29d18d2d':
+                    raise RuntimeError('Original weights pin mismatch.')
+                expected=manifest.get('files_sha256',{}).get('entity/model.safetensors','')
+                if not re.fullmatch('[a-f0-9]{64}',expected):
+                    raise RuntimeError('Converted weights checksum missing.')
+                existing='vector-privacy-ner:pilot-'+previous.name.removeprefix('vector-privacy-ner-pilot-')
+                metadata=json.loads(command('docker','image','inspect',existing))[0]
+                base_id=metadata['Id']
+                (work/'setup-manifest.json').write_text(json.dumps(manifest))
+                repair=work/'weight-access.py'
+                repair.write_text(WEIGHT_ACCESS+'\nprint(json.dumps(normalize_weight_access(Path("/models"),'+repr(expected)+')))\n')
+                repair.chmod(0o644)
+                print('Reuse existing pilot image. Verify weights and fix public-asset read access offline.',flush=True)
+                args=limited_container(setup,base_id,'/work/weight-access.py',work)
+                args[-3:-3]=['--network','none','--user','0:0']
+                owned.append(setup)
+                weight_access=json.loads(command(*args,timeout=180,error_path=release/'weight-access-stderr.log'))
+                print(json.dumps(weight_access),flush=True)
+                (release/'weight-access.json').write_text(json.dumps(weight_access,indent=2)+'\n')
+            else:
+                print('Download isolated Python runtime and CPU-only dependencies.',flush=True)
+                command('docker','pull',BASE_IMAGE,timeout=600,live=True)
+                metadata=json.loads(command('docker','image','inspect',BASE_IMAGE))[0]
+                base_id=metadata['Id']
+                owned.append(setup)
+                command(*limited_container(setup,base_id,'/work/setup.py',work),timeout=2400,live=True)
             command('docker','commit',setup,image,timeout=180)
             image_id=json.loads(command('docker','image','inspect',image))[0]['Id']
             print('Run the unchanged fixtures offline, with 2 CPUs and 4 GiB RAM.',flush=True)
@@ -216,7 +273,7 @@ def main():
                 data=VERIFY.replace('INPUT_JSON',json.dumps(payload)).encode()))
             result=dict(checked,revision=revision,model=MODEL,model_revision=MODEL_REV,
                 backbone_revision=BACKBONE_REV,base_image_id=base_id,pilot_image=image,pilot_image_id=image_id,
-                resources=observed,offline_inference=True,production_activated=False,cloud_calls=0,
+                resources=observed,reused_release=reuse or None,weight_access=weight_access,offline_inference=True,production_activated=False,cloud_calls=0,
                 api_cost_chf=0,ledger_writes=False,production_unchanged=helper['fingerprint']()==before,
                 setup_manifest=json.loads((work/'setup-manifest.json').read_text()))
             result['passed']=result['passed'] and result['production_unchanged']

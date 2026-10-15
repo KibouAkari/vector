@@ -4,6 +4,12 @@ This changelog documents repository changes by date, with commit and pull
 request identifiers when available. Entries are listed newest first.
 Production deployments are tracked separately.
 
+## 2026-10-16
+
+### Offline privacy pilot access recovery (#30)
+
+- Owner server setup at 8126c50 completed, but unprivileged inference could not open converted model.safetensors. Locally reproduce safetensors 0.8.0 creating a 0600 file. Explicitly grant read-only access to this public weight asset, retain UID 65534, read-only inference and network isolation, and preflight weight readability before loading libraries. Add guarded reuse of the existing pilot image without downloads: verify the original model pin and converted-file checksum before changing permissions in a new derived image, preserve the original image, and rerun all 16 unchanged fixtures. Missing files, changed checksums and symlinks remain blocked. Recovery is pending owner execution; no quality result or activation is inferred from the failed inference.
+
 ## 2026-10-15
 
 ### Local privacy review and explicit external-send consent (#30)
