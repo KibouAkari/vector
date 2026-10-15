@@ -101,6 +101,33 @@ class ActivationTests(unittest.TestCase):
                 self.assertEqual(idles, [1])
                 self.assertEqual(json.loads(record_path.read_text())['status'], 'rolled-back')
 
+    def test_empty_external_ipam_is_equivalent_without_mutating_input(self):
+        expected = {'networks': {m.NETWORK: {'name': m.NETWORK, 'external': True}}}
+        actual = json.loads(json.dumps(expected))
+        actual['networks'][m.NETWORK]['ipam'] = {}
+        self.assertEqual(m.activation_config(actual), expected)
+        self.assertIn('ipam', actual['networks'][m.NETWORK])
+        self.assertEqual(m.activation_config(expected), expected)
+
+    def test_nonempty_ipam_and_other_network_changes_still_fail_equality(self):
+        expected = {'networks': {m.NETWORK: {'name': m.NETWORK, 'external': True}}}
+        for ipam in ({'config': []}, {'driver': 'default'},
+                     {'config': [{'subnet': '192.0.2.0/24'}]}, None, []):
+            with self.subTest(ipam=ipam):
+                actual = json.loads(json.dumps(expected))
+                actual['networks'][m.NETWORK]['ipam'] = ipam
+                self.assertNotEqual(m.activation_config(actual), expected)
+        for key, value in (('external', False), ('name', 'different-network'),
+                           ('driver', 'bridge'), ('internal', True)):
+            with self.subTest(key=key):
+                actual = json.loads(json.dumps(expected))
+                actual['networks'][m.NETWORK].update({'ipam': {}, key: value})
+                self.assertNotEqual(m.activation_config(actual), expected)
+        actual = json.loads(json.dumps(expected))
+        actual['networks']['another-network'] = {'ipam': {}}
+        self.assertNotEqual(m.activation_config(actual), expected)
+        self.assertEqual(m.activation_config(actual)['networks']['another-network'], {'ipam': {}})
+
 
 if __name__ == '__main__':
     unittest.main()

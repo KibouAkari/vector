@@ -106,6 +106,20 @@ def expected_config(base):
     return value
 
 
+def activation_config(value):
+    """Ignore only Compose's empty IPAM representation on this external network.
+
+    The existing Docker network is inspected independently. Do not remove IPAM
+    from other networks, or accept any supplied IPAM configuration here.
+    """
+    value = copy.deepcopy(value)
+    network = value.get('networks', {}).get(NETWORK, {})
+    if (network.get('external') is True and network.get('name') == NETWORK
+            and type(network.get('ipam')) is dict and not network['ipam']):
+        del network['ipam']
+    return value
+
+
 def rollback(h, record_path, manual=False):
     record = json.loads(record_path.read_text())
     if record.get('commit') != MERGED or record.get('image_id') != IMAGE:
@@ -178,7 +192,7 @@ def main():
         temporary = COMPOSE.parent / ('.vector-local-worker-activation-' + stamp + '.yml')
         h['atomic'](temporary, candidate, 0o600, 0, 0)
         try:
-            if h['config'](temporary) != expected:
+            if activation_config(h['config'](temporary)) != expected:
                 raise RuntimeError('Candidate changes more than approved flag and network.')
         finally:
             temporary.unlink(missing_ok=True)
@@ -209,7 +223,8 @@ def main():
             app = h['obj']('vector-app')
             if (set(app['NetworkSettings']['Networks']) != {'vector-internal', NETWORK}
                     or 'VECTOR_LOCAL_WORKERS=1' not in app['Config']['Env']
-                    or app['Mounts'] != before['Mounts'] or h['config'](COMPOSE) != expected):
+                    or app['Mounts'] != before['Mounts']
+                    or activation_config(h['config'](COMPOSE)) != expected):
                 raise RuntimeError('Persistent activation verification failed.')
             # Read native metadata from the actual app network; no inference, cloud or DB write.
             code = '''
