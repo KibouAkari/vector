@@ -1,0 +1,6 @@
+# Disabled until isolated qualification and guarded owner installation.
+enabled=false
+introductionEnabled=false
+tokenFile=/run/secrets/vector_fegcraft_token
+# Optional public PNG URL; no Discord token or webhook belongs in this file.
+avatarUrl=
