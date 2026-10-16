@@ -6,6 +6,11 @@ Production deployments are tracked separately.
 
 ## 2026-10-16
 
+### Unprivileged privacy evaluation mount access (#30)
+
+- Owner service qualification at 28bb9de stopped before running integration.mjs: the root runner's 0077 umask changed the requested 0755 input directory to 0700, preventing UID 65534 from traversing its read-only bind mount. Reproduce the restrictive-umask result, explicitly set only the synthetic/code mount root to 0755 and leave the release parent private. Add restrictive-umask and safe preflight-error regressions; actual unprivileged container access is checked by the owner-run preflight.
+- Before starting the model service, verify all required scripts, fixtures and the synthetic token through the exact read-only client mounts as UID 65534. Report bounded error code/path metadata, retain container resource/auth/network limits and reuse the same qualified image and 32-case fixtures. Docker retry and app staging remain pending; the failed setup is not a model-quality failure or production activation.
+
 ### Private NER service and application adapter (#30)
 
 - Owner server qualification at f7b5bb4 passed all 32 unchanged synthetic cases, including the previously missed surname; preserve compact evidence in docs/evaluations/privacy-ner-context-server-20261016.json. Short warm scans took 0.12–0.21 seconds, long fixtures up to 4.08 seconds, model load 9.596 seconds and peak RSS 2,816,296 KiB. No cloud requests, ledger writes or production activation occurred.

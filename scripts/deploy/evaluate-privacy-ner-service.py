@@ -125,6 +125,34 @@ def load_module(revision,path,name):
     namespace={'__name__':name};exec(compile(text,path,'exec'),namespace);return namespace
 
 
+
+PREFLIGHT = r"""
+const fs=require('node:fs');
+try {
+  if(process.getuid()!==65534)throw Error('Unexpected test-client UID.');
+  for(const name of ['integration.mjs','fail-closed.mjs','fixtures.json','server.py',
+      'privacy-ner-core.py','privacy-ner-client.mjs','privacy-review.js',
+      'privacy-review-core.mjs','privacy-rules.mjs']) {
+    fs.readFileSync('/work/'+name);
+  }
+  const token=fs.readFileSync('/run/secrets/vector_privacy_ner_token','utf8').trim();
+  if(!/^[a-f0-9]{64}$/.test(token))throw Error('Invalid synthetic service token.');
+  console.log(JSON.stringify({files_readable:true,uid:process.getuid()}));
+} catch(error) {
+  console.error(JSON.stringify({error:'PRIVATE_TEST_FILE_ACCESS',code:error.code||'INVALID_SETUP',path:error.path||null}));
+  process.exitCode=1;
+}
+"""
+
+
+def prepare_work_directory(path):
+    # mkdir's requested mode is filtered by the root runner's restrictive umask.
+    # Expose only this synthetic/code bind-mount root, not its private parent.
+    path.mkdir(mode=0o755)
+    path.chmod(0o755)
+    return path
+
+
 def service_args(name,image,network,work,token):
     return ['docker','run','--detach','--pull','never','--name',name,'--network',network,
         '--network-alias','vector-privacy-ner','--user','65534:65534','--read-only',
@@ -167,7 +195,7 @@ def main():
         if len(fixtures)!=32:raise RuntimeError('Fixture set changed.')
         stamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+uuid.uuid4().hex[:6]
         release=ROOT/'releases'/('vector-privacy-ner-service-evaluation-'+stamp);release.mkdir(mode=0o700)
-        work=release/'input';work.mkdir(mode=0o755)
+        work=prepare_work_directory(release/'input')
         sources={'server.py':'services/privacy-ner/server.py','privacy-ner-core.py':'lib/privacy-ner-core.py',
             'privacy-ner-client.mjs':'lib/privacy-ner-client.mjs','privacy-review.js':'lib/privacy-review.js',
             'privacy-review-core.mjs':'lib/privacy-review-core.mjs','privacy-rules.mjs':'lib/privacy-rules.mjs'}
@@ -180,8 +208,6 @@ def main():
         client='vector-privacy-client-eval-'+stamp.lower();owned=[];network_created=False
         try:
             run('docker','network','create','--internal',network);network_created=True
-            owned.append(service)
-            run(*service_args(service,QUALIFIED_IMAGE,network,work,token))
             owned.append(client)
             args=['docker','run','--name',client,'--pull','never','--network',network,
                 '--user','65534:65534','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges',
@@ -190,6 +216,15 @@ def main():
                 '--mount',f'type=bind,src={work},dst=/work,readonly',
                 '--mount',f'type=bind,src={token},dst=/run/secrets/vector_privacy_ner_token,readonly',
                 '--entrypoint','node',helper['IMAGE'],'/work/integration.mjs']
+            print('Verify bind-mounted scripts and synthetic token as UID 65534 before starting the model service.',flush=True)
+            preflight=json.loads(run(*args[:-1],'--eval',PREFLIGHT,timeout=30,
+                error_path=release/'file-access-stderr.log'))
+            if preflight!={'files_readable':True,'uid':65534}:
+                raise RuntimeError('Unprivileged file-access preflight did not pass.')
+            run('docker','rm',client);owned.remove(client)
+            owned.append(service)
+            run(*service_args(service,QUALIFIED_IMAGE,network,work,token))
+            owned.append(client)
             print('Evaluate private authenticated HTTP, all 32 cases, consent, tool protection and sleep/wake. No production activation.',flush=True)
             observed=json.loads(run(*args,timeout=600,error_path=release/'client-stderr.log'))
             run('docker','stop','--time','10',service,timeout=30)
@@ -202,7 +237,7 @@ def main():
             metadata=json.loads(run('docker','inspect',service))[0]
             if metadata['HostConfig']['PortBindings'] or not json.loads(run('docker','network','inspect',network))[0]['Internal']:
                 raise RuntimeError('Unexpected network exposure.')
-            result=dict(observed,**outage,revision=revision,qualified_image=QUALIFIED_IMAGE,
+            result=dict(observed,**outage,file_access_preflight=preflight,revision=revision,qualified_image=QUALIFIED_IMAGE,
                 production_unchanged=helper['fingerprint']()==before,private_network=True,
                 service_stopped_cleanly=True,production_activated=False)
             result['passed']=bool(result.get('passed') and result['production_unchanged'] and result['service_outage_blocked'])
