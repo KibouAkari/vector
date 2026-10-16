@@ -90,7 +90,7 @@ def main():
         atomic(folder/'compose.candidate.yml',new,0o600,0,0)
         state={'status':'prepared','image_id':IMAGE,'source_hash':source_hash,'other_containers':others}
         def save(): (folder/'result.json').write_text(json.dumps(state,indent=2)+'\n')
-        save()
+        save();print('Repair evidence:',folder,flush=True)
         # Resolve candidate relative mounts/env files using the production project directory.
         if h['config'](folder/'compose.candidate.yml')!=expected:
             raise RuntimeError('Candidate changes more than app.environment.HOSTNAME.')

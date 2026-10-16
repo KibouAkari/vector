@@ -1,10 +1,10 @@
 # Changelog
 
-## 2026-10-17 — Repair app binding across private networks
+## 2026-10-17 — Repair app binding across private networks (PR #44)
 
 - Owner post-release evidence shows the app running without OOM/restarts but listening only on 172.25.0.3:3000, with health unreachable on loopback and the other two app network addresses; host Nginx returns 502. The prior health gate accepted any single interface, so successful internal release health did not prove proxy reachability.
 - Add an owner-run guarded repair that changes only app.environment.HOSTNAME to 0.0.0.0, using the same qualified image/source. Require the confirmed deployed source/image/Compose baseline, idle jobs, unchanged other services and exact canonical candidate equality; save the original Compose before app recreation. Validate all IPv4 app interfaces and the real host Nginx HTTPS health route after a tested Nginx reload.
-- Two offline mutation/ambiguity tests and Python syntax pass. No server repair has yet been executed or observed; the public outage remains unresolved pending owner output. The Minecraft addon remains uninstalled.
+- Three offline mutation/ambiguity and guarded repair/rollback tests plus Python syntax pass. No server repair has yet been executed or observed; the public outage remains unresolved pending owner output. The Minecraft addon remains uninstalled.
 
 ## 2026-10-17 — Owner-confirmed chat controls deployment (PR #43)
 
