@@ -1,4 +1,5 @@
 "use client";
+import ChatControls from "../../../components/ui/chat-controls";
 
 import {
   useEffect,
@@ -846,6 +847,7 @@ export default function ProjectWorkbench({
     }
   }
 
+  const [privacyEnabled,setPrivacyEnabled]=useState(true);
   const {privacySend,privacyDialog} = usePrivacySend(`${project.id}:${conversationId || 'new'}`);
 
   async function sendProjectMessage(
@@ -898,7 +900,7 @@ export default function ProjectWorkbench({
 
     try {
       const response = await privacySend(`/api/projects/${project.id}/chat`,{
-        message:text,conversationId,mode:chatMode
+        message:text,conversationId,mode:chatMode,privacyEnabled
       },{localOnly:project.privacy_level==='local_only'});
 
       const data = await response.json();
@@ -1468,36 +1470,8 @@ export default function ProjectWorkbench({
 
                 </select>
 
-                <select
-                  value={
-                    chatMode
-                  }
-                onChange={
-                  (
-                    event
-                  ) =>
-                    setChatMode(
-                      event.target.value
-                    )
-                }
-              >
-                <option value="auto">
-                  Auto
-                </option>
-
-                <option value="local">Lokal</option>
-                <option value="normal">
-                  Normal
-                </option>
-
-                <option value="research">
-                  Research
-                </option>
-
-                <option value="deep">
-                  Deep
-                </option>
-              </select>
+                <ChatControls mode={chatMode} onModeChange={setChatMode} privacyEnabled={privacyEnabled}
+                  onPrivacyChange={setPrivacyEnabled} disabled={chatLoading} />
 
               </div>
 
@@ -2101,4 +2075,5 @@ export default function ProjectWorkbench({
     </div>
   );
 }
+
 

@@ -244,6 +244,10 @@ export async function POST(
   const body =
     await request.json();
 
+  if (body.privacyEnabled !== undefined && typeof body.privacyEnabled !== 'boolean') {
+    return Response.json({error:'Ungültige Datenschutzeinstellung.'},{status:400});
+  }
+
   const originalMessage =
     String(
       body.message || ""
@@ -484,7 +488,7 @@ export async function POST(
       userId:
         session.userId,
       conversationId,
-      message:safeMessage+'\nprivacy:'+privacy.destination+':'+(body.privacyDecision||'replace')
+      message:safeMessage+'\nprivacy:'+privacy.destination+':'+(body.privacyEnabled===false?'off':body.privacyDecision||'replace')
     });
 
   const duplicate =
@@ -570,6 +574,7 @@ export async function POST(
       requestHash,
 
       payload: {
+        requestText:safeMessage,
         privacyPolicy:privacy.policy,
         privacyDestination:privacy.destination,
         userId:
@@ -618,6 +623,7 @@ export async function POST(
           ),
 
         privacy: {
+          disabled:privacy.disabled === true,
           protected:privacy.wasSanitized,
 
           values:
@@ -652,3 +658,4 @@ export async function POST(
     }
   );
 }
+

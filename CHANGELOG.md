@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-17 Chat controls and local server statistics (#41)
+
+Replace the web chat's always-visible mode tabs with a compact active-mode menu and add Auto as the default. Share the accessible controls with project chat. Add an explicit per-request privacy switch, default on: switching off skips prompt, provider and tool-evidence scans/replacement for that request using an authenticated encrypted job policy. Reject malformed preferences and keep login, project/server permissions, local-only project routing and budget boundaries independent of that switch. Earlier placeholders from the same conversation are restored locally under the explicit off choice so historical context stays coherent. Local execution no longer depends on the privacy feature flag.
+
+Recognize German own-server inspection inflections and Minecraft statistics without the FEGCraft keyword, including the common German record spelling error. Auto uses fixed read-only Host Agent sources for supported FEGCraft statistics, otherwise retains existing cloud/tool routing and chooses existing modes without an extra classifier call. Native calculation covers five categories, exact player values, competition ranks, positive records, ties and saved-file read provenance. Incomplete, unnamed, invalid or unknown-player data fails without invented rankings or cloud fallback. Explicit Normal retains existing server tools. Unsupported local tool tasks give a useful mode choice instead of calling the text model. German research/analysis signals improve Auto selection.
+
+Observed locally: 71 Node regressions across routing, actual request/enqueue and local execution, privacy policy/isolation, provider/tool masking, usage and rankings; two Python diagnostic regressions. Review regressions keep the dropdown outside clipped panels with viewport placement, stop player follow-ups at a real topic change, leave compound/conceptual requests to the appropriate route, separate original task text from retrieved evidence, reject cached players with no statistics file and reject explicit null counters. Prepare a pinned owner-only direct Host Agent read check that exports metadata only, plus isolated application staging against the confirmed runtime image. Owner execution and deployment of this change remain pending. No schema/dependency change, production restart, paid request or real chat send during development.
+
+Record the owner's passed captured Minecraft addon/API test from PR #40 at 5f5eb4185480ea9ea095d37ff1cdb273498f2031: both phases, restart limits, introduction replay and cleanup passed; production Compose/container identities/integration unchanged. Real Minecraft callback/Discord delivery, model knowledge and installation remain pending.
+
 ## 2026-10-16 Captured FEGCraft addon qualification (#40)
 
 Owner preflight confirms the exact installed 26.2/3.2.1 integration hash/API, complete 50-file saved-stat coverage, 63 readable mod metadata IDs and qualified local Qwen; Minecraft and inference use separate networks, and the host has no compiler. Production configuration/container identities stayed unchanged.

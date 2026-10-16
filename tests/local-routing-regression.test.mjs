@@ -32,6 +32,9 @@ test('actual local executor blocks unsupported live lookups before any inference
   // Use the complete router so all internal predicates execute unchanged.
   const moduleSource=source.replace('export function classifyExecution','function classifyExecution')+`
     const getAgentJob=async()=>({status:'running'});
+    const heartbeatAgentJob=async()=>{};
+    const hostInspect=async()=>{throw Error('unexpected read')};
+    const localServerStatistics=async()=>null;
     const failAgentJob=async()=>{failures++};
     const restorePrivateValues=async({text})=>text;
     const requestLocalChat=async()=>{requests++;throw Error('unexpected inference')};
@@ -43,11 +46,36 @@ test('actual local executor blocks unsupported live lookups before any inference
   const prior=[process.env.VECTOR_PRIVACY_REVIEW,process.env.VECTOR_LOCAL_WORKERS];
   process.env.VECTOR_PRIVACY_REVIEW='1';process.env.VECTOR_LOCAL_WORKERS='1';
   try {
-    await assert.rejects(()=>mod.executeLocalPrivateJob({id:'synthetic',payload:{messages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf FEGCraft?'}]}},{}),/keinen Zugriff/);
+    await assert.rejects(()=>mod.executeLocalPrivateJob({id:'synthetic',payload:{messages:[{role:'user',content:'Lies die Docker Logs von meinem Server'}]}},{}),/weitere Datenwerkzeuge/);
     assert.deepEqual(mod.counters(),{requests:0,failures:1});
   } finally {
     for(const [i,key] of ['VECTOR_PRIVACY_REVIEW','VECTOR_LOCAL_WORKERS'].entries()){
       if(prior[i]===undefined)delete process.env[key];else process.env[key]=prior[i];
     }
   }
+});
+
+
+test('Minecraft statistics without a named server still require real tools',()=>{
+  for(const prompt of ['Gib mir die Rekorde und besten Statistiken von ExampleOne vom Minecraft Server',
+    'Welche Rekorte hat ExampleOne auf Minecraft?', 'Welche Statistik hat ExampleOne auf FEGCraft?']) {
+    assert.equal(classify(prompt).requirements.server,true);
+  }
+});
+
+test('German own-server read requests require the existing server tool path',()=>{
+  for(const taskText of ['Kannst du meinen Server vollständig auslesen?', 'Zeige die Konfiguration meines Servers', 'Lies die Dateien auf meinem Server']) {
+    const result=classifyExecution({taskText,allowServer:true});
+    assert.equal(result.requirements.server,true);
+    assert.equal(result.requirements.functionTools,true);
+    assert.equal(classifyExecution({taskText,allowServer:false}).requirements.server,false);
+  }
+});
+
+test('generic Minecraft explanations stay text-only and topic switches end old player context',()=>{
+  for(const taskText of ['Was ist ein Rekord in Minecraft?', 'Erkläre mir Statistiken in Minecraft'])
+    assert.equal(classifyExecution({taskText,allowServer:true}).requirements.server,false);
+  const recentMessages=[{role:'user',content:'Welche Rekorde hat ExampleOne auf FEGCraft?'},
+    {role:'user',content:'Schreibe eine Mail für ExampleOne'}];
+  assert.equal(classifyExecution({taskText:'und für ExampleTwo?',allowServer:true,recentMessages}).requirements.server,false);
 });
