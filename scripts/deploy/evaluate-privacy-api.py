@@ -17,6 +17,9 @@ REPO=ROOT/'github/vector'
 SERVICE_QUALIFIED_REV='b91604860fc192aa4bde94cc9be5d29107312633'
 STAGED_REV=os.environ.get('VECTOR_PRIVACY_API_APP_REV',SERVICE_QUALIFIED_REV)
 APP_USER='1001:1001'
+SOURCE_REF=os.environ.get('VECTOR_PRIVACY_API_SOURCE_REF','refs/remotes/origin/fix/privacy-routing-capabilities-20261016')
+PRODUCTION_IMAGE=os.environ.get('VECTOR_PRIVACY_API_PRODUCTION_IMAGE',
+    'sha256:9a2b01e5afd37b51983fdf336ff986db13e3679b5381a802037c2795f1908fe4')
 APP_IMAGE=os.environ.get('VECTOR_PRIVACY_API_APP_IMAGE_ID',
     'sha256:ea6917c94e64d96af103206ed75eec7d77194ed0221bb0057a0baa67d60d4f00')
 SERVICE_REPORT=ROOT/'releases/vector-privacy-ner-service-evaluation-20261016T074701Z-2563de/result.json'
@@ -101,13 +104,33 @@ def report_checked():
     return report
 
 
+def production_fingerprint():
+    import hashlib
+    names=('vector-app','vector-worker','vector-runner','vector-postgres','vector-redis',
+           'vector-local-inference','vector-privacy-ner','fegcraft-updated')
+    values=json.loads(run('docker','inspect',*names))
+    result={value['Name']:dict(id=value['Id'],image=value['Image'],
+        running=value['State']['Running'],started=value['State']['StartedAt'],
+        networks=sorted(value['NetworkSettings']['Networks']),
+        mounts=sorted(value['Mounts'],key=lambda item:json.dumps(item,sort_keys=True))) for value in values}
+    if set(result)!={'/'+name for name in names} or not all(v['running'] for v in result.values()):
+        raise RuntimeError('Expected running production containers are missing.')
+    result['compose_sha256']=hashlib.sha256(Path('/opt/vector/docker-compose.yml').read_bytes()).hexdigest()
+    result['minecraft_compose_sha256']=hashlib.sha256(Path('/opt/fegcraft-updated/docker-compose.yml').read_bytes()).hexdigest()
+    return result
+
+
 def main():
     os.umask(0o077)
     revision=os.environ.get('VECTOR_PRIVACY_REV','')
     if os.geteuid()!=0 or not re.fullmatch('[a-f0-9]{40}',revision):
         raise RuntimeError('Run as root with exact VECTOR_PRIVACY_REV.')
-    fetched=run('git','-C',str(REPO),'rev-parse','refs/remotes/origin/fix/privacy-routing-capabilities-20261016').decode().strip()
-    if fetched!=revision:raise RuntimeError('Fetched branch revision changed.')
+    if SOURCE_REF not in ('refs/remotes/origin/main','refs/remotes/origin/fix/privacy-routing-capabilities-20261016') or not re.fullmatch('sha256:[a-f0-9]{64}',PRODUCTION_IMAGE):
+        raise RuntimeError('Unexpected source reference or production image.')
+    fetched=run('git','-C',str(REPO),'rev-parse',SOURCE_REF).decode().strip()
+    if SOURCE_REF=='refs/remotes/origin/main':
+        run('git','-C',str(REPO),'merge-base','--is-ancestor',revision,fetched)
+    elif fetched!=revision:raise RuntimeError('Fetched branch revision changed.')
     with (ROOT/'.chat-release.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         helper=namespace(revision,'scripts/deploy/evaluate-privacy-review.py','privacy_api_helpers')
@@ -115,8 +138,8 @@ def main():
         qualified=report_checked();require_staged_app_unchanged(revision)
         if qualified['qualified_image']!=service['QUALIFIED_IMAGE']:
             raise RuntimeError('Native image differs from the observed qualified image.')
-        before=helper['fingerprint']()
-        if before['/vector-app']['image']!='sha256:9a2b01e5afd37b51983fdf336ff986db13e3679b5381a802037c2795f1908fe4':raise RuntimeError('Production image changed.')
+        before=production_fingerprint()
+        if before['/vector-app']['image']!=PRODUCTION_IMAGE:raise RuntimeError('Production image changed.')
         idle="""import pg from 'pg';const c=new pg.Client({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:5000});try{await c.connect();await c.query('BEGIN READ ONLY');await c.query(\"SET LOCAL statement_timeout = '5s'\");const r=await c.query(\"SELECT COUNT(*)::int AS n FROM agent_jobs WHERE status IN ('queued','running')\");if(r.rows[0].n!==0)throw Error('busy');}finally{await c.end();}"""
         run('docker','exec','-i','vector-app','node','--input-type=module',data=idle.encode())
         stamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+uuid.uuid4().hex[:6]
@@ -142,7 +165,7 @@ def main():
         suffix=stamp.lower();network='vector-privacy-api-'+suffix
         pg_name='vector-privacy-api-db-'+suffix;app_name='vector-privacy-api-app-'+suffix
         ner_name='vector-privacy-api-ner-'+suffix;client_name='vector-privacy-api-client-'+suffix
-        owned=[];network_created=False
+        owned=[];network_created=False;result=None
         try:
             run('docker','network','create','--internal',network);network_created=True
             owned.append(pg_name)
@@ -186,11 +209,9 @@ def main():
                 raise RuntimeError('Evaluation network is not internal.')
             result=dict(passed=normal['passed'] and outage['passed'],revision=revision,app_runtime_revision=STAGED_REV,
                 app_image=APP_IMAGE,native_image=qualified['qualified_image'],client_preflight=preflight,normal=normal,outage=outage,
-                isolated_database=True,production_unchanged=helper['fingerprint']()==before,
+                isolated_database=True,production_unchanged=production_fingerprint()==before,
                 cloud_calls=0,api_cost_chf=0,production_activated=False)
             result['passed']=result['passed'] and result['production_unchanged']
-            (release/'result.json').write_text(json.dumps(result,indent=2)+'\n')
-            print(json.dumps(result,indent=2));print('Report:',release/'result.json')
             if not result['passed']:raise RuntimeError('Privacy-enabled app qualification failed.')
         finally:
             # Logs contain synthetic test data only; preserve diagnostics before cleanup.
@@ -205,9 +226,17 @@ def main():
             for path in [token,environment,pg_env]:path.unlink(missing_ok=True)
             if errors:raise RuntimeError('Isolated resource cleanup could not be verified: '+', '.join(errors))
             print('Temporary app, native service, client, database, synthetic secret files and network removed.',flush=True)
+        # Publish a passing report only after verified cleanup and a final live-state check.
+        if result is None or production_fingerprint()!=before:
+            raise RuntimeError('Production changed during isolated cleanup.')
+        result['cleanup_verified']=True
+        (release/'result.json').write_text(json.dumps(result,indent=2)+'\n')
+        print(json.dumps(result,indent=2));print('Report:',release/'result.json')
+        return release/'result.json'
 
 if __name__=='__main__':
     try:main()
     except Exception as exc:
         print('ERROR:',str(exc) if isinstance(exc,RuntimeError) else type(exc).__name__)
         raise SystemExit(1)
+

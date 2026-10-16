@@ -111,6 +111,9 @@ jobs:
           python3 tests/privacy-ner-service.test.py
           python3 tests/privacy-ner-service-evaluation.test.py
           python3 tests/privacy-api-evaluation.test.py
+          python3 tests/chat-controls-release.test.py
+          bash -n scripts/deploy/release-chat-controls.sh
+          python3 -m py_compile scripts/deploy/qualify-and-release-chat-controls.py
           python3 tests/privacy-release-preflight.test.py
           python3 tests/privacy-release.test.py
           python3 -m py_compile scripts/deploy/activate-privacy-review.py
@@ -210,4 +213,5 @@ jobs:
         run: |
           python3 scripts/build-fegcraft-addon.py
           python3 tests/fegcraft-flow.test.py
+
 
