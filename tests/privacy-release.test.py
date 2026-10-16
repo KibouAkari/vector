@@ -114,6 +114,32 @@ class CandidateTests(unittest.TestCase):
             value['networks'][a.NETWORK]['ipam'] = ipam
             self.assertEqual(a.normalized(value), value)
 
+    def test_app_mount_order_is_ignored_without_changing_definitions(self):
+        base, profile = base_and_profile()
+        expected = a.expected_config(base, profile)
+        actual = copy.deepcopy(expected)
+        actual['services']['app']['volumes'].reverse()
+        self.assertEqual(a.normalized(actual), expected)
+        self.assertNotEqual(actual, expected)
+        self.assertEqual(a.normalized(actual)['services']['worker'], expected['services']['worker'])
+
+    def test_mount_sources_permissions_and_options_still_require_exact_equality(self):
+        base, profile = base_and_profile()
+        expected = a.expected_config(base, profile)
+        for field, value in [('source', '/other'), ('read_only', False),
+                             ('bind', {'create_host_path': True})]:
+            actual = copy.deepcopy(expected)
+            token = next(m for m in actual['services']['app']['volumes'] if m['target'] == a.TOKEN_TARGET)
+            token[field] = value
+            with self.subTest(field=field):
+                self.assertNotEqual(a.normalized(actual), expected)
+        actual = copy.deepcopy(expected)
+        actual['services']['app']['volumes'].append(copy.deepcopy(actual['services']['app']['volumes'][0]))
+        with self.assertRaisesRegex(RuntimeError, 'Duplicate'):
+            a.normalized(actual)
+        with self.assertRaisesRegex(RuntimeError, 'canonical'):
+            a.normalized({'services': {'app': {'volumes': ['unparsed-short-volume']}}})
+
     def test_native_profile_no_network_escape_or_privilege(self):
         service = a.native_service('/code', '/token', 'stamp')
         self.assertEqual(service['image'], a.NATIVE_IMAGE)
@@ -124,6 +150,69 @@ class CandidateTests(unittest.TestCase):
         self.assertTrue(all(v['read_only'] and not v['bind']['create_host_path'] for v in service['volumes']))
         self.assertEqual(service['environment']['VECTOR_PRIVACY_NER_IDLE_SECONDS'], '300')
         self.assertEqual(service['mem_limit'], service['memswap_limit'])
+
+
+class PreparedFilesTests(unittest.TestCase):
+    def fixture(self, root):
+        directory = root / 'private'
+        directory.mkdir(mode=0o700)
+        directory.chmod(0o700)
+        code = directory / ('code-' + a.TESTED)
+        code.mkdir(mode=0o755)
+        code.chmod(0o755)
+        data = b'value = 1\n'
+        for name in ['server.py', 'privacy-ner-core.py']:
+            path = code / name
+            path.write_bytes(data)
+            path.chmod(0o644)
+        token = directory / 'token'
+        # Synthetic, deliberately not a production credential.
+        token.write_bytes(b'0' * 64 + b'\n')
+        token.chmod(0o444)
+        h = {'run': lambda *args: data,
+             'atomic': lambda *args: self.fail('Resume must not overwrite any file')}
+        return directory, code, token, data, h
+
+    def test_resume_verified_files_without_writing_or_rotating_token(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory, code, token, data, h = self.fixture(Path(temporary))
+            paths = [directory, code, token, code / 'server.py', code / 'privacy-ner-core.py']
+            before = [(p.lstat().st_ino, p.lstat().st_mtime_ns) for p in paths]
+            result = a.prepare_private_files(h, directory, owner=os.getuid())
+            self.assertEqual(result[:2], (code, token))
+            self.assertEqual(set(result[2].values()), {a.digest(data)})
+            self.assertEqual(before, [(p.lstat().st_ino, p.lstat().st_mtime_ns) for p in paths])
+            self.assertEqual(token.read_bytes(), b'0' * 64 + b'\n')
+
+    def test_resume_rejects_modified_code_token_modes_links_and_extra_files(self):
+        for change in ['code', 'token', 'mode', 'symlink', 'hardlink', 'extra', 'code-extra', 'dir-mode']:
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as temporary:
+                directory, code, token, data, h = self.fixture(Path(temporary))
+                if change == 'code': (code / 'server.py').write_bytes(b'changed = 1\n')
+                if change == 'token':
+                    token.chmod(0o600)
+                    token.write_bytes(b'invalid\n')
+                    token.chmod(0o444)
+                if change == 'mode': token.chmod(0o644)
+                if change == 'symlink':
+                    (code / 'server.py').unlink()
+                    (code / 'server.py').symlink_to(code / 'privacy-ner-core.py')
+                if change == 'hardlink': os.link(token, Path(temporary) / 'alias')
+                if change == 'extra': (directory / 'unknown').touch()
+                if change == 'code-extra': (code / 'unknown').touch()
+                if change == 'dir-mode': directory.chmod(0o755)
+                with self.assertRaises(RuntimeError):
+                    a.prepare_private_files(h, directory, owner=os.getuid())
+
+    def test_prepared_owner_and_symlink_directory_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory, code, token, data, h = self.fixture(Path(temporary))
+            with self.assertRaisesRegex(RuntimeError, 'ownership'):
+                a.prepare_private_files(h, directory, owner=os.getuid() + 1)
+            link = Path(temporary) / 'alias'
+            link.symlink_to(directory, target_is_directory=True)
+            with self.assertRaises(RuntimeError):
+                a.prepare_private_files(h, link, owner=os.getuid())
 
 
 class RollbackTests(unittest.TestCase):

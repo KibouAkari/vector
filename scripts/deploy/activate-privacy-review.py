@@ -116,6 +116,18 @@ def normalized(value):
     network = result.get('networks', {}).get(NETWORK, {})
     if network.get('external') is True and network.get('name') == NETWORK and network.get('ipam') == {}:
         del network['ipam']
+    # Compose preserves mount insertion order on this host. Compare the full
+    # app mount definitions in target order; no flags or fields are discarded.
+    app = result.get('services', {}).get('app', {})
+    if 'volumes' in app:
+        mounts = app['volumes']
+        if (not isinstance(mounts, list) or any(not isinstance(m, dict)
+                or not isinstance(m.get('target'), str) for m in mounts)):
+            raise RuntimeError('Unexpected canonical app mount definitions.')
+        targets = [m['target'] for m in mounts]
+        if len(set(targets)) != len(targets):
+            raise RuntimeError('Duplicate app mount targets; requires review.')
+        app['volumes'] = sorted(mounts, key=lambda m: m['target'])
     return result
 
 
@@ -137,7 +149,6 @@ def expected_config(base, profile):
     if any(v.get('target') == TOKEN_TARGET for v in app.get('volumes', [])):
         raise RuntimeError('Secret mount target already exists.')
     app.setdefault('volumes', []).append(token_mount)
-    app['volumes'].sort(key=lambda item: item['target'])
     value['services'][SERVICE] = profile['services'][SERVICE]
     value.setdefault('networks', {})[NETWORK] = profile['networks'][NETWORK]
     return normalized(value)
@@ -265,6 +276,48 @@ def install_code(h, code_dir):
     return hashes
 
 
+def check_private_path(path, mode, *, directory=False, owner=0):
+    metadata = path.lstat()
+    expected_kind = stat.S_ISDIR if directory else stat.S_ISREG
+    if (not expected_kind(metadata.st_mode) or stat.S_IMODE(metadata.st_mode) != mode
+            or metadata.st_uid != owner or metadata.st_gid != (0 if owner == 0 else os.getgid())
+            or (not directory and metadata.st_nlink != 1)):
+        raise RuntimeError('Prepared privacy file type, ownership or permissions differ.')
+
+
+def prepare_private_files(h, directory, *, owner=0):
+    code_dir = directory / ('code-' + TESTED)
+    token = directory / 'token'
+    if not directory.exists() and not directory.is_symlink():
+        directory.mkdir(mode=0o700)
+        code_dir.mkdir(mode=0o755)
+        code_dir.chmod(0o755)  # explicit bind-root access under root's 0077 umask
+        hashes = install_code(h, code_dir)
+        h['atomic'](token, (secrets.token_hex(32) + '\n').encode(), 0o444, 0, 0)
+        return code_dir, token, hashes
+    # An earlier canonical comparison stopped before any live wiring changed.
+    # Reuse exact trusted bytes and token without changing or deleting files.
+    check_private_path(directory, 0o700, directory=True, owner=owner)
+    if {p.name for p in directory.iterdir()} != {code_dir.name, token.name}:
+        raise RuntimeError('Unexpected prepared privacy directory contents.')
+    check_private_path(code_dir, 0o755, directory=True, owner=owner)
+    if {p.name for p in code_dir.iterdir()} != {'server.py', 'privacy-ner-core.py'}:
+        raise RuntimeError('Unexpected prepared privacy code files.')
+    hashes = {}
+    for name, source in [('server.py', 'services/privacy-ner/server.py'), ('privacy-ner-core.py', 'lib/privacy-ner-core.py')]:
+        path = code_dir / name
+        check_private_path(path, 0o644, owner=owner)
+        expected = h['run']('git', '-C', str(REPO), 'show', TESTED + ':' + source)
+        if not isinstance(expected, bytes) or path.read_bytes() != expected:
+            raise RuntimeError('Prepared privacy code differs from the qualified Git revision.')
+        hashes[name] = digest(expected)
+    check_private_path(token, 0o444, owner=owner)
+    if token.stat().st_size != 65 or not re.fullmatch(b'[a-f0-9]{64}\n', token.read_bytes()):
+        raise RuntimeError('Prepared private token format differs.')
+    print('Verified prepared code, permissions and private token; reusing without overwrite.')
+    return code_dir, token, hashes
+
+
 def main():
     os.umask(0o077)
     if os.geteuid() != 0:
@@ -298,8 +351,6 @@ def main():
             raise RuntimeError('Application source changed after release.')
         if h['obj']('vector-app')['Image'] != IMAGE or not h['healthy'](IMAGE, attempts=1):
             raise RuntimeError('Qualified app is not healthy.')
-        if DIRECTORY.exists() or DIRECTORY.is_symlink():
-            raise RuntimeError('Privacy directory already exists; inspect any earlier attempt before retrying.')
         if h['run']('docker', 'network', 'ls', '--filter', 'name=^' + NETWORK + '$', '--format', '{{.ID}}').strip():
             raise RuntimeError('Private network already exists.')
         if h['run']('docker', 'container', 'ls', '--all', '--filter', 'name=^/' + NETWORK + '$', '--format', '{{.ID}}').strip():
@@ -313,13 +364,7 @@ def main():
         stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + secrets.token_hex(3)
         release = ROOT / 'releases' / ('vector-privacy-activation-' + stamp)
         release.mkdir(mode=0o700)
-        DIRECTORY.mkdir(mode=0o700)
-        code_dir = DIRECTORY / ('code-' + TESTED)
-        code_dir.mkdir(mode=0o755)
-        code_dir.chmod(0o755)  # bind-root access despite root's 0077 umask
-        code_hashes = install_code(h, code_dir)
-        token = DIRECTORY / 'token'
-        h['atomic'](token, (secrets.token_hex(32) + '\n').encode(), 0o444, 0, 0)
+        code_dir, token, code_hashes = prepare_private_files(h, DIRECTORY)
         service = native_service(code_dir, token, stamp)
         candidate = candidate_bytes(original, service, token)
         temporary = COMPOSE.parent / ('.vector-privacy-activation-' + stamp + '.yml')
