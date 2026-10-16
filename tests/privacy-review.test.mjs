@@ -339,3 +339,17 @@ test('a person span inside a credential cannot reveal a password fragment in the
   assert.ok(plan.selected.map(core.displayFinding).every(f=>!f.displayValue.includes('Synthetic')));
   assert.equal(core.literalReplace(plan.sanitized,plan.mappings,true),source);
 });
+
+test('contact labels do not become people while ambiguous names and credentials stay protected',()=>{
+  const text='Bitte formuliere die Kontakt Nachricht.\n\nKontakt: erika@example.invalid.';
+  const findings=[{type:'PERSON',value:'Kontakt'},{type:'EMAIL',value:'erika@example.invalid'}];
+  assert.deepEqual(core.normalizePersonFindings(text,findings),[findings[1]]);
+  const plan=core.makePrivacyPlan(text,findings);
+  assert.ok(plan.sanitized.startsWith('Bitte formuliere die Kontakt Nachricht.'));
+  assert.ok(!plan.sanitized.includes('erika@example.invalid'));
+  assert.equal(core.normalizePersonFindings('Schreibe an Kontakt.',[findings[0]]).length,1);
+  assert.equal(core.normalizePersonFindings('Kontakt: E-Mail. Schreibe an Kontakt.',[findings[0]]).length,1);
+  assert.equal(core.normalizePersonFindings('Contact message',[{type:'PERSON',value:'Contact'}]).length,0);
+  assert.equal(core.normalizePersonFindings('Kontakt: code',[{type:'PASSWORD',value:'Kontakt'}]).length,1);
+  assert.equal(core.normalizePersonFindings('Kontakt: code',[{type:'USERNAME',value:'Kontakt'}]).length,1);
+});
