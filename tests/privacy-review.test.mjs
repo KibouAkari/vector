@@ -228,3 +228,17 @@ test('a secret inside a longer email-shaped finding cannot leak through previews
   assert.ok(plan.selected.map(core.displayFinding).every(f=>!f.displayValue.includes(password)));
   assert.equal(plan.mappings.find(m=>m.placeholder==='<EMAIL_A1B2C3>').type,'PASSWORD');
 });
+
+
+test('natural quoted password phrases and spaced API labels are fully masked',()=>{
+  for (const source of ['Passwort ist "synthetic long privacy phrase".',
+      'password is "synthetic long privacy phrase".',
+      'API key: synthetic_arbitrary_credential']) {
+    const secret=source.includes('phrase')?'synthetic long privacy phrase':'synthetic_arbitrary_credential';
+    const plan=core.makePrivacyPlan(source,core.deterministicFindings(source));
+    assert.ok(plan.selected.some(m=>m.value===secret));
+    assert.ok(!plan.sanitized.includes(secret));
+    assert.ok(plan.selected.map(core.displayFinding).every(f=>!f.displayValue.includes(secret)));
+    assert.equal(core.literalReplace(plan.sanitized,plan.mappings,true),source);
+  }
+});
