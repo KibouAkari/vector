@@ -1,8 +1,10 @@
 # Changelog
 
-## 2026-10-16 Qualified runtime release (#35)
+## 2026-10-16 Runtime release and continuation review (#36, #37)
 
-Prepare the app-only release of routing/capability fixes after successful owner staging and enabled native privacy API qualification. Pin tested and merged source trees, staged image, prior deployed Compose and completed release record. Preserve both local inference containers and existing backups/rollback. Shell/Python syntax and archived preparation verified locally; production execution pending.
+Prepare the guarded release of owner-qualified runtime revision 8611082 and identical merged tree 60adca9, image c33a1b8. Owner staging and enabled native privacy API checks passed without executing synthetic jobs or calling a cloud provider. The latest owner release attempt stopped before deployment because the old composer profile no longer matches. Read-only comparison narrows the drift to the app image; the actual active runtime release remains unconfirmed. Preserve the guard and rollback rather than rerunning a cutover blindly.
+
+Review the four open PRs, record composer deployment evidence in #33 and the exact foundation scope/CI coverage in #34. Close empty #37: its description claimed changes absent from its zero-file initial-plan commit; carry those review tasks forward as unimplemented. Add a durable project handoff and owner preferences, required from AGENTS.md, so continuations retain instructions, pinned evidence, pending defects and FEGCraft integration boundaries. Repository merges do not activate the bot or establish current server deployment.
 
 ## 2026-10-16 Runtime follow-up fixes
 
