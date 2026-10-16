@@ -1,6 +1,6 @@
 # Vector project handoff
 
-Updated 2026-10-17 after owner-confirmed native privacy qualification and successful chat-controls production release. Read OWNER_PREFERENCES.md, AGENTS.md and current repository status first. This document preserves decisions and evidence, not secret values or a substitute for a live-state check.
+Updated 2026-10-17 after owner-confirmed chat-controls deployment and successful persistent listener/Nginx repair. Read OWNER_PREFERENCES.md, AGENTS.md and current repository status first. This document preserves decisions and evidence, not secret values or a substitute for a live-state check.
 
 ## First steps in a new chat
 
@@ -145,10 +145,21 @@ Next steps:
 4. Continue pending interactive consent for new tool evidence, provider billing reconciliation and final Minecraft integration only after the web flow is confirmed. The Minecraft addon is not installed and its once-only introduction has not been sent.
 
 
-## Immediate priority: post-release public 502
+## Resolved: post-release listener/Nginx 502
 
 Owner update 2026-10-17 after the successful release: host Nginx serves 502. Read-only owner evidence shows vector-app running, zero restarts and no OOM, on vector-internal 172.23.0.5, vector-local-inference 172.25.0.3 and vector-privacy-ner 172.26.0.3. Only 172.25.0.3 returns health 200; 127.0.0.1 and the other app addresses are unreachable. Host Nginx is active. This confirms a partial-interface bind; the actual Nginx upstream address has not been captured. Do not call the public flow healthy merely from the earlier release result.
 
-The older release helper health check stops at the first working interface. It did not test the public proxy route, so the successful release was insufficient to establish availability. scripts/deploy/fix-app-listener.py prepares a guarded persistent app HOSTNAME=0.0.0.0 correction, reusing image 5a2ee0f and the unchanged 2f5b8e8 live source. It validates the exact old release/source/Compose, stores original/candidate files, preserves seven other container identities, recreates only the app, probes every IPv4/loopback health endpoint, tests and reloads host Nginx, then probes https://vector.kibouakari.com/api/health via local Nginx/TLS. No model request or image build is involved. Repair has NOT yet been observed. A successful repair changes Compose bytes: future guards must use its new evidence, and the older app release rollback must not be run blindly against that changed profile.
+The older release helper health check stops at the first working interface. It did not test the public proxy route, so the successful release was insufficient to establish availability. scripts/deploy/fix-app-listener.py prepares a guarded persistent app HOSTNAME=0.0.0.0 correction, reusing image 5a2ee0f and the unchanged 2f5b8e8 live source. It validates the exact old release/source/Compose, stores original/candidate files, preserves seven other container identities, recreates only the app, probes every IPv4/loopback health endpoint, tests and reloads host Nginx, then probes https://vector.kibouakari.com/api/health via local Nginx/TLS. No model request or image build is involved. The owner has now observed successful repair as recorded below. Compose bytes changed: future guards must use the listener repair candidate as the current profile, and the older app release rollback must not be run blindly against it.
 
-Restore public availability before asking for additional browser/provider/Minecraft integration tests. Preserve owner repair output and the generated vector-listener-fix release directory. Future application release health gates must require the actual ingress route and intended listen interfaces; the historical archived helper remains unchanged by this targeted repair.
+The local Nginx HTTPS route and all app interfaces now passed. Browser-level rendering, completed statistics jobs and actual provider execution still require owner observation. Preserve the exact repair evidence below. Future application release health gates must require the actual ingress route and intended listen interfaces; the historical archived helper remains unchanged by this targeted repair.
+
+
+Owner-confirmed repair on 2026-10-17 Europe/Zurich:
+- Script revision bc52a8f38098eea0e2123f74cc0c8c8392358bed, PR #44 merged as a59a36ff0c00b751fa028bfd8df2e6d6a93201bd after green Application CI, documentation, secret scan and both Java compiler checks.
+- Evidence directory /root/vector-workspace/releases/vector-listener-fix-20261016T235002Z-913eee. Runner reported LISTENER FIX SUCCEEDED and SUCCESS; script archived at /root/vector-workspace/archive/phases/vector-app-listener-fix.py. Do not rerun this exact-baseline repair.
+- All IPv4 app interfaces including loopback passed health with database/Redis ok; tested/reloaded host Nginx HTTPS ingress returned health 200. This is stronger evidence than the older any-interface release probe. It does not independently prove remote DNS/browser rendering.
+- Persistent app environment now requires HOSTNAME=0.0.0.0. Same app source commit 2f5b8e866f613b336ed24b5242dc93e535c985bc and image sha256:5a2ee0f4b1b169114da5608a8a33f0ca08ce00c4016873208fa1d5518901f87d; seven other production container identities were retained; no model requests.
+- Current Compose baseline is the repaired compose.candidate.yml in that evidence directory, with result.json recording deployed status and original Compose retained as compose.original.yml. Future release/rollback work must inspect this record and preserve the listener setting rather than require the older chat-controls release Compose bytes.
+- The older chat-controls release rollback remains historical and will reject this changed Compose; do not bypass that guard. No new standalone manual rollback command is claimed by this repair. Reconcile the repair's saved original/candidate and actual source/image/state before any rollback.
+
+Next owner phase: refresh the web page, confirm dropdown and privacy switch, then run the same player statistics question in Auto and a synthetic email test. Do not repeat deployments or rebuild merely to discover state. Minecraft installation and its announcement remain pending.
