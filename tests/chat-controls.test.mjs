@@ -7,13 +7,13 @@ const prompt='Gib mir die Rekorde und besten Statistiken von ExampleOne vom Mine
 const options={mode:'auto',text:prompt,allowServer:true,localEnabled:true};
 const uuid=n=>'00000000-0000-0000-0000-'+String(n).padStart(12,'0');
 function bulk(items){return {complete:true,files_discovered:items.length,files_returned:items.length,items};}
-function fixtures({incomplete=false,invalid=false,tie=false}={}) {
+function fixtures({incomplete=false,invalid=false,tie=false,nullValue=false}={}) {
   const calls=[];
   const inspect=async args=>{
     calls.push(args);
     if(args.pattern==='usercache.json')return bulk([{content:JSON.stringify([{uuid:uuid(1),name:'ExampleOne'},{uuid:uuid(2),name:'ExampleTwo'}])}]);
     const data=bulk([1,2].map(n=>({relative_path:uuid(n)+'.json',content:JSON.stringify({stats:{'minecraft:custom':{
-      'minecraft:play_time':72000*n,'minecraft:mob_kills':invalid?-1:(tie?5:n*5)
+      'minecraft:play_time':nullValue?null:72000*n,'minecraft:mob_kills':invalid?-1:(tie?5:n*5)
     }}})})));
     return incomplete?{...data,truncated:true}:data;
   };
@@ -68,7 +68,7 @@ test('missing permission never reads, and incomplete or invalid data cannot esta
   const denied=fixtures();
   await assert.rejects(localServerStatistics({text:prompt,inspect:denied.inspect}),/Serverberechtigung/);
   assert.equal(denied.calls.length,0);
-  for(const fixture of [{incomplete:true},{invalid:true}])
+  for(const fixture of [{incomplete:true},{invalid:true},{nullValue:true}])
     await assert.rejects(localServerStatistics({text:prompt,allowServer:true,inspect:fixtures(fixture).inspect}));
 });
 

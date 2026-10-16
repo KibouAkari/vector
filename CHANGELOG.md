@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-17 Chat controls and local server statistics
+## 2026-10-17 Chat controls and local server statistics (#41)
 
 Replace the web chat's always-visible mode tabs with a compact active-mode menu and add Auto as the default. Share the accessible controls with project chat. Add an explicit per-request privacy switch, default on: switching off skips prompt, provider and tool-evidence scans/replacement for that request using an authenticated encrypted job policy. Reject malformed preferences and keep login, project/server permissions, local-only project routing and budget boundaries independent of that switch. Local execution no longer depends on the privacy feature flag.
 

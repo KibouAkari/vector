@@ -83,7 +83,7 @@ test('fully local executor uses native inference only and retains zero-cost toke
   const job={id:'job',payload:{conversationId:'conversation',messages:[{role:'user',content:'Hallo Erika Muster'}]}};
   const result=await executeLocalPrivateJob(job,{events});
   assert.equal(result.meta.fullyLocal,true);assert.equal(result.meta.costChf,0);assert.equal(result.meta.inputTokens,30);
-  assert.equal(calls[0].model,'vector-qwen3:1.7b-q8');assert.equal(calls[0].tools,undefined);
+  assert.equal(calls[0].model,'vector-qwen3:1.7b-q8');assert.equal(calls[0].tools,undefined);assert.equal(calls[0].messages[0].role,'system');assert.match(calls[0].messages[0].content,/keine Emojis/);
   assert.equal(finished.length,1);nativeFails=true;
   await assert.rejects(executeLocalPrivateJob(job,{events}),/local unavailable/);assert.equal(finished.length,1);assert.equal(failed.length,1);
   nativeFails=false;cancelled=true;
