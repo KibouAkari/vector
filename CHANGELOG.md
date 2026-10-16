@@ -6,6 +6,13 @@ Production deployments are tracked separately.
 
 ## 2026-10-16
 
+### Compact privacy review beside the composer
+
+- Show an immediate local checking indicator with elapsed seconds and a small accessible review card above the chat/project input. Remove the modal backdrop and eyebrow, simplify actions and preview labels, and keep fully local requests quiet. Test explicit consent, cancellation, stale scopes, duplicate sends and progress cleanup.
+- Display only the current message in the default preview; separate context findings in a collapsed group while still protecting all included history, attachments and project retrieval. Batch uncached text segments in one native scan and reuse exact per-account successful results for at most five minutes with bounded in-memory storage. Changed context and other accounts rescan; cached work adds no fabricated encoder/API usage.
+- Detect bare credential-shaped password values, explicit lowercase usernames and separate first-name references. Reject pronoun/code-heading false positives, trim Markdown edges on new person findings and respect person/username word boundaries. Preserve encrypted consent/vault handling and block failures before queue writes. Use synthetic regressions rather than the owner's private prompt values.
+- Local verification passes 34 Node tests and 8 deployment evaluator tests. Expanded owner qualification covers current-only previews, natural reset credentials, masked queued context, cache accounting and fresh-input outage blocking. Production build/API/UI qualification and deployment remain pending; native service code/model weights are unchanged.
+
 ### Privacy release preparation after enabled API qualification (#31)
 
 - Owner source/image release ba30c82 completed with healthy app and backups; privacy activation stopped before changing production Compose. Owner read-only diagnostics prove all four app mount definitions match exactly when order is ignored. Normalize only app mount ordering while preserving every mount field and rejecting duplicate targets. Resume an incomplete preparation only after exact qualified Git-byte, root ownership, mode, file type, link count and directory-content checks; preserve the private token without overwrite. All 16 offline release/profile/rollback/resume tests pass. Native activation retry remains pending.

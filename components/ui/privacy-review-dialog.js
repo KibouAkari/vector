@@ -1,78 +1,87 @@
 "use client";
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useId, useRef, useState} from 'react';
+import {createPrivacySender} from '../../lib/privacy-send-controller.mjs';
 
-const LABELS = {PERSON:'Name',EMAIL:'E-Mail',PASSWORD:'Passwort',API_KEY:'API-Schlüssel',
+const LABELS = {PERSON:'Name',USERNAME:'Benutzername',EMAIL:'E-Mail',PASSWORD:'Passwort',API_KEY:'API-Schlüssel',
   TOKEN:'Zugangstoken',PRIVATE_KEY:'Privater Schlüssel',ADDRESS:'Adresse',PHONE:'Telefonnummer',
-  ACCOUNT:'Kontonummer',PRIVATE_IP:'Interne IP-Adresse',ORGANIZATION:'Organisation'};
+  ACCOUNT:'Konto',PRIVATE_IP:'Interne IP-Adresse',ORGANIZATION:'Organisation'};
+
+function readablePreview(review) {
+  const names=new Map();const counts={};
+  for(const f of [...review.findings,...(review.contextFindings || [])]) {
+    counts[f.type]=(counts[f.type] || 0)+1;
+    names.set(f.placeholder,`[${LABELS[f.type] || 'Angabe'} ${counts[f.type]}]`);
+  }
+  return review.preview.replace(/<VEC_[A-Z_]+_[a-f0-9]{32}>|<[A-Z0-9_]+_[A-F0-9]{6}>/g,
+    token=>names.get(token) || '[Geschützte Angabe]');
+}
 
 export function usePrivacySend(scopeKey) {
-  const [review,setReview] = useState(null);
-  const resolveRef = useRef(null);
-  const scopeRef = useRef(scopeKey);
-  scopeRef.current=scopeKey;
-  const dialogRef = useRef(null);
-  const finish = choice => {
-    const resolve = resolveRef.current;
-    resolveRef.current = null;
-    setReview(null);
-    resolve?.(choice);
-  };
-  useEffect(() => () => {
-    resolveRef.current?.(null);
-    resolveRef.current = null;
-    setReview(null);
-  },[scopeKey]);
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (review && dialog && !dialog.open) dialog.showModal();
-    return () => { if (dialog?.open) dialog.close(); };
+  const [review,setReview]=useState(null);
+  const [status,setStatus]=useState({phase:'idle'});
+  const [elapsed,setElapsed]=useState(0);
+  const titleId=useId();const panelRef=useRef(null);
+  const resolveRef=useRef(null);const senderRef=useRef(null);
+  const scopeRef=useRef(scopeKey);scopeRef.current=scopeKey;
+  if(!senderRef.current)senderRef.current=createPrivacySender({
+    onState:value=>{setStatus(value);if(value.phase!=='review')setReview(null);},
+    requestChoice:value=>new Promise(resolve=>{resolveRef.current=resolve;setReview(value);})
+  });
+  const finish=choice=>{const resolve=resolveRef.current;resolveRef.current=null;resolve?.(choice);};
+  useEffect(()=>()=>{finish(null);senderRef.current.cancel();},[scopeKey]);
+  useEffect(()=>{
+    if(review)panelRef.current?.focus({preventScroll:true});
   },[review]);
+  useEffect(()=>{
+    if(!['checking','sending'].includes(status.phase))return;
+    const update=()=>setElapsed(Math.max(0,Math.floor((Date.now()-status.startedAt)/1000)));
+    update();const timer=setInterval(update,250);return()=>clearInterval(timer);
+  },[status]);
 
-  async function privacySend(url,body) {
-    const sendingScope=scopeKey;
-    let response = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    // One explicit confirmation per review. A changed/expired review is shown
-    // again by a subsequent send rather than silently reusing consent.
-    if (response.status !== 409) return response;
-    const data = await response.clone().json();
-    if (data.error !== 'PRIVACY_REVIEW_REQUIRED') return response;
-    if(scopeRef.current!==sendingScope) return {ok:false,json:async()=>({privacyCancelled:true})};
-    const choice = await new Promise(resolve => {resolveRef.current=resolve;setReview(data.privacyReview);});
-    if (!choice) return {ok:false,json:async()=>({privacyCancelled:true})};
-    response = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({...body,privacyDecision:choice,privacyReviewToken:data.privacyReview.token})});
-    return response;
+  function privacySend(url,body,options={}){
+    const scope=scopeKey;
+    return senderRef.current.send(url,body,{...options,isCurrent:()=>scopeRef.current===scope});
   }
-
-  const privacyDialog = review ? <dialog ref={dialogRef} className="vector-privacy-dialog"
-    aria-labelledby="privacy-review-title" aria-describedby="privacy-review-description"
-    onCancel={event=>{event.preventDefault();finish(null);}}>
-    <div className="vector-privacy-heading"><span aria-hidden="true">◈</span><span>Vor dem externen Versand</span></div>
-    <h2 id="privacy-review-title">Vertrauliche Angaben erkannt</h2>
-    <p id="privacy-review-description">Vector kann diese Angaben durch eindeutige Platzhalter ersetzen und sie in der Antwort lokal wieder einsetzen. Prüfe die erkannten Stellen.</p>
-    <ul className="vector-privacy-findings">{review.findings.map(f=><li key={f.placeholder}>
-      <span>{LABELS[f.type] || 'Vertrauliche Angabe'}</span><code>{f.displayValue}</code>
-    </li>)}</ul>
-    {review.uninspectable && <p className="vector-privacy-caution">Angehängte Bilder wurden nicht auf vertrauliche Angaben geprüft. Entferne sie für einen geschützten Textversand oder bestätige den unveränderten Versand.</p>}
-    <details><summary>Vorschau mit Platzhaltern</summary><pre>{review.preview}</pre></details>
-    <p className="vector-privacy-hint">Die Erkennung kann Angaben übersehen. Bei Aufgaben, die echte Identitäten benötigen, können Platzhalter das Ergebnis verändern.</p>
-    <div className="vector-privacy-actions">
-      <button type="button" onClick={()=>finish(null)}>Abbrechen</button>
-      <button type="button" onClick={()=>finish('original')}>Unverändert senden</button>
-      <button type="button" className="vector-privacy-primary" disabled={!review.canReplace}
-        onClick={()=>finish('replace')}>Mit Platzhaltern senden</button>
-    </div>
+  const list=findings=><ul className="vector-privacy-findings">{findings.map(f=><li key={f.placeholder}>
+    <span>{LABELS[f.type] || 'Angabe'}</span><code>{f.displayValue}</code>
+  </li>)}</ul>;
+  const privacyDialog=status.phase==='idle'?null:<div className="vector-privacy-anchor">
+    {review ? <section ref={panelRef} className="vector-privacy-panel" role="region" tabIndex={-1}
+      aria-labelledby={titleId} onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();finish(null);}}}>
+      <h2 id={titleId}>Vertrauliche Angaben erkannt</h2>
+      {review.findings.length>0?list(review.findings):<p>Weitere Angaben befinden sich im mitgesendeten Kontext.</p>}
+      {review.contextFindings?.length>0 && <details><summary>Weitere Angaben im Kontext ({review.contextFindings.length})</summary>
+        {list(review.contextFindings)}</details>}
+      {review.uninspectable && <p className="vector-privacy-caution">Bilder können hier nicht anonymisiert werden. Entferne sie oder bestätige den unveränderten Versand.</p>}
+      <details><summary>Vorschau dieser Nachricht</summary><pre>{readablePreview(review)}</pre></details>
+      <div className="vector-privacy-actions">
+        <button type="button" onClick={()=>finish(null)}>Abbrechen</button>
+        <button type="button" onClick={()=>finish('original')}>Original senden</button>
+        <button type="button" className="vector-privacy-primary" disabled={!review.canReplace}
+          onClick={()=>finish('replace')}>Platzhalter verwenden</button>
+      </div>
+      <p className="vector-privacy-hint">Bitte prüfen. Die Erkennung kann Angaben übersehen.</p>
+    </section>:<div className="vector-privacy-status" role="status" aria-live="polite">
+      <span className="vector-privacy-spinner" aria-hidden="true" />
+      <span>{status.phase==='checking'?'Vector überprüft die Anfrage':'Vector sendet deine Anfrage'}</span>
+      <span className="vector-privacy-time" aria-hidden="true">{elapsed} s</span>
+    </div>}
     <style>{`
-      .vector-privacy-dialog{color:#f0f7f3;background:#131a1b;border:1px solid #33433f;border-radius:20px;padding:28px;width:min(580px,calc(100vw - 32px));max-height:85dvh;overflow:auto;box-shadow:0 24px 100px #0009}
-      .vector-privacy-dialog::backdrop{background:#060b10bb;backdrop-filter:blur(5px)}
-      .vector-privacy-heading{color:#8de0b7;display:flex;gap:9px;font-size:12px;letter-spacing:.04em}
-      .vector-privacy-dialog h2{font-size:23px;margin:14px 0 10px;line-height:1.25}.vector-privacy-dialog p{color:#9eb5ad;font-size:14px;line-height:1.6}
-      .vector-privacy-findings{list-style:none;padding:0;margin:20px 0;max-height:220px;overflow:auto}.vector-privacy-findings li{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid #ffffff10;font-size:13px}.vector-privacy-findings code{max-width:68%;overflow-wrap:anywhere;color:#f0f7f3}
-      .vector-privacy-dialog details{border:1px solid #ffffff15;border-radius:10px;padding:12px;font-size:13px}.vector-privacy-dialog summary{cursor:pointer}.vector-privacy-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;max-height:220px;overflow:auto;margin-top:12px}
-      .vector-privacy-dialog .vector-privacy-hint{font-size:12px}.vector-privacy-dialog .vector-privacy-caution{color:#e5c48a}
-      .vector-privacy-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:20px}.vector-privacy-actions button{background:transparent;border:1px solid #ffffff25;border-radius:9px;padding:10px 12px;color:#f0f7f3;font:inherit;font-size:12px;cursor:pointer}.vector-privacy-actions button:focus-visible{outline:2px solid #8de0b7;outline-offset:3px}.vector-privacy-actions .vector-privacy-primary{background:#8de0b7;color:#0a0d11;border-color:#8de0b7}.vector-privacy-actions button:disabled{opacity:.4;cursor:not-allowed}
-      @media(max-width:480px){.vector-privacy-dialog{padding:20px}.vector-privacy-actions button{flex:1 1 100%}}
+      .vector-privacy-anchor{position:relative;flex:1 1 100%;min-width:0;width:100%;max-width:900px;margin:0 auto 8px;color:#f0f7f3}
+      .project-chat-composer > .vector-privacy-anchor{display:block;border:0;background:none;padding:0;min-height:0;border-radius:0}
+      .vector-privacy-panel{box-sizing:border-box;background:#131a1b;border:1px solid #8de0b75c;border-radius:12px;padding:14px 16px;max-height:min(340px,44dvh);overflow:auto;box-shadow:0 8px 24px #0003;outline:none}
+      .vector-privacy-panel:focus-visible{outline:2px solid #8de0b7;outline-offset:2px}
+      .vector-privacy-panel h2{font-size:15px;font-weight:600;line-height:1.4;margin:0 0 8px}.vector-privacy-panel p{font-size:12px;color:#9eb5ad;margin:8px 0;line-height:1.45}
+      .vector-privacy-findings{display:flex;flex-wrap:wrap;gap:6px;list-style:none;padding:0;margin:8px 0 10px;max-height:110px;overflow:auto}
+      .vector-privacy-findings li{display:flex;gap:7px;align-items:baseline;border:1px solid #ffffff18;border-radius:7px;padding:5px 8px;min-width:0;font-size:12px}.vector-privacy-findings span{font-size:12px;color:#9eb5ad;white-space:nowrap}.vector-privacy-findings code{overflow-wrap:anywhere;color:#f0f7f3;max-width:260px;white-space:pre-wrap}
+      .vector-privacy-panel details{font-size:12px;border-top:1px solid #ffffff12;padding:7px 0}.vector-privacy-panel summary{cursor:pointer;color:#b9cbc2}.vector-privacy-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:inherit;font-size:12px;line-height:1.5;max-height:140px;overflow:auto;margin:8px 0 0}
+      .vector-privacy-panel .vector-privacy-hint{font-size:11px;margin:8px 0 0;color:#9eb5ad}.vector-privacy-panel .vector-privacy-caution{color:#e5c48a}
+      .vector-privacy-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.vector-privacy-anchor .vector-privacy-actions button{width:auto;height:auto;font-weight:500;background:transparent;border:1px solid #ffffff25;border-radius:7px;padding:8px 10px;color:#f0f7f3;font:inherit;font-size:12px;cursor:pointer}.vector-privacy-actions button:focus-visible{outline:2px solid #8de0b7;outline-offset:2px}.vector-privacy-actions .vector-privacy-primary{background:#8de0b7;color:#0a0d11;border-color:#8de0b7}.vector-privacy-actions button:disabled{opacity:.4;cursor:not-allowed}
+      .vector-privacy-status{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #8de0b733;border-radius:10px;background:#131a1b;font-size:12px;color:#c5d9cd}
+      .vector-privacy-spinner{width:12px;height:12px;border:2px solid #8de0b72b;border-top-color:#8de0b7;border-radius:50%;animation:vector-privacy-spin .9s linear infinite}.vector-privacy-anchor .vector-privacy-status>span{font-size:12px;color:#c5d9cd}.vector-privacy-anchor .vector-privacy-time{margin-left:auto;font-variant-numeric:tabular-nums;color:#9eb5ad;white-space:nowrap}
+      @keyframes vector-privacy-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.vector-privacy-spinner{animation:none;border-color:#8de0b7}}
+      @media(max-width:480px){.vector-privacy-panel{padding:12px}.vector-privacy-actions button{flex:1 1 auto}.vector-privacy-findings code{max-width:190px}}
     `}</style>
-  </dialog> : null;
+  </div>;
   return {privacySend,privacyDialog};
 }

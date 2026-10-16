@@ -1490,7 +1490,6 @@ export default function ChatClient({
 
   return (
     <div className={`vector-chat-shell v54-chat-shell ${historyCollapsed ? "vx586-history-collapsed" : ""}`}>
-      {privacyDialog}
       {historyOpen && (
         <button
           type="button"
@@ -1863,6 +1862,7 @@ export default function ChatClient({
               Drop files here
             </div>
           )}
+          {privacyDialog}
           <div className="composer-box v54-composer-box">
               {attachments.length > 0 && (
                 <div className="v54-attachments">

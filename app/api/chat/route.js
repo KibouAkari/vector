@@ -374,6 +374,7 @@ export async function POST(
     let privacy;
     try {
       privacy = await reviewPrivacyRequest({text:[rawAgentMessage,...priorHistory.map(m=>m.content)].join('\n\n'),
+        scanSegments:[rawAgentMessage,...priorHistory.map(m=>m.content)],previewText:originalMessage,
         body,session,scope:'chat',conversationId,destination:requestedMode==='local'?'local':'cloud',
         uninspectable:attachmentBundle.attachments.some(a=>String(a.mimeType).startsWith('image/'))});
     } catch {

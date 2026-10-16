@@ -899,7 +899,7 @@ export default function ProjectWorkbench({
     try {
       const response = await privacySend(`/api/projects/${project.id}/chat`,{
         message:text,conversationId,mode:chatMode
-      });
+      },{localOnly:project.privacy_level==='local_only'});
 
       const data = await response.json();
       if(generation!==chatGenerationRef.current) return;
@@ -989,7 +989,6 @@ export default function ProjectWorkbench({
 
   return (
     <div className="project-workbench vp-workspace">
-      {privacyDialog}
       <input ref={uploadRef} hidden multiple type="file"
         disabled={!canEdit || uploading}
         onChange={event => {
@@ -1788,11 +1787,13 @@ export default function ProjectWorkbench({
 
             <form
               className="project-chat-composer"
+              style={{flexWrap:"wrap"}}
               onSubmit={
                 sendProjectMessage
               }
             >
 
+              {privacyDialog}
               <textarea
                 rows="2"
                 value={

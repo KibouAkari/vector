@@ -397,6 +397,7 @@ export async function POST(
   let privacy;
   try {
     privacy = await reviewPrivacyRequest({text:[originalMessage,rawContext,...priorHistory.map(m=>m.content)].join('\n\n'),
+      scanSegments:[originalMessage,rawContext,...priorHistory.map(m=>m.content)],previewText:originalMessage,
       body,session,scope:'project:'+projectId,conversationId,
       destination:project.privacy_level==='local_only'||requestedMode==='local'?'local':'cloud'});
   } catch {
