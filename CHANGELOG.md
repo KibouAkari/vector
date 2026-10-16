@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-17 — Owner-confirmed listener and Nginx repair (PR #45)
+
+- The owner completed PR #44 repair at bc52a8f38098eea0e2123f74cc0c8c8392358bed. Runner reported LISTENER FIX SUCCEEDED and SUCCESS: every app IPv4/loopback interface and the host Nginx HTTPS health route passed. The persistent app HOSTNAME is now 0.0.0.0.
+- Evidence: /root/vector-workspace/releases/vector-listener-fix-20261016T235002Z-913eee, containing result.json and original/candidate Compose files. App source/image are unchanged; other production containers were retained; no model request was made. Future release guards must use this repaired Compose baseline and preserve its listener setting. Do not rerun the older exact-baseline repair or bypass historical rollback guards.
+- Update the handoff from unresolved 502 to confirmed local ingress recovery, while keeping remote browser rendering, completed statistics jobs and provider execution as pending checks. Documentation only; no new server mutation or model call.
+
 ## 2026-10-17 — Repair app binding across private networks (PR #44)
 
 - Owner post-release evidence shows the app running without OOM/restarts but listening only on 172.25.0.3:3000, with health unreachable on loopback and the other two app network addresses; host Nginx returns 502. The prior health gate accepted any single interface, so successful internal release health did not prove proxy reachability.
