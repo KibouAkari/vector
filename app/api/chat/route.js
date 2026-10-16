@@ -732,6 +732,7 @@ export async function POST(
           privacy.totalFindings,
 
         privacy: {
+          disabled:privacy.disabled === true,
           protected:
             privacy.wasSanitized,
 

@@ -622,6 +622,7 @@ export async function POST(
           ),
 
         privacy: {
+          disabled:privacy.disabled === true,
           protected:privacy.wasSanitized,
 
           values:

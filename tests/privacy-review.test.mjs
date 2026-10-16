@@ -358,8 +358,10 @@ test('contact labels do not become people while ambiguous names and credentials 
 test('explicit privacy off skips native and deterministic masking for prompt, provider and tool evidence',async()=>{
   process.env.VECTOR_PRIVACY_REVIEW='1';process.env.VECTOR_LOCAL_WORKERS='1';process.env.FILE_ENCRYPTION_KEY=key.toString('hex');
   const runtime=loadRuntime({fail:true});
-  const request=args();request.body.privacyEnabled=false;
+  const request=args();request.body.privacyEnabled=false;request.conversationId='c';
+  const prior=core.makePrivacyPlan('Erika Muster',learned).mappings;runtime.vault.set('c',prior);
   const plan=await runtime.reviewPrivacyRequest(request);
+  assert.equal(plan.apply(prior[0].placeholder),'Erika Muster','explicit off restores this conversation’s earlier placeholders');
   assert.equal(plan.apply(text),text);assert.equal(plan.totalFindings,0);assert.equal(runtime.requests.length,0);
   await runtime.withJobPrivacy({userId:'alice',conversationId:'c',privacyPolicy:plan.policy},async()=>{
     const payload={input:[{role:'user',content:text}]};
