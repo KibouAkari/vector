@@ -29,7 +29,15 @@ public final class VectorAddonFlowTest {
         final BlockingQueue<String> messages = new LinkedBlockingQueue<>();
         final AtomicInteger lookups = new AtomicInteger();
         final ExecutorService game = Executors.newSingleThreadExecutor(task -> new Thread(task, "captured-minecraft"));
-        public void schedule(Runnable task) { game.execute(task); }
+        public void schedule(Runnable task) throws Exception {
+            game.submit(task).get(5, TimeUnit.SECONDS);
+            // Keep the completed worker busy briefly AFTER a reply is visible.
+            // Immediate next questions must survive this completion handoff.
+            if (Thread.currentThread().getName().equals("Vector-local-chat")) {
+                try { Thread.sleep(200); }
+                catch (InterruptedException stopping) { Thread.currentThread().interrupt(); }
+            }
+        }
         public String playerName(UUID player) {
             checkThread(); lookups.incrementAndGet();
             return player.equals(ONE) ? "ExampleOne" : player.equals(TWO) ? "ExampleTwo" : null;

@@ -37,10 +37,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -55,6 +56,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     private final AtomicLong sequence = new AtomicLong();
     private final Gson gson = new Gson();
     private volatile ThreadPoolExecutor worker;
+    private final AtomicBoolean requestInFlight = new AtomicBoolean();
     private volatile boolean active;
     private DiscordEventHandler handler;
     private byte[] key;
@@ -138,7 +140,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
         key = secret.clone();
         introMarker = marker;
         introduction = intro;
-        worker = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, new SynchronousQueue<>(), task -> {
+        worker = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1), task -> {
             Thread thread = new Thread(task, "Vector-local-chat");
             thread.setDaemon(true);
             return thread;
@@ -171,9 +173,22 @@ public final class VectorAddon implements DiscordIntegrationAddon {
                 request.addProperty("name", name);
                 request.addProperty("event", session + ":" + sequence.incrementAndGet());
                 request.addProperty("message", message);
+                if (!requestInFlight.compareAndSet(false, true)) return;
                 try {
-                    worker.execute(() -> answer(request));
+                    worker.execute(() -> {
+                        String reply;
+                        try { reply = answer(request); }
+                        finally { requestInFlight.set(false); }
+                        // Admission reopens before delivery is visible. The single
+                        // queue slot covers completion handoff, never HTTP backlog.
+                        if (reply != null) onServer(() -> {
+                            if (!active) return;
+                            introduce();
+                            bridge.publish(reply);
+                        });
+                    });
                 } catch (RejectedExecutionException ignored) {
+                    requestInFlight.set(false);
                     // No unbounded queue, public busy-message spam or tick delay.
                 }
             });
@@ -231,7 +246,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
         public void onComplete() { result.complete(body.toByteArray()); }
     }
 
-    private void answer(JsonObject payload) {
+    private String answer(JsonObject payload) {
         try {
             byte[] body = gson.toJson(payload).getBytes(StandardCharsets.UTF_8);
             String timestamp = Long.toString(Instant.now().getEpochSecond());
@@ -252,18 +267,14 @@ public final class VectorAddon implements DiscordIntegrationAddon {
                 throw failure;
             }
             byte[] raw = response.body();
-            if (response.statusCode() != 200 || raw.length > 8192) return;
+            if (response.statusCode() != 200 || raw.length > 8192) return null;
             JsonObject result = gson.fromJson(new String(raw, StandardCharsets.UTF_8), JsonObject.class);
-            if (!result.has("status") || !"answered".equals(result.get("status").getAsString()) || !result.has("text")) return;
+            if (!result.has("status") || !"answered".equals(result.get("status").getAsString()) || !result.has("text")) return null;
             String reply = result.get("text").getAsString();
-            if (!safe(reply)) return;
-            onServer(() -> {
-                if (!active) return;
-                introduce();
-                bridge.publish(reply);
-            });
+            return safe(reply) ? reply : null;
         } catch (Exception ignored) {
             LOG.warning("Vector local request unavailable; no cloud fallback.");
+            return null;
         }
     }
 

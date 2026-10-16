@@ -12,6 +12,7 @@ import re
 import secrets
 import subprocess
 import sys
+import tempfile
 import zipfile
 
 ROOT = Path('/root/vector-workspace')
@@ -20,26 +21,55 @@ JDK = 'eclipse-temurin@sha256:791193f8d46fe8afeb6360433dd057b88850a78ed440e3d57d
 PYTHON = 'sha256:eca0b83a886fcc9952ef13755853ef63134e5c76733d40564460398776c92dd7'
 INTEGRATION = Path('/opt/fegcraft-updated/data/mods/dcintegration-fabric-MC26.2-3.2.1.jar')
 INTEGRATION_SHA = '75e039ac6c8edad3c9423c91638ffd15d7c9b95dadb60bf69349da838afbf337'
-API_SHA = '4b0dee9f505d30129b003eae08866be543cddc7b5bc11b7b42bae6b1fb77d0a9'
+COMMON_DIGEST = '4b0dee9f505d30129b003eae08866be543cddc7b5bc11b7b42bae6b1fb77d0a9'
 LABEL = 'com.vector.fegcraft-evaluation'
 PRODUCTION = ('fegcraft-updated', 'vector-app', 'vector-privacy-ner', 'vector-local-inference', 'vector-worker', 'vector-runner', 'vector-postgres', 'vector-redis')
 COMPOSE = (Path('/opt/fegcraft-updated/docker-compose.yml'), Path('/opt/vector/docker-compose.yml'))
 EXPORT = ('services/fegcraft-assistant', 'integrations/fegcraft-addon/src', 'tests/VectorAddonTest.java', 'tests/VectorAddonFlowTest.java', 'tests/fegcraft-flow.test.py', 'scripts/build-fegcraft-addon.py')
 
 
+LOG_LIMIT = 128 * 1024
+COMPLETION_FLAGS = ('signed_transport_passed', 'service_restart_limits_passed', 'captured_introduction_replay_passed')
+
+
+def qualified(result, error, cleanup_errors, checks):
+    return (error is None and not cleanup_errors
+            and all(result.get(key) is True for key in (*COMPLETION_FLAGS, *checks)))
+
+
 def run(args, *, timeout=90, log=None, check=True):
-    result = subprocess.run(args, capture_output=True, timeout=timeout)
-    if log is not None:
-        log.write_bytes(result.stdout + result.stderr)
-        log.chmod(0o600)
-    if check and result.returncode:
-        raise RuntimeError('ISOLATED_STEP_FAILED:' + (log.name if log else args[0]))
-    return result
+    if log is None:
+        return subprocess.run(args, capture_output=True, timeout=timeout, check=check)
+    # Stream output to a private temporary file, retaining a bounded diagnostic
+    # tail even when a child times out. Never buffer a compiler log in memory.
+    with tempfile.TemporaryFile() as output:
+        failure = None
+        try:
+            result = subprocess.run(args, stdout=output, stderr=subprocess.STDOUT, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            failure = 'ISOLATED_STEP_TIMEOUT:' + log.name
+        finally:
+            end = output.seek(0, os.SEEK_END)
+            output.seek(max(0, end - LOG_LIMIT))
+            tail = output.read(LOG_LIMIT)
+            log.write_bytes(tail)
+            log.chmod(0o600)
+        if failure:
+            raise RuntimeError(failure)
+        if check and result.returncode:
+            raise RuntimeError('ISOLATED_STEP_FAILED:' + log.name)
+        return result
 
 
 def inspect(kind, name):
     result = run(['docker', kind, 'inspect', name], check=False)
-    return json.loads(result.stdout)[0] if result.returncode == 0 else None
+    if result.returncode == 0:
+        return json.loads(result.stdout)[0]
+    message = result.stderr.decode(errors='replace').strip()
+    missing = r'(?:Error response from daemon: |Error: )?(?:No such (?:object|image|container|network): ' + re.escape(name) + r'|network ' + re.escape(name) + r' not found)'
+    if result.stdout.strip() in (b'', b'[]') and re.fullmatch(missing, message):
+        return None
+    raise RuntimeError('DOCKER_INSPECTION_FAILED:' + kind)
 
 
 def identity(name):
@@ -172,7 +202,7 @@ def main():
                 if item.file_size > 30_000_000:
                     raise RuntimeError('INTEGRATION_API_LIMIT')
                 common = archive.read(item)
-            if hashlib.sha256(common).hexdigest() != API_SHA:
+            if hashlib.sha256(common).hexdigest() != COMMON_DIGEST:
                 raise RuntimeError('INSTALLED_COMMON_API_CHANGED')
             (inputs / 'common.jar').write_bytes(common)
             (inputs / 'common.jar').chmod(0o444)
@@ -241,6 +271,8 @@ def main():
             result['signed_transport_passed'] = True
             result['service_restart_limits_passed'] = True
             result['captured_introduction_replay_passed'] = True
+        except KeyboardInterrupt:
+            error = 'EVALUATION_INTERRUPTED'
         except Exception as failure:
             error = str(failure) if isinstance(failure, RuntimeError) else type(failure).__name__
         finally:
@@ -274,7 +306,7 @@ def main():
                     result[check] = verify()
                 except Exception:
                     result[check] = False
-            result['passed'] = error is None and not cleanup_errors and all(result[k] for k in checks)
+            result['passed'] = qualified(result, error, cleanup_errors, checks)
             result['error'] = error
             result['cleanup_errors'] = cleanup_errors
             (release / 'result.json').write_text(json.dumps(result, indent=2))

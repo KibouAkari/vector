@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -13,6 +14,51 @@ spec.loader.exec_module(evaluation)
 
 
 class EvaluationTests(unittest.TestCase):
+    def test_interrupted_or_incomplete_capture_cannot_pass(self):
+        checks = {'production_unchanged': True}
+        result = {**checks, **dict.fromkeys(evaluation.COMPLETION_FLAGS, True)}
+        self.assertTrue(evaluation.qualified(result, None, [], checks))
+        for flag in evaluation.COMPLETION_FLAGS:
+            partial = dict(result); partial.pop(flag)
+            self.assertFalse(evaluation.qualified(partial, None, [], checks))
+        self.assertFalse(evaluation.qualified(result, 'EVALUATION_INTERRUPTED', [], checks))
+        self.assertFalse(evaluation.qualified(result, None, ['CLEANUP_FAILED'], checks))
+
+    def test_timeout_retains_bounded_partial_log(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            log = Path(temporary) / 'compile.log'
+            def child(args, **kwargs):
+                kwargs['stdout'].write(b'x' * (evaluation.LOG_LIMIT + 20) + b'failure tail')
+                raise subprocess.TimeoutExpired(args, 1)
+            with patch.object(evaluation.subprocess, 'run', side_effect=child):
+                with self.assertRaisesRegex(RuntimeError, 'TIMEOUT:compile.log'):
+                    evaluation.run(['synthetic'], log=log)
+            self.assertEqual(log.stat().st_size, evaluation.LOG_LIMIT)
+            self.assertTrue(log.read_bytes().endswith(b'failure tail'))
+            self.assertEqual(log.stat().st_mode & 0o777, 0o600)
+
+    def test_completed_log_is_bounded(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            log = Path(temporary) / 'client.log'
+            def child(args, **kwargs):
+                kwargs['stdout'].write(b'x' * (evaluation.LOG_LIMIT + 1))
+                return subprocess.CompletedProcess(args, 1)
+            with patch.object(evaluation.subprocess, 'run', side_effect=child):
+                with self.assertRaisesRegex(RuntimeError, 'FAILED:client.log'):
+                    evaluation.run(['synthetic'], log=log)
+            self.assertEqual(log.stat().st_size, evaluation.LOG_LIMIT)
+
+    def test_inspection_distinguishes_absence_from_daemon_failure(self):
+        for kind in ('container', 'network', 'image'):
+            missing = subprocess.CompletedProcess([], 1, b'[]\n', b'Error: No such object: synthetic\n')
+            with patch.object(evaluation, 'run', return_value=missing):
+                self.assertIsNone(evaluation.inspect(kind, 'synthetic'))
+            for message in (b'Cannot connect to the Docker daemon', b'permission denied', b''):
+                failed = subprocess.CompletedProcess([], 1, b'', message)
+                with patch.object(evaluation, 'run', return_value=failed):
+                    with self.assertRaisesRegex(RuntimeError, 'INSPECTION_FAILED'):
+                        evaluation.remove_owned(kind, 'synthetic', 'owner')
+
     def test_unprivileged_container_has_bounded_private_execution(self):
         args = evaluation.container_args('synthetic', 'owner', 'none')
         for flag in ('--read-only', '--cap-drop', '--security-opt', '--pids-limit', '--cpus', '--memory', '--memory-swap'):
