@@ -2,6 +2,8 @@
 
 Before proposing changes, read:
 
+- `docs/OWNER_PREFERENCES.md`
+- `docs/PROJECT_HANDOFF.md`
 - `VISION.md`
 - `docs/ARCHITECTURE.md`
 - `docs/SECURITY.md`
