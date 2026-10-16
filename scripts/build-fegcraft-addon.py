@@ -16,6 +16,21 @@ DEPENDENCY_URL = 'https://cdn.modrinth.com/data/rbJ7eS5V/versions/AzljeO7W/dcint
 DEPENDENCY_SHA = '75e039ac6c8edad3c9423c91638ffd15d7c9b95dadb60bf69349da838afbf337'
 
 
+def package_addon(classes, output):
+    with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+        def add(name, data):
+            info = zipfile.ZipInfo(name, (2026, 10, 16, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            archive.writestr(info, data)
+        add('META-INF/MANIFEST.MF', b'Manifest-Version: 1.0\nImplementation-Title: Vector Minecraft Assistant\nImplementation-Version: 0.1.0\n\n')
+        for path in sorted(classes.rglob('*.class')):
+            if path.name.startswith(('VectorAddonTest', 'VectorAddonFlowTest')):
+                continue
+            add(str(path.relative_to(classes)), path.read_bytes())
+        add('DiscordIntegrationAddon.toml', (ROOT / 'integrations/fegcraft-addon/src/main/resources/DiscordIntegrationAddon.toml').read_bytes())
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dependency', type=Path, help='Compile against an operator-selected installed integration JAR instead of downloading')
@@ -59,22 +74,11 @@ def main():
         shutil.rmtree(classes)
     classes.mkdir()
     source = ROOT / 'integrations/fegcraft-addon/src/main/java/com/kibouakari/vector/VectorAddon.java'
-    subprocess.run([str(compiler), '--release', '17', '-g:none', '-encoding', 'UTF-8', '-classpath', str(dependency), '-d', str(classes), str(source), str(ROOT / 'tests/VectorAddonTest.java')], check=True)
+    subprocess.run([str(compiler), '--release', '17', '-g:none', '-encoding', 'UTF-8', '-classpath', str(dependency), '-d', str(classes), str(source), str(ROOT / 'tests/VectorAddonTest.java'), str(ROOT / 'tests/VectorAddonFlowTest.java')], check=True)
     expected = hmac.new(bytes.fromhex('ab' * 32), b'1000000000\n{}', hashlib.sha256).hexdigest()
     subprocess.run([str(java), '-classpath', os.pathsep.join((str(classes), str(dependency))), 'com.kibouakari.vector.VectorAddonTest', expected], check=True)
     output = BUILD / 'vector-minecraft-0.1.0.jar'
-    with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
-        def add(name, data):
-            info = zipfile.ZipInfo(name, (2026, 10, 16, 0, 0, 0))
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = 0o644 << 16
-            archive.writestr(info, data)
-        add('META-INF/MANIFEST.MF', b'Manifest-Version: 1.0\nImplementation-Title: Vector Minecraft Assistant\nImplementation-Version: 0.1.0\n\n')
-        for path in sorted(classes.rglob('*.class')):
-            if path.name.startswith('VectorAddonTest'):
-                continue
-            add(str(path.relative_to(classes)), path.read_bytes())
-        add('DiscordIntegrationAddon.toml', (ROOT / 'integrations/fegcraft-addon/src/main/resources/DiscordIntegrationAddon.toml').read_bytes())
+    package_addon(classes, output)
     print('Addon compiled and offline checks passed.')
     print('JAR SHA256:', hashlib.sha256(output.read_bytes()).hexdigest())
     print('No addon installed, message sent or model called.')
