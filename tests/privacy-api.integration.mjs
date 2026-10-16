@@ -11,7 +11,7 @@ if(process.env.VECTOR_PRIVACY_API_EVALUATION!=='1' || database.hostname!=='priva
 }
 const {Client}=createRequire('/app/package.json')('pg');
 const db=new Client({connectionString:database.href,connectionTimeoutMillis:5000});
-const cookies={};const ids={};const checks=[];
+const cookies={};const ids={};const checks=[];const timings={};
 const phase=process.env.VECTOR_PRIVACY_API_PHASE || 'normal';
 const check=name=>checks.push(name);
 async function call(path,{as='alice',method='GET',body,form,status=200}={}) {
@@ -88,7 +88,7 @@ try {
   const values=['Erika Muster','erika@example.invalid','synthetic privacy phrase'];
   if(phase==='outage') {
     const before=await counts();
-    const result=await (await call('/api/chat',{method:'POST',body:{message:prompt,mode:'normal'},status:503})).json();
+    const result=await (await call('/api/chat',{method:'POST',body:{message:prompt+' Noch nicht geprüfte neue Nachricht.',mode:'normal'},status:503})).json();
     assert.equal(result.error,'PRIVACY_REVIEW_FAILED');privateValuesAbsent(result,values);
     noNewChat(before,await counts());assert.equal((await counts()).usage_events,before.usage_events);
     check('native-service-outage-blocks-cloud-send-before-writes');
@@ -100,7 +100,8 @@ try {
     await call('/api/chat',{as:'disabled',method:'POST',body:{message:prompt},status:403});
     noNewChat(beforeUnauthorized,await counts());assert.equal(await usage(),0);check('authorization-precedes-detection');
     const input={message:prompt,mode:'normal'};
-    const approval=await review('/api/chat',input);
+    const initialStarted=performance.now();
+    const approval=await review('/api/chat',input);timings.initialReviewMs=Math.round(performance.now()-initialStarted);
     assert.ok(approval.canReplace);assert.ok(approval.findings.some(f=>f.displayValue==='Erika Muster'));
     assert.ok(approval.findings.some(f=>f.displayValue==='erika@example.invalid'));
     assert.ok(approval.findings.some(f=>f.type==='PASSWORD'&&f.displayValue==='••••••••'));
@@ -136,7 +137,8 @@ try {
     await db.query('INSERT INTO conversations(id,user_id,owner_user_id,title) VALUES($1,$2,$2,$3)',[historyId,ids.alice,'Synthetic history']);
     await db.query("INSERT INTO messages(id,conversation_id,role,content) VALUES($1,$2,'user',$3)",[crypto.randomUUID(),historyId,'Bitte verbessere die Nachricht an Zoë Beispiel. Ihre E-Mail ist zoe@example.invalid.']);
     const history=await review('/api/chat',{message:'Antworte kurz.',mode:'normal',conversationId:historyId});
-    assert.ok(history.findings.some(f=>f.displayValue==='Zoë Beispiel'));
+    assert.ok(history.contextFindings.some(f=>f.displayValue==='Zoë Beispiel'));
+    assert.equal(history.preview,'Antworte kurz.');assert.equal(history.findings.length,0);
     const scans=await usage();await call('/api/chat',{as:'bob',method:'POST',body:{message:'Antworte kurz.',conversationId:historyId},status:404});
     assert.equal(await usage(),scans);check('included-history-is-inspected-only-after-ownership-check');
     const upload=async(name,type,content)=>{
@@ -145,7 +147,8 @@ try {
     };
     const attachment=await upload('contact.txt','text/plain','Kontakt: erika@example.invalid. Passwort: "synthetic privacy phrase".');
     const attached=await review('/api/chat',{message:'Bitte formuliere die Nachricht.',mode:'normal',attachmentIds:[attachment]});
-    assert.ok(attached.findings.some(f=>f.displayValue==='erika@example.invalid'));
+    assert.ok(attached.contextFindings.some(f=>f.displayValue==='erika@example.invalid'));
+    assert.equal(attached.preview,'Bitte formuliere die Nachricht.');
     assert.ok(!JSON.stringify(attached).includes('synthetic privacy phrase'));check('uploaded-text-is-reviewed-with-hidden-credentials');
     const image=await upload('pixel.png','image/png',Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jF9sAAAAASUVORK5CYII=','base64'));
     const imageBody={message:'Beschreibe das Bild.',mode:'normal',attachmentIds:[image]};
@@ -157,7 +160,8 @@ try {
     await call(`/api/projects/${pid}/files/create`,{method:'POST',body:{name:'contact.txt',content:'Kontakt: erika@example.invalid. Passwort: "synthetic privacy phrase".'}});
     const projectBody={message:'Bitte formuliere die Kontakt Nachricht.',mode:'normal'};
     const projectReview=await review(`/api/projects/${pid}/chat`,projectBody);
-    assert.ok(projectReview.findings.some(f=>f.displayValue==='erika@example.invalid'));
+    assert.ok(projectReview.contextFindings.some(f=>f.displayValue==='erika@example.invalid'));
+    assert.equal(projectReview.preview,projectBody.message);
     const projectJob=await queued(`/api/projects/${pid}/chat`,{...projectBody,privacyDecision:'replace',privacyReviewToken:projectReview.token});
     privateValuesAbsent(projectJob.job.payload,['erika@example.invalid','synthetic privacy phrase']);
     const projectScans=await usage();
@@ -166,12 +170,31 @@ try {
     const localJob=await queued(`/api/projects/${localProject.project.id}/chat`,input);
     assert.equal(localJob.job.payload.privacyDestination,'local');assert.equal(await usage(),projectScans);
     check('project-retrieval-consent-ownership-and-local-only-routing');
+    const reset='Hilf mir bei einer Mail zum password reset für security-demo.invalid.\n'+
+      'der username ist benno beispiel und das password Demo-456\nbitte gib benno bescheid.';
+    const resetReview=await review('/api/chat',{message:reset,mode:'normal',conversationId:historyId});
+    for(const value of ['benno beispiel','benno'])assert.ok(resetReview.findings.some(f=>f.displayValue===value));
+    assert.ok(resetReview.findings.some(f=>f.type==='PASSWORD'&&f.displayValue==='••••••••'));
+    assert.ok(!resetReview.preview.includes('Demo-456'));assert.ok(!resetReview.preview.includes('Zoë'));
+    const resetJob=await queued('/api/chat',{message:reset,mode:'normal',conversationId:historyId,
+      privacyDecision:'replace',privacyReviewToken:resetReview.token});
+    privateValuesAbsent(resetJob.job.payload,['benno','Demo-456','Zoë Beispiel','zoe@example.invalid']);
+    const beforeCached=await usage();
+    const followupStarted=performance.now();
+    await review('/api/chat',{message:'Weitere neue Nachricht.',mode:'normal',conversationId:historyId});
+    timings.followupReviewMs=Math.round(performance.now()-followupStarted);
+    const afterNew=await usage();assert.equal(afterNew,beforeCached+1);
+    const cachedStarted=performance.now();
+    await review('/api/chat',{message:'Weitere neue Nachricht.',mode:'normal',conversationId:historyId});
+    timings.cachedReviewMs=Math.round(performance.now()-cachedStarted);
+    assert.equal(await usage(),afterNew,'Unchanged reviewed segments must not trigger another scan.');
+    check('natural-reset-credentials-current-preview-and-exact-context-cache');
     const events=(await db.query('SELECT * FROM usage_events')).rows;
     assert.ok(events.length>0);assert.ok(events.every(e=>e.provider==='local'&&Number(e.cost_chf)===0&&Number(e.input_tokens)===0&&Number(e.output_tokens)===0&&e.metadata.kind==='local-privacy-scan'&&e.metadata.processedTextTokens>0));
     privateValuesAbsent(events.map(e=>e.metadata),values);check('real-ledger-has-separate-encoder-metrics-zero-api-fees-and-no-private-text');
   }
   const jobs=(await db.query('SELECT status,attempts FROM agent_jobs')).rows;
   assert.ok(jobs.every(j=>j.status==='queued'&&j.attempts===0));
-  console.log(JSON.stringify({passed:true,phase,checks,queued_synthetic_jobs:jobs.length,
+  console.log(JSON.stringify({passed:true,phase,checks,timings,queued_synthetic_jobs:jobs.length,
     executed_jobs:0,cloud_calls:0,api_cost_chf:0,isolated_database_writes:true,production_activated:false}));
 } finally {await db.end();}

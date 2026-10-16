@@ -1,10 +1,19 @@
 # Changelog
 
+2026-10-16 — Privacy composer follow-up (#32): reject contextual contact labels misclassified as people, preserve ambiguous names and credential types, and retain the real API preview assertion. All 36 targeted local Node tests pass. Native server retest remains pending.
+
 This changelog documents repository changes by date, with commit and pull
 request identifiers when available. Entries are listed newest first.
 Production deployments are tracked separately.
 
 ## 2026-10-16
+
+### Compact privacy review beside the composer (#32)
+
+- Show an immediate local checking indicator with elapsed seconds and a small accessible review card above the chat/project input. Remove the modal backdrop and eyebrow, simplify actions and preview labels, and keep fully local requests quiet. Test explicit consent, cancellation, stale scopes, duplicate sends and progress cleanup.
+- Display only the current message in the default preview; separate context findings in a collapsed group while still protecting all included history, attachments and project retrieval. Batch uncached text segments in one native scan and reuse exact per-account successful results for at most five minutes with bounded in-memory storage. Changed context and other accounts rescan; cached work adds no fabricated encoder/API usage.
+- Detect bare credential-shaped password values, explicit lowercase usernames and separate first-name references. Reject pronoun/code-heading false positives, trim Markdown edges on new person findings and respect person/username word boundaries. Preserve encrypted consent/vault handling and block failures before queue writes. Use synthetic regressions rather than the owner's private prompt values.
+- Local verification passes 38 Node tests and 8 deployment evaluator tests. Expanded owner qualification covers current-only previews, natural reset credentials, masked queued context, cache accounting and fresh-input outage blocking. The initial branch commit passes production build and CI. Construct dummy PEM markers only at test runtime to avoid a source-scanner false positive without excluding any files or rules; keep redacted scan diagnostics visible. Final CI, owner API/UI qualification and deployment remain pending; native service code/model weights are unchanged.
 
 ### Privacy release preparation after enabled API qualification (#31)
 

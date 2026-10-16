@@ -58,12 +58,12 @@ def main():
             'lib/privacy-ner-client.mjs', 'lib/privacy-ner-core.py', 'services/privacy-ner/server.py',
             'app/api/chat/route.js', 'app/api/projects/[id]/chat/route.js',
             'app/api/privacy/classify/route.js', 'app/projects/[id]/project-workspace.js',
-            'components/ui/privacy-review-dialog.js')
+            'components/ui/privacy-review-dialog.js', 'lib/privacy-send-controller.mjs')
         original_command = stage['command']
 
         def command(*args, **kwargs):
             if '--test' in args and 'tests/project-file-view.test.mjs' in args:
-                args = (*args, 'tests/server-json-rankings.test.mjs', 'tests/provider-call-usage.test.mjs', 'tests/local-workers.test.mjs', 'tests/privacy-review.test.mjs', 'tests/privacy-routes.test.mjs', 'tests/privacy-ner-client.test.mjs')
+                args = (*args, 'tests/server-json-rankings.test.mjs', 'tests/provider-call-usage.test.mjs', 'tests/local-workers.test.mjs', 'tests/privacy-review.test.mjs', 'tests/privacy-routes.test.mjs', 'tests/privacy-ner-client.test.mjs', 'tests/privacy-send-controller.test.mjs')
             return original_command(*args, **kwargs)
 
         stage['command'] = command
@@ -71,9 +71,9 @@ def main():
 
     namespace.update(
         REV=revision,
-        BRANCH='feat/privacy-consent-local-20261015',
-        LIVE_IMAGE='sha256:d1b5b1f6c463627ba1daa20d44e9450c3862cdc4c80df245e0f94f1187f675bf',
-        LIVE_TAG='vector-app:staging-b7bf796-20261015T132209Z-e0be3d',
+        BRANCH='feat/privacy-composer-review-20261016',
+        LIVE_IMAGE='sha256:e59160f17f47b2b8231e417bc64c25ce82a5a7320be6a0b47c6d8b226f699a80',
+        LIVE_TAG='vector-app:staging-a20b9a6-20261016T084935Z-7b04eb',
         prepare=prepare
     )
     namespace['main']()

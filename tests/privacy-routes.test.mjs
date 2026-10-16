@@ -32,6 +32,8 @@ test('normal chat reviews attachment and owned history before writes or enqueue'
   assert.equal(response.status,409);assert.equal(api.jobs.length,0);
   assert.match(api.reviews[0].text,/old@example.invalid/);assert.match(api.reviews[0].text,/hidden@example.invalid/);
   assert.equal(api.reviews[0].destination,'cloud');
+  assert.equal(api.reviews[0].previewText,'Hi Erika Muster');
+  assert.equal(api.reviews[0].scanSegments.join('\n\n'),api.reviews[0].text);
   assert.ok(api.queries.every(([sql])=>! /INSERT|UPDATE/.test(sql)));
 });
 test('reviewed history reserves one message slot and respects the configured limit',async()=>{

@@ -243,3 +243,113 @@ test('natural quoted password phrases and spaced API labels are fully masked',()
     assert.equal(core.literalReplace(plan.sanitized,plan.mappings,true),source);
   }
 });
+
+test('natural reset request protects a bare password, lowercase username and separate first-name mention',()=>{
+  const source='Hilf mir eine Mail zum password reset für security-demo.invalid zu schreiben.\n'+
+    'der username ist benno beispiel und das password Demo-456\nbitte gib benno bescheid.';
+  const plan=core.makePrivacyPlan(source,core.deterministicFindings(source));
+  for(const value of ['benno beispiel','Demo-456','benno'])assert.ok(plan.selected.some(m=>m.value===value),value);
+  assert.ok(!plan.sanitized.includes('Demo-456'));assert.ok(!plan.sanitized.includes('benno'));
+  assert.ok(plan.sanitized.includes('password reset'));
+  assert.equal(core.literalReplace(plan.sanitized,plan.mappings,true),source);
+  assert.ok(plan.selected.map(core.displayFinding).every(f=>!f.displayValue.includes('Demo-456')));
+  for(const source of ['username ist benno beispiel\nWeiterer Satz.', 'username: "demo user"'])
+    assert.ok(core.deterministicFindings(source).some(f=>f.type==='USERNAME'));
+});
+
+test('person cleanup rejects pronouns and code headings, trims markdown, and preserves word boundaries',()=>{
+  const source='Ich schreibe **Benno Beispiel**. SPIELER WARNEN. Benno und Bennoblog.';
+  const findings=core.normalizePersonFindings(source,[{type:'PERSON',value:'Ich'},
+    {type:'PERSON',value:'SPIELER WARNEN'},{type:'PERSON',value:'**Benno Beispiel'}]);
+  assert.deepEqual(findings,[{type:'PERSON',value:'Benno Beispiel'}]);
+  const plan=core.makePrivacyPlan(source,findings,[{type:'PERSON',value:'Ich',placeholder:'<PERSON_A1B2C3>'}]);
+  assert.ok(plan.sanitized.startsWith('Ich schreibe **<VEC_PERSON_'));
+  assert.ok(plan.sanitized.includes('SPIELER WARNEN'));assert.ok(plan.sanitized.includes('Bennoblog'));
+  assert.equal(core.literalReplace(plan.sanitized,plan.mappings,true),source);
+});
+
+test('review preview and primary findings contain only the current message while context stays protected',async()=>{
+  const runtime=loadRuntime({extraFindings:[{type:'PERSON',value:'Benno Beispiel'}]});
+  const current='Schreibe Benno Beispiel. password Demo-456';
+  const history='Alter Kontext mit old@example.invalid und Erika Muster.\n'.repeat(3);
+  const request={...args(),text:[current,history].join('\n\n'),scanSegments:[current,history],previewText:current,
+    body:{message:current,mode:'normal'}};
+  const data=await (await runtime.reviewPrivacyRequest(request)).response.json();
+  const review=data.privacyReview;
+  assert.ok(review.findings.some(f=>f.type==='PASSWORD'));
+  assert.ok(review.findings.some(f=>f.displayValue==='Benno Beispiel'));
+  assert.ok(!JSON.stringify(review.findings).includes('old@example.invalid'));
+  assert.ok(review.contextFindings.some(f=>f.type==='EMAIL'));
+  assert.ok(!review.preview.includes('Alter Kontext'));assert.ok(!review.preview.includes('Demo-456'));
+  const confirmed=await runtime.reviewPrivacyRequest({...request,body:{...request.body,
+    privacyDecision:'replace',privacyReviewToken:review.token}});
+  assert.ok(!confirmed.apply(history).includes('old@example.invalid'));
+  assert.ok(!confirmed.apply(history).includes('Erika Muster'));
+  assert.equal(runtime.requests.length,1,'one batched initial scan and no confirmation rescan');
+});
+
+test('unchanged historical segments reuse local results, changed context and other users rescan',async()=>{
+  const runtime=loadRuntime();
+  const old='Erika Muster ist erreichbar unter old@example.invalid.';
+  const run=(message,history,userId='alice')=>runtime.reviewPrivacyRequest({...args(),
+    text:[message,history].join('\n\n'),previewText:message,scanSegments:[message,history],
+    session:{userId},body:{message,mode:'normal'}});
+  await run('Neue Nachricht eins',old);
+  await run('Neue Nachricht zwei',old);
+  assert.equal(runtime.requests.length,2);
+  assert.equal(runtime.requests[1],'Neue Nachricht zwei');
+  await run('Neue Nachricht zwei',old);
+  assert.equal(runtime.requests.length,2,'identical complete review reuses successful scan');
+  await run('Neue Nachricht drei',old+' Eine Änderung.');
+  assert.ok(runtime.requests[2].includes('Eine Änderung.'));
+  await run('Neue Nachricht zwei',old,'bob');
+  assert.equal(runtime.requests.length,4,'cache never crosses accounts');
+  assert.equal(runtime.usage.length,4,'only actual encoder requests enter native scan accounting');
+  await assert.rejects(runtime.reviewPrivacyRequest({...args(),scanSegments:['incomplete snapshot']}));
+});
+
+test('local review cache expires, bounds stored values and returns isolated copies',()=>{
+  let now=0;const cache=core.createReviewScanCache({now:()=>now,ttl:10,maxEntries:2,maxValueChars:20});
+  cache.set('alice','one',[{type:'PERSON',value:'Benno'}]);
+  const copy=cache.get('alice','one');copy[0].value='mutated';
+  assert.equal(cache.get('alice','one')[0].value,'Benno');
+  assert.equal(cache.get('bob','one'),undefined);
+  cache.set('alice','two',[]);cache.set('alice','three',[]);
+  assert.equal(cache.get('alice','one'),undefined);
+  now=10;assert.equal(cache.get('alice','two'),undefined);
+  cache.set('alice','large',[{type:'PERSON',value:'x'.repeat(21)}]);
+  assert.equal(cache.get('alice','large'),undefined);
+});
+
+
+test('a sensitive value spanning separate outbound messages cannot bypass per-part masking',async()=>{
+  const runtime=loadRuntime();
+  // Construct deliberately non-key fixture markers at runtime so the source
+  // scanner stays strict without a false private-key finding or allowlist.
+  const marker=label=>['-----',label,' PRIVATE',' KEY-----'].join('');
+  const parts=[marker('BEGIN')+'\nsynthetic-first-part','synthetic-second-part\n'+marker('END')];
+  await assert.rejects(runtime.reviewPrivacyRequest({...args(),text:parts.join('\n\n'),scanSegments:parts,
+    body:{message:parts[0]}}),/Kontextteile/);
+});
+
+
+test('a person span inside a credential cannot reveal a password fragment in the review',()=>{
+  const source='password Synthetic-456';
+  const plan=core.makePrivacyPlan(source,[...core.deterministicFindings(source),{type:'PERSON',value:'Synthetic'}]);
+  assert.ok(plan.selected.map(core.displayFinding).every(f=>!f.displayValue.includes('Synthetic')));
+  assert.equal(core.literalReplace(plan.sanitized,plan.mappings,true),source);
+});
+
+test('contact labels do not become people while ambiguous names and credentials stay protected',()=>{
+  const text='Bitte formuliere die Kontakt Nachricht.\n\nKontakt: erika@example.invalid.';
+  const findings=[{type:'PERSON',value:'Kontakt'},{type:'EMAIL',value:'erika@example.invalid'}];
+  assert.deepEqual(core.normalizePersonFindings(text,findings),[findings[1]]);
+  const plan=core.makePrivacyPlan(text,findings);
+  assert.ok(plan.sanitized.startsWith('Bitte formuliere die Kontakt Nachricht.'));
+  assert.ok(!plan.sanitized.includes('erika@example.invalid'));
+  assert.equal(core.normalizePersonFindings('Schreibe an Kontakt.',[findings[0]]).length,1);
+  assert.equal(core.normalizePersonFindings('Kontakt: E-Mail. Schreibe an Kontakt.',[findings[0]]).length,1);
+  assert.equal(core.normalizePersonFindings('Contact message',[{type:'PERSON',value:'Contact'}]).length,0);
+  assert.equal(core.normalizePersonFindings('Kontakt: code',[{type:'PASSWORD',value:'Kontakt'}]).length,1);
+  assert.equal(core.normalizePersonFindings('Kontakt: code',[{type:'USERNAME',value:'Kontakt'}]).length,1);
+});

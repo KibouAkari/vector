@@ -91,7 +91,7 @@ jobs:
 
       - name: Test explicit local privacy review and isolated execution
         run: |
-          node --test tests/privacy-review.test.mjs tests/privacy-routes.test.mjs tests/privacy-ner-client.test.mjs
+          node --test tests/privacy-review.test.mjs tests/privacy-routes.test.mjs tests/privacy-ner-client.test.mjs tests/privacy-send-controller.test.mjs
           python3 tests/privacy-evaluation.test.py
           python3 tests/privacy-ner-pilot.test.py
           python3 tests/privacy-ner-context.test.py
@@ -173,7 +173,7 @@ jobs:
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/repo:ro" \
             ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
-            dir --redact /repo
+            dir --redact --verbose /repo
 
 
 
