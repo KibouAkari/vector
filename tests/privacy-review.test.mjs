@@ -353,3 +353,46 @@ test('contact labels do not become people while ambiguous names and credentials 
   assert.equal(core.normalizePersonFindings('Kontakt: code',[{type:'PASSWORD',value:'Kontakt'}]).length,1);
   assert.equal(core.normalizePersonFindings('Kontakt: code',[{type:'USERNAME',value:'Kontakt'}]).length,1);
 });
+
+
+test('explicit privacy off skips native and deterministic masking for prompt, provider and tool evidence',async()=>{
+  process.env.VECTOR_PRIVACY_REVIEW='1';process.env.VECTOR_LOCAL_WORKERS='1';process.env.FILE_ENCRYPTION_KEY=key.toString('hex');
+  const runtime=loadRuntime({fail:true});
+  const request=args();request.body.privacyEnabled=false;
+  const plan=await runtime.reviewPrivacyRequest(request);
+  assert.equal(plan.apply(text),text);assert.equal(plan.totalFindings,0);assert.equal(runtime.requests.length,0);
+  await runtime.withJobPrivacy({userId:'alice',conversationId:'c',privacyPolicy:plan.policy},async()=>{
+    const payload={input:[{role:'user',content:text}]};
+    assert.deepEqual(runtime.protectProviderPayload(payload),payload);
+    const raw=JSON.stringify({value:secret,name:'Erika Muster'});
+    assert.equal((await runtime.protectToolEvidence(raw)).sanitized,raw);
+  });
+  assert.equal(runtime.requests.length,0);assert.equal(runtime.usage.length,0);
+  await assert.rejects(runtime.withJobPrivacy({userId:'bob',privacyPolicy:plan.policy},async()=>{}));
+  const invalid=args();invalid.body.privacyEnabled='false';
+  await assert.rejects(runtime.reviewPrivacyRequest(invalid),/preference/);
+});
+
+test('a switched-off job cannot disable protection of the next default-on request',async()=>{
+  const runtime=loadRuntime();const request=args();request.body.privacyEnabled=false;
+  const plan=await runtime.reviewPrivacyRequest(request);
+  await runtime.withJobPrivacy({userId:'alice',conversationId:'c',privacyPolicy:plan.policy},async()=>{});
+  assert.equal((await runtime.reviewPrivacyRequest(args())).response.status,409);
+  assert.equal(runtime.requests.length,1);
+});
+
+test('local processing still works with the privacy module disabled globally',async()=>{
+  const previous=process.env.VECTOR_PRIVACY_REVIEW;
+  process.env.VECTOR_PRIVACY_REVIEW='0';process.env.VECTOR_LOCAL_WORKERS='1';
+  try {
+    const runtime=loadRuntime({fail:true});
+    const plan=await runtime.reviewPrivacyRequest({...args(),destination:'local'});
+    assert.equal(plan.apply(text),text);assert.equal(runtime.requests.length,0);
+  } finally {process.env.VECTOR_PRIVACY_REVIEW=previous;}
+});
+
+test('an unsealed payload preference cannot bypass worker privacy',async()=>{
+  const runtime=loadRuntime();let entered=false;
+  await assert.rejects(runtime.withJobPrivacy({userId:'alice',conversationId:'c',privacyEnabled:false},async()=>{entered=true;}));
+  assert.equal(entered,false);
+});

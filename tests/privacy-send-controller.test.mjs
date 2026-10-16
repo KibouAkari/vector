@@ -83,3 +83,12 @@ test('send timer restarts after consent and excludes time spent reading the revi
   assert.equal(states.find(s=>s.phase==='checking').startedAt,100);
   assert.equal(states.find(s=>s.phase==='sending').startedAt,30100);
 });
+
+
+test('privacy off shows sending instead of scanning and sends the explicit preference once',async()=>{
+  const states=[],bodies=[];
+  const sender=createPrivacySender({onState:s=>states.push(s.phase),requestChoice:()=>{throw Error('unexpected review')},
+    fetchImpl:async(url,init)=>{bodies.push(JSON.parse(init.body));return new Response('{}',{status:202});}});
+  await sender.send('/api/chat',{message:'synthetic',mode:'normal',privacyEnabled:false});
+  assert.deepEqual(states,['sending','idle']);assert.equal(bodies.length,1);assert.equal(bodies[0].privacyEnabled,false);
+});

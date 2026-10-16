@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import ChatControls from '../../components/ui/chat-controls';
 import {usePrivacySend} from '../../components/ui/privacy-review-dialog';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -8,13 +9,6 @@ import { ArrowUp, Check, Copy, Menu, Plus, RefreshCw, Search, Square, Trash2, X,
 import VectorChatArtifact from "../../components/ui/vector-chat-artifact";
 import { conversationGroups } from "../../lib/chat-history-groups.mjs";
 
-const MODE_OPTIONS = [
-  { value: "quick", label: "Low" },
-  { value: "normal", label: "Normal" },
-  { value: "deep", label: "High" },
-  { value: "research", label: "Search" },
-  { value: "local", label: "Lokal" }
-];
 
 function formatMoney(value) {
   const number = Number(value || 0);
@@ -215,7 +209,8 @@ export default function ChatClient({
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
   const [input, setInput] = useState("");
-  const [mode, setMode] = useState("normal");
+  const [mode, setMode] = useState("auto");
+  const [privacyEnabled,setPrivacyEnabled]=useState(true);
   const [activeJob, setActiveJob] = useState(null);
   const {privacySend,privacyDialog} = usePrivacySend(`${userId}:${conversationId || "new"}`);
 
@@ -1194,7 +1189,7 @@ export default function ChatClient({
 
     try {
       const response = await privacySend('/api/chat',{
-        message:text,conversationId:conversationIdRef.current || conversationId,mode,
+        message:text,conversationId:conversationIdRef.current || conversationId,mode,privacyEnabled,
         attachmentIds:attachmentSnapshot.map(attachment=>attachment.id)
       });
 
@@ -1936,20 +1931,8 @@ export default function ChatClient({
               </div>
 
               <div className="v54-composer-right">
-                <div className="v54-thinking-toggle" role="tablist" aria-label="Thinking level">
-                  {MODE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={mode === option.value ? "active" : ""}
-                      role="tab"
-                      aria-selected={mode === option.value}
-                      onClick={() => setMode(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
+                <ChatControls mode={mode} onModeChange={setMode} privacyEnabled={privacyEnabled}
+                  onPrivacyChange={setPrivacyEnabled} disabled={submitting || Boolean(activeJob)} />
 
                 {activeJob ? (
                   <button
@@ -2004,3 +1987,4 @@ export default function ChatClient({
     </div>
   );
 }
+

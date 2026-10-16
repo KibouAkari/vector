@@ -1,3 +1,4 @@
+import {requestDestination} from '../../../lib/chat-controls.mjs';
 import {reviewPrivacyRequest} from '../../../lib/privacy-review';
 import crypto from "node:crypto";
 
@@ -229,6 +230,10 @@ export async function POST(
   const body =
     await request.json();
 
+  if (body.privacyEnabled !== undefined && typeof body.privacyEnabled !== 'boolean') {
+    return Response.json({error:'Ungültige Datenschutzeinstellung.'},{status:400});
+  }
+
   const originalMessage =
     String(
       body.message || ""
@@ -243,23 +248,6 @@ export async function POST(
     await assertUserBudget(
       session
     );
-
-  if (
-    !userBudget.allowed && requestedMode !== 'local'
-  ) {
-    return Response.json(
-      {
-        error:
-          "USER_BUDGET_BLOCKED",
-
-        message:
-          userBudget.reason
-      },
-      {
-        status: 402
-      }
-    );
-  }
 
   let conversationId =
     body.conversationId
@@ -371,11 +359,20 @@ export async function POST(
     const historyLimit=Number.isFinite(configuredHistory)?Math.max(2,Math.min(40,configuredHistory)):24;
     const priorHistory = conversationId ? (await db.query(`SELECT id,role,content FROM messages
       WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT $2`,[conversationId,historyLimit-1])).rows.reverse() : [];
+    let destination;
+    try {
+      destination=requestDestination({mode:requestedMode,text:rawAgentMessage,recentMessages:priorHistory,
+        allowServer:session.role==='owner'||Boolean(session.features?.server),
+        localEnabled:process.env.VECTOR_LOCAL_WORKERS==='1',hasAttachments:attachmentIds.length>0});
+    } catch { return Response.json({error:'Unbekannter Chatmodus.'},{status:400}); }
+    if (!userBudget.allowed && destination !== 'local') {
+      return Response.json({error:'USER_BUDGET_BLOCKED',message:userBudget.reason},{status:402});
+    }
     let privacy;
     try {
       privacy = await reviewPrivacyRequest({text:[rawAgentMessage,...priorHistory.map(m=>m.content)].join('\n\n'),
         scanSegments:[rawAgentMessage,...priorHistory.map(m=>m.content)],previewText:originalMessage,
-        body,session,scope:'chat',conversationId,destination:requestedMode==='local'?'local':'cloud',
+        body,session,scope:'chat',conversationId,destination,
         uninspectable:attachmentBundle.attachments.some(a=>String(a.mimeType).startsWith('image/'))});
     } catch {
       return Response.json({error:'PRIVACY_REVIEW_FAILED',message:'Die lokale Datenschutzprüfung konnte nicht abgeschlossen werden. Es wurde nichts extern versendet. Bitte erneut prüfen oder den lokalen Textmodus wählen.'},
@@ -587,7 +584,7 @@ export async function POST(
         session.userId,
       conversationId,
       message:
-        safeAgentMessage + '\nprivacy:' + privacy.destination + ':' + (body.privacyDecision || 'replace')
+        safeAgentMessage + '\nprivacy:' + privacy.destination + ':' + (body.privacyEnabled===false?'off':body.privacyDecision || 'replace')
     });
 
     const duplicate =
@@ -779,3 +776,4 @@ export async function POST(
     }
   );
 }
+

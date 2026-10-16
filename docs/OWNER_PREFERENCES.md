@@ -16,6 +16,7 @@ Read this file and PROJECT_HANDOFF.md at the start of a continuation. These are 
 
 ## Product preferences
 
+- Owner update 2026-10-17: show only the active chat mode in a small chooser, with Auto, Low, Normal, High, Search and Lokal options on demand. Default Auto should choose a supported cheap/local path when qualified and retain necessary data tools for other tasks. Add a separate visible default-on request switch for names/credentials privacy scanning and replacement; an explicit off choice sends that request unchanged. Keep authorization, project boundaries and command restrictions independent of this switch.
 - Quiet, compact, polished and readable UI. Immediate visible checking state with elapsed time where a local privacy scan can delay submission.
 - Privacy review belongs above the input/current prompt, not in a large centered modal. Remove the small eyebrow above its title. Show current-prompt findings/preview by default; separate relevant outgoing history/context so it is not confused with the new prompt.
 - Before external transmission, offer explicit placeholder replacement or sending the reviewed originals, plus cancellation. Restore approved placeholders locally in the response. Fully local processing stays quiet.
