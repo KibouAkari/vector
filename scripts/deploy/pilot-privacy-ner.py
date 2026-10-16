@@ -30,6 +30,50 @@ HOLDOUTS = [
     {'id':'holdout-security-task','text':'Analysiere einen SSH-Loginfehler unter Debian.','expected':[]},
 ]
 
+EXTENDED_CASES = [
+    {'id':'credential-german-phrase','text':'Passwort: "synthetic long privacy phrase".',
+     'expected':['synthetic long privacy phrase'],'secret_expected':['synthetic long privacy phrase']},
+    {'id':'credential-email-shaped','text':'password=synthetic@example.invalid',
+     'expected':['synthetic@example.invalid'],'secret_expected':['synthetic@example.invalid']},
+    {'id':'credential-github','text':'Token: '+('ghp_'+'x'*36),
+     'expected':['ghp_'+'x'*36],'secret_expected':['ghp_'+'x'*36]},
+    {'id':'credential-openai','text':'API key: '+('sk-'+'synthetic_example_'*3),
+     'expected':['sk-'+'synthetic_example_'*3],'secret_expected':['sk-'+'synthetic_example_'*3]},
+    {'id':'credential-aws','text':'AWS: '+('AKIA'+'X'*16),
+     'expected':['AKIA'+'X'*16],'secret_expected':['AKIA'+'X'*16]},
+    {'id':'credential-gemini','text':'Key: '+('AIza'+'x'*35),
+     'expected':['AIza'+'x'*35],'secret_expected':['AIza'+'x'*35]},
+    {'id':'credential-url','text':'postgres://demo:synthetic_phrase@db.example.invalid/database',
+     'expected':['synthetic_phrase'],'secret_expected':['synthetic_phrase']},
+    {'id':'credential-private-key','text':'-----BEGIN '+'PRIVATE KEY-----\nSYNTHETIC_ONLY_NOT_A_KEY\n-----END '+'PRIVATE KEY-----',
+     'expected':['-----BEGIN '+'PRIVATE KEY-----\nSYNTHETIC_ONLY_NOT_A_KEY\n-----END '+'PRIVATE KEY-----'],
+     'secret_expected':['-----BEGIN '+'PRIVATE KEY-----\nSYNTHETIC_ONLY_NOT_A_KEY\n-----END '+'PRIVATE KEY-----']},
+    {'id':'context-name-at-end','text':'Allgemeine Notiz. '*170+'Bitte schreibe an Zoë Beispiel.',
+     'expected':['Zoë Beispiel']},
+    {'id':'context-boundary-name','text':'Notiz '*63+'Zoë Beispiel hat Geburtstag. Schreibe ihr eine Gratulation.',
+     'expected':['Zoë Beispiel']},
+    {'id':'context-benign','text':'Technische Notiz zum System. '*170,'expected':[]},
+    {'id':'context-unicode-prefix','text':'😀 '*250+'Gratuliere Élodie Martin zum Geburtstag.',
+     'expected':['Élodie Martin']},
+]
+
+EXTENDED_INFERENCE = r'''
+import importlib.util,json,os,resource,sys,time
+from pathlib import Path
+assert os.environ.get('HF_HUB_OFFLINE')=='1'
+spec=importlib.util.spec_from_file_location('privacy_ner_core','/work/privacy-ner-core.py')
+core=importlib.util.module_from_spec(spec);sys.modules[spec.name]=core;spec.loader.exec_module(core)
+started=time.monotonic();detector=core.LocalPersonDetector();load=time.monotonic()-started
+results=[]
+for fixture in json.loads(Path('/work/fixtures.json').read_text()):
+    started=time.monotonic();observed=detector.inspect(fixture['text'])
+    results.append(dict(id=fixture['id'],seconds=round(time.monotonic()-started,3),**observed))
+print(json.dumps(dict(cases=results,load_seconds=round(load,3),
+    peak_rss_kib=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+    scope='PERSON and deterministic credentials; bounded complete chunk coverage',
+    long_context_exercised=True,threshold=0.35)))
+'''
+
 SETUP = r'''
 import hashlib,json,subprocess,sys
 from pathlib import Path
@@ -147,8 +191,11 @@ const cases=data.fixtures.map((fixture,index)=>{
     const missing=fixture.expected.filter(v=>!plan.selected.some(m=>m.value===v));
     const extra=fixture.expected.length===0&&plan.totalFindings!==0;
     const roundtrip=core.literalReplace(plan.sanitized,plan.mappings,true)===fixture.text;
-    return {id:fixture.id,passed:!missing.length&&!extra&&roundtrip,seconds:actual.seconds,
-        missing_expected:missing,findings:found,unexpected_findings:extra};
+    const leaked=fixture.expected.filter(value=>plan.sanitized.includes(value));
+    const secrets_hidden=(fixture.secret_expected || []).every(value=>
+        plan.selected.map(core.displayFinding).every(f=>!f.displayValue.includes(value)));
+    return {id:fixture.id,passed:!missing.length&&!extra&&roundtrip&&!leaked.length&&secrets_hidden,seconds:actual.seconds,
+        missing_expected:missing,unmasked_expected:leaked,secrets_hidden,findings:found,unexpected_findings:extra};
 });
 console.log(JSON.stringify({cases,passed:cases.every(c=>c.passed)}));
 '''
@@ -211,15 +258,23 @@ def main():
         fixtures=json.loads(command('docker','exec','-i','vector-app','node','--input-type=module',
             data=fixture_expression(helper['HARNESS']).encode()))
         if len(fixtures)!=9:raise RuntimeError('Expected all nine unchanged fixtures.')
-        fixtures += HOLDOUTS
+        extended=os.environ.get('VECTOR_PRIVACY_NER_EXTENDED','0')
+        if extended not in ('0','1'):raise RuntimeError('Invalid extended qualification mode.')
+        if extended=='1' and not os.environ.get('VECTOR_PRIVACY_NER_REUSE_RELEASE'):
+            raise RuntimeError('Extended qualification requires the existing offline pilot image.')
+        additional=HOLDOUTS+(EXTENDED_CASES if extended=='1' else [])
+        fixtures += additional
         stamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
         suffix=stamp.lower()+'-'+uuid.uuid4().hex[:6]
         release=ROOT/'releases'/('vector-privacy-ner-pilot-'+suffix)
         release.mkdir(mode=0o700)
         work=release/'input';work.mkdir(mode=0o755);work.chmod(0o755)
-        for name,text in {'setup.py':SETUP,'qualify.py':INFERENCE,
+        for name,text in {'setup.py':SETUP,'qualify.py':EXTENDED_INFERENCE if extended=='1' else INFERENCE,
                           'fixtures.json':json.dumps(fixtures)}.items():
             path=work/name;path.write_text(text);path.chmod(0o644)
+        if extended=='1':
+            backend=work/'privacy-ner-core.py'
+            backend.write_text(source(revision,'lib/privacy-ner-core.py'));backend.chmod(0o644)
         setup='vector-ner-setup-'+suffix
         inference='vector-ner-test-'+suffix
         image='vector-privacy-ner:pilot-'+suffix
@@ -244,6 +299,11 @@ def main():
                 existing='vector-privacy-ner:pilot-'+previous.name.removeprefix('vector-privacy-ner-pilot-')
                 metadata=json.loads(command('docker','image','inspect',existing))[0]
                 base_id=metadata['Id']
+                expected_image=os.environ.get('VECTOR_PRIVACY_NER_REUSE_IMAGE_ID','')
+                if extended=='1' and not re.fullmatch('sha256:[a-f0-9]{64}',expected_image):
+                    raise RuntimeError('Extended qualification requires the observed source image ID.')
+                if expected_image and base_id!=expected_image:
+                    raise RuntimeError('Retained pilot image ID changed.')
                 (work/'setup-manifest.json').write_text(json.dumps(manifest))
                 repair=work/'weight-access.py'
                 repair.write_text(WEIGHT_ACCESS+'\nprint(json.dumps(normalize_weight_access(Path("/models"),'+repr(expected)+')))\n')
@@ -267,16 +327,17 @@ def main():
             print('Run the unchanged fixtures offline, with 2 CPUs and 4 GiB RAM.',flush=True)
             owned.append(inference)
             observed=json.loads(command(*limited_container(inference,image_id,'/work/qualify.py',work,True),timeout=600,error_path=release/'inference-stderr.log'))
-            payload=dict(fixtures=fixtures,inference=observed,original_case_count=9,additional_case_count=len(HOLDOUTS),
+            payload=dict(fixtures=fixtures,inference=observed,original_case_count=9,additional_case_count=len(additional),
                 core=source(revision,'lib/privacy-review-core.mjs'),rules=source(revision,'lib/privacy-rules.mjs'))
             checked=json.loads(command('docker','exec','-i','vector-app','node','--input-type=module',
                 data=VERIFY.replace('INPUT_JSON',json.dumps(payload)).encode()))
-            result=dict(checked,revision=revision,model=MODEL,model_revision=MODEL_REV,
+            result=dict(checked,extended_qualification=extended=='1',revision=revision,model=MODEL,model_revision=MODEL_REV,
                 backbone_revision=BACKBONE_REV,base_image_id=base_id,pilot_image=image,pilot_image_id=image_id,
                 resources=observed,reused_release=reuse or None,weight_access=weight_access,offline_inference=True,production_activated=False,cloud_calls=0,
                 api_cost_chf=0,ledger_writes=False,production_unchanged=helper['fingerprint']()==before,
                 setup_manifest=json.loads((work/'setup-manifest.json').read_text()))
             result['passed']=result['passed'] and result['production_unchanged']
+            result['context_fixture_qualification_passed']=extended=='1' and result['passed']
             (release/'result.json').write_text(json.dumps(result,indent=2)+'\n')
             display={k:v for k,v in result.items() if k!='setup_manifest'}
             print(json.dumps(display,indent=2));print('Report:',release/'result.json')

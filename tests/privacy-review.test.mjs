@@ -216,3 +216,15 @@ test('sensitive numeric tool leaves are inspected and masked consistently',async
     assert.ok(!out.input[0].output.includes('81234567'));
   });
 });
+
+test('a secret inside a longer email-shaped finding cannot leak through previews or saved aliases',()=>{
+  const password='synthetic_phrase';
+  const wrapped=password+'@db.example.invalid';
+  const source='postgres://demo:'+wrapped+'/database';
+  const existing=[{type:'EMAIL',value:wrapped,placeholder:'<EMAIL_A1B2C3>'}];
+  const plan=core.makePrivacyPlan(source,core.deterministicFindings(source),existing);
+  assert.ok(!plan.sanitized.includes(password));
+  assert.equal(core.literalReplace(plan.sanitized,plan.mappings,true),source);
+  assert.ok(plan.selected.map(core.displayFinding).every(f=>!f.displayValue.includes(password)));
+  assert.equal(plan.mappings.find(m=>m.placeholder==='<EMAIL_A1B2C3>').type,'PASSWORD');
+});

@@ -6,9 +6,15 @@ Production deployments are tracked separately.
 
 ## 2026-10-16
 
+### Bounded local privacy context qualification (#30)
+
+- Owner retry at 7cedc0a confirmed the 0600-to-0444 public-weight fix and passed all 16 offline server cases. Warm short-case times were about 0.12–0.16 seconds, load 5.813 seconds and peak RSS 2,815,740 KiB; production stayed unchanged with no cloud calls or ledger writes. Preserve the observed pilot image for reuse.
+- Add a separately qualified Python PERSON backend with complete splitter coverage, at most 64 words/192 raw-text subwords per chunk, 12-word overlap and strict exact-source spans. Reject omitted text, oversized words, oversized contexts and excessive chunk counts rather than truncating. Extend the unchanged 16 cases with eight synthetic credential checks and four long/Unicode/boundary controls, using the existing offline image without downloads. Record raw-text tokenizer counts with overlap explicitly; these are not provider billing totals. Extended actual-model qualification and app integration remain pending.
+- Prevent a credential from appearing in another overlapping finding’s preview, including URL passwords recognized inside an email-shaped value. Promote enclosing mappings and their saved aliases to the credential classification without altering ciphertext or reversibility; add regressions.
+
 ### Offline privacy pilot access recovery (#30)
 
-- Owner server setup at 8126c50 completed, but unprivileged inference could not open converted model.safetensors. Locally reproduce safetensors 0.8.0 creating a 0600 file. Explicitly grant read-only access to this public weight asset, retain UID 65534, read-only inference and network isolation, and preflight weight readability before loading libraries. Add guarded reuse of the existing pilot image without downloads: verify the original model pin and converted-file checksum before changing permissions in a new derived image, preserve the original image, and rerun all 16 unchanged fixtures. Missing files, changed checksums and symlinks remain blocked. Recovery is pending owner execution; no quality result or activation is inferred from the failed inference.
+- Owner server setup at 8126c50 completed, but unprivileged inference could not open converted model.safetensors. Locally reproduce safetensors 0.8.0 creating a 0600 file. Explicitly grant read-only access to this public weight asset, retain UID 65534, read-only inference and network isolation, and preflight weight readability before loading libraries. Add guarded reuse of the existing pilot image without downloads: verify the original model pin and converted-file checksum before changing permissions in a new derived image, preserve the original image, and rerun all 16 unchanged fixtures. Missing files, changed checksums and symlinks remain blocked. The subsequent owner retry passed all 16 cases with no production activation; the failed initial inference is not treated as a model-quality result.
 
 ## 2026-10-15
 

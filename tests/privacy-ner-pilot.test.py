@@ -55,6 +55,21 @@ class NERTests(unittest.TestCase):
         def invalid(cases):cases[3]['findings'][0]['value']='Zoe Beispiel'
         self.assertNotEqual(self.verify(invalid).returncode,0)
 
+    def test_extended_cases_preserve_originals_and_hide_credential_previews(self):
+        fixtures=self.fixtures()+pilot.EXTENDED_CASES
+        cases=[dict(id=f['id'],seconds=0.1,findings=[dict(type='PERSON',value=v)
+            for v in f['expected']]) for f in fixtures]
+        payload=dict(fixtures=fixtures,inference=dict(cases=cases),original_case_count=9,
+            additional_case_count=len(pilot.HOLDOUTS)+len(pilot.EXTENDED_CASES),
+            core=(ROOT/'lib/privacy-review-core.mjs').read_text(),rules=(ROOT/'lib/privacy-rules.mjs').read_text())
+        result=subprocess.run(['node','--input-type=module'],input=pilot.VERIFY.replace('INPUT_JSON',json.dumps(payload)),
+            text=True,capture_output=True,timeout=15)
+        self.assertEqual(result.returncode,0,result.stderr)
+        report=json.loads(result.stdout)
+        self.assertEqual(len(report['cases']),28)
+        self.assertTrue(report['passed'],report)
+        self.assertTrue(all(c['secrets_hidden'] for c in report['cases']))
+
     def access_helper(self):
         namespace={}
         exec(pilot.WEIGHT_ACCESS,namespace)
