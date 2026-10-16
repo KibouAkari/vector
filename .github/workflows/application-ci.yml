@@ -55,6 +55,8 @@ jobs:
         run: |
           node --test tests/local-routing-regression.test.mjs tests/chat-controls.test.mjs
           python3 tests/chat-server-read.test.py
+          python3 tests/app-listener-fix.test.py
+          python3 -m py_compile scripts/deploy/fix-app-listener.py
           bash -n scripts/deploy/stage-chat-controls.sh
 
       - name: Test local FEGCraft statistics and admission foundation
