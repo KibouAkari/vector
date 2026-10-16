@@ -6,6 +6,11 @@ Production deployments are tracked separately.
 
 ## 2026-10-16
 
+### Privacy-enabled application API qualification (#30)
+
+- Owner retry at b916048 passed the private native HTTP service's 32 cases, consent/tool/runtime tests, idle unload/fresh wake, auth/limits and outage blocking. Owner app staging also passed its build, 74 tests and authenticated chat/file/project/server checks with privacy still disabled. Preserve bounded evidence separately; production source/configuration and running services stayed unchanged.
+- Add a final owner-run qualification of the actual privacy-enabled built app, pinned native service and a fresh temporary PostgreSQL database. Exercise real login, review-before-chat/job-writes, account/request-bound confirmation, masked jobs, encrypted vault, response restoration with a synthetic assistant fixture, explicit unchanged send, quiet local requests, history, uploads, image limitations, project retrieval/access/local-only routing, encoder ledger metadata and outage blocking. Queue only synthetic jobs; start no worker or cloud provider. Reuse the observed app image only if Git proves all runtime/build sources still match the staged revision. No rebuild, production activation or production DB data writes are included. Docker/real-API execution of this new harness remains pending.
+
 ### Unprivileged privacy evaluation mount access (#30)
 
 - Owner service qualification at 28bb9de stopped before running integration.mjs: the root runner's 0077 umask changed the requested 0755 input directory to 0700, preventing UID 65534 from traversing its read-only bind mount. Reproduce the restrictive-umask result, explicitly set only the synthetic/code mount root to 0755 and leave the release parent private. Add restrictive-umask and safe preflight-error regressions; actual unprivileged container access is checked by the owner-run preflight.

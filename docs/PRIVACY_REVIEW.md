@@ -1,7 +1,8 @@
 # Local privacy review
 
-PR #30 remains disabled until native service and isolated application staging
-are observed on the owner server. A passed finite fixture set is not a guarantee
+PR #30 remains disabled until the privacy-enabled API/database qualification
+is observed on the owner server. Native service and baseline app staging passed
+at b916048; the latter ran with privacy disabled. A passed finite fixture set is not a guarantee
 that every name, password or other private datum will be detected.
 
 ## Send behavior
@@ -70,8 +71,17 @@ app consent/runtime behavior, tool JSON protection, idle unload/wake, service-ou
 blocking, zero API fees and production fingerprints. It uses in-memory synthetic
 vault/usage adapters; this is not an authenticated browser or production database
 integration test. CI separately exercises routes, authorization, PostgreSQL vault
-promotion/encryption and the application build. Owner application staging remains
-a release prerequisite.
+promotion/encryption and the application build. Owner baseline application staging at b916048 passed with privacy disabled.
+`scripts/deploy/evaluate-privacy-api.py` adds the release prerequisite for the
+privacy-enabled built app with real login, the native service and a fresh
+disposable PostgreSQL. It reuses the exact observed app image only when Git shows
+all runtime/build inputs match b916048. Tests exercise actual HTTP consent and
+queueing, encrypted vault writes/restoration, private history/attachments/project
+context, quiet local routing and blocked cloud submission during a native outage.
+No worker executes queued synthetic jobs. A manually inserted synthetic assistant
+fixture checks restoration; it is not presented as a cloud-model answer. The
+new temporary DB and file storage contain only synthetic data. The private
+internal network, bounded containers and secret files are removed afterward.
 
 ## Rollback and deployment boundary
 
