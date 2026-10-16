@@ -72,18 +72,16 @@ function loadRuntime({fail=false,truncated=false,extraFindings=[]}={}) {
   const source=readFileSync(new URL('../lib/privacy-review.js',import.meta.url),'utf8')
     .replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm,'').replace(/^export\s+/gm,'');
   const vault=new Map();const usage=[];const requests=[];
-  const requestLocalChat=async payload=>{
-    requests.push(payload);
-    if(fail)throw Error('native service unavailable');
-    const chunk=JSON.parse(payload.messages[1].content).text;
-    return {done:true,done_reason:truncated?'length':'stop',prompt_eval_count:45,eval_count:12,
-      message:{content:JSON.stringify({findings:[...learned,...extraFindings].filter(f=>chunk.includes(f.value))})}};
+  const requestPrivacyScan=async chunk=>{
+    requests.push(chunk);
+    if(fail || truncated)throw Error('native service unavailable');
+    return {findings:[...learned,...extraFindings].filter(f=>chunk.includes(f.value)),
+      metrics:{model:'urchade/gliner_multi_pii-v1',processedTextTokens:45,
+        tokenCountKind:'raw_text_subwords_including_overlap_and_rechecks'}};
   };
-  const deps={crypto,AsyncLocalStorage,...core,requestLocalChat,withLocalWorkerSlot:execute=>execute(),
+  const deps={crypto,AsyncLocalStorage,...core,requestPrivacyScan,withLocalWorkerSlot:execute=>execute(),
     getPrivacyMappings:async id=>vault.get(id)||[],savePrivacyMappings:async({conversationId,mappings})=>vault.set(conversationId,mappings),
-    providerUsageEvent:({userId,response})=>({userId,inputTokens:response.usage.input_tokens,outputTokens:response.usage.output_tokens,costChf:0}),
-    normalizedOpenAiUsage:value=>({input_tokens:value.prompt_tokens,output_tokens:value.completion_tokens}),recordUsage:async event=>usage.push(event),
-    captureProviderUsage:async(_runtime,response)=>usage.push({inputTokens:response.usage.input_tokens,outputTokens:response.usage.output_tokens,costChf:0})};
+    recordUsage:async event=>usage.push(event)};
   const api=new Function(...Object.keys(deps),source+'\nreturn {reviewPrivacyRequest,withJobPrivacy,protectProviderPayload,protectToolEvidence,restoreLocalToolArguments};')(...Object.values(deps));
   return {...api,vault,usage,requests};
 }
@@ -96,7 +94,10 @@ test('actual review runtime blocks enqueue until a bound explicit choice and nev
   const data=await review.response.json();
   assert.ok(!JSON.stringify(data).includes(secret));
   assert.equal(runtime.requests.length,1);
-  assert.deepEqual(runtime.usage,[{userId:'alice',inputTokens:45,outputTokens:12,costChf:0}]);
+  assert.equal(runtime.usage.length,1);
+  assert.equal(runtime.usage[0].metadata.processedTextTokens,45);
+  assert.equal(runtime.usage[0].inputTokens,0);assert.equal(runtime.usage[0].outputTokens,0);
+  assert.equal(runtime.usage[0].costChf,0);assert.equal(runtime.usage[0].userId,'alice');
   const confirmed=args();confirmed.body={...confirmed.body,privacyDecision:'replace',privacyReviewToken:data.privacyReview.token};
   const plan=await runtime.reviewPrivacyRequest(confirmed);
   assert.equal(runtime.requests.length,1,'confirmation must reuse the encrypted local review');
@@ -140,11 +141,11 @@ test('images require explicit unchanged permission and cannot be falsely declare
   await assert.rejects(runtime.reviewPrivacyRequest({...confirmed,uninspectable:true}));
 });
 
-test('unavailable or truncated local detection fails closed, with returned usage recorded before rejection',async()=>{
+test('unavailable local detection fails closed without fabricating usage',async()=>{
   const failed=loadRuntime({fail:true});await assert.rejects(failed.reviewPrivacyRequest(args()));
   assert.equal(failed.usage.length,0);
   const partial=loadRuntime({truncated:true});await assert.rejects(partial.reviewPrivacyRequest(args()));
-  assert.equal(partial.usage.length,1);
+  assert.equal(partial.usage.length,0);
 });
 
 test('new tool evidence requires explicit masking consent and preserves JSON escapes',async()=>{

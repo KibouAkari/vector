@@ -6,6 +6,12 @@ Production deployments are tracked separately.
 
 ## 2026-10-16
 
+### Private NER service and application adapter (#30)
+
+- Owner server qualification at f7b5bb4 passed all 32 unchanged synthetic cases, including the previously missed surname; preserve compact evidence in docs/evaluations/privacy-ner-context-server-20261016.json. Short warm scans took 0.12–0.21 seconds, long fixtures up to 4.08 seconds, model load 9.596 seconds and peak RSS 2,816,296 KiB. No cloud requests, ledger writes or production activation occurred.
+- Replace the application's unqualified generative privacy detector with the bounded, exact-span NER HTTP adapter. Keep existing consent, vault, authorization, provider/tool guards and quiet fully-local path. Record encoder text subwords as explicitly separate local metadata with zero API fees and no fabricated generative tokens. Preserve the earlier Qwen/Hermes comparison as an independent historical benchmark.
+- Add an authenticated private service whose parent stays lightweight and whose model child loads on demand, exits after idle, and restarts cold. Reject excess input/concurrency and terminate a failed/timed-out child; no cloud fallback. Add client, HTTP/auth, failure, timeout and lifecycle tests plus an owner-run isolated 32-case service/runtime evaluation using the exact observed image, no downloads, no published ports and checked cleanup. Actual pinned-model local HTTP tests pass all 32 cases plus consent/tool/idle/wake checks; preserve bounded local evidence in docs/evaluations/privacy-ner-service-local-20261016.json. Real Docker service qualification and isolated application staging remain pending; no production installation or feature activation is included.
+
 ### Nested name spans and focused context verification (#30)
 
 - Owner qualification at 2242f063 passed 27/28 cases; the long end-of-text case preserved only the first name and left its surname unprotected. Keep the original expected full name and the production gate. Reproduce the issue with the actual model locally: flat decoding suppresses an overlapping complete name and long surrounding text can weaken that name even with nested decoding. Retain nested exact-source spans at the unchanged 0.35 threshold and add at most 32 non-recursive original-sentence/neighborhood rechecks around detected people in multi-chunk inputs. Preserve all primary findings and word/subword bounds; count all recheck text in the explicitly labeled local tokenizer metrics. Reuse the model’s existing tokenizer rather than constructing it twice.

@@ -1,0 +1,309 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "id": "german-name-email-password",
+      "passed": true,
+      "seconds": 27.515,
+      "cold": true,
+      "processedTextTokens": 28,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "english-name",
+      "passed": true,
+      "seconds": 0.184,
+      "cold": false,
+      "processedTextTokens": 25,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "first-name",
+      "passed": true,
+      "seconds": 0.172,
+      "cold": false,
+      "processedTextTokens": 17,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "unicode-name",
+      "passed": true,
+      "seconds": 0.164,
+      "cold": false,
+      "processedTextTokens": 25,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "instruction-in-evidence",
+      "passed": true,
+      "seconds": 0.179,
+      "cold": false,
+      "processedTextTokens": 36,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "english-first-name",
+      "passed": true,
+      "seconds": 0.152,
+      "cold": false,
+      "processedTextTokens": 13,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "hyphenated-name",
+      "passed": true,
+      "seconds": 0.235,
+      "cold": false,
+      "processedTextTokens": 14,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "software-only",
+      "passed": true,
+      "seconds": 0.218,
+      "cold": false,
+      "processedTextTokens": 13,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "benign",
+      "passed": true,
+      "seconds": 0.156,
+      "cold": false,
+      "processedTextTokens": 17,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "holdout-first-name",
+      "passed": true,
+      "seconds": 0.144,
+      "cold": false,
+      "processedTextTokens": 10,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "holdout-accented-name",
+      "passed": true,
+      "seconds": 0.157,
+      "cold": false,
+      "processedTextTokens": 10,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "holdout-greeting",
+      "passed": true,
+      "seconds": 0.156,
+      "cold": false,
+      "processedTextTokens": 5,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "holdout-two-people",
+      "passed": true,
+      "seconds": 0.15,
+      "cold": false,
+      "processedTextTokens": 8,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "holdout-other-software",
+      "passed": true,
+      "seconds": 0.149,
+      "cold": false,
+      "processedTextTokens": 14,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "holdout-ordinary-sentence",
+      "passed": true,
+      "seconds": 0.156,
+      "cold": false,
+      "processedTextTokens": 8,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "holdout-security-task",
+      "passed": true,
+      "seconds": 0.141,
+      "cold": false,
+      "processedTextTokens": 14,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "credential-german-phrase",
+      "passed": true,
+      "seconds": 0.148,
+      "cold": false,
+      "processedTextTokens": 11,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "credential-email-shaped",
+      "passed": true,
+      "seconds": 0.142,
+      "cold": false,
+      "processedTextTokens": 8,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "credential-github",
+      "passed": true,
+      "seconds": 0.155,
+      "cold": false,
+      "processedTextTokens": 10,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "credential-openai",
+      "passed": true,
+      "seconds": 0.165,
+      "cold": false,
+      "processedTextTokens": 21,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "credential-aws",
+      "passed": true,
+      "seconds": 0.143,
+      "cold": false,
+      "processedTextTokens": 7,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "credential-gemini",
+      "passed": true,
+      "seconds": 0.177,
+      "cold": false,
+      "processedTextTokens": 8,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "credential-url",
+      "passed": true,
+      "seconds": 0.171,
+      "cold": false,
+      "processedTextTokens": 17,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "credential-private-key",
+      "passed": true,
+      "seconds": 0.218,
+      "cold": false,
+      "processedTextTokens": 29,
+      "chunks": 1,
+      "contextRechecks": 0
+    },
+    {
+      "id": "context-name-at-end",
+      "passed": true,
+      "seconds": 3.418,
+      "cold": false,
+      "processedTextTokens": 1049,
+      "chunks": 11,
+      "contextRechecks": 1
+    },
+    {
+      "id": "context-boundary-name",
+      "passed": true,
+      "seconds": 0.651,
+      "cold": false,
+      "processedTextTokens": 204,
+      "chunks": 3,
+      "contextRechecks": 1
+    },
+    {
+      "id": "context-benign",
+      "passed": true,
+      "seconds": 4.942,
+      "cold": false,
+      "processedTextTokens": 1461,
+      "chunks": 17,
+      "contextRechecks": 0
+    },
+    {
+      "id": "context-unicode-prefix",
+      "passed": true,
+      "seconds": 1.732,
+      "cold": false,
+      "processedTextTokens": 636,
+      "chunks": 6,
+      "contextRechecks": 1
+    },
+    {
+      "id": "context-extra-name-middle",
+      "passed": true,
+      "seconds": 4.107,
+      "cold": false,
+      "processedTextTokens": 1001,
+      "chunks": 11,
+      "contextRechecks": 1
+    },
+    {
+      "id": "context-extra-name-start",
+      "passed": true,
+      "seconds": 2.318,
+      "cold": false,
+      "processedTextTokens": 696,
+      "chunks": 9,
+      "contextRechecks": 1
+    },
+    {
+      "id": "context-extra-software",
+      "passed": true,
+      "seconds": 2.605,
+      "cold": false,
+      "processedTextTokens": 1066,
+      "chunks": 8,
+      "contextRechecks": 0
+    },
+    {
+      "id": "context-extra-accented",
+      "passed": true,
+      "seconds": 0.177,
+      "cold": false,
+      "processedTextTokens": 8,
+      "chunks": 1,
+      "contextRechecks": 0
+    }
+  ],
+  "case_count": 32,
+  "runtime_consent_roundtrip": true,
+  "explicit_original": true,
+  "local_chat_quiet": true,
+  "tool_evidence_masked": true,
+  "auth_and_input_limits": true,
+  "idle_unload_and_wake": true,
+  "encoder_metrics_separate_from_api_tokens": true,
+  "local_ledger_events": 2,
+  "cloud_calls": 0,
+  "api_cost_chf": 0,
+  "ledger_writes": false,
+  "production_activated": false,
+  "environment": "Codex workspace; actual pinned model over loopback HTTP with synthetic token/transport adapters; not owner Docker/server qualification",
+  "observed_at": "2026-10-16T07:27:19.161797+00:00",
+  "scope": "Finite synthetic fixtures and app runtime; in-memory vault/ledger, not authenticated UI or database integration"
+}

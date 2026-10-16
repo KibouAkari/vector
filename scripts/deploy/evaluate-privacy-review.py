@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Qualify the actual local privacy detector with synthetic data only.
+"""Historical Qwen/Hermes candidate benchmark with synthetic data only.
 No production source/configuration changes, cloud calls or database data writes.
 """
 import datetime
@@ -12,7 +12,7 @@ import uuid
 
 REPO = Path('/root/vector-workspace/github/vector')
 IMAGE = 'sha256:d1b5b1f6c463627ba1daa20d44e9450c3862cdc4c80df245e0f94f1187f675bf'
-FILES = ['lib/privacy-rules.mjs', 'lib/privacy-review-core.mjs', 'lib/privacy-review.js',
+FILES = ['lib/privacy-rules.mjs', 'lib/privacy-review-core.mjs',
          'lib/local-worker-core.mjs', 'lib/provider-call-usage.mjs', 'lib/provider-usage-normalization.mjs']
 
 CANDIDATES = [
@@ -38,12 +38,38 @@ const workers=await import(uri(files['lib/local-worker-core.mjs']
 const {providerUsageEvent}=await import(usage);
 const {normalizedOpenAiUsage}=await import(normalization);
 const events=[];
-const deps={crypto,AsyncLocalStorage,...core,
-  localScanPayload:text=>({...core.localScanPayload(text),model:candidate.name}),requestLocalChat:workers.requestLocalChat,
-  withLocalWorkerSlot:execute=>execute(),providerUsageEvent,normalizedOpenAiUsage,
-  recordUsage:async event=>events.push(event)};
-const source=files['lib/privacy-review.js'].replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm,'').replace(/^export\s+/gm,'');
-const {detectPrivateLocally}=new Function(...Object.keys(deps),source+'\nreturn {detectPrivateLocally};')(...Object.values(deps));
+// Historical candidate benchmark, deliberately separate from the NER app adapter.
+const withLocalWorkerSlot=execute=>execute();
+const recordUsage=async event=>events.push(event);
+async function detectPrivateLocally(text, {userId, jobId = null, request = workers.requestLocalChat} = {}) {
+  if (Buffer.byteLength(text) > 160000) throw new Error('Der Kontext ist zu gross für die lokale Datenschutzprüfung. Bitte den Kontext verkleinern.');
+  const findings = core.deterministicFindings(text);
+  // Complete coverage, no truncation. Context overlap retains entities at a
+  // chunk boundary; deterministic secrets are always detected on the whole input.
+  const chunks = [];
+  for (let i = 0; i < text.length; i += 2800) chunks.push(text.slice(i, i + 3200));
+  await withLocalWorkerSlot(async () => {
+    for (const chunk of chunks) {
+      const payload = ({...core.localScanPayload(chunk),model:candidate.name});
+      const body = await request(payload);
+      const runtime = {provider:'local', model:payload.model,
+        pricing:{inputPerMillionUsd:0, outputPerMillionUsd:0, cachedInputPerMillionUsd:0}};
+      const response = {id:crypto.randomUUID(), usage: normalizedOpenAiUsage({prompt_tokens:body.prompt_eval_count,
+        completion_tokens:body.eval_count}), output:[]};
+      // Include rejected/truncated detector responses in the local token ledger.
+      await recordUsage(providerUsageEvent({runtime,response,userId,jobId,exchangeRate:1}));
+      if (!body.done || body.done_reason !== 'stop' || typeof body.message?.content !== 'string') {
+        throw new Error('Die lokale Datenschutzprüfung konnte nicht abgeschlossen werden. Es wurde nichts extern versendet.');
+      }
+      let parsed;
+      try { parsed = JSON.parse(body.message.content); }
+      catch { throw new Error('Die lokale Datenschutzprüfung lieferte ungültiges JSON. Es wurde nichts extern versendet.'); }
+      findings.push(...core.validateLocalFindings(chunk, parsed));
+    }
+  });
+  return findings;
+}
+
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,max:1,connectionTimeoutMillis:5000});
 const client=await pool.connect();let locked=false;
 const report={model:candidate.name,model_digest:candidate.digest,cases:[],cloud_calls:0,ledger_writes:false,production_activated:false};

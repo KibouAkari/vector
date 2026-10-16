@@ -55,6 +55,7 @@ def main():
             'lib/local-worker-core.mjs', 'lib/local-worker-runtime.js',
             'lib/privacy.js', 'lib/privacy-rules.mjs', 'lib/privacy-review-core.mjs',
             'lib/privacy-review.js', 'lib/privacy-vault.js', 'lib/local-private-chat.js',
+            'lib/privacy-ner-client.mjs', 'lib/privacy-ner-core.py', 'services/privacy-ner/server.py',
             'app/api/chat/route.js', 'app/api/projects/[id]/chat/route.js',
             'app/api/privacy/classify/route.js', 'app/projects/[id]/project-workspace.js',
             'components/ui/privacy-review-dialog.js')
@@ -62,7 +63,7 @@ def main():
 
         def command(*args, **kwargs):
             if '--test' in args and 'tests/project-file-view.test.mjs' in args:
-                args = (*args, 'tests/server-json-rankings.test.mjs', 'tests/provider-call-usage.test.mjs', 'tests/local-workers.test.mjs', 'tests/privacy-review.test.mjs', 'tests/privacy-routes.test.mjs')
+                args = (*args, 'tests/server-json-rankings.test.mjs', 'tests/provider-call-usage.test.mjs', 'tests/local-workers.test.mjs', 'tests/privacy-review.test.mjs', 'tests/privacy-routes.test.mjs', 'tests/privacy-ner-client.test.mjs')
             return original_command(*args, **kwargs)
 
         stage['command'] = command
