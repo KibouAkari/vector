@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-17 — Owner-confirmed chat controls deployment
+## 2026-10-17 — Owner-confirmed chat controls deployment (PR #43)
 
 - The owner completed native privacy qualification at ops revision c973ac2535582038c52ba5881ef67c4e5e7fb267. Normal and detector-outage cases passed, including explicit off, default-on blocking, encrypted placeholder round trips and local-only project enforcement. Cleanup and unchanged production fingerprints passed; 11 synthetic jobs remained queued and unexecuted, with no cloud calls or API fees.
 - The guarded app release succeeded at vector-chat-controls-release-20261016T233346Z-341cd8: commit 2f5b8e866f613b336ed24b5242dc93e535c985bc, image sha256:5a2ee0f4b1b169114da5608a8a33f0ca08ce00c4016873208fa1d5518901f87d. Fresh backups, source synchronization, persistent Compose pin and app health passed. Preserve that release directory and its guarded rollback; do not rerun the superseded release.
