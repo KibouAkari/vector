@@ -38,6 +38,19 @@ def helper_inventory(h,captured):
     return result
 
 
+def factory_inventory(captured):
+    result={};seen=set()
+    for filename,tree in captured:
+        if not filename.startswith(str(ROOT/'archive')):continue
+        if isinstance(tree,str):tree=ast.parse(tree)
+        for node in tree.body:
+            if isinstance(node,ast.FunctionDef) and node.name in ('prepare','main'):
+                source=ast.unparse(node)
+                if source not in seen:
+                    seen.add(source);result[filename+' :: '+node.name]=source
+    return result
+
+
 def main():
     if os.geteuid()!=0:raise RuntimeError('Run as root for read-only release inventory.')
     report=json.loads(API_REPORT.read_text())
@@ -70,7 +83,11 @@ def main():
         persistent_privacy_directory_exists=Path('/opt/vector/privacy-ner').exists())
     if compose.read_bytes()!=before:raise RuntimeError('Compose changed during read-only inventory.')
     print(json.dumps(summary,indent=2))
-    for key,source in helper_inventory(h,captured).items():
+    definitions={**helper_inventory(h,captured),**factory_inventory(captured)}
+    seen=set()
+    for key,source in definitions.items():
+        if source in seen:continue
+        seen.add(source)
         # Only trusted program definitions, never resolved Compose/env values.
         source=re.sub(r'(?:postgres(?:ql)?|redis|https?)://[^\s\'\"]+:[^\s\'\"]+@','<redacted-credential-url>@',source)
         print('\nHELPER '+key+'\n'+source)

@@ -16,6 +16,12 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(set(functions),{'main','config'})
         self.assertNotIn('synthetic-private-global','\n'.join(functions.values()))
         self.assertNotIn('unrelated',functions)
+    def test_factory_inventory_keeps_program_structure_without_top_level_configuration(self):
+        path=str(module.ROOT/'archive/phases/synthetic-release.sh')
+        source="private_global='synthetic-private-global'\ndef prepare():\n    return {}\ndef main():\n    return prepare()\n"
+        result=module.factory_inventory([(path,source),('<unknown>',source),(path,ast.parse(source))])
+        self.assertEqual(len(result),2)
+        self.assertNotIn('synthetic-private-global','\n'.join(result.values()))
     def test_active_filename_and_function_name_select_the_matching_definition(self):
         source='def compose_up():\n    return 2\n';namespace={}
         exec(compile(source,'active-helper','exec'),namespace)

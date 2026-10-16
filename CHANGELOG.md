@@ -6,7 +6,7 @@ Production deployments are tracked separately.
 
 ## 2026-10-16
 
-### Privacy release preparation after enabled API qualification
+### Privacy release preparation after enabled API qualification (#31)
 
 - Owner pipeline at a20b9a6 passed the rebuilt staging image, 75 tests and the full privacy-enabled real app/native service/disposable PostgreSQL qualification, including the previously failing project metadata assertion. All 13 normal/outage checks passed. Six synthetic jobs remained queued; none executed, no cloud model was called, temporary resources were removed and production stayed unchanged. Preserve bounded synthetic evaluation evidence. Feature PR #30 merged as ba30c82 after all observed gates and CI passed.
 - Prepare a read-only production release inventory using the existing archived helper factory. Report only selected release/profile hashes and flags, plus active helper program definitions without resolved Compose/environment values. No helper main/rollback is executed, no restart or model request occurs, and production activation remains pending. The archived release implementation exists only on the owner's server, so its exact active behavior must be inspected before adapting source/image release and rollback around the already enabled local-worker profile.
