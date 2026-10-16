@@ -1,14 +1,18 @@
 # Changelog
 
-## 2026-10-16 FEGCraft assistant foundation (#34)
+## 2026-10-16 Runtime follow-up fixes
 
-Add read-only bounded statistics, deterministic rankings with ties and coverage checks, explicit greeting admission and per-user/global rate limits. Ten synthetic Python tests pass locally. Emoji-free introduction text prepared. Chat adapter, durable one-time delivery, knowledge sources and runtime/deployment remain pending; this foundation does not send messages or invoke models.
+Limit Minecraft player continuation to standalone short follow-ups, including reversible placeholders. Prevent the local text-only executor from generating unsupported live-state answers before inference. Clarify that an additional privacy approval blocks new tool evidence, not the already submitted prompt. Twenty-six targeted local tests pass; production qualification remains pending. This does not yet add local server data access or interactive mid-job consent.
 
 2026-10-16 — Privacy composer follow-up (#32): reject contextual contact labels misclassified as people, preserve ambiguous names and credential types, and retain the real API preview assertion. All 36 targeted local Node tests pass. Native server retest remains pending.
 
 This changelog documents repository changes by date, with commit and pull
 request identifiers when available. Entries are listed newest first.
 Production deployments are tracked separately.
+
+## 2026-10-16 FEGCraft assistant foundation (#34)
+
+Add a bounded read-only saved-statistics collector, deterministic rankings with ties and coverage checks, greeting-only admission, canonical-event deduplication, and three-per-user/twelve-global requests per minute. Ten synthetic Python tests pass locally and now run in Application CI. Prepare an emoji-free introduction. Chat/model integration, topic/output restrictions, durable delivery, owner-data qualification and production deployment remain pending. These modules do not yet read production files, invoke a model or send messages.
 
 ## 2026-10-16
 

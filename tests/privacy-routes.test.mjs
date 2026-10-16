@@ -67,7 +67,8 @@ test('project access is checked before findings and local-only projects select t
 test('fully local executor uses native inference only and retains zero-cost token usage',async()=>{
   const calls=[],events=[],finished=[],failed=[];
   let nativeFails=false,cancelled=false;
-  const {executeLocalPrivateJob}=load('../lib/local-private-chat.js',{crypto,providerUsageTotals,
+  const {classifyExecution}=load('../lib/execution-router.js',{},['classifyExecution']);
+  const {executeLocalPrivateJob}=load('../lib/local-private-chat.js',{crypto,providerUsageTotals,classifyExecution,
     db:{query:async(...args)=>calls.push(args)},restorePrivateValues:async({text})=>text,
     withLocalWorkerSlot:execute=>execute(),heartbeatAgentJob:async()=>{},
     getAgentJob:async()=>({status:cancelled?'cancelled':'running'}),
