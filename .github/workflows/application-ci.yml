@@ -51,6 +51,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Test local capability and conversation routing regressions
+        run: node --test tests/local-routing-regression.test.mjs
+
       - name: Test offline model broker policy
         run: node --test tests/model-broker-*.test.mjs tests/provider-telemetry.test.mjs tests/model-intelligence-summary.test.mjs
 

@@ -106,7 +106,7 @@ def main():
     revision=os.environ.get('VECTOR_PRIVACY_REV','')
     if os.geteuid()!=0 or not re.fullmatch('[a-f0-9]{40}',revision):
         raise RuntimeError('Run as root with exact VECTOR_PRIVACY_REV.')
-    fetched=run('git','-C',str(REPO),'rev-parse','refs/remotes/origin/feat/privacy-composer-review-20261016').decode().strip()
+    fetched=run('git','-C',str(REPO),'rev-parse','refs/remotes/origin/fix/privacy-routing-capabilities-20261016').decode().strip()
     if fetched!=revision:raise RuntimeError('Fetched branch revision changed.')
     with (ROOT/'.chat-release.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -116,7 +116,7 @@ def main():
         if qualified['qualified_image']!=service['QUALIFIED_IMAGE']:
             raise RuntimeError('Native image differs from the observed qualified image.')
         before=helper['fingerprint']()
-        if before['/vector-app']['image']!='sha256:e59160f17f47b2b8231e417bc64c25ce82a5a7320be6a0b47c6d8b226f699a80':raise RuntimeError('Production image changed.')
+        if before['/vector-app']['image']!='sha256:9a2b01e5afd37b51983fdf336ff986db13e3679b5381a802037c2795f1908fe4':raise RuntimeError('Production image changed.')
         idle="""import pg from 'pg';const c=new pg.Client({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:5000});try{await c.connect();await c.query('BEGIN READ ONLY');await c.query(\"SET LOCAL statement_timeout = '5s'\");const r=await c.query(\"SELECT COUNT(*)::int AS n FROM agent_jobs WHERE status IN ('queued','running')\");if(r.rows[0].n!==0)throw Error('busy');}finally{await c.end();}"""
         run('docker','exec','-i','vector-app','node','--input-type=module',data=idle.encode())
         stamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+uuid.uuid4().hex[:6]
