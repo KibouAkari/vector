@@ -143,3 +143,12 @@ Next steps:
 2. Test a new short email request with synthetic names/credentials using replacement and explicit off. Real provider execution and whole-server cloud-tool reads remain distinct from queued-job/native qualification; do not claim all tools are fixed without results.
 3. If a new failure occurs, collect bounded metadata/reason codes and the relevant job state rather than rerunning the release or dumping secrets.
 4. Continue pending interactive consent for new tool evidence, provider billing reconciliation and final Minecraft integration only after the web flow is confirmed. The Minecraft addon is not installed and its once-only introduction has not been sent.
+
+
+## Immediate priority: post-release public 502
+
+Owner update 2026-10-17 after the successful release: host Nginx serves 502. Read-only owner evidence shows vector-app running, zero restarts and no OOM, on vector-internal 172.23.0.5, vector-local-inference 172.25.0.3 and vector-privacy-ner 172.26.0.3. Only 172.25.0.3 returns health 200; 127.0.0.1 and the other app addresses are unreachable. Host Nginx is active. This confirms a partial-interface bind; the actual Nginx upstream address has not been captured. Do not call the public flow healthy merely from the earlier release result.
+
+The older release helper health check stops at the first working interface. It did not test the public proxy route, so the successful release was insufficient to establish availability. scripts/deploy/fix-app-listener.py prepares a guarded persistent app HOSTNAME=0.0.0.0 correction, reusing image 5a2ee0f and the unchanged 2f5b8e8 live source. It validates the exact old release/source/Compose, stores original/candidate files, preserves seven other container identities, recreates only the app, probes every IPv4/loopback health endpoint, tests and reloads host Nginx, then probes https://vector.kibouakari.com/api/health via local Nginx/TLS. No model request or image build is involved. Repair has NOT yet been observed. A successful repair changes Compose bytes: future guards must use its new evidence, and the older app release rollback must not be run blindly against that changed profile.
+
+Restore public availability before asking for additional browser/provider/Minecraft integration tests. Preserve owner repair output and the generated vector-listener-fix release directory. Future application release health gates must require the actual ingress route and intended listen interfaces; the historical archived helper remains unchanged by this targeted repair.
