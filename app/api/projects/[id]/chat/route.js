@@ -574,6 +574,7 @@ export async function POST(
       requestHash,
 
       payload: {
+        requestText:safeMessage,
         privacyPolicy:privacy.policy,
         privacyDestination:privacy.destination,
         userId:

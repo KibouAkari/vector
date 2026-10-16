@@ -184,6 +184,10 @@ test('actual local executor reads fixed statistics without inference, scans or p
   assert.match(result.text,/42 Kills/);assert.equal(result.meta.model,'vector-local-statistics');
   assert.equal(result.meta.costChf,0);assert.equal(result.meta.inputTokens,0);assert.equal(result.meta.outputTokens,0);
   assert.equal(reads.length,2);assert.equal(finished.length,1);assert.equal(writes.length,2);
+  const projectResult=await executeLocalPrivateJob({id:'project-job',payload:{allowServer:true,conversationId:'c',
+    safeOriginalMessage:'Welche Rekorde hat ExampleOne auf FEGCraft?',messages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf FEGCraft? PROJECT CONTEXT: ExampleTwo und eine Mail.'}]}},{events:[]});
+  assert.match(projectResult.text,/FEGCraft · ExampleOne/);assert.doesNotMatch(projectResult.text,/ExampleTwo/);
+  assert.equal(reads.length,4);assert.equal(finished.length,2);
 });
 
 test('Auto statistics remain available without cloud budget while external tasks stay blocked',async()=>{

@@ -59,7 +59,7 @@ def main():
             'app/api/chat/route.js', 'app/api/projects/[id]/chat/route.js',
             'app/api/privacy/classify/route.js', 'app/projects/[id]/project-workspace.js',
             'components/ui/privacy-review-dialog.js', 'lib/privacy-send-controller.mjs',
-            'components/ui/chat-controls.js', 'lib/chat-controls.mjs', 'lib/local-server-statistics.mjs',
+            'components/ui/chat-controls.js', 'lib/chat-controls.mjs', 'lib/chat-menu-position.mjs', 'lib/local-server-statistics.mjs',
             'lib/router.js', 'lib/execution-router.js', 'lib/host-agent.js')
         original_command = stage['command']
 

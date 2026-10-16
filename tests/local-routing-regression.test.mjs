@@ -71,3 +71,11 @@ test('German own-server read requests require the existing server tool path',()=
     assert.equal(classifyExecution({taskText,allowServer:false}).requirements.server,false);
   }
 });
+
+test('generic Minecraft explanations stay text-only and topic switches end old player context',()=>{
+  for(const taskText of ['Was ist ein Rekord in Minecraft?', 'Erkläre mir Statistiken in Minecraft'])
+    assert.equal(classifyExecution({taskText,allowServer:true}).requirements.server,false);
+  const recentMessages=[{role:'user',content:'Welche Rekorde hat ExampleOne auf FEGCraft?'},
+    {role:'user',content:'Schreibe eine Mail für ExampleOne'}];
+  assert.equal(classifyExecution({taskText:'und für ExampleTwo?',allowServer:true,recentMessages}).requirements.server,false);
+});

@@ -81,3 +81,44 @@ test('Auto selects suitable existing cloud modes for German research and analysi
   assert.equal(router.determineTaskMode({message:'Danke'}),'quick');
   assert.equal(router.determineTaskMode({message:'Recherchiere aktuelle Preise',requestedMode:'quick'}),'quick');
 });
+
+test('native statistics only accepts complete supported requests without secondary tasks',()=>{
+  for(const text of ['Schreibe eine Mail über die Statistiken auf FEGCraft',
+    'Zeige FEGCraft Statistiken und suche zusätzlich im Web',
+    'FEGCraft Rekorde und erkläre Redstone', 'Wie funktioniert die Statistik auf dem Minecraft Server?'])
+    assert.equal(requestDestination({...options,text}),'cloud',text);
+  assert.equal(localStatisticsIntent('Zeige die Statistik von Spieler ExampleOne auf FEGCraft'),true);
+});
+test('player followups cannot jump past the latest standalone task',()=>{
+  const recentMessages=[{role:'user',content:prompt},{role:'user',content:'Schreibe eine Mail für ExampleOne'}];
+  assert.equal(localStatisticsIntent('und für ExampleTwo?',recentMessages),false);
+  assert.equal(localStatisticsIntent('und für ExampleTwo?',[{role:'user',content:prompt},{role:'user',content:'für ExampleThree?'}]),true);
+});
+test('cached identity without a stats file is not a server overview',async()=>{
+  const original=fixtures();
+  const inspect=async args=>{
+    const result=await original.inspect(args);
+    if(args.pattern==='usercache.json') {
+      const cache=JSON.parse(result.items[0].content);cache.push({uuid:uuid(3),name:'ExampleThree'});
+      result.items[0].content=JSON.stringify(cache);
+    }
+    return result;
+  };
+  await assert.rejects(localServerStatistics({text:'Welche Rekorde hat ExampleThree auf FEGCraft?',allowServer:true,inspect}),/keine Statistikdatei/);
+  for(const text of ['Wie viel Spielzeit hat Unknown auf FEGCraft?', 'Welche Tode hat Unknown auf FEGCraft?'])
+    await assert.rejects(localServerStatistics({text,allowServer:true,inspect}),/Spielernamen/);
+});
+
+const {chatMenuPosition}=await import('../lib/chat-menu-position.mjs');
+test('menu escapes panel clipping and stays within header, composer and narrow viewport bounds',()=>{
+  const viewport={width:360,height:800};
+  const header=chatMenuPosition({top:40,bottom:70,right:345},viewport,210);
+  const composer=chatMenuPosition({top:740,bottom:770,right:345},viewport,210);
+  assert.equal(header.position,'fixed');assert.ok(header.top>=78);
+  assert.ok(composer.top+composer.maxHeight<=732);
+  for(const rect of [{top:40,bottom:70,right:345},{top:740,bottom:770,right:345},{top:-100,bottom:-70,right:500}]) {
+    const style=chatMenuPosition(rect,{width:200,height:180},210);
+    assert.ok(style.left>=8);assert.ok(style.left+style.width<=192);
+    assert.ok(style.top>=8);assert.ok(style.top+style.maxHeight<=172);
+  }
+});
