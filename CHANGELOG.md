@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-16 Qualified runtime release (#35)
+
+Prepare the app-only release of routing/capability fixes after successful owner staging and enabled native privacy API qualification. Pin tested and merged source trees, staged image, prior deployed Compose and completed release record. Preserve both local inference containers and existing backups/rollback. Shell/Python syntax and archived preparation verified locally; production execution pending.
+
 ## 2026-10-16 Runtime follow-up fixes
 
 Limit Minecraft player continuation to standalone short follow-ups, including reversible placeholders. Prevent the local text-only executor from generating unsupported live-state answers before inference. Clarify that an additional privacy approval blocks new tool evidence, not the already submitted prompt. Twenty-six targeted local tests pass; production qualification remains pending. This does not yet add local server data access or interactive mid-job consent.
