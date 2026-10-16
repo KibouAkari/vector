@@ -20,7 +20,7 @@ export function usePrivacySend(scopeKey) {
   const [review,setReview]=useState(null);
   const [status,setStatus]=useState({phase:'idle'});
   const [elapsed,setElapsed]=useState(0);
-  const titleId=useId();const panelRef=useRef(null);
+  const titleId=useId();const panelRef=useRef(null);const inputRef=useRef(null);
   const resolveRef=useRef(null);const senderRef=useRef(null);
   const scopeRef=useRef(scopeKey);scopeRef.current=scopeKey;
   if(!senderRef.current)senderRef.current=createPrivacySender({
@@ -30,7 +30,12 @@ export function usePrivacySend(scopeKey) {
   const finish=choice=>{const resolve=resolveRef.current;resolveRef.current=null;resolve?.(choice);};
   useEffect(()=>()=>{finish(null);senderRef.current.cancel();},[scopeKey]);
   useEffect(()=>{
-    if(review)panelRef.current?.focus({preventScroll:true});
+    if(review){
+      inputRef.current=panelRef.current?.closest('form')?.querySelector('textarea');
+      panelRef.current?.focus({preventScroll:true});
+    }else if(inputRef.current?.isConnected){
+      inputRef.current.focus({preventScroll:true});inputRef.current=null;
+    }
   },[review]);
   useEffect(()=>{
     if(!['checking','sending'].includes(status.phase))return;

@@ -65,3 +65,10 @@ test('both composers place the compact review beside the input, without a modal 
   for(const source of [chat,project])assert.ok(source.indexOf('{privacyDialog}')>source.indexOf('<form'));
   assert.match(project,/localOnly:project\.privacy_level==='local_only'/);
 });
+
+
+test('an already obsolete scope performs no network request',async()=>{
+  const sender=createPrivacySender({onState:()=>{},requestChoice:async()=>null,
+    fetchImpl:()=>assert.fail('Obsolete scope must not post')});
+  assert.equal((await (await sender.send('/chat',{message:'fixture'},{isCurrent:()=>false})).json()).privacyCancelled,true);
+});

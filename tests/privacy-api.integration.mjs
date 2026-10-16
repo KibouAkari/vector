@@ -11,7 +11,7 @@ if(process.env.VECTOR_PRIVACY_API_EVALUATION!=='1' || database.hostname!=='priva
 }
 const {Client}=createRequire('/app/package.json')('pg');
 const db=new Client({connectionString:database.href,connectionTimeoutMillis:5000});
-const cookies={};const ids={};const checks=[];
+const cookies={};const ids={};const checks=[];const timings={};
 const phase=process.env.VECTOR_PRIVACY_API_PHASE || 'normal';
 const check=name=>checks.push(name);
 async function call(path,{as='alice',method='GET',body,form,status=200}={}) {
@@ -100,7 +100,8 @@ try {
     await call('/api/chat',{as:'disabled',method:'POST',body:{message:prompt},status:403});
     noNewChat(beforeUnauthorized,await counts());assert.equal(await usage(),0);check('authorization-precedes-detection');
     const input={message:prompt,mode:'normal'};
-    const approval=await review('/api/chat',input);
+    const initialStarted=performance.now();
+    const approval=await review('/api/chat',input);timings.initialReviewMs=Math.round(performance.now()-initialStarted);
     assert.ok(approval.canReplace);assert.ok(approval.findings.some(f=>f.displayValue==='Erika Muster'));
     assert.ok(approval.findings.some(f=>f.displayValue==='erika@example.invalid'));
     assert.ok(approval.findings.some(f=>f.type==='PASSWORD'&&f.displayValue==='••••••••'));
@@ -179,9 +180,13 @@ try {
       privacyDecision:'replace',privacyReviewToken:resetReview.token});
     privateValuesAbsent(resetJob.job.payload,['benno','Demo-456','Zoë Beispiel','zoe@example.invalid']);
     const beforeCached=await usage();
+    const followupStarted=performance.now();
     await review('/api/chat',{message:'Weitere neue Nachricht.',mode:'normal',conversationId:historyId});
+    timings.followupReviewMs=Math.round(performance.now()-followupStarted);
     const afterNew=await usage();assert.equal(afterNew,beforeCached+1);
+    const cachedStarted=performance.now();
     await review('/api/chat',{message:'Weitere neue Nachricht.',mode:'normal',conversationId:historyId});
+    timings.cachedReviewMs=Math.round(performance.now()-cachedStarted);
     assert.equal(await usage(),afterNew,'Unchanged reviewed segments must not trigger another scan.');
     check('natural-reset-credentials-current-preview-and-exact-context-cache');
     const events=(await db.query('SELECT * FROM usage_events')).rows;
@@ -190,6 +195,6 @@ try {
   }
   const jobs=(await db.query('SELECT status,attempts FROM agent_jobs')).rows;
   assert.ok(jobs.every(j=>j.status==='queued'&&j.attempts===0));
-  console.log(JSON.stringify({passed:true,phase,checks,queued_synthetic_jobs:jobs.length,
+  console.log(JSON.stringify({passed:true,phase,checks,timings,queued_synthetic_jobs:jobs.length,
     executed_jobs:0,cloud_calls:0,api_cost_chf:0,isolated_database_writes:true,production_activated:false}));
 } finally {await db.end();}

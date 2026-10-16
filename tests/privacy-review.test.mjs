@@ -320,3 +320,19 @@ test('local review cache expires, bounds stored values and returns isolated copi
   cache.set('alice','large',[{type:'PERSON',value:'x'.repeat(21)}]);
   assert.equal(cache.get('alice','large'),undefined);
 });
+
+
+test('a sensitive value spanning separate outbound messages cannot bypass per-part masking',async()=>{
+  const runtime=loadRuntime();
+  const parts=['-----BEGIN PRIVATE KEY-----\nsynthetic-first-part','synthetic-second-part\n-----END PRIVATE KEY-----'];
+  await assert.rejects(runtime.reviewPrivacyRequest({...args(),text:parts.join('\n\n'),scanSegments:parts,
+    body:{message:parts[0]}}),/Kontextteile/);
+});
+
+
+test('a person span inside a credential cannot reveal a password fragment in the review',()=>{
+  const source='password Synthetic-456';
+  const plan=core.makePrivacyPlan(source,[...core.deterministicFindings(source),{type:'PERSON',value:'Synthetic'}]);
+  assert.ok(plan.selected.map(core.displayFinding).every(f=>!f.displayValue.includes('Synthetic')));
+  assert.equal(core.literalReplace(plan.sanitized,plan.mappings,true),source);
+});
