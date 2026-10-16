@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-17 — Owner-confirmed listener and Nginx repair
+## 2026-10-17 — Owner-confirmed listener and Nginx repair (PR #45)
 
 - The owner completed PR #44 repair at bc52a8f38098eea0e2123f74cc0c8c8392358bed. Runner reported LISTENER FIX SUCCEEDED and SUCCESS: every app IPv4/loopback interface and the host Nginx HTTPS health route passed. The persistent app HOSTNAME is now 0.0.0.0.
 - Evidence: /root/vector-workspace/releases/vector-listener-fix-20261016T235002Z-913eee, containing result.json and original/candidate Compose files. App source/image are unchanged; other production containers were retained; no model request was made. Future release guards must use this repaired Compose baseline and preserve its listener setting. Do not rerun the older exact-baseline repair or bypass historical rollback guards.
