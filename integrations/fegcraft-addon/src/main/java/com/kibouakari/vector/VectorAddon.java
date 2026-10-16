@@ -58,8 +58,12 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     private volatile boolean active;
     private DiscordEventHandler handler;
     private byte[] key;
-    private Object minecraft;
-    private Method execute;
+    interface Bridge {
+        void schedule(Runnable task) throws Exception;
+        String playerName(UUID player);
+        void publish(String message);
+    }
+    private Bridge bridge;
     private Path introMarker;
     private boolean introduction;
     private String avatar = "";
@@ -93,23 +97,25 @@ public final class VectorAddon implements DiscordIntegrationAddon {
             key = HexFormat.of().parseHex(secret);
             // Fixed inspected 26.2 integration field; reflection avoids bundling
             // Minecraft classes and still schedules all game access on its thread.
-            minecraft = Class.forName("de.erdbeerbaerlp.dcintegration.architectury.DiscordIntegrationMod").getField("server").get(null);
-            execute = minecraft.getClass().getMethod("execute", Runnable.class);
+            Object minecraft = Class.forName("de.erdbeerbaerlp.dcintegration.architectury.DiscordIntegrationMod").getField("server").get(null);
+            Method execute = minecraft.getClass().getMethod("execute", Runnable.class);
             introMarker = directory.resolve("introduction-v1.attempted");
             introduction = "true".equals(properties.getProperty("introductionEnabled", "false"));
             avatar = properties.getProperty("avatarUrl", "");
             if (!avatar.isEmpty() && !avatar.matches("https://[A-Za-z0-9./_-]{1,240}\\.png")) throw new IllegalArgumentException();
-            worker = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, new SynchronousQueue<>(), task -> {
-                Thread thread = new Thread(task, "Vector-local-chat");
-                thread.setDaemon(true);
-                return thread;
-            });
-            active = true;
+            start(new Bridge() {
+                public void schedule(Runnable task) throws Exception { execute.invoke(minecraft, task); }
+                public String playerName(UUID player) { return dc.getServerInterface().getPlayers().get(player); }
+                public void publish(String message) {
+                    dc.getServerInterface().sendIngameMessage(Component.text("[Vector] ", TextColor.color(0x8de0b7)).append(Component.text(message)));
+                    // System output is not a player hook; forward exactly once.
+                    dc.sendMessage("Vector", message, dc.getChannel(Configuration.instance().advanced.chatOutputChannelID), avatar);
+                }
+            }, key, introMarker, introduction);
             handler = new DiscordEventHandler() {
                 @Override
                 public boolean onMinecraftMessage(Component message, UUID player) {
-                    receive(dc, message, player);
-                    return false; // Preserve normal chat/Discord forwarding.
+                    return chat(message, player);
                 }
             };
             dc.registerEventHandler(handler);
@@ -121,6 +127,25 @@ public final class VectorAddon implements DiscordIntegrationAddon {
         }
     }
 
+    boolean chat(Component message, UUID player) {
+        receive(message, player);
+        return false; // Preserve normal chat/Discord forwarding.
+    }
+
+    void start(Bridge transport, byte[] secret, Path marker, boolean intro) {
+        if (active || secret.length != 32) throw new IllegalArgumentException();
+        bridge = transport;
+        key = secret.clone();
+        introMarker = marker;
+        introduction = intro;
+        worker = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, new SynchronousQueue<>(), task -> {
+            Thread thread = new Thread(task, "Vector-local-chat");
+            thread.setDaemon(true);
+            return thread;
+        });
+        active = true;
+    }
+
     private static void text(Component component, StringBuilder out, int depth) {
         if (depth > 20 || out.length() > 1200) throw new IllegalArgumentException();
         if (component instanceof TextComponent plain) out.append(plain.content());
@@ -128,7 +153,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
         for (Component child : component.children()) text(child, out, depth + 1);
     }
 
-    private void receive(DiscordIntegration dc, Component component, UUID player) {
+    void receive(Component component, UUID player) {
         if (!active) return;
         try {
             StringBuilder plain = new StringBuilder();
@@ -139,7 +164,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
             // work on the server thread; never call a profile/network resolver.
             onServer(() -> {
                 if (!active) return;
-                String name = dc.getServerInterface().getPlayers().get(player);
+                String name = bridge.playerName(player);
                 if (name == null || !name.matches("[A-Za-z0-9_]{1,16}")) return;
                 JsonObject request = new JsonObject();
                 request.addProperty("principal", player.toString());
@@ -147,7 +172,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
                 request.addProperty("event", session + ":" + sequence.incrementAndGet());
                 request.addProperty("message", message);
                 try {
-                    worker.execute(() -> answer(dc, request));
+                    worker.execute(() -> answer(request));
                 } catch (RejectedExecutionException ignored) {
                     // No unbounded queue, public busy-message spam or tick delay.
                 }
@@ -157,7 +182,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
 
     private void onServer(Runnable task) {
         try {
-            execute.invoke(minecraft, task);
+            bridge.schedule(task);
         } catch (Exception failure) {
             LOG.warning("Vector server-thread scheduling unavailable.");
         }
@@ -206,7 +231,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
         public void onComplete() { result.complete(body.toByteArray()); }
     }
 
-    private void answer(DiscordIntegration dc, JsonObject payload) {
+    private void answer(JsonObject payload) {
         try {
             byte[] body = gson.toJson(payload).getBytes(StandardCharsets.UTF_8);
             String timestamp = Long.toString(Instant.now().getEpochSecond());
@@ -234,27 +259,20 @@ public final class VectorAddon implements DiscordIntegrationAddon {
             if (!safe(reply)) return;
             onServer(() -> {
                 if (!active) return;
-                introduce(dc);
-                publish(dc, reply);
+                introduce();
+                bridge.publish(reply);
             });
         } catch (Exception ignored) {
             LOG.warning("Vector local request unavailable; no cloud fallback.");
         }
     }
 
-    private void publish(DiscordIntegration dc, String message) {
-        dc.getServerInterface().sendIngameMessage(Component.text("[Vector] ", TextColor.color(0x8de0b7)).append(Component.text(message)));
-        // System messages are not player-chat events, so forward exactly once
-        // through the existing integration, to its configured chat output channel.
-        dc.sendMessage("Vector", message, dc.getChannel(Configuration.instance().advanced.chatOutputChannelID), avatar);
-    }
-
-    private void introduce(DiscordIntegration dc) {
+    private void introduce() {
         if (!introduction) return;
         try {
             // Claim BEFORE either delivery. Existing/uncertain attempts are never
             // retried on reload/restart. Operator review can inspect this marker.
-            if (claimIntroduction(introMarker)) publish(dc, INTRO);
+            if (claimIntroduction(introMarker)) bridge.publish(INTRO);
         } catch (Exception ignored) {
             LOG.warning("Vector introduction not retried; delivery state requires review.");
         }
@@ -276,8 +294,12 @@ public final class VectorAddon implements DiscordIntegrationAddon {
 
     @Override
     public void unload(DiscordIntegration dc) {
-        active = false;
+        stop();
         if (handler != null) dc.unregisterEventHandler(handler);
+    }
+
+    void stop() {
+        active = false;
         if (worker != null) worker.shutdownNow();
     }
 }

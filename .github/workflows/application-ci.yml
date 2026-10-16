@@ -59,6 +59,7 @@ jobs:
           python3 tests/fegcraft-stats.test.py
           python3 tests/fegcraft-policy.test.py
           python3 tests/fegcraft-runtime.test.py
+          python3 tests/fegcraft-evaluation.test.py
 
       - name: Test offline model broker policy
         run: node --test tests/model-broker-*.test.mjs tests/provider-telemetry.test.mjs tests/model-intelligence-summary.test.mjs
@@ -188,9 +189,12 @@ jobs:
 
 
   fegcraft-addon:
-    name: Compile and verify Minecraft bridge addon
+    name: Compile and verify Minecraft bridge addon (Java ${{ matrix.java }})
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      matrix:
+        java: ['17', '25']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -198,6 +202,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: ${{ matrix.java }}
       - name: Compile against pinned actual Fabric integration and test offline boundaries
-        run: python3 scripts/build-fegcraft-addon.py
+        run: |
+          python3 scripts/build-fegcraft-addon.py
+          python3 tests/fegcraft-flow.test.py
