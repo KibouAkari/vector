@@ -1,8 +1,8 @@
 # Changelog
 
-## 2026-10-16
+## 2026-10-16 Runtime follow-up fixes
 
-Prepare an app-only release of qualified compact privacy review (feature PR #32). Pin tested/merged trees and staged image; require the successful native API report and exact existing activation profile. Preserve both local inference containers. Shell/Python syntax and archived wrapper preparation tested locally without executing deployment. Production deployment pending owner execution. Generated rollback restores the previous app/source while retaining the active privacy service.
+Limit Minecraft player continuation to standalone short follow-ups, including reversible placeholders. Prevent the local text-only executor from generating unsupported live-state answers before inference. Clarify that an additional privacy approval blocks new tool evidence, not the already submitted prompt. Twenty-six targeted local tests pass; production qualification remains pending. This does not yet add local server data access or interactive mid-job consent.
 
 2026-10-16 — Privacy composer follow-up (#32): reject contextual contact labels misclassified as people, preserve ambiguous names and credential types, and retain the real API preview assertion. All 36 targeted local Node tests pass. Native server retest remains pending.
 
@@ -366,3 +366,7 @@ Production deployments are tracked separately.
 
 
 
+
+## 2026-10-16 Composer release closure (#33)
+
+The owner observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at vector-privacy-composer-release-20261016T123251Z-4139a9. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.

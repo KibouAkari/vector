@@ -11,7 +11,7 @@ import uuid
 
 ROOT=Path('/root/vector-workspace')
 REPO=ROOT/'github/vector'
-BRANCH='feat/privacy-composer-review-20261016'
+BRANCH='fix/privacy-routing-capabilities-20261016'
 
 
 def staging_handoff(output,revision):
