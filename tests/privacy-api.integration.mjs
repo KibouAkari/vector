@@ -52,9 +52,16 @@ async function queued(path,body,as='alice') {
   assert.equal(rows.length,1);assert.equal(rows[0].status,'queued');assert.equal(rows[0].attempts,0);
   return {data,job:rows[0]};
 }
-function privateValuesAbsent(value,values) {
-  const text=JSON.stringify(value);for(const v of values)assert.ok(!text.includes(v),'Unmasked private value');
+function privateValuesAbsent(value,values,path='payload') {
+  const sensitive=text=>values.some(v=>text.includes(v));
+  if(typeof value==='string')assert.ok(!sensitive(value),'Unmasked private value at '+path);
+  else if(Array.isArray(value))value.forEach((item,index)=>privateValuesAbsent(item,values,path+'['+index+']'));
+  else if(value&&typeof value==='object')for(const [key,item] of Object.entries(value)) {
+    assert.ok(!sensitive(key),'Unmasked private object key at '+path);
+    privateValuesAbsent(item,values,path+'.'+key);
+  }
 }
+
 async function usage() {
   return Number((await db.query("SELECT COUNT(*) AS n FROM usage_events WHERE metadata->>'kind'='local-privacy-scan'")).rows[0].n);
 }

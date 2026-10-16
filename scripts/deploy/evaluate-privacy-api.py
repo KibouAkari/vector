@@ -14,9 +14,11 @@ import uuid
 
 ROOT=Path('/root/vector-workspace')
 REPO=ROOT/'github/vector'
-STAGED_REV='b91604860fc192aa4bde94cc9be5d29107312633'
+SERVICE_QUALIFIED_REV='b91604860fc192aa4bde94cc9be5d29107312633'
+STAGED_REV=os.environ.get('VECTOR_PRIVACY_API_APP_REV',SERVICE_QUALIFIED_REV)
 APP_USER='1001:1001'
-APP_IMAGE='sha256:ea6917c94e64d96af103206ed75eec7d77194ed0221bb0057a0baa67d60d4f00'
+APP_IMAGE=os.environ.get('VECTOR_PRIVACY_API_APP_IMAGE_ID',
+    'sha256:ea6917c94e64d96af103206ed75eec7d77194ed0221bb0057a0baa67d60d4f00')
 SERVICE_REPORT=ROOT/'releases/vector-privacy-ner-service-evaluation-20261016T074701Z-2563de/result.json'
 
 
@@ -38,6 +40,8 @@ def namespace(revision,path,name):
 
 
 def require_staged_app_unchanged(revision):
+    if not re.fullmatch('[a-f0-9]{40}',STAGED_REV) or not re.fullmatch('sha256:[a-f0-9]{64}',APP_IMAGE):
+        raise RuntimeError('Invalid staged application revision/image handoff.')
     # Reuse the observed built image only if every runtime/build input is equal.
     run('git','-C',str(REPO),'diff','--quiet',STAGED_REV,revision,'--','.',
         ':!docs/**',':!tests/**',':!scripts/**',':!.github/**',':!CHANGELOG.md')
@@ -92,7 +96,7 @@ def report_checked():
     for key in ['passed','runtime_consent_roundtrip','tool_evidence_masked','auth_and_input_limits',
                 'idle_unload_and_wake','service_outage_blocked','production_unchanged','private_network']:
         if report.get(key) is not True:raise RuntimeError('Observed native service qualification is incomplete.')
-    if report.get('revision')!=STAGED_REV or report.get('case_count')!=32 or report.get('cloud_calls')!=0:
+    if report.get('revision')!=SERVICE_QUALIFIED_REV or report.get('case_count')!=32 or report.get('cloud_calls')!=0:
         raise RuntimeError('Unexpected native service qualification revision or fixture count.')
     return report
 

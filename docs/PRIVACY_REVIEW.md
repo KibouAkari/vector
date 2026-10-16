@@ -93,3 +93,16 @@ A production release must preserve source/image equality, back up Compose/source
 add only the reviewed service/token/network/feature settings and provide a tested
 feature rollback followed by the existing application/source rollback. Do not
 reuse an isolated evaluation network or temporary token for production.
+
+
+The owner API run at ff11044 correctly blocked qualification on a raw email in
+project-job finding metadata. Project queued metadata now stores placeholders,
+fully masks credential displays, and applies the confirmed plan to retrieved
+filenames. The full-payload assertion stays in place; diagnostics identify only
+the failing field path. The newly built application must pass the same API cases.
+`scripts/deploy/stage-and-evaluate-privacy-api.py` prepares pinned staging/evaluator
+scripts through the existing runner, accepts exactly one successful revision/image
+handoff, and passes the immutable new image to the API evaluation. It discards
+inherited image overrides. The evaluator still rejects unequal runtime sources;
+native service qualification stays bound independently to its observed b916048
+report. No production deployment or feature activation is part of this pipeline.

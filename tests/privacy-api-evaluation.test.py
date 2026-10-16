@@ -11,7 +11,26 @@ ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('privacy_api_evaluation',ROOT/'scripts/deploy/evaluate-privacy-api.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
+stage_spec=importlib.util.spec_from_file_location('privacy_api_pipeline',ROOT/'scripts/deploy/stage-and-evaluate-privacy-api.py')
+pipeline=importlib.util.module_from_spec(stage_spec);stage_spec.loader.exec_module(pipeline)
+
 class PrivacyAPIEvaluationTests(unittest.TestCase):
+    def test_new_image_handoff_requires_one_successful_exact_revision_and_image(self):
+        revision='a'*40;image='sha256:'+'b'*64
+        output='=== PRIVACY STAGING PASSED ===\nCommit: '+revision+'\nImage tag: vector-app:staging-'+revision[:7]+'-fixture\nImage ID: '+image+'\n'
+        self.assertEqual(pipeline.staging_handoff(output,revision),
+            dict(VECTOR_PRIVACY_API_APP_REV=revision,VECTOR_PRIVACY_API_APP_IMAGE_ID=image))
+        for invalid in [output.replace('=== PRIVACY STAGING PASSED ===','FAILED'),
+            output.replace(revision,'c'*40),output+('Image ID: '+image+'\n'),
+            output.replace('Image ID: '+image,'Image ID: latest'),output.replace('staging-'+revision[:7],'staging-ddddddd')]:
+            with self.assertRaises(RuntimeError):pipeline.staging_handoff(invalid,revision)
+    def test_bad_staged_identity_overrides_fail_before_git_or_docker(self):
+        with patch.object(module,'STAGED_REV','latest'),patch.object(module,'run') as command:
+            with self.assertRaises(RuntimeError):module.require_staged_app_unchanged('a'*40)
+            command.assert_not_called()
+        with patch.object(module,'APP_IMAGE','vector-app:latest'),patch.object(module,'run') as command:
+            with self.assertRaises(RuntimeError):module.require_staged_app_unchanged('a'*40)
+            command.assert_not_called()
     def test_client_refuses_nonisolated_configuration_before_loading_database_or_connecting(self):
         script=ROOT/'tests/privacy-api.integration.mjs'
         parsed=subprocess.run(['node','--check',str(script)],capture_output=True,text=True)
@@ -53,7 +72,7 @@ class PrivacyAPIEvaluationTests(unittest.TestCase):
             expected=dict.fromkeys(['passed','runtime_consent_roundtrip','tool_evidence_masked',
                 'auth_and_input_limits','idle_unload_and_wake','service_outage_blocked',
                 'production_unchanged','private_network'],True)
-            expected.update(revision=module.STAGED_REV,case_count=32,cloud_calls=0)
+            expected.update(revision=module.SERVICE_QUALIFIED_REV,case_count=32,cloud_calls=0)
             with patch.object(module,'SERVICE_REPORT',path):
                 path.write_text(json.dumps(expected));self.assertEqual(module.report_checked(),expected)
                 for change in [dict(passed=False),dict(service_outage_blocked=False),

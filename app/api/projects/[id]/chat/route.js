@@ -78,42 +78,15 @@ function titleFromMessage(
 }
 
 
-function privacyDisplay(
-  mappings
-) {
-  return mappings.map(
-    (mapping) => {
-      let value =
-        mapping.value;
-
-      if (
-        mapping.type ===
-          "PASSWORD" ||
-        mapping.type.includes(
-          "TOKEN"
-        ) ||
-        mapping.type.includes(
-          "KEY"
-        )
-      ) {
-        value =
-          value.length <= 4
-            ? "••••"
-            : `${value.slice(0, 2)}••••${value.slice(-2)}`;
-      }
-
-      return {
-        type:
-          mapping.type,
-
-        placeholder:
-          mapping.placeholder,
-
-        displayValue:
-          value
-      };
-    }
-  );
+function privacyDisplay(mappings) {
+  // Consent findings are displayed locally before submission. Durable job
+  // metadata must never carry those originals or credential prefixes/suffixes.
+  return mappings.map(mapping => ({
+    type: mapping.type,
+    placeholder: mapping.placeholder,
+    displayValue: /PASSWORD|TOKEN|KEY/.test(mapping.type)
+      ? '••••••••' : mapping.placeholder
+  }));
 }
 
 
@@ -635,7 +608,7 @@ export async function POST(
           chunks.map(
             (chunk) => ({
               file:
-                chunk.original_name,
+                privacy.apply(chunk.original_name),
               startLine:
                 chunk.start_line,
               endLine:

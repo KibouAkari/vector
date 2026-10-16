@@ -90,3 +90,32 @@ test('fully local executor uses native inference only and retains zero-cost toke
   assert.deepEqual(await executeLocalPrivateJob(job,{events}),{cancelled:true});
   assert.equal(failed.length,1,'late native errors cannot overwrite cancellation');
 });
+
+test('confirmed project jobs keep originals out of finding metadata and retrieved filenames',async()=>{
+  const core=await import('../lib/privacy-review-core.mjs');
+  const email='erika@example.invalid',password='synthetic privacy phrase';
+  const jobs=[];
+  const chunks=[{original_name:email,start_line:1,end_line:1,content:`Passwort: "${password}".`}];
+  const deps={crypto,getSession:async()=>({userId:'alice',role:'owner',username:'alice'}),
+    canAccessProject:async()=>true,initializeDatabase:async()=>{},assertUserBudget:async()=>({allowed:true}),
+    db:{query:async sql=>/SELECT \*/.test(sql)?{rowCount:1,rows:[{privacy_level:'personal'}]}:{rowCount:1,rows:[]}},
+    searchProjectChunks:async()=>chunks,
+    reviewPrivacyRequest:async({text})=>{
+      const plan=core.makePrivacyPlan(text,core.deterministicFindings(text));
+      return {...plan,apply:value=>core.literalReplace(value,plan.mappings),destination:'cloud',policy:'encrypted-policy-fixture'};
+    },determineTaskMode:()=> 'normal',getModelForMode:()=> 'fixed-model',shouldUseWebSearch:()=>false,
+    getMaximumOutputTokens:()=>100,estimateRequestCost:()=>({chf:0}),usdToChf:()=>0,
+    checkCost:async()=>({allowed:true}),savePrivacyMappings:async()=>{},findRecentDuplicate:async()=>null,
+    makeRequestHash:()=> 'hash',enqueueAgentJob:async args=>{jobs.push(args);return 'job';},
+    restorePrivateValues:async({text})=>text};
+  const api=load('../app/api/projects/[id]/chat/route.js',deps,['POST']);
+  const response=await api.POST(new Request('http://vector.test',{method:'POST',body:JSON.stringify({message:'Bitte Kontakt Nachricht.',mode:'normal'})}),{params:{id:'project'}});
+  assert.equal(response.status,202);assert.equal(jobs.length,1);
+  const wire=JSON.stringify(jobs[0].payload);
+  assert.ok(!wire.includes(email),'Email must not survive in durable finding or retrieval metadata.');
+  assert.ok(!wire.includes(password),'Credential must not survive in durable job metadata.');
+  const meta=jobs[0].payload.privacy.values;
+  assert.ok(meta.some(m=>m.type==='PASSWORD'&&m.displayValue==='••••••••'));
+  assert.ok(meta.some(m=>m.type==='EMAIL'&&m.displayValue===m.placeholder));
+  assert.match(jobs[0].payload.retrieval[0].file,/<VEC_EMAIL_/);
+});

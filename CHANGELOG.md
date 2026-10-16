@@ -6,6 +6,11 @@ Production deployments are tracked separately.
 
 ## 2026-10-16
 
+### Project job metadata privacy boundary (#30)
+
+- Owner API qualification at ff11044 reached the project-job assertion after earlier consent/local/history/upload/image checks, then correctly stopped because the durable privacy finding metadata still contained the original email. Reproduce the failure with the actual project route in a focused regression. Store placeholders for noncredential finding displays, full bullets for credentials (no prefixes/suffixes), and apply the confirmed privacy plan to retrieved filenames. Keep the pre-send local consent display and the full queued-payload expectations intact.
+- Add field-path-only diagnostics to the synthetic API harness so future failures identify the metadata boundary without echoing private values. A new build/staging run is required for the runtime fix. Allow the API evaluator to receive a validated newly staged revision/image, retain the source-equality gate and bind native qualification to its independently observed b916048 report. The old app image is rejected when runtime source differs; native weights and all 32-case/API expectations remain unchanged. New staging and actual API retry remain pending; production remains inactive.
+
 ### Application-user API test dependency access (#30)
 
 - Owner privacy-enabled API setup at ade4ff07 stopped before connecting to the app because the test client used UID 65534 while the image's application packages are owned by UID/GID 1001. The app itself started normally. Run this dependency-loading client as the same unprivileged application identity; retain the native service's separate UID 65534, read-only filesystems and existing resource/network limits. Do not modify image permissions or run the client as root.
