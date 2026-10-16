@@ -1,0 +1,57 @@
+{
+  "passed": true,
+  "revision": "a20b9a650546e9cf8fbbba9b0fbc9f85acaf88a5",
+  "app_runtime_revision": "a20b9a650546e9cf8fbbba9b0fbc9f85acaf88a5",
+  "app_image": "sha256:e59160f17f47b2b8231e417bc64c25ce82a5a7320be6a0b47c6d8b226f699a80",
+  "native_image": "sha256:eca0b83a886fcc9952ef13755853ef63134e5c76733d40564460398776c92dd7",
+  "client_preflight": {
+    "uid": 1001,
+    "gid": 1001,
+    "package_readable": true,
+    "pg_client_available": true,
+    "script_readable": true
+  },
+  "normal": {
+    "passed": true,
+    "phase": "normal",
+    "checks": [
+      "authorization-precedes-detection",
+      "pre-send-review-and-cancel-have-no-chat-or-job-writes",
+      "consent-is-bound-to-user-and-exact-request",
+      "confirmed-job-is-masked-vault-encrypted-response-restored-and-account-isolated",
+      "explicit-unchanged-send-preserves-original-without-rescan",
+      "fully-local-request-has-no-review-or-detector-call",
+      "included-history-is-inspected-only-after-ownership-check",
+      "uploaded-text-is-reviewed-with-hidden-credentials",
+      "images-require-explicit-unchanged-consent",
+      "project-retrieval-consent-ownership-and-local-only-routing",
+      "real-ledger-has-separate-encoder-metrics-zero-api-fees-and-no-private-text"
+    ],
+    "queued_synthetic_jobs": 5,
+    "executed_jobs": 0,
+    "cloud_calls": 0,
+    "api_cost_chf": 0,
+    "isolated_database_writes": true,
+    "production_activated": false
+  },
+  "outage": {
+    "passed": true,
+    "phase": "outage",
+    "checks": [
+      "native-service-outage-blocks-cloud-send-before-writes",
+      "local-request-remains-quiet-during-detector-outage"
+    ],
+    "queued_synthetic_jobs": 6,
+    "executed_jobs": 0,
+    "cloud_calls": 0,
+    "api_cost_chf": 0,
+    "isolated_database_writes": true,
+    "production_activated": false
+  },
+  "isolated_database": true,
+  "production_unchanged": true,
+  "cloud_calls": 0,
+  "api_cost_chf": 0,
+  "production_activated": false,
+  "evidence_scope": "Owner supplied successful synthetic privacy-enabled API/database and native service evaluation; no real cloud generation."
+}
