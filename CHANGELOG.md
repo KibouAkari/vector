@@ -6,6 +6,11 @@ Production deployments are tracked separately.
 
 ## 2026-10-16
 
+### Application-user API test dependency access (#30)
+
+- Owner privacy-enabled API setup at ade4ff07 stopped before connecting to the app because the test client used UID 65534 while the image's application packages are owned by UID/GID 1001. The app itself started normally. Run this dependency-loading client as the same unprivileged application identity; retain the native service's separate UID 65534, read-only filesystems and existing resource/network limits. Do not modify image permissions or run the client as root.
+- Preflight package.json, the actual pg Client export and the mounted API harness as UID/GID 1001 before the test begins. Record only bounded stage/error codes on failure and add client-identity/preflight regressions. Existing images, 32-case native qualification, source equality checks and API expectations remain unchanged. Real privacy-enabled API retry remains pending; no production activation occurred.
+
 ### Privacy-enabled application API qualification (#30)
 
 - Owner retry at b916048 passed the private native HTTP service's 32 cases, consent/tool/runtime tests, idle unload/fresh wake, auth/limits and outage blocking. Owner app staging also passed its build, 74 tests and authenticated chat/file/project/server checks with privacy still disabled. Preserve bounded evidence separately; production source/configuration and running services stayed unchanged.

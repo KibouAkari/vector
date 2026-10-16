@@ -15,6 +15,7 @@ import uuid
 ROOT=Path('/root/vector-workspace')
 REPO=ROOT/'github/vector'
 STAGED_REV='b91604860fc192aa4bde94cc9be5d29107312633'
+APP_USER='1001:1001'
 APP_IMAGE='sha256:ea6917c94e64d96af103206ed75eec7d77194ed0221bb0057a0baa67d60d4f00'
 SERVICE_REPORT=ROOT/'releases/vector-privacy-ner-service-evaluation-20261016T074701Z-2563de/result.json'
 
@@ -49,6 +50,40 @@ def private_limits(name,network,user,memory='512m'):
         '--read-only','--cap-drop','ALL','--security-opt','no-new-privileges',
         '--cpus','1','--memory',memory,'--memory-swap',memory,'--pids-limit','128',
         '--tmpfs','/tmp:rw,nosuid,nodev,size=128m,mode=1777']
+
+
+
+CLIENT_PREFLIGHT = r"""
+const fs=require('node:fs');
+const {createRequire}=require('node:module');
+let stage='identity';
+try {
+  if(process.getuid()!==1001||process.getgid()!==1001)throw Error('Wrong application identity.');
+  stage='package';JSON.parse(fs.readFileSync('/app/package.json','utf8'));
+  stage='pg';const {Client}=createRequire('/app/package.json')('pg');
+  if(typeof Client!=='function')throw Error('PostgreSQL client unavailable.');
+  stage='test-script';fs.readFileSync('/work/api-test.mjs');
+  console.log(JSON.stringify({uid:process.getuid(),gid:process.getgid(),
+    package_readable:true,pg_client_available:true,script_readable:true}));
+} catch(error) {
+  console.error(JSON.stringify({error:'API_CLIENT_PREFLIGHT_FAILED',stage,code:error.code||'INVALID_SETUP'}));
+  process.exitCode=1;
+}
+"""
+
+
+def api_client_args(name,network,work,environment):
+    # App dependencies are owned by the app user; never loosen image permissions
+    # or run the test client as root to load them.
+    return ['docker','run',*private_limits(name,network,APP_USER),
+        '--env-file',str(environment),'--mount',f'type=bind,src={work},dst=/work,readonly',
+        '--workdir','/app','--entrypoint','node',APP_IMAGE,'/work/api-test.mjs']
+
+
+def validate_client_preflight(result):
+    if result!={'uid':1001,'gid':1001,'package_readable':True,
+                'pg_client_available':True,'script_readable':True}:
+        raise RuntimeError('Application-user package preflight did not pass.')
 
 
 def report_checked():
@@ -121,13 +156,17 @@ def main():
             owned.append(ner_name)
             run(*service['service_args'](ner_name,qualified['qualified_image'],network,work,token))
             owned.append(app_name)
-            run('docker','run','--detach',*private_limits(app_name,network,'1001:1001','1g'),
+            run('docker','run','--detach',*private_limits(app_name,network,APP_USER,'1g'),
                 '--network-alias','privacy-test-app','--env-file',str(environment),
                 '--mount',f'type=bind,src={token},dst=/run/secrets/vector_privacy_ner_token,readonly',
                 '--workdir','/app','--entrypoint','node',APP_IMAGE,'server.js')
-            args=['docker','run',*private_limits(client_name,network,'65534:65534'),
-                '--env-file',str(environment),'--mount',f'type=bind,src={work},dst=/work,readonly',
-                '--workdir','/app','--entrypoint','node',APP_IMAGE,'/work/api-test.mjs']
+            args=api_client_args(client_name,network,work,environment)
+            print('Verify application package, PostgreSQL client and test script as UID/GID 1001.',flush=True)
+            owned.append(client_name)
+            preflight=json.loads(run(*args[:-1],'--eval',CLIENT_PREFLIGHT,timeout=30,
+                error_path=release/'client-preflight-stderr.log'))
+            validate_client_preflight(preflight)
+            run('docker','rm','-v',client_name);owned.remove(client_name)
             print('Test the actual privacy-enabled app, native model, real login and disposable database. No worker or cloud credentials.',flush=True)
             owned.append(client_name)
             normal=json.loads(run(*args,timeout=600,error_path=release/'api-stderr.log'))
@@ -142,7 +181,7 @@ def main():
             if not json.loads(run('docker','network','inspect',network))[0]['Internal']:
                 raise RuntimeError('Evaluation network is not internal.')
             result=dict(passed=normal['passed'] and outage['passed'],revision=revision,app_runtime_revision=STAGED_REV,
-                app_image=APP_IMAGE,native_image=qualified['qualified_image'],normal=normal,outage=outage,
+                app_image=APP_IMAGE,native_image=qualified['qualified_image'],client_preflight=preflight,normal=normal,outage=outage,
                 isolated_database=True,production_unchanged=helper['fingerprint']()==before,
                 cloud_calls=0,api_cost_chf=0,production_activated=False)
             result['passed']=result['passed'] and result['production_unchanged']

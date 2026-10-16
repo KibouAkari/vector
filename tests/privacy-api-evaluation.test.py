@@ -20,6 +20,26 @@ class PrivacyAPIEvaluationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode,0)
         self.assertIn('Refusing privacy API tests outside the disposable evaluation.',result.stderr)
         self.assertNotIn('Cannot find module',result.stderr)
+    def test_api_client_uses_application_identity_and_read_only_dependencies(self):
+        args=module.api_client_args('client','private-network',Path('/tmp/synthetic'),Path('/tmp/test.env'))
+        self.assertEqual(args[args.index('--user')+1],'1001:1001')
+        self.assertEqual(args[args.index('--workdir')+1],'/app')
+        self.assertIn('--read-only',args);self.assertIn('ALL',args)
+        self.assertNotIn('--privileged',args);self.assertNotIn('--publish',args)
+        self.assertTrue(any('dst=/work,readonly' in value for value in args))
+        self.assertEqual(args[-2:], [module.APP_IMAGE,'/work/api-test.mjs'])
+        expected=dict(uid=1001,gid=1001,package_readable=True,pg_client_available=True,script_readable=True)
+        module.validate_client_preflight(expected)
+        for change in [dict(uid=0),dict(uid=65534),dict(gid=65534),dict(pg_client_available=False),dict(package_readable=False)]:
+            with self.assertRaises(RuntimeError):module.validate_client_preflight(dict(expected,**change))
+    def test_package_access_failure_is_bounded_and_does_not_echo_error_or_config(self):
+        code=module.CLIENT_PREFLIGHT.replace("const fs=require('node:fs');",
+            "const fs={readFileSync:()=>{throw Object.assign(Error('private-config-do-not-print'),{code:'EACCES'});}};")
+        code="process.getuid=()=>1001;process.getgid=()=>1001;"+code
+        result=subprocess.run(['node','--eval',code],capture_output=True,text=True)
+        self.assertEqual(result.returncode,1)
+        self.assertEqual(json.loads(result.stderr),dict(error='API_CLIENT_PREFLIGHT_FAILED',stage='package',code='EACCES'))
+        self.assertNotIn('private-config',result.stderr)
     def test_all_isolated_resources_keep_limits_and_no_published_ports_or_host_mounts(self):
         args=module.private_limits('owned-test','private-internal-network','65534:65534')
         for option,value in [('--network','private-internal-network'),('--user','65534:65534'),
