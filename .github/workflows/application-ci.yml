@@ -98,6 +98,8 @@ jobs:
           python3 tests/privacy-ner-service.test.py
           python3 tests/privacy-ner-service-evaluation.test.py
           python3 tests/privacy-api-evaluation.test.py
+          python3 tests/privacy-release-preflight.test.py
+          python3 -m py_compile scripts/deploy/preflight-privacy-release.py
           python3 -m py_compile scripts/deploy/evaluate-privacy-api.py scripts/deploy/stage-and-evaluate-privacy-api.py
           node --check tests/privacy-api.integration.mjs
           python3 -m py_compile services/privacy-ner/server.py scripts/deploy/evaluate-privacy-ner-service.py

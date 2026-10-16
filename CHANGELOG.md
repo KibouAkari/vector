@@ -6,6 +6,11 @@ Production deployments are tracked separately.
 
 ## 2026-10-16
 
+### Privacy release preparation after enabled API qualification
+
+- Owner pipeline at a20b9a6 passed the rebuilt staging image, 75 tests and the full privacy-enabled real app/native service/disposable PostgreSQL qualification, including the previously failing project metadata assertion. All 13 normal/outage checks passed. Six synthetic jobs remained queued; none executed, no cloud model was called, temporary resources were removed and production stayed unchanged. Preserve bounded synthetic evaluation evidence. Feature PR #30 merged as ba30c82 after all observed gates and CI passed.
+- Prepare a read-only production release inventory using the existing archived helper factory. Report only selected release/profile hashes and flags, plus active helper program definitions without resolved Compose/environment values. No helper main/rollback is executed, no restart or model request occurs, and production activation remains pending. The archived release implementation exists only on the owner's server, so its exact active behavior must be inspected before adapting source/image release and rollback around the already enabled local-worker profile.
+
 ### Project job metadata privacy boundary (#30)
 
 - Owner API qualification at ff11044 reached the project-job assertion after earlier consent/local/history/upload/image checks, then correctly stopped because the durable privacy finding metadata still contained the original email. Reproduce the failure with the actual project route in a focused regression. Store placeholders for noncredential finding displays, full bullets for credentials (no prefixes/suffixes), and apply the confirmed privacy plan to retrieved filenames. Keep the pre-send local consent display and the full queued-payload expectations intact.
