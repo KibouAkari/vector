@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-17 — Guarded chat controls release qualification
+## 2026-10-17 — Guarded chat controls release qualification (PR #42)
 
 - Owner evidence now confirms PR #41's actual Host Agent read and isolated application staging at e8b6b6e690aa893e3fc0a0641e07261c0414ffc6: 50 complete saved statistics files; Auto/Local/Normal and privacy-off queued-job checks passed. Production was unchanged, with no model/cloud calls or exported player records.
 - Reuse the exact observed staging image sha256:5a2ee0f4b1b169114da5608a8a33f0ca08ce00c4016873208fa1d5518901f87d. A new owner pipeline qualifies native privacy on/off, original restoration and local-only routing against that image, including detector outage. No rebuild or provider call is requested.

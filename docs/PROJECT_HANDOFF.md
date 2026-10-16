@@ -111,7 +111,7 @@ Auto/native local statistics use only /opt/fegcraft-updated/data/usercache.json 
 The owner completed both phases; exact evidence and the remaining release step follow. Local regressions passed; browser UI and real provider execution remain pending. No Minecraft installation or announcement has been performed.
 
 
-## Observed PR #41 qualification and next release
+## Observed PR #41 qualification and PR #42 release preparation
 
 PR #41 merged as 2f5b8e866f613b336ed24b5242dc93e535c985bc with the exact tree of tested e8b6b6e690aa893e3fc0a0641e07261c0414ffc6. The owner has completed the pending native read and staging phases above; do not repeat those phases or rebuild this image.
 
