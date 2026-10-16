@@ -24,6 +24,14 @@ public final class VectorAddonTest {
         });
         body.onNext(List.of(ByteBuffer.wrap(new byte[8193])));
         if (!cancelled[0] || !body.getBody().toCompletableFuture().isCompletedExceptionally()) throw new AssertionError("Body limit absent");
+        VectorAddon.LimitedBody late = new VectorAddon.LimitedBody();
+        late.abort();
+        boolean[] lateCancelled = {false};
+        late.onSubscribe(new Flow.Subscription() {
+            public void request(long n) { throw new AssertionError("Cancelled body requested data"); }
+            public void cancel() { lateCancelled[0] = true; }
+        });
+        if (!lateCancelled[0]) throw new AssertionError("Late body subscription escaped cancellation");
         Path directory = Files.createTempDirectory("vector-introduction-test");
         try {
             Path marker = directory.resolve("intro");

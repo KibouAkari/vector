@@ -178,9 +178,18 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     static final class LimitedBody implements HttpResponse.BodySubscriber<byte[]> {
         private final CompletableFuture<byte[]> result = new CompletableFuture<>();
         private final ByteArrayOutputStream body = new ByteArrayOutputStream();
-        private Flow.Subscription subscription;
+        private volatile Flow.Subscription subscription;
+        private volatile boolean aborted;
         public CompletionStage<byte[]> getBody() { return result; }
-        public void onSubscribe(Flow.Subscription value) { subscription = value; value.request(Long.MAX_VALUE); }
+        public void onSubscribe(Flow.Subscription value) {
+            subscription = value;
+            if (aborted) value.cancel(); else value.request(Long.MAX_VALUE);
+        }
+        void abort() {
+            aborted = true;
+            if (subscription != null) subscription.cancel();
+            result.completeExceptionally(new IOException("REQUEST_CANCELLED"));
+        }
         public void onNext(List<ByteBuffer> buffers) {
             for (ByteBuffer buffer : buffers) {
                 if (body.size() + buffer.remaining() > 8192) {
@@ -205,7 +214,18 @@ public final class VectorAddon implements DiscordIntegrationAddon {
                 .header("Content-Type", "application/json").header("X-Vector-Time", timestamp)
                 .header("X-Vector-Signature", sign(key, timestamp, body))
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
-            HttpResponse<byte[]> response = client.send(request, ignored -> new LimitedBody());
+            // Explicit wall deadline includes a slow/dribbling response body;
+            // HttpRequest timeout alone can stop covering after headers arrive.
+            LimitedBody subscriber = new LimitedBody();
+            CompletableFuture<HttpResponse<byte[]>> future = client.sendAsync(request, ignored -> subscriber);
+            HttpResponse<byte[]> response;
+            try {
+                response = future.get(27, TimeUnit.SECONDS);
+            } catch (Exception failure) {
+                subscriber.abort();
+                future.cancel(true);
+                throw failure;
+            }
             byte[] raw = response.body();
             if (response.statusCode() != 200 || raw.length > 8192) return;
             JsonObject result = gson.fromJson(new String(raw, StandardCharsets.UTF_8), JsonObject.class);
