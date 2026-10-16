@@ -62,3 +62,12 @@ test('Minecraft statistics without a named server still require real tools',()=>
     assert.equal(classify(prompt).requirements.server,true);
   }
 });
+
+test('German own-server read requests require the existing server tool path',()=>{
+  for(const taskText of ['Kannst du meinen Server vollständig auslesen?', 'Zeige die Konfiguration meines Servers', 'Lies die Dateien auf meinem Server']) {
+    const result=classifyExecution({taskText,allowServer:true});
+    assert.equal(result.requirements.server,true);
+    assert.equal(result.requirements.functionTools,true);
+    assert.equal(classifyExecution({taskText,allowServer:false}).requirements.server,false);
+  }
+});
