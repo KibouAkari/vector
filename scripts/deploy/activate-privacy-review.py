@@ -251,6 +251,20 @@ def rollback(h, record_path, manual=False):
     print('Privacy feature rollback confirmed. Local workers and qualified app retained.')
 
 
+def install_code(h, code_dir):
+    hashes = {}
+    for name, path in [('server.py', 'services/privacy-ner/server.py'), ('privacy-ner-core.py', 'lib/privacy-ner-core.py')]:
+        # The inspected archived run() returns bytes (also used by write_bytes
+        # during source release). Preserve exact Git bytes and trailing newlines.
+        data = h['run']('git', '-C', str(REPO), 'show', TESTED + ':' + path)
+        if not isinstance(data, bytes):
+            raise RuntimeError('Archived byte-output helper contract changed.')
+        ast.parse(data)
+        h['atomic'](code_dir / name, data, 0o644, 0, 0)
+        hashes[name] = digest(data)
+    return hashes
+
+
 def main():
     os.umask(0o077)
     if os.geteuid() != 0:
@@ -303,12 +317,7 @@ def main():
         code_dir = DIRECTORY / ('code-' + TESTED)
         code_dir.mkdir(mode=0o755)
         code_dir.chmod(0o755)  # bind-root access despite root's 0077 umask
-        code_hashes = {}
-        for name, path in [('server.py', 'services/privacy-ner/server.py'), ('privacy-ner-core.py', 'lib/privacy-ner-core.py')]:
-            data = h['run']('git', '-C', str(REPO), 'show', TESTED + ':' + path).encode()
-            ast.parse(data)
-            h['atomic'](code_dir / name, data, 0o644, 0, 0)
-            code_hashes[name] = digest(data)
+        code_hashes = install_code(h, code_dir)
         token = DIRECTORY / 'token'
         h['atomic'](token, (secrets.token_hex(32) + '\n').encode(), 0o444, 0, 0)
         service = native_service(code_dir, token, stamp)

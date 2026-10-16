@@ -50,6 +50,23 @@ def base_and_profile():
 
 
 class CandidateTests(unittest.TestCase):
+    def test_install_preserves_archived_byte_output_and_exact_source(self):
+        data = '# Unicode source: Zoë\nvalue = 1\n\n'.encode('utf8')
+        with tempfile.TemporaryDirectory() as directory:
+            code = Path(directory)
+            calls = []
+            def atomic(path, content, mode, uid, gid):
+                calls.append((mode, uid, gid))
+                path.write_bytes(content)
+            h = {'run': lambda *args: data, 'atomic': atomic}
+            hashes = a.install_code(h, code)
+            self.assertEqual((code / 'server.py').read_bytes(), data)
+            self.assertEqual((code / 'privacy-ner-core.py').read_bytes(), data)
+            self.assertEqual(set(hashes.values()), {a.digest(data)})
+            self.assertEqual(calls, [(0o644, 0, 0)] * 2)
+            with self.assertRaisesRegex(RuntimeError, 'byte-output'):
+                a.install_code(dict(h, run=lambda *args: data.decode()), code)
+
     def test_preserve_raw_configuration_and_indentless_sequences(self):
         service = a.native_service('/code', '/token', 'stamp')
         candidate = a.candidate_bytes(RAW, service, '/token').decode()
