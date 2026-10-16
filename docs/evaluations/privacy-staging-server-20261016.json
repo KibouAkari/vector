@@ -1,0 +1,16 @@
+{
+  "revision": "b91604860fc192aa4bde94cc9be5d29107312633",
+  "image": "vector-app:staging-b916048-20261016T074803Z-daf5bb",
+  "image_id": "sha256:ea6917c94e64d96af103206ed75eec7d77194ed0221bb0057a0baa67d60d4f00",
+  "passed": true,
+  "source": "Owner-provided staging output 2026-10-16",
+  "tests": 74,
+  "failures": 0,
+  "authenticated_chat_file_project_server_checks": true,
+  "privacy_review_enabled": false,
+  "cloud_calls": 0,
+  "production_unchanged": true,
+  "temporary_services_removed": true,
+  "production_deployed": false,
+  "limitation": "Baseline authenticated HTTP and build coverage; privacy-enabled send/consent API qualification remains pending."
+}

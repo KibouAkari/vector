@@ -89,6 +89,23 @@ jobs:
           bash -n scripts/deploy/stage-local-workers.sh
           node --test tests/local-workers.test.mjs
 
+      - name: Test explicit local privacy review and isolated execution
+        run: |
+          node --test tests/privacy-review.test.mjs tests/privacy-routes.test.mjs tests/privacy-ner-client.test.mjs
+          python3 tests/privacy-evaluation.test.py
+          python3 tests/privacy-ner-pilot.test.py
+          python3 tests/privacy-ner-context.test.py
+          python3 tests/privacy-ner-service.test.py
+          python3 tests/privacy-ner-service-evaluation.test.py
+          python3 tests/privacy-api-evaluation.test.py
+          python3 -m py_compile scripts/deploy/evaluate-privacy-api.py scripts/deploy/stage-and-evaluate-privacy-api.py
+          node --check tests/privacy-api.integration.mjs
+          python3 -m py_compile services/privacy-ner/server.py scripts/deploy/evaluate-privacy-ner-service.py
+          python3 -m py_compile lib/privacy-ner-core.py
+          python3 -m py_compile scripts/deploy/pilot-privacy-ner.py
+          python3 -m py_compile scripts/deploy/evaluate-privacy-review.py
+          bash -n scripts/deploy/stage-privacy-review.sh
+
       - name: Test local JSON ranking aggregation and cost metadata
         run: |
           node --test tests/server-json-rankings.test.mjs
@@ -132,6 +149,7 @@ jobs:
           fi
           node --test tests/project-access-api.integration.test.mjs
           node --test tests/usage-attribution.integration.test.mjs
+          node --test tests/privacy-vault.integration.test.mjs
           node --test tests/local-workers-db.integration.test.mjs
           node --test tests/model-intelligence-api.integration.test.mjs
 

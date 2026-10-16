@@ -17,6 +17,7 @@ import ReactMarkdown
 import remarkGfm
   from "remark-gfm";
 
+import {usePrivacySend} from '../../../components/ui/privacy-review-dialog';
 import ProjectFilesWorkspace from "./project-files-workspace";
 
 const PRIVACY_NAMES = {
@@ -201,6 +202,8 @@ export default function ProjectWorkbench({
 
   const chatBottomRef =
     useRef(null);
+  const chatGenerationRef = useRef(0);
+  useEffect(()=>()=>{chatGenerationRef.current+=1;},[project.id]);
 
   const [
     tab,
@@ -473,6 +476,7 @@ export default function ProjectWorkbench({
   async function loadConversation(
     id
   ) {
+    chatGenerationRef.current+=1;
     if (!id) {
       setConversationId(
         null
@@ -842,6 +846,8 @@ export default function ProjectWorkbench({
     }
   }
 
+  const {privacySend,privacyDialog} = usePrivacySend(`${project.id}:${conversationId || 'new'}`);
+
   async function sendProjectMessage(
     event
   ) {
@@ -857,6 +863,7 @@ export default function ProjectWorkbench({
       return;
     }
 
+    const generation=chatGenerationRef.current;
     const tempId =
       `user-${Date.now()}`;
 
@@ -890,37 +897,17 @@ export default function ProjectWorkbench({
     );
 
     try {
-      const response =
-        await fetch(
-          `/api/projects/${project.id}/chat`,
-          {
-            method:
-              "POST",
+      const response = await privacySend(`/api/projects/${project.id}/chat`,{
+        message:text,conversationId,mode:chatMode
+      });
 
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
+      const data = await response.json();
+      if(generation!==chatGenerationRef.current) return;
 
-            body:
-              JSON.stringify({
-                message:
-                  text,
-
-                conversationId,
-
-                mode:
-                  chatMode
-              })
-          }
-        );
-
-      const data =
-        await response.json();
-
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
+        setChatInput(text);
+        setChatMessages(current=>current.filter(message=>message.id!==tempId));
+        if (data.privacyCancelled) return;
         setToast({
           title:
             "Vector could not continue",
@@ -937,6 +924,23 @@ export default function ProjectWorkbench({
       );
 
       await refreshConversations();
+      if (data.background && data.jobId) {
+        let job;
+        for (let attempt=0;attempt<300;attempt+=1) {
+          await new Promise(resolve=>setTimeout(resolve,1000));
+          if(generation!==chatGenerationRef.current) return;
+          const poll=await fetch(`/api/jobs/${data.jobId}`,{cache:'no-store'});
+          if (!poll.ok) throw new Error('Job could not be loaded');
+          job=await poll.json();
+          if (!['queued','running'].includes(job.status)) break;
+        }
+        if (job?.status!=='completed') throw new Error('Job did not complete');
+        const transcript=await fetch(`/api/projects/${project.id}/conversations/${data.conversationId}`,{cache:'no-store'});
+        if (!transcript.ok) throw new Error('Conversation could not be loaded');
+        const finished=await transcript.json();
+        if(generation===chatGenerationRef.current) setChatMessages(finished.messages || []);
+        return;
+      }
 
       setChatMessages(
         (
@@ -963,15 +967,6 @@ export default function ProjectWorkbench({
         ]
       );
 
-      if (
-        data.privacy
-          ?.protected
-      ) {
-        setPrivacyNotice(
-          data.privacy.values
-        );
-      }
-
       notifyDone(
         "Vector finished",
         "Your project answer is ready."
@@ -994,6 +989,7 @@ export default function ProjectWorkbench({
 
   return (
     <div className="project-workbench vp-workspace">
+      {privacyDialog}
       <input ref={uploadRef} hidden multiple type="file"
         disabled={!canEdit || uploading}
         onChange={event => {
@@ -1490,6 +1486,7 @@ export default function ProjectWorkbench({
                   Auto
                 </option>
 
+                <option value="local">Lokal</option>
                 <option value="normal">
                   Normal
                 </option>

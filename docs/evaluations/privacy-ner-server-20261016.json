@@ -1,0 +1,104 @@
+{
+  "revision": "7cedc0ad9fe8e216670dce93fa90c8f865f52c5b",
+  "model": "urchade/gliner_multi_pii-v1",
+  "model_revision": "1fcf13e85f4eef5394e1fcd406cf2ca9ea82351d",
+  "backbone_revision": "a0484667b22365f84929a935b5e50a51f71f159d",
+  "pilot_image": "vector-privacy-ner:pilot-20261016t055812z-c8e81e",
+  "pilot_image_id": "sha256:8f8a8d6b613b814b4bac7eb9d9f7e134a0cd2d27bdcb27b18f0211efef4e0058",
+  "passed": true,
+  "offline_inference": true,
+  "production_activated": false,
+  "cloud_calls": 0,
+  "api_cost_chf": 0,
+  "production_unchanged": true,
+  "observed_at": "2026-10-16T05:58:12Z",
+  "environment": "Owner server; synthetic offline qualification",
+  "case_results": [
+    {
+      "id": "german-name-email-password",
+      "passed": true,
+      "seconds": 0.801
+    },
+    {
+      "id": "english-name",
+      "passed": true,
+      "seconds": 0.151
+    },
+    {
+      "id": "first-name",
+      "passed": true,
+      "seconds": 0.136
+    },
+    {
+      "id": "unicode-name",
+      "passed": true,
+      "seconds": 0.149
+    },
+    {
+      "id": "instruction-in-evidence",
+      "passed": true,
+      "seconds": 0.164
+    },
+    {
+      "id": "english-first-name",
+      "passed": true,
+      "seconds": 0.132
+    },
+    {
+      "id": "hyphenated-name",
+      "passed": true,
+      "seconds": 0.129
+    },
+    {
+      "id": "software-only",
+      "passed": true,
+      "seconds": 0.13
+    },
+    {
+      "id": "benign",
+      "passed": true,
+      "seconds": 0.135
+    },
+    {
+      "id": "holdout-first-name",
+      "passed": true,
+      "seconds": 0.126
+    },
+    {
+      "id": "holdout-accented-name",
+      "passed": true,
+      "seconds": 0.126
+    },
+    {
+      "id": "holdout-greeting",
+      "passed": true,
+      "seconds": 0.12
+    },
+    {
+      "id": "holdout-two-people",
+      "passed": true,
+      "seconds": 0.125
+    },
+    {
+      "id": "holdout-other-software",
+      "passed": true,
+      "seconds": 0.129
+    },
+    {
+      "id": "holdout-ordinary-sentence",
+      "passed": true,
+      "seconds": 0.124
+    },
+    {
+      "id": "holdout-security-task",
+      "passed": true,
+      "seconds": 0.148
+    }
+  ],
+  "load_seconds": 5.813,
+  "peak_rss_kib": 2815740,
+  "long_context_qualified": false,
+  "weight_sha256": "cd7aa7a88fe1cdc03ac8e3c2940708d245a9744f4b7102d758e4d0618abb6829",
+  "mode_before": "0o600",
+  "mode_after": "0o444"
+}

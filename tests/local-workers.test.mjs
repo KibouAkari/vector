@@ -8,6 +8,7 @@ const context = () => ({userId:'fixture-user',jobId:'fixture-job',allowLocalWork
 const body = () => ({done:true,done_reason:'stop',message:{content:'{"players":3,"deaths":null}'},prompt_eval_count:60,eval_count:13});
 const options = {enabled:true,exclusive: execute=>execute(),request:async()=>body()};
 function load(path, bindings, names) {
+  bindings={restoreLocalToolArguments:(_name,args)=>args,protectToolEvidence:async()=>null,...bindings};
   const source=readFileSync(new URL(path,import.meta.url),'utf8')
     .replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'').replace(/^export\s+/gm,'');
   return new Function(...Object.keys(bindings),source+`\nreturn {${names.join(',')}};`)(...Object.values(bindings));

@@ -6,6 +6,7 @@ import {readServerJsonRankings} from '../lib/server-json-rankings.mjs';
 import {assertRequestedArtifactFormat, toolsForArtifactFormat} from '../lib/artifact-format-policy.mjs';
 
 function load(path, bindings, names) {
+  bindings={restoreLocalToolArguments:(_name,args)=>args,protectToolEvidence:async()=>null,...bindings};
   const source = readFileSync(new URL(path, import.meta.url), 'utf8')
     .replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm, '')
     .replace(/^export\s+/gm, '');

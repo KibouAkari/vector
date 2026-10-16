@@ -1,3 +1,4 @@
+import {reviewPrivacyRequest} from '../../../../../lib/privacy-review';
 import crypto from "node:crypto";
 
 import {
@@ -77,42 +78,15 @@ function titleFromMessage(
 }
 
 
-function privacyDisplay(
-  mappings
-) {
-  return mappings.map(
-    (mapping) => {
-      let value =
-        mapping.value;
-
-      if (
-        mapping.type ===
-          "PASSWORD" ||
-        mapping.type.includes(
-          "TOKEN"
-        ) ||
-        mapping.type.includes(
-          "KEY"
-        )
-      ) {
-        value =
-          value.length <= 4
-            ? "••••"
-            : `${value.slice(0, 2)}••••${value.slice(-2)}`;
-      }
-
-      return {
-        type:
-          mapping.type,
-
-        placeholder:
-          mapping.placeholder,
-
-        displayValue:
-          value
-      };
-    }
-  );
+function privacyDisplay(mappings) {
+  // Consent findings are displayed locally before submission. Durable job
+  // metadata must never carry those originals or credential prefixes/suffixes.
+  return mappings.map(mapping => ({
+    type: mapping.type,
+    placeholder: mapping.placeholder,
+    displayValue: /PASSWORD|TOKEN|KEY/.test(mapping.type)
+      ? '••••••••' : mapping.placeholder
+  }));
 }
 
 
@@ -267,28 +241,6 @@ export async function POST(
     );
   }
 
-  const userBudget =
-    await assertUserBudget(
-      session
-    );
-
-  if (
-    !userBudget.allowed
-  ) {
-    return Response.json(
-      {
-        error:
-          "USER_BUDGET_BLOCKED",
-
-        message:
-          userBudget.reason
-      },
-      {
-        status: 402
-      }
-    );
-  }
-
   const body =
     await request.json();
 
@@ -309,9 +261,7 @@ export async function POST(
         )
       : null;
 
-  if (
-    !originalMessage
-  ) {
+  if (!originalMessage || originalMessage.length > 100000) {
     return Response.json(
       {
         error:
@@ -354,20 +304,24 @@ export async function POST(
   const project =
     projectResult.rows[0];
 
+  const userBudget =
+    await assertUserBudget(
+      session
+    );
+
   if (
-    project.privacy_level ===
-      "local_only"
+    !userBudget.allowed && requestedMode !== 'local' && project.privacy_level !== 'local_only'
   ) {
     return Response.json(
       {
         error:
-          "LOCAL_ONLY",
+          "USER_BUDGET_BLOCKED",
 
         message:
-          "This project is Local Only. A local model will be connected in the Local Intelligence phase."
+          userBudget.reason
       },
       {
-        status: 403
+        status: 402
       }
     );
   }
@@ -417,42 +371,6 @@ export async function POST(
     }
   }
 
-  if (
-    !conversationId
-  ) {
-    conversationId =
-      crypto.randomUUID();
-
-    await db.query(
-      `
-        INSERT INTO conversations (
-          id,
-          project_id,
-          owner_user_id,
-          title,
-          created_at,
-          updated_at
-        )
-        VALUES (
-          $1,
-          $2,
-          $3,
-          $4,
-          NOW(),
-          NOW()
-        )
-      `,
-      [
-        conversationId,
-        projectId,
-        session.userId,
-        titleFromMessage(
-          originalMessage
-        )
-      ]
-    );
-  }
-
   const chunks =
     await searchProjectChunks({
       projectId,
@@ -474,44 +392,27 @@ export async function POST(
         "\n\n---\n\n"
       );
 
-  const promptPrivacy =
-    sanitizeForExternal(
-      originalMessage
-    );
+  const priorHistory = conversationId ? (await db.query(`SELECT role,content FROM messages
+    WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT 24`,[conversationId])).rows.reverse() : [];
+  let privacy;
+  try {
+    privacy = await reviewPrivacyRequest({text:[originalMessage,rawContext,...priorHistory.map(m=>m.content)].join('\n\n'),
+      body,session,scope:'project:'+projectId,conversationId,
+      destination:project.privacy_level==='local_only'||requestedMode==='local'?'local':'cloud'});
+  } catch {
+    return Response.json({error:'PRIVACY_REVIEW_FAILED',message:'Die lokale Datenschutzprüfung konnte nicht abgeschlossen werden. Es wurde nichts extern versendet. Bitte erneut prüfen oder den lokalen Textmodus wählen.'},
+      {status:503,headers:{'Cache-Control':'no-store'}});
+  }
+  if (privacy.response) return privacy.response;
+  const mappings = privacy.mappings;
+  const safeMessage = privacy.apply(originalMessage);
+  const safeContext = privacy.apply(rawContext);
 
-  const contextPrivacy =
-    sanitizeForExternal(
-      rawContext
-    );
+  const mode = privacy.destination === 'local' ? 'local' : determineTaskMode({message:safeMessage,requestedMode});
 
-  const mappings = [
-    ...promptPrivacy.mappings,
-    ...contextPrivacy.mappings
-  ];
+  const model = privacy.destination === 'local' ? 'vector-qwen3:1.7b-q8' : getModelForMode(mode);
 
-  await savePrivacyMappings({
-    conversationId,
-    mappings
-  });
-
-  const safeMessage =
-    promptPrivacy.sanitized;
-
-  const safeContext =
-    contextPrivacy.sanitized;
-
-  const mode =
-    determineTaskMode({
-      message:
-        safeMessage,
-      requestedMode
-    });
-
-  const model =
-    getModelForMode(mode);
-
-  const useWebSearch =
-    shouldUseWebSearch({
+  const useWebSearch = privacy.destination !== 'local' && shouldUseWebSearch({
       message:
         safeMessage,
       requestedMode:
@@ -555,9 +456,7 @@ export async function POST(
       taskSpent: 0
     });
 
-  if (
-    !costDecision.allowed
-  ) {
+  if (privacy.destination !== 'local' && !costDecision.allowed) {
     return Response.json(
       {
         error:
@@ -572,13 +471,19 @@ export async function POST(
     );
   }
 
+  if (!conversationId) {
+    conversationId = crypto.randomUUID();
+    await db.query(`INSERT INTO conversations (id,project_id,owner_user_id,user_id,title)
+      VALUES ($1,$2,$3,$3,$4)`,[conversationId,projectId,session.userId,titleFromMessage(safeMessage)]);
+  }
+  await savePrivacyMappings({conversationId,mappings});
+
   const requestHash =
     makeRequestHash({
       userId:
         session.userId,
       conversationId,
-      message:
-        safeMessage
+      message:safeMessage+'\nprivacy:'+privacy.destination+':'+(body.privacyDecision||'replace')
     });
 
   const duplicate =
@@ -627,37 +532,8 @@ export async function POST(
     ]
   );
 
-  const historyResult =
-    await db.query(
-      `
-        SELECT
-          role,
-          content
-        FROM messages
-        WHERE conversation_id = $1
-        ORDER BY created_at DESC
-        LIMIT 24
-      `,
-      [
-        conversationId
-      ]
-    );
-
-  const history =
-    historyResult.rows
-      .reverse()
-      .map(
-        (row) => ({
-          role:
-            row.role ===
-              "assistant"
-              ? "assistant"
-              : "user",
-
-          content:
-            row.content
-        })
-      );
+  const history = [...priorHistory.map(row=>({role:row.role==='assistant'?'assistant':'user',
+    content:privacy.apply(row.content)})),{role:'user',content:safeMessage}];
 
   if (
     safeContext
@@ -693,6 +569,8 @@ export async function POST(
       requestHash,
 
       payload: {
+        privacyPolicy:privacy.policy,
+        privacyDestination:privacy.destination,
         userId:
           session.userId,
 
@@ -730,7 +608,7 @@ export async function POST(
           chunks.map(
             (chunk) => ({
               file:
-                chunk.original_name,
+                privacy.apply(chunk.original_name),
               startLine:
                 chunk.start_line,
               endLine:
@@ -739,8 +617,7 @@ export async function POST(
           ),
 
         privacy: {
-          protected:
-            mappings.length > 0,
+          protected:privacy.wasSanitized,
 
           values:
             privacyDisplay(
