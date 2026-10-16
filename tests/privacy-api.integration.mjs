@@ -86,6 +86,13 @@ try {
   for(const as of ['alice','bob','disabled'])await login(as);
   const prompt='Bitte schreibe Erika Muster eine E-Mail an erika@example.invalid. Passwort: "synthetic privacy phrase".';
   const values=['Erika Muster','erika@example.invalid','synthetic privacy phrase'];
+  const beforeOff=await usage();
+  const off=await queued('/api/chat',{message:prompt+' Expliziter Datenschutz-Aus-Test '+phase,mode:'normal',privacyEnabled:false});
+  assert.equal(off.job.payload.privacyDestination,'cloud');
+  assert.equal(typeof off.job.payload.privacyPolicy,'string');assert.ok(off.job.payload.privacyPolicy.length>32);
+  assert.ok(off.job.payload.messages.some(m=>values.every(value=>m.content.includes(value))));
+  assert.equal(off.job.payload.privacy.disabled,true);assert.equal(await usage(),beforeOff);
+  check('explicit-off-preserves-original-and-skips-detector-'+phase);
   if(phase==='outage') {
     const before=await counts();
     const result=await (await call('/api/chat',{method:'POST',body:{message:prompt+' Noch nicht geprüfte neue Nachricht.',mode:'normal'},status:503})).json();
@@ -127,6 +134,11 @@ try {
     await call('/api/conversations/'+replaced.data.conversationId,{as:'bob',status:404});
     await call('/api/conversations/'+replaced.data.conversationId,{as:null,status:401});
     check('confirmed-job-is-masked-vault-encrypted-response-restored-and-account-isolated');
+    const offHistory=await queued('/api/chat',{message:'Bitte fasse die Nachricht kurz zusammen.',mode:'normal',
+      privacyEnabled:false,conversationId:replaced.data.conversationId});
+    assert.ok(offHistory.job.payload.messages.some(m=>m.content==='Antwort für Erika Muster'));
+    assert.ok(!JSON.stringify(offHistory.job.payload.messages).includes(person.placeholder));
+    assert.equal(await usage(),beforeConfirm);check('off-restores-owned-historical-placeholders-without-rescan');
     const original=await queued('/api/chat',{...input,privacyDecision:'original',privacyReviewToken:approval.token});
     assert.ok(original.job.payload.messages.some(m=>m.content===prompt));assert.equal(original.job.payload.privacyDestination,'cloud');
     assert.equal(await usage(),beforeConfirm);check('explicit-unchanged-send-preserves-original-without-rescan');
@@ -169,6 +181,9 @@ try {
     const localProject=await (await call('/api/projects',{method:'POST',body:{name:'Local synthetic project',privacyLevel:'local_only'}})).json();
     const localJob=await queued(`/api/projects/${localProject.project.id}/chat`,input);
     assert.equal(localJob.job.payload.privacyDestination,'local');assert.equal(await usage(),projectScans);
+    const offLocalProject=await queued(`/api/projects/${localProject.project.id}/chat`,{...input,privacyEnabled:false});
+    assert.equal(offLocalProject.job.payload.privacyDestination,'local');assert.equal(await usage(),projectScans);
+    check('privacy-off-cannot-override-local-only-project');
     check('project-retrieval-consent-ownership-and-local-only-routing');
     const reset='Hilf mir bei einer Mail zum password reset für security-demo.invalid.\n'+
       'der username ist benno beispiel und das password Demo-456\nbitte gib benno bescheid.';
@@ -198,3 +213,4 @@ try {
   console.log(JSON.stringify({passed:true,phase,checks,timings,queued_synthetic_jobs:jobs.length,
     executed_jobs:0,cloud_calls:0,api_cost_chf:0,isolated_database_writes:true,production_activated:false}));
 } finally {await db.end();}
+

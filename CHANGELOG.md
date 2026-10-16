@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-17 — Guarded chat controls release qualification (PR #42)
+
+- Owner evidence now confirms PR #41's actual Host Agent read and isolated application staging at e8b6b6e690aa893e3fc0a0641e07261c0414ffc6: 50 complete saved statistics files; Auto/Local/Normal and privacy-off queued-job checks passed. Production was unchanged, with no model/cloud calls or exported player records.
+- Reuse the exact observed staging image sha256:5a2ee0f4b1b169114da5608a8a33f0ca08ce00c4016873208fa1d5518901f87d. A new owner pipeline qualifies native privacy on/off, original restoration and local-only routing against that image, including detector outage. No rebuild or provider call is requested.
+- API success reports are now published only after temporary-resource cleanup and a final fingerprint of eight production containers and both Compose files. The app-only release requires the completed runtime baseline, actual read evidence and exact new API report, retaining fresh backups, image/source/Compose guards and rollback. Minecraft, worker, runner, databases and local inference/privacy services are retained.
+- Offline verification: seven new release-gate/pipeline regressions, eight existing evaluator regressions, shell/Python/Node syntax and preparation against the actual archived helper snapshots passed. Owner native API qualification, deployment, browser UI and real provider execution remain unverified until their outputs are observed.
+
 ## 2026-10-17 Chat controls and local server statistics (#41)
 
 Replace the web chat's always-visible mode tabs with a compact active-mode menu and add Auto as the default. Share the accessible controls with project chat. Add an explicit per-request privacy switch, default on: switching off skips prompt, provider and tool-evidence scans/replacement for that request using an authenticated encrypted job policy. Reject malformed preferences and keep login, project/server permissions, local-only project routing and budget boundaries independent of that switch. Earlier placeholders from the same conversation are restored locally under the explicit off choice so historical context stays coherent. Local execution no longer depends on the privacy feature flag.
@@ -408,3 +415,4 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The owner observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at vector-privacy-composer-release-20261016T123251Z-4139a9. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
+
