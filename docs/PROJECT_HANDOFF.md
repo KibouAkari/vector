@@ -65,6 +65,10 @@ Still required:
 
 ## FEGCraft foundation and integration plan
 
+Owner update 2026-10-16: input integration is Minecraft only; reuse existing Discord forwarding/output. No separate Discord listener. Verified that Discord-origin system messages do not invoke the Minecraft player hook, so they do not automatically trigger the assistant.
+
+New source phase: a disabled-by-default Discord Integration addon compiles against the actual Fabric 26.2 / 3.2.1 nested API; private HMAC Python transport and deterministic statistics, persistent limits/replays and optional local-only knowledge adapter are implemented. Nine new Python tests plus Java interoperability/output/body/intro checks pass locally. Existing ten foundation tests remain. No addon installed, service activated, model called or introduction sent. Read docs/FEGCRAFT_ASSISTANT.md and run the pinned read-only fegcraft-chat-preflight.py on the owner server next. Real-game/relay, isolated service packaging, restricted CPU-slot role, model quality/usage and guarded install/rollback remain unqualified.
+
 Actual installed environment reported by owner: Minecraft 26.2, Fabric loader 0.19.5, Discord Integration 3.2.1. Do not reuse old 1.21.x APIs without verifying exact version.
 
 Existing script /opt/fegcraft-updated/fegcraft-stats.py uses json/pathlib and sum_category, ticks_to_hours, cm_to_km, print_top10. Its source stays off Git. Collector data paths are operator-configured:
@@ -76,10 +80,10 @@ Foundation modules in services/fegcraft-assistant:
 - stats.py: bounded regular-file reads, no final symlink following, saved timestamps and coverage, five categories (playtime/distance/mob kills/player kills/deaths), exact player lookup, ties, refuse definitive records when files/names are incomplete.
 - Playtime ticks / 72000; distance sums walk, sprint, swim, elytra, boat, horse, minecart counters / 100000 km. This scope follows the existing owner report.
 - policy.py: anchored greeting admission, safe display names, bounded canonical-event dedup, authenticated-principal rate limits. Limiter/dedup are process-local, not durable or a deployed security boundary.
-- docs/FEGCRAFT_ASSISTANT.md states limitations. No chat adapter, model invocation or message sending exists in these modules.
+- docs/FEGCRAFT_ASSISTANT.md states limitations. These original foundation modules themselves do not invoke models or send messages; the new addon/transport phase above is separate and not activated.
 
 Next integration work:
-1. Verify exact installed Discord Integration 3.2.1/Fabric 26.2 APIs using primary source. Existing linked chat should provide authenticated author identity and canonical relay event identity.
+1. Reconcile installed JAR/network/mount/coverage with the new read-only preflight. Official 26.2/3.2.1 API and public release packaging were verified and the addon compiles; exact owner runtime callback/relay qualification is still required.
 2. Provide narrow read-only statistics/mod/recipe sources to local execution. Prefer deterministic retrieval/calculation for records; give the local model only bounded approved facts. No arbitrary filesystem/shell tools.
 3. Apply topic/output policy before public sending, neutral handling of administrative allegations, no seed/credentials/commands/private memory. Add version/mod-aware Minecraft knowledge with provenance; never fabricate recipes.
 4. Implement local-only inference, bounded work queues, limits and durable dedup/introduction state. No cloud fallback. Format concise channel-specific replies with author greeting.

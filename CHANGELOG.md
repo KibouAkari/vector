@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-16 Minecraft chat bridge components
+
+Implement the owner-requested Minecraft-only input addon using the existing Discord Integration 3.2.1 bridge and its configured output channel; no separate Discord listener. Verify the official 26.2 source and actual public release hash/nested API packaging, compile against that exact API, and preserve normal chat. Add bounded asynchronous signed private requests, server-thread identity/delivery, persistent hashed rate/replay state, deterministic saved statistics and disabled optional local knowledge using the shared CPU slot. Keep addon/introduction/knowledge inactive until owner qualification; persist an at-most-once introduction attempt rather than claiming acknowledged delivery.
+
+Nine new Python runtime/actual HTTP tests pass locally, alongside Java HMAC, output, response-limit and durable introduction-claim checks. Add them to CI with the existing ten foundation tests. Prepare a read-only owner preflight for installed JAR/network/mount/stat coverage/model availability. No production configuration/database changed, model inference performed or message sent. Real-game/relay, private service packaging, restricted DB role, model quality/usage, custom Minecraft head, isolated owner staging and guarded installation remain pending. Update owner preferences and handoff with the Minecraft-only input scope and Discord-origin hook limitation.
+
 ## 2026-10-16 Runtime deployment confirmation (#36)
 
 Record the owner's read-only confirmation that the qualified runtime release is already deployed. Running image, release status/commit/image, active Compose bytes and source tree hash match. App is running with no OOM; diagnostic left Compose unchanged. Update the project handoff and final PR merge ledger. No restart, model request, new cutover or fresh HTTP health check is performed by this documentation update.
