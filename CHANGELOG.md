@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-16 FEGCraft assistant foundation
+
+Add read-only bounded statistics, deterministic rankings with ties and coverage checks, explicit greeting admission and per-user/global rate limits. Ten synthetic Python tests pass locally. Emoji-free introduction text prepared. Chat adapter, durable one-time delivery, knowledge sources and runtime/deployment remain pending; this foundation does not send messages or invoke models.
+
+## 2026-10-16
+
+Prepare an app-only release of qualified compact privacy review (feature PR #32). Pin tested/merged trees and staged image; require the successful native API report and exact existing activation profile. Preserve both local inference containers. Shell/Python syntax and archived wrapper preparation tested locally without executing deployment. Production deployment pending owner execution. Generated rollback restores the previous app/source while retaining the active privacy service.
+
 2026-10-16 — Privacy composer follow-up (#32): reject contextual contact labels misclassified as people, preserve ambiguous names and credential types, and retain the real API preview assertion. All 36 targeted local Node tests pass. Native server retest remains pending.
 
 This changelog documents repository changes by date, with commit and pull
