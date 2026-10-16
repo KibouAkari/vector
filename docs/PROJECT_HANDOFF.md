@@ -1,6 +1,6 @@
 # Vector project handoff
 
-Updated 2026-10-17 after owner actual server-read/application staging success and preparation of the guarded chat-controls release. Read OWNER_PREFERENCES.md, AGENTS.md and current repository status first. This document preserves decisions and evidence, not secret values or a substitute for a live-state check.
+Updated 2026-10-17 after owner-confirmed native privacy qualification and successful chat-controls production release. Read OWNER_PREFERENCES.md, AGENTS.md and current repository status first. This document preserves decisions and evidence, not secret values or a substitute for a live-state check.
 
 ## First steps in a new chat
 
@@ -19,11 +19,11 @@ The owner runs root commands on Debian. Repository /root/vector-workspace/github
 | Composer release record | /root/vector-workspace/releases/vector-privacy-composer-release-20261016T123251Z-4139a9/release.json; saved status/commit/image still match that release |
 | Repeated runtime attempt | Script from f6e327a209b49127f331755bdc188e787eae374c stopped at the old-profile guard because the qualified runtime release was already deployed |
 | Latest read-only diagnostic | Qualified image running, no OOM; completed runtime release record matches commit, image, active Compose bytes and current source tree hash; Compose unchanged by diagnostic |
-| Current runtime deployment | CONFIRMED by owner read-only evidence: vector-runtime-privacy-release-20261016T165856Z-c0c023 has status deployed; commit 60adca9398dff938e97df4f00bf8a2c476dde907 and qualified image c33a1b8 match actual runtime/source/Compose. No repeat deployment is needed |
+| Current app deployment | CONFIRMED by owner successful guarded release: vector-chat-controls-release-20261016T233346Z-341cd8, commit 2f5b8e866f613b336ed24b5242dc93e535c985bc, image 5a2ee0f. Source synchronized, persistent Compose image pin and app health passed. Do not repeat the release |
 | Native privacy service | Previously activated private authenticated GLiNER service; local workers retained; model unloads after 300 idle seconds |
 | Local inference | Private vector-local-inference, Qwen 1.7B extraction/text and Hermes 8B summaries; no public inference ports |
 
-Runtime qualification pins:
+Historical runtime qualification pins (superseded by the chat-controls deployment below):
 - Tested source 86110826e2c1b4205ad5e39f5dca7213bcdfc664; identical merged source 60adca9398dff938e97df4f00bf8a2c476dde907.
 - Image sha256:c33a1b853a16602e9413f4784de85337135288f55cf2437e6516b46ccfd463c0; tag vector-app:staging-8611082-20261016T162644Z-22f9a2.
 - Staging report /root/vector-workspace/releases/vector-privacy-staging-20261016T162644Z-22f9a2/staging-result.json.
@@ -53,7 +53,7 @@ Implemented source:
 - Explicit original/replacement consent; encrypted vault/policy; local response restoration; deterministic credential detection and native PERSON detection; exact-span/boundary replacements.
 - Exact per-account successful scan cache, bounded size and five-minute TTL; uncached segments batched; local encoder usage kept separate from billable cloud tokens.
 - Runtime route fix: a new standalone email-writing task no longer inherits Minecraft tooling merely because it contains a word equivalent to “for”. Short player continuations still request real server data.
-- Local text executor now blocks unsupported live/tool lookups before inference instead of inventing server stats. It still has no server data access.
+- Local text executor now blocks unsupported live/tool lookups before inference instead of inventing server stats. That older deployed version had no server data access; the newly deployed chat controls add the narrow deterministic statistics reader described below.
 - New tool secrets under original-send consent are blocked before that tool evidence is exported. Error wording now distinguishes this from the prompt already sent.
 
 Still required:
@@ -104,24 +104,42 @@ The owner preflight has no pending retry. New evaluator source prepares only a p
 
 Owner update 2026-10-17 takes priority before final Minecraft installation. Replace visible Low/Normal/High/Search/Lokal tabs with a small active-mode menu plus Auto. Add a separate names/credentials privacy switch. This is explicitly authorized for the owner's outgoing request, not permission to disable login/project/server access checks or command restrictions.
 
-PR #41, branch feat/chat-controls-local-data-20261017, implements default Auto and default-on request privacy. The off choice restores this conversation's old placeholders locally and is sealed into a user-bound job policy; a loose payload flag cannot disable worker protection. Owner actual native read and application staging have now passed as recorded below. The current runtime image above is still the last deployed app until guarded release succeeds.
+PR #41, branch feat/chat-controls-local-data-20261017, implements default Auto and default-on request privacy. The off choice restores this conversation's old placeholders locally and is sealed into a user-bound job policy; a loose payload flag cannot disable worker protection. Owner actual native read and application staging have now passed as recorded below. The owner has now successfully deployed this exact app as recorded below.
 
 Auto/native local statistics use only /opt/fegcraft-updated/data/usercache.json and world/players/stats via the existing read-only Host Agent, at most 120 complete files. Five categories match the existing collector convention. No raw files enter a model. Exact player/rank/tie/positive-record output includes saved-file provenance; incomplete/invalid/unnamed/unknown-player requests fail. A conservative native grammar rejects mixed tasks and conceptual explanations; follow-ups stop at the latest standalone request. The executor selects from restored requestText/safeOriginalMessage, not appended retrieved evidence. Menu options render in a viewport-positioned body portal. Missing player stats and explicit null counters fail. Auto does not steal PDF/file/credential tasks; other requests retain the existing tool-capable cloud path. Explicit Lokal still refuses unsupported tools and never falls back to a cloud provider. It is not arbitrary local model filesystem access.
 
-The owner completed both phases; exact evidence and the remaining release step follow. Local regressions passed; browser UI and real provider execution remain pending. No Minecraft installation or announcement has been performed.
+The owner completed native read, staging, native API qualification and guarded release; exact evidence follows. Local regressions passed; browser UI and real provider execution remain pending. No Minecraft installation or announcement has been performed.
 
 
-## Observed PR #41 qualification and PR #42 release preparation
+## Observed PR #41 / #42 production release
 
 PR #41 merged as 2f5b8e866f613b336ed24b5242dc93e535c985bc with the exact tree of tested e8b6b6e690aa893e3fc0a0641e07261c0414ffc6. The owner has completed the pending native read and staging phases above; do not repeat those phases or rebuild this image.
 
 - Actual Host Agent check: /root/vector-workspace/releases/vector-chat-server-read-20261016T231729Z-306171/result.json. Passed, snapshot available, statistics complete, 50 files, production unchanged, no model/cloud calls, no exported player records.
 - Application staging: /root/vector-workspace/releases/vector-chat-controls-staging-20261016T231731Z-6a08fa/staging-result.json. Passed existing auth/history/files/project checks plus Auto/Local/Normal, boolean preference, account-bound sealed policy and queued-unexecuted privacy-off checks. Temporary services removed; production and main checkout unchanged.
 - Exact qualified image: sha256:5a2ee0f4b1b169114da5608a8a33f0ca08ce00c4016873208fa1d5518901f87d, tag vector-app:staging-e8b6b6e-20261016T231731Z-6a08fa.
-- Current live baseline remains runtime commit 60adca9398dff938e97df4f00bf8a2c476dde907 / image c33a1b8 / runtime release vector-runtime-privacy-release-20261016T165856Z-c0c023 until a new deployment is observed. The controls have NOT yet been reported deployed.
+- Current live app is now commit 2f5b8e866f613b336ed24b5242dc93e535c985bc / image 5a2ee0f, confirmed by the owner successful release below. The older runtime baseline c33a1b8 is historical.
 
-Next owner entry point: scripts/deploy/qualify-and-release-chat-controls.py with immutable VECTOR_CHAT_RELEASE_REV from the reviewed ops PR, fetched as an ancestor of origin/main. It reuses the exact image above and qualifies the privacy-enabled built app plus private native model on a fresh disposable database, with no worker or cloud credentials. Synthetic normal/outage requests test explicit off without scans, default-on fail-closed behavior, historical restoration and local-only project enforcement. Only completed cleanup and a final unchanged eight-container/two-Compose fingerprint publish a successful report. This invokes real local NER inference only inside the isolated service, not Ollama or a cloud provider.
 
-Only after that qualification succeeds does the same runner invocation start scripts/deploy/release-chat-controls.sh. It verifies completed runtime release/source/image/Compose baseline and exact owner read/staging/API evidence, takes fresh backups, and changes only app source and app image pin/container. It retains worker, runner, PostgreSQL, Redis, NER, Ollama and Minecraft identities. Existing archived release machinery preserves health checks, guarded rollback and exact tested/merged tree equality. A stale or changed baseline stops without guard bypass. The release records commit 2f5b8e8 (the source matching the app image), not the later ops-only revision. Source Git checkout must remain clean main at the confirmed runtime or target revision; unknown checkout changes require diagnosis.
+Owner execution on 2026-10-17 Europe/Zurich completed the pipeline at immutable ops revision c973ac2535582038c52ba5881ef67c4e5e7fb267, merged through PR #42 as fc65e41ef932fe66112c82a062f059c719872b24. All PR #42 CI checks passed before merge. No further staging build or repeat release is needed.
 
-Local checks passed: seven new gate/pipeline/fingerprint tests and eight evaluator tests, syntax checks and actual archived factory preparation without execution. New native owner-run cases have not yet run; do not claim native qualification or deployment merely because CI is green. After owner execution, record its exact report/release paths, status, image and rollback. Then verify browser controls and one synthetic real user task. Interactive new-tool-evidence consent and broader provider billing reconciliation remain pending. Final Minecraft installation and its introduction have not happened.
+Native API evidence:
+- /root/vector-workspace/releases/vector-privacy-api-evaluation-20261016T233310Z-e54379/result.json.
+- passed true; exact app runtime revision e8b6b6e and image 5a2ee0f; qualified native image eca0b83. Normal and outage phases passed with isolated database, production unchanged and cleanup verified.
+- Normal tests covered explicit off without scans, authorization, bound consent, encrypted masked jobs, restored responses/history, original-send choice, quiet local mode, owned history and attachments, local-only project routing, natural reset credentials and separate local encoder metrics.
+- Outage tests confirmed default-on blocks before writes; explicit off remains available; fully local remains quiet.
+- Observed timing for this synthetic run: initial cold review 8732 ms, follow-up 205 ms, exact cached review 11 ms. These are single-run observations, not a latency guarantee; cold loading remains noticeable.
+- 11 queued synthetic jobs in total after the outage phase, none executed. Cloud calls zero, API cost CHF 0. Native qualification does not prove real provider execution.
+
+Production release evidence:
+- /root/vector-workspace/releases/vector-chat-controls-release-20261016T233346Z-341cd8.
+- Commit 2f5b8e866f613b336ed24b5242dc93e535c985bc; tag vector-app:staging-e8b6b6e-20261016T231731Z-6a08fa; image sha256:5a2ee0f4b1b169114da5608a8a33f0ca08ce00c4016873208fa1d5518901f87d.
+- Tested/merged trees matched. Fresh backups, app source synchronization, persistent image pin and app health passed; runner reported SUCCESS.
+- Existing guards retain worker, runner, PostgreSQL, Redis, Ollama, NER and Minecraft identities. The release did not install the Minecraft addon, send its introduction, migrate/restore the database or submit model requests.
+- Current guarded rollback is /root/vector-workspace/releases/vector-chat-controls-release-20261016T233346Z-341cd8/rollback.sh. Preserve it; do not run older release/rollback scripts blindly. A future deployment must use this new baseline, not the superseded runtime/composer pins.
+
+Next steps:
+1. Owner refreshes the web page and checks active-mode dropdown, Auto and independent privacy switch. Test a deterministic own-server/player statistics request in Auto or Lokal and confirm the actual completed response/provenance. The 50-file read already passed; successful production job execution and real browser rendering still need owner observation.
+2. Test a new short email request with synthetic names/credentials using replacement and explicit off. Real provider execution and whole-server cloud-tool reads remain distinct from queued-job/native qualification; do not claim all tools are fixed without results.
+3. If a new failure occurs, collect bounded metadata/reason codes and the relevant job state rather than rerunning the release or dumping secrets.
+4. Continue pending interactive consent for new tool evidence, provider billing reconciliation and final Minecraft integration only after the web flow is confirmed. The Minecraft addon is not installed and its once-only introduction has not been sent.

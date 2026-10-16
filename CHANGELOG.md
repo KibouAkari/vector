@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-17 — Owner-confirmed chat controls deployment (PR #43)
+
+- The owner completed native privacy qualification at ops revision c973ac2535582038c52ba5881ef67c4e5e7fb267. Normal and detector-outage cases passed, including explicit off, default-on blocking, encrypted placeholder round trips and local-only project enforcement. Cleanup and unchanged production fingerprints passed; 11 synthetic jobs remained queued and unexecuted, with no cloud calls or API fees.
+- The guarded app release succeeded at vector-chat-controls-release-20261016T233346Z-341cd8: commit 2f5b8e866f613b336ed24b5242dc93e535c985bc, image sha256:5a2ee0f4b1b169114da5608a8a33f0ca08ce00c4016873208fa1d5518901f87d. Fresh backups, source synchronization, persistent Compose pin and app health passed. Preserve that release directory and its guarded rollback; do not rerun the superseded release.
+- API report: vector-privacy-api-evaluation-20261016T233310Z-e54379/result.json. Observed synthetic review timings were 8732 ms cold, 205 ms follow-up and 11 ms cached. Real browser UI, completed production statistics jobs and provider execution remain separate pending checks. Minecraft integration and its introduction remain inactive.
+- Documentation records the owner output only; no production mutation or new model request is performed by this documentation change.
+
 ## 2026-10-17 — Guarded chat controls release qualification (PR #42)
 
 - Owner evidence now confirms PR #41's actual Host Agent read and isolated application staging at e8b6b6e690aa893e3fc0a0641e07261c0414ffc6: 50 complete saved statistics files; Auto/Local/Normal and privacy-off queued-job checks passed. Production was unchanged, with no model/cloud calls or exported player records.
