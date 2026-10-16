@@ -1,14 +1,18 @@
 # Changelog
 
+## 2026-10-16 Runtime deployment confirmation (#36)
+
+Record the owner's read-only confirmation that the qualified runtime release is already deployed. Running image, release status/commit/image, active Compose bytes and source tree hash match. App is running with no OOM; diagnostic left Compose unchanged. Update the project handoff and final PR merge ledger. No restart, model request, new cutover or fresh HTTP health check is performed by this documentation update.
+
 ## 2026-10-16 Runtime release and continuation review (#36, #37)
 
-Prepare the guarded release of owner-qualified runtime revision 8611082 and identical merged tree 60adca9, image c33a1b8. Owner staging and enabled native privacy API checks passed without executing synthetic jobs or calling a cloud provider. The latest owner release attempt stopped before deployment because the old composer profile no longer matches. Read-only comparison narrows the drift to the app image; the actual active runtime release remains unconfirmed. Preserve the guard and rollback rather than rerunning a cutover blindly.
+Prepare the guarded release of owner-qualified runtime revision 8611082 and identical merged tree 60adca9, image c33a1b8. Owner staging and enabled native privacy API checks passed without executing synthetic jobs or calling a cloud provider. The latest owner release attempt stopped before deployment because the old composer profile no longer matches. The initial read-only comparison narrowed the drift to the app image. A subsequent owner diagnostic confirmed that runtime release vector-runtime-privacy-release-20261016T165856Z-c0c023 was already deployed, with matching qualified commit/image, active Compose bytes and current source tree hash. The app is running without OOM. The repeated invocation correctly stopped at the old-profile guard; no further cutover is needed. Preserve the guard and rollback rather than rerunning a cutover blindly.
 
 Review the four open PRs, record composer deployment evidence in #33 and the exact foundation scope/CI coverage in #34. Close empty #37: its description claimed changes absent from its zero-file initial-plan commit; carry those review tasks forward as unimplemented. Add a durable project handoff and owner preferences, required from AGENTS.md, so continuations retain instructions, pinned evidence, pending defects and FEGCraft integration boundaries. Repository merges do not activate the bot or establish current server deployment.
 
 ## 2026-10-16 Runtime follow-up fixes
 
-Limit Minecraft player continuation to standalone short follow-ups, including reversible placeholders. Prevent the local text-only executor from generating unsupported live-state answers before inference. Clarify that an additional privacy approval blocks new tool evidence, not the already submitted prompt. Twenty-six targeted local tests pass; production qualification remains pending. This does not yet add local server data access or interactive mid-job consent.
+Limit Minecraft player continuation to standalone short follow-ups, including reversible placeholders. Prevent the local text-only executor from generating unsupported live-state answers before inference. Clarify that an additional privacy approval blocks new tool evidence, not the already submitted prompt. Targeted local regressions and owner staging/native API qualification passed; production deployment of commit 60adca9 and image c33a1b8 is confirmed by the matching completed release record, current source and Compose. Fresh real-provider/UI behavior remains to be verified. This does not yet add local server data access or interactive mid-job consent.
 
 2026-10-16 — Privacy composer follow-up (#32): reject contextual contact labels misclassified as people, preserve ambiguous names and credential types, and retain the real API preview assertion. All 36 targeted local Node tests pass. Native server retest remains pending.
 

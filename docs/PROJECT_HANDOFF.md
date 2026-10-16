@@ -1,6 +1,6 @@
 # Vector project handoff
 
-Updated 2026-10-16 after owner runtime-release diagnostic. Read OWNER_PREFERENCES.md, AGENTS.md and current repository status first. This document preserves decisions and evidence, not secret values or a substitute for a live-state check.
+Updated 2026-10-16 after owner confirmation of the deployed runtime release. Read OWNER_PREFERENCES.md, AGENTS.md and current repository status first. This document preserves decisions and evidence, not secret values or a substitute for a live-state check.
 
 ## First steps in a new chat
 
@@ -17,9 +17,9 @@ The owner runs root commands on Debian. Repository /root/vector-workspace/github
 | --- | --- |
 | Composer app release | Owner observed success for commit f38e44f3c8edad95cc8812d9d51e53fc1079e5b7 and image sha256:9a2b01e5afd37b51983fdf336ff986db13e3679b5381a802037c2795f1908fe4 |
 | Composer release record | /root/vector-workspace/releases/vector-privacy-composer-release-20261016T123251Z-4139a9/release.json; saved status/commit/image still match that release |
-| Latest runtime attempt | Script from f6e327a209b49127f331755bdc188e787eae374c stopped at old-profile guard before its deployment body |
-| Latest read-only diagnostic | Current canonical Compose differs from composer candidate only at /services/app/image; running app image also differs from old composer image; Compose unchanged by diagnostic |
-| Current runtime deployment | UNCONFIRMED. Owner may have already run the runtime release once. Need actual running image, matching completed runtime release record, Compose and source evidence; do not loosen the old-image guard |
+| Repeated runtime attempt | Script from f6e327a209b49127f331755bdc188e787eae374c stopped at the old-profile guard because the qualified runtime release was already deployed |
+| Latest read-only diagnostic | Qualified image running, no OOM; completed runtime release record matches commit, image, active Compose bytes and current source tree hash; Compose unchanged by diagnostic |
+| Current runtime deployment | CONFIRMED by owner read-only evidence: vector-runtime-privacy-release-20261016T165856Z-c0c023 has status deployed; commit 60adca9398dff938e97df4f00bf8a2c476dde907 and qualified image c33a1b8 match actual runtime/source/Compose. No repeat deployment is needed |
 | Native privacy service | Previously activated private authenticated GLiNER service; local workers retained; model unloads after 300 idle seconds |
 | Local inference | Private vector-local-inference, Qwen 1.7B extraction/text and Hermes 8B summaries; no public inference ports |
 
@@ -28,7 +28,7 @@ Runtime qualification pins:
 - Image sha256:c33a1b853a16602e9413f4784de85337135288f55cf2437e6516b46ccfd463c0; tag vector-app:staging-8611082-20261016T162644Z-22f9a2.
 - Staging report /root/vector-workspace/releases/vector-privacy-staging-20261016T162644Z-22f9a2/staging-result.json.
 - Native enabled API report /root/vector-workspace/releases/vector-privacy-api-evaluation-20261016T162809Z-d3792a/result.json. Normal/outage checks passed; production unchanged; no cloud calls; synthetic jobs queued but none executed. This does not prove actual provider end-to-end execution.
-- Existing composer rollback /root/vector-workspace/releases/vector-privacy-composer-release-20261016T123251Z-4139a9/rollback.sh. A later successful runtime release would have its own rollback; identify it from the actual release directory before use. Never run an older rollback blindly.
+- Current runtime release directory /root/vector-workspace/releases/vector-runtime-privacy-release-20261016T165856Z-c0c023. Its generated rollback path is rollback.sh in that directory; confirm its existence and guard conditions before any use. The older composer rollback is historical and must not be run blindly. The latest read-only diagnostic did not run rollback or a fresh HTTP/provider check.
 
 Native service facts:
 - Model urchade/gliner_multi_pii-v1 at 1fcf13e85f4eef5394e1fcd406cf2ca9ea82351d.
@@ -40,11 +40,11 @@ Native service facts:
 
 ## Pull request review ledger
 
-- #33: historical composer release tooling. Owner deployment succeeded; preserve script and rollback, update stale pending-only description. Changelog conflict against runtime changes required resolution.
-- #34: FEGCraft statistics/admission foundation only. Ten synthetic Python tests pass; add them to Application CI. Merge does not activate a bot or add local tool access.
-- #35: runtime fixes already merged as 60adca9. Earlier local regression checks, owner staging and native API qualification passed. Production state still requires reconciliation above.
-- #36: guarded runtime release tooling and this continuation documentation. Review/merge is distinct from server execution. Retain original source/image/Compose gates; current refusal is useful evidence.
-- #37: closed because head 772b2a57cfd1a1a42dccc083f3afd8e8255e540f is an empty initial-plan commit with zero changed files. Its description claimed fixes absent from source. None were implemented or deployed by that PR. Check GitHub for final merge SHAs/status of the other PRs rather than inferring them from this snapshot.
+- #33: merged as f27720a13337eb4b04076932ab4745afeef08e41 after green checks. Historical composer release tooling and observed deployment evidence preserved; changelog conflict resolved without dropping runtime fixes.
+- #34: merged as 26ad034160acc0d291b2c3bb286846680714a78f after green checks. FEGCraft statistics/admission foundation only; all ten synthetic Python tests pass and run in Application CI. No bot or local tool access activated.
+- #35: runtime fixes merged as 60adca9 and now confirmed deployed by matching owner release/source/image/Compose evidence above. Earlier local regressions, owner staging and native API qualification passed. Real user-facing provider execution remains a separate pending check.
+- #36: merged as 793e1afcf3e189dd6b670ec830dce83fa2dee960 after green checks. Guarded runtime release tooling and continuation documentation. Original guards correctly stopped the repeated old-profile release attempt; no bypass or second cutover required.
+- #37: closed because head 772b2a57cfd1a1a42dccc083f3afd8e8255e540f is an empty initial-plan commit with zero changed files. Its description claimed fixes absent from source. None were implemented or deployed by that PR. The owner-requested four-PR cleanup is complete; no open PRs remained after that cleanup. Recheck GitHub for newer work.
 
 ## Privacy behavior and remaining work
 
