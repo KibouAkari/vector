@@ -72,3 +72,14 @@ test('an already obsolete scope performs no network request',async()=>{
     fetchImpl:()=>assert.fail('Obsolete scope must not post')});
   assert.equal((await (await sender.send('/chat',{message:'fixture'},{isCurrent:()=>false})).json()).privacyCancelled,true);
 });
+
+
+test('send timer restarts after consent and excludes time spent reading the review',async()=>{
+  let now=100;const states=[],choice=deferred();let calls=0;
+  const sender=createPrivacySender({now:()=>now,onState:s=>states.push(s),requestChoice:()=>choice.promise,
+    fetchImpl:async()=>++calls===1?review():Response.json({jobId:'job'})});
+  const pending=sender.send('/chat',{message:'fixture'});await tick();
+  now=30100;choice.resolve('original');await pending;
+  assert.equal(states.find(s=>s.phase==='checking').startedAt,100);
+  assert.equal(states.find(s=>s.phase==='sending').startedAt,30100);
+});
