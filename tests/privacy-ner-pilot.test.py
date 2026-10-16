@@ -66,7 +66,7 @@ class NERTests(unittest.TestCase):
             text=True,capture_output=True,timeout=15)
         self.assertEqual(result.returncode,0,result.stderr)
         report=json.loads(result.stdout)
-        self.assertEqual(len(report['cases']),28)
+        self.assertEqual(len(report['cases']),32)
         self.assertTrue(report['passed'],report)
         self.assertTrue(all(c['secrets_hidden'] for c in report['cases']))
 

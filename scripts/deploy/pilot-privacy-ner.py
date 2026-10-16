@@ -55,6 +55,12 @@ EXTENDED_CASES = [
     {'id':'context-benign','text':'Technische Notiz zum System. '*170,'expected':[]},
     {'id':'context-unicode-prefix','text':'😀 '*250+'Gratuliere Élodie Martin zum Geburtstag.',
      'expected':['Élodie Martin']},
+    {'id':'context-extra-name-middle','text':'Allgemeine Notiz. '*80+'Bitte sende Noah Beispiel eine Einladung. '+'Allgemeine Notiz. '*80,
+     'expected':['Noah Beispiel']},
+    {'id':'context-extra-name-start','text':'Schreibe bitte an Jonas Testmann. '+'Technische Notiz zum System. '*80,
+     'expected':['Jonas Testmann']},
+    {'id':'context-extra-software','text':'Erkläre Kubernetes und PostgreSQL. '*80,'expected':[]},
+    {'id':'context-extra-accented','text':'Bitte schreibe an René Muster.','expected':['René Muster']},
 ]
 
 EXTENDED_INFERENCE = r'''

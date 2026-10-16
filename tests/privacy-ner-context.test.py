@@ -3,6 +3,9 @@ from pathlib import Path
 import re
 import sys
 import unittest
+from types import SimpleNamespace
+from contextlib import nullcontext
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('privacy_ner_core',ROOT/'lib/privacy-ner-core.py')
@@ -38,6 +41,52 @@ class ContextTests(unittest.TestCase):
         self.assertEqual(core.exact_entities(text,chunk,[entity]),[dict(type='PERSON',value='Zoë Beispiel')])
         with self.assertRaises(ValueError):core.exact_entities(text,chunk,[dict(entity,text='Zoe Beispiel')])
         self.assertEqual(core.exact_entities(text,chunk,[dict(entity,label='software')]),[])
+
+    def test_focused_sentence_keeps_only_original_context_and_long_window_is_bounded(self):
+        text='Allgemeine Notiz. '*170+'Bitte schreibe an Zoë Beispiel.'
+        start=text.index('Zoë')
+        window=core.focused_context(text,start,start+3,splitter,lambda s:s.split())
+        self.assertEqual(window.text,'Bitte schreibe an Zoë Beispiel.')
+        self.assertEqual(window.text,text[window.start:window.end])
+        long='Wort '*200+'Zoë Beispiel '+'Wort '*200
+        start=long.index('Zoë')
+        window=core.focused_context(long,start,start+3,splitter,lambda s:s.split())
+        self.assertIn('Zoë Beispiel',window.text)
+        self.assertLessEqual(window.words,64)
+        self.assertLessEqual(window.text_tokens,192)
+        self.assertEqual(window.text,long[window.start:window.end])
+
+    def fake_detector(self,predict):
+        detector=object.__new__(core.LocalPersonDetector)
+        detector.torch=SimpleNamespace(inference_mode=nullcontext)
+        detector.tokenizer=SimpleNamespace(encode=lambda text,**_:text.split())
+        detector.model=SimpleNamespace(data_processor=SimpleNamespace(words_splitter=splitter),predict_entities=predict)
+        return detector
+
+    def test_nested_decoding_retains_source_confirmed_full_name_and_first_name(self):
+        def predict(text,labels,threshold,flat_ner=True):
+            start=text.index('Zoë')
+            short=dict(label='person',start=start,end=start+3,text='Zoë')
+            full=dict(label='person',start=start,end=start+12,text='Zoë Beispiel')
+            return [short] if flat_ner else [short,full]
+        report=self.fake_detector(predict).inspect('Bitte schreibe an Zoë Beispiel.')
+        self.assertEqual({f['value'] for f in report['findings']},{'Zoë','Zoë Beispiel'})
+        self.assertEqual(report['context_rechecks'],0)
+
+    def test_focused_rechecks_are_nonrecursive_counted_and_bounded(self):
+        calls=[]
+        def predict(text,labels,threshold,flat_ner=True):
+            calls.append(text)
+            match=re.search(r'Anna\d+',text)
+            if not match:return []
+            return [dict(label='person',start=match.start(),end=match.end(),text=match.group())]
+        text=' '.join('Anna'+str(i)+' hat Geburtstag.' for i in range(80))
+        report=self.fake_detector(predict).inspect(text)
+        self.assertEqual(len(calls),report['primary_chunks']+report['context_rechecks'])
+        self.assertGreater(report['context_rechecks'],0)
+        self.assertEqual(report['processed_text_tokens'],sum(len(t.split()) for t in calls))
+        with patch.object(core,'MAX_RECHECKS',1):
+            with self.assertRaises(ValueError):self.fake_detector(predict).inspect(text)
 
     def test_bad_splitter_omissions_and_input_limits_block(self):
         with self.assertRaises(ValueError):core.split_context('Anna',lambda _:[],list)

@@ -6,6 +6,11 @@ Production deployments are tracked separately.
 
 ## 2026-10-16
 
+### Nested name spans and focused context verification (#30)
+
+- Owner qualification at 2242f063 passed 27/28 cases; the long end-of-text case preserved only the first name and left its surname unprotected. Keep the original expected full name and the production gate. Reproduce the issue with the actual model locally: flat decoding suppresses an overlapping complete name and long surrounding text can weaken that name even with nested decoding. Retain nested exact-source spans at the unchanged 0.35 threshold and add at most 32 non-recursive original-sentence/neighborhood rechecks around detected people in multi-chunk inputs. Preserve all primary findings and word/subword bounds; count all recheck text in the explicitly labeled local tokenizer metrics. Reuse the model’s existing tokenizer rather than constructing it twice.
+- All 32 actual-model local cases pass (the unchanged 28 plus four independent name-position/software controls); evidence is stored in docs/evaluations/privacy-ner-context-local-20261016.json. Add focused-window, nested-name retention, recheck-budget and token-accounting regressions. This is local evidence only; owner rerun, service/app integration and production activation remain pending.
+
 ### Bounded local privacy context qualification (#30)
 
 - Owner retry at 7cedc0a confirmed the 0600-to-0444 public-weight fix and passed all 16 offline server cases. Warm short-case times were about 0.12–0.16 seconds, load 5.813 seconds and peak RSS 2,815,740 KiB; production stayed unchanged with no cloud calls or ledger writes. Preserve the observed pilot image for reuse.
