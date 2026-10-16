@@ -10,6 +10,10 @@ This changelog documents repository changes by date, with commit and pull
 request identifiers when available. Entries are listed newest first.
 Production deployments are tracked separately.
 
+## 2026-10-16 FEGCraft assistant foundation (#34)
+
+Add a bounded read-only saved-statistics collector, deterministic rankings with ties and coverage checks, greeting-only admission, canonical-event deduplication, and three-per-user/twelve-global requests per minute. Ten synthetic Python tests pass locally and now run in Application CI. Prepare an emoji-free introduction. Chat/model integration, topic/output restrictions, durable delivery, owner-data qualification and production deployment remain pending. These modules do not yet read production files, invoke a model or send messages.
+
 ## 2026-10-16
 
 ### Compact privacy review beside the composer (#32)

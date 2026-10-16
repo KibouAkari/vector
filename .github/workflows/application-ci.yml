@@ -54,6 +54,11 @@ jobs:
       - name: Test local capability and conversation routing regressions
         run: node --test tests/local-routing-regression.test.mjs
 
+      - name: Test local FEGCraft statistics and admission foundation
+        run: |
+          python3 tests/fegcraft-stats.test.py
+          python3 tests/fegcraft-policy.test.py
+
       - name: Test offline model broker policy
         run: node --test tests/model-broker-*.test.mjs tests/provider-telemetry.test.mjs tests/model-intelligence-summary.test.mjs
 
