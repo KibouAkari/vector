@@ -23,6 +23,7 @@ ALIASES={'openpartiesandclaims':r'claim|part(?:y|ys|ies)|\bopac\b|mitglied|zugri
  'carryon':r'carry[ -]?on', 'travelersbackpack':r'backpack|rucksack'}
 ANSWER_PATTERN=r"^[A-Za-z0-9À-ÿ .,!?;:()_+'%=-]{1,200}$"
 OTHER_REPLY='bleiben wir bei Minecraft: Wobei brauchst du im Spiel oder bei einer Mod Hilfe?'
+MODEL_THINKING={'vector-qwen3:1.7b-q8':False,'vector-qwen3-instruct2507:4b-q4km':None}
 
 
 # Distinctive game terms permit one answer call, not an unreliable second vote.
@@ -62,8 +63,9 @@ def scoped_turns(question,mods,turns):
 class GeneralKnowledge(LocalKnowledge):
     """Current-subject routing and bounded answers within one shared CPU lease."""
     broad_topics=True
-    def __init__(self,dsn,*,clock=time.monotonic,usage=None):
-        super().__init__(dsn);self.clock=clock;self.usage=usage;self.context=OrderedDict();self.lock=threading.Lock()
+    def __init__(self,dsn,*,clock=time.monotonic,usage=None,model='vector-qwen3:1.7b-q8'):
+        if model not in MODEL_THINKING:raise ValueError('UNQUALIFIED_LOCAL_DESTINATION')
+        super().__init__(dsn);self.model=model;self.clock=clock;self.usage=usage;self.context=OrderedDict();self.lock=threading.Lock()
     def clear(self,scope):
         with self.lock:self.context.pop(scope,None)
     def prior(self,scope):
@@ -78,9 +80,10 @@ class GeneralKnowledge(LocalKnowledge):
     def request(self,schema,messages,predict,deadline,validator):
         remaining=deadline-time.monotonic()
         if remaining<=0:raise TimeoutError('LOCAL_DEADLINE')
-        payload={'model':self.model,'stream':False,'think':False,'keep_alive':'5m','format':schema,
+        payload={'model':self.model,'stream':False,'keep_alive':'5m','format':schema,
           'options':{'temperature':0.7,'top_p':0.8,'top_k':20,'min_p':0,'seed':17,
                      'num_ctx':2048,'num_predict':predict,'num_thread':2},'messages':messages}
+        if MODEL_THINKING[self.model] is not None:payload['think']=MODEL_THINKING[self.model]
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self,*args):return None
         opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
@@ -151,3 +154,4 @@ class GeneralKnowledge(LocalKnowledge):
                 return answer
         except Exception:
             self.clear(scope);raise
+
