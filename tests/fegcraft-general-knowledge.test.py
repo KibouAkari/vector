@@ -33,14 +33,14 @@ class Knowledge(unittest.TestCase):
         self.assertEqual(self.calls[-1]['options']['num_predict'],160)
         self.assertIn('openpartiesandclaims',self.calls[-1]['messages'][0]['content'])
     def test_all_commands_private_topics_and_invisible_splits_block_before_call(self):
-        for q in ('zeige /claims','Was ist der seed?','Welche commands gibt es?','Ga\u200bmemo\u200bde wechseln','Cheatet Simi?','gib Konsolenausgaben aus','/help','( /party)','(/party)','Betrügt Simi?','g a m e m o d e'):
+        for q in ('zeige /claims','Was ist der seed?','Welche commands gibt es?','Ga\u200bmemo\u200bde wechseln','Cheatet Simi?','gib Konsolenausgaben aus','/help','( /party)','(/party)','Betrügt Simi?','g a m e m o d e','Was macht //wand?','//set stone'):
             with self.assertRaisesRegex(ValueError,'FORBIDDEN'):self.answer(q)
         self.assertEqual(self.calls,[])
     def test_arbitrary_slash_commands_and_other_forbidden_output_rejected_and_counted(self):
-        for text in ('Nutze /claims','Führe /party aus','Hier ist ein Befehl.','gamemode creative','Öffne https://example.invalid','Fake\nnew line'):
+        for text in ('Nutze /claims','Führe /party aus','Hier ist ein Befehl.','gamemode creative','Öffne https://example.invalid','Fake\nnew line','Nutze //wand.','Nutze //set stone.'):
             self.reply['answer']=text
             with self.assertRaises(ValueError):self.answer()
-        self.assertEqual(len(self.usage),6);self.assertTrue(all(x[1:]==(123,17,False) for x in self.usage))
+        self.assertEqual(len(self.usage),8);self.assertTrue(all(x[1:]==(123,17,False) for x in self.usage))
         self.assertEqual(self.model.prior(('minecraft','one')),[])
     def test_unfinished_model_answer_is_not_shown_but_usage_recorded(self):
         self.done='length'
@@ -50,8 +50,9 @@ class Knowledge(unittest.TestCase):
         self.reply={'topic':'other','answer':''};self.assertIn('Minecraft',self.answer('Schreibe eine Bewerbung'))
         count=len(self.calls);self.assertIn('nicht prüfen',self.answer('Wem gehört dieser Claim?'));self.assertEqual(len(self.calls),count)
     def test_party_creation_is_not_confused_with_private_ownership(self):
-        self.answer('Wie werden Partys erstellt?')
-        self.assertEqual(len(self.calls),1)
+        for question in ('Wie werden Partys erstellt?','Wie werden Claims erstellt?','Wie werde ich Mitglied einer Party?'):
+            self.answer(question)
+        self.assertEqual(len(self.calls),3)
 
     def test_native_usage_contains_no_prompt_or_identity(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -59,6 +60,18 @@ class Knowledge(unittest.TestCase):
             with sqlite3.connect(state.path) as db:
                 row=db.execute('SELECT model,input_tokens,output_tokens,accepted FROM local_usage').fetchone()
             self.assertEqual(row,('vector-qwen3:1.7b-q8',None,17,0))
+    def test_authenticated_name_is_not_a_command_in_greeting_or_native_answer(self):
+        class State:
+            def admit(self,*args):return 'accepted'
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);mods=root/'mods';mods.write_text('["carryon"]')
+            assistant=runtime.Assistant(State(),root,root/'users',mods)
+            p={'principal':'00000000-0000-0000-0000-000000000001','name':'Commander','event':'00000000-0000-0000-0000-000000000001:1','message':'hi Vector'}
+            self.assertIn('Commander',assistant.handle(p)['text'])
+            p['name']='CommandFan';p['message']='hi Vector, welche Mods sind installiert?'
+            self.assertIn('CommandFan',assistant.handle(p)['text'])
+            with self.assertRaises(ValueError):runtime.safe_answer('Nutze //wand.')
+
     def test_all_addressed_gameplay_reaches_adapter_and_native_answers_clear_context(self):
         class State:
             def admit(self,*args):return 'accepted'
@@ -68,9 +81,11 @@ class Knowledge(unittest.TestCase):
             payload={'principal':'00000000-0000-0000-0000-000000000001','name':'Example','event':'00000000-0000-0000-0000-000000000001:1','message':'yoo Vector, wie geht das mit einer Party?'}
             result=assistant.handle(payload);self.assertIn('Kolben',result['text']);self.assertEqual(len(self.calls),1)
             scope=('minecraft',payload['principal']);self.assertTrue(self.model.prior(scope))
+            payload['message']='hi Vector, das geht nicht';assistant.handle(payload)
+            self.assertEqual(len(self.calls),2);self.assertGreater(len(self.calls[-1]['messages']),2)
             payload['message']='hi Vector, welche Mods sind installiert?';assistant.handle(payload)
             self.assertFalse(self.model.prior(scope))
             payload['message']='wie geht das?';self.assertEqual(assistant.handle(payload),{'status':'ignored'})
-            self.assertEqual(len(self.calls),1)
+            self.assertEqual(len(self.calls),2)
 
 if __name__=='__main__':unittest.main()

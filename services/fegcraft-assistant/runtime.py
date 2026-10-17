@@ -31,7 +31,7 @@ TOPIC = re.compile(r'minecraft|redstone|craft|rezept|recipe|item|block|blöck|er
 UNSAFE_OUTPUT = re.compile(r'[/\\](?:give|op|deop|execute|gamemode|tp|teleport|seed|summon|kill|setblock|fill|sudo|bin|etc|opt)\b|\b(?:seed|passwort|password|api.?key|token|rcon|docker|curl|wget|bash|powershell|cheat|gamemode)\b|https?://|www\.|@|`|[<>\x00-\x1f\x7f]|\u00a7', re.I)
 
 
-COMMAND_BOUNDARY = re.compile(r'\b(?:befehl\w*|kommando\w*|command\w*|konsole\w*|console\w*|spielmodus|kreativ\w*|creative|godmode|logausgabe\w*)\b|(?<![\w/])/[a-z][\w:-]*', re.I)
+COMMAND_BOUNDARY = re.compile(r'\b(?:befehl\w*|kommando\w*|command\w*|konsole\w*|console\w*|spielmodus|kreativ\w*|creative|godmode|logausgabe\w*)\b|(?<![\w/])/+[a-z][\w:-]*', re.I)
 
 
 def request_forbidden(question):
@@ -41,14 +41,21 @@ def request_forbidden(question):
                 re.search(r'(?<!\w)(?:g\W*a\W*m\W*e\W*m\W*o\W*d\W*e|s\W*e\W*e\W*d|c\W*h\W*e\W*a\W*t)(?!\w)', text, re.I))
 
 
-def safe_answer(value):
+def safe_display(value):
     if not isinstance(value, str) or not 1 <= len(value) <= 420:
         raise ValueError('INVALID_ANSWER')
-    if UNSAFE_OUTPUT.search(value) or COMMAND_BOUNDARY.search(value) or any(ord(c) > 0xffff for c in value):
+    if re.search(r'https?://|www\.|@|`|[<>\x00-\x1f\x7f]|\u00a7', value, re.I) or any(ord(c) > 0xffff for c in value):
         raise ValueError('UNSAFE_ANSWER')
     if any(0x200b <= ord(c) <= 0x200f or 0x2028 <= ord(c) <= 0x202f or 0x2600 <= ord(c) <= 0x27ff for c in value):
         raise ValueError('UNSAFE_ANSWER')
     return value.strip()
+
+
+def safe_answer(value):
+    value = safe_display(value)
+    if UNSAFE_OUTPUT.search(value) or COMMAND_BOUNDARY.search(value):
+        raise ValueError('UNSAFE_ANSWER')
+    return value
 
 
 class State:
@@ -200,7 +207,7 @@ class ModHelp:
             while len(self.context) > self.capacity:
                 self.context.popitem(last=False)
 
-    def answer(self, question, mods, scope):
+    def answer(self, question, mods, scope, *, fallback=True):
         q = unicodedata.normalize('NFKC', question).casefold()
         if MOD_INVENTORY.search(q) or re.search(r'\b(?:craft\w*|rezept\w*|recipe\w*|herstell\w*)', q):
             self.clear(scope)
@@ -219,11 +226,11 @@ class ModHelp:
         inherited = previous is not None and (trouble or hand or success or put_down)
         if not explicit and not (pickup and (entity or block)) and not inherited:
             self.clear(scope)
-            if trouble:
+            if trouble and fallback:
                 return 'was genau klappt nicht? Nenne den Gegenstand oder die Mod und was beim Versuch passiert.'
             data_or_recipe = (any(re.search(pattern, q) for pattern in METRIC_WORDS.values())
                               or re.search(r'rekord|record|statistik|statistic|rangliste|\bstats\b|craft|rezept|recipe', q))
-            if villager and not data_or_recipe and re.search(r'\b(?:wie|kann|hilfe|problem)\b', q):
+            if fallback and villager and not data_or_recipe and re.search(r'\b(?:wie|kann|hilfe|problem)\b', q):
                 return 'möchtest du den Villager aufheben, transportieren oder mit ihm handeln?'
             return None
         installed = mods() if callable(mods) else mods
@@ -299,7 +306,8 @@ class Assistant:
             self.clear_knowledge(scope)
             answer = 'dazu gebe ich keine administrativen oder vertraulichen Auskünfte.'
         else:
-            answer = self.mod_help.answer(question, self.mods, scope)
+            has_general_context = bool(getattr(self.knowledge, 'broad_topics', False) and self.knowledge.prior(scope))
+            answer = self.mod_help.answer(question, self.mods, scope, fallback=not has_general_context)
             if answer is None:
                 answer = self.stat_answer(question, block_items)
             if answer is None and self.recipes is not None:
@@ -327,7 +335,8 @@ class Assistant:
                 else:
                     answer = 'bleiben wir bitte bei Minecraft. Welche Frage zum Spiel oder zu einer Mod hast du?'
         # Deterministic responses use the same presentation/command boundary.
-        return {'status': 'answered', 'text': safe_answer(prefix + answer)}
+        safe_answer(answer)
+        return {'status': 'answered', 'text': safe_display(prefix + answer)}
 
     def mods(self):
         value, _ = stats.read_json(self.mod_file, 32768)
