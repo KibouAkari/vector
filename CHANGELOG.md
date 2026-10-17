@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 — Bounded incremental 03:00 backup (PR #60)
+
+- Record owner-confirmed PR #59 service-only deployment at `vector-fegcraft-mod-help-20261017T163203Z-4d3601`; Minecraft and other services unchanged. Freeform knowledge remains disabled. Owner now requests broad local Minecraft/mod understanding, including claims and parties, while preserving independent command/seed/gamemode/cheating boundaries.
+- Replace the known long-offline cron entrypoint with online rsync staging, a clean stopped final delta limited to 45 seconds, recovery of the same immutable container and encrypted deduplicated Restic format-2 snapshots after restart. Stop/start/health time is additional; no claim of a 45-second total outage. Preserve all world/player/mod data and hidden configuration, excluding only prior root backups/log and data logs/crash-reports/cache.
+- Own a new private repository by its exact ID; keep 7 daily/4 weekly/2 monthly snapshots and at least the latest, prune only that repository weekly after a successful world-header restore probe. Never delete legacy archives or the interrupted tar. Full initial staging can be large and slow, but runs online. No writable-container-layer backup or zero-loss claim.
+- Guard the installer with both release/backup locks, preserve original files/cron privately, hold the old offline entrypoint before dependency setup, comment only matching old cron lines and install one server-local 03:00 job. Signed distribution Restic/rsync tools run as CLI dependencies (BSD-2-Clause/GPL-3.0 respectively), without copying their code or upgrading existing packages. Installation does not run a backup or operate Minecraft. Guarded disable retains all data and does not reactivate the old offline job.
+- Test actual rsync contents/exclusions, same-ID timeout recovery, changed repository/mount rejection, cron isolation, permissions and disable. CI additionally installs Restic and tests two real snapshots/deduplication/full synthetic restore of world/player/mod/config data. Actual host installation and first completed backup remain pending.
+
 ## 2026-10-17 — Grounded Carry On help and service-only update (PR #59)
 
 - Owner confirms the repaired offline backup was cancelled after roughly 36 minutes; the same Minecraft container restarted and is healthy. Retain the partial snapshot.tar as unverified; never treat it as a completed backup. Do not rerun the long offline workflow or recreate Minecraft. The unknown writable-layer path, loader pin and native welcome/identity cutover remain held.

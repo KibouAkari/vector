@@ -144,6 +144,9 @@ jobs:
           python3 -m py_compile scripts/deploy/evaluate-privacy-review.py
           bash -n scripts/deploy/stage-privacy-review.sh
 
+      - name: Install backup verification dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends restic rsync
+
       - name: Test Vector Minecraft identity assets and guarded qualification
         run: |
           python3 tests/fegcraft-identity.test.py
@@ -155,6 +158,9 @@ jobs:
           python3 tests/fegcraft-dialogue-release.test.py
           python3 tests/fegcraft-backup.test.py
           python3 tests/fegcraft-backup-repair.test.py
+          command -v restic
+          python3 tests/fegcraft-incremental-backup.test.py
+          python3 -m py_compile scripts/maintenance/fegcraft-incremental-backup.py scripts/deploy/install-fegcraft-incremental-backup.py
           bash -n scripts/maintenance/fegcraft-backup.sh
           python3 -m py_compile scripts/maintenance/fegcraft-backup.py scripts/deploy/repair-fegcraft-backup.py
           python3 tests/fegcraft-recreation-safety.test.py

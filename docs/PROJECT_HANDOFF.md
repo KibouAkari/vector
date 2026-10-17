@@ -1,3 +1,15 @@
+# Latest owner state — 2026-10-17 incremental backup candidate (PR #60)
+
+- Record owner-confirmed PR #59 service-only deployment at `vector-fegcraft-mod-help-20261017T163203Z-4d3601`; Minecraft and other services unchanged. Freeform knowledge remains disabled. Owner now requests broad local Minecraft/mod understanding, including claims and parties, while preserving independent command/seed/gamemode/cheating boundaries.
+- Replace the known long-offline cron entrypoint with online rsync staging, a clean stopped final delta limited to 45 seconds, recovery of the same immutable container and encrypted deduplicated Restic format-2 snapshots after restart. Stop/start/health time is additional; no claim of a 45-second total outage. Preserve all world/player/mod data and hidden configuration, excluding only prior root backups/log and data logs/crash-reports/cache.
+- Own a new private repository by its exact ID; keep 7 daily/4 weekly/2 monthly snapshots and at least the latest, prune only that repository weekly after a successful world-header restore probe. Never delete legacy archives or the interrupted tar. Full initial staging can be large and slow, but runs online. No writable-container-layer backup or zero-loss claim.
+- Guard the installer with both release/backup locks, preserve original files/cron privately, hold the old offline entrypoint before dependency setup, comment only matching old cron lines and install one server-local 03:00 job. Signed distribution Restic/rsync tools run as CLI dependencies (BSD-2-Clause/GPL-3.0 respectively), without copying their code or upgrading existing packages. Installation does not run a backup or operate Minecraft. Guarded disable retains all data and does not reactivate the old offline job.
+- Test actual rsync contents/exclusions, same-ID timeout recovery, changed repository/mount rejection, cron isolation, permissions and disable. CI additionally installs Restic and tests two real snapshots/deduplication/full synthetic restore of world/player/mod/config data. Actual host installation and first completed backup remain pending.
+
+
+
+IMPORTANT: no complete backup is verified. Partial archive remains `/opt/fegcraft-updated/backups/.fegcraft-backup-ugjx6ng0/snapshot.tar`. Keep same game container and the unreviewed writable-layer/loader gates; no identity cutover or native welcome was activated. Owner reported 03:00 cron; do not rerun old full offline tar. Pending owner installer must replace it before next cron. Broad local inference is next, not activated by this backup PR.
+
 # Vector project handoff
 
 Updated 2026-10-17, PR #59. Read this file, AGENTS.md and docs/OWNER_PREFERENCES.md first, then verify current GitHub/server state. These are project instructions, not public-assistant memory. This file replaces accumulated historical "current" sections; [the complete earlier handoff](https://github.com/KibouAkari/vector/blob/4f29682b9698ca314a64036a557bd518f760d17b/docs/PROJECT_HANDOFF.md) remains immutable in Git.
