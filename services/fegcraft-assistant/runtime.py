@@ -184,6 +184,9 @@ class ModHelp:
 
     def answer(self, question, mods, scope):
         q = unicodedata.normalize('NFKC', question).casefold()
+        if re.search(r'\b(?:craft\w*|rezept\w*|recipe\w*|herstell\w*)', q):
+            self.clear(scope)
+            return None
         explicit = bool(re.search(r'\bcarry[ -]?on\b', q))
         villager = bool(re.search(r'\bvill[ai]gers?\b|\bdorfbewohner\w*', q))
         entity = villager or bool(re.search(r'\b(?:mob|mobs|tier|tiere|kuh|huhn|schaf|baby)\b', q))
