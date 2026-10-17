@@ -28,7 +28,7 @@ OTHER_REPLY='bleiben wir bei Minecraft: Wobei brauchst du im Spiel oder bei eine
 # Distinctive game terms permit one answer call, not an unreliable second vote.
 GAME_SUBJECT=re.compile(r'\b(?:minecraft|redstone|kolben|pistons?|komparator|comparator|vill[ai]gers?|dorfbewohner\w*|creeper|enderman|nether|elytra|verzauber\w*|enchant\w*)\b',re.I)
 REAL_WORLD=re.compile(r'\b(?:bewerbung|lebenslauf|anschreiben|steuererklärung|wohnungssuche|abendessen|mittagessen|frühstück)\b',re.I)
-FOLLOWUP=re.compile(r'^\s*(?:und\s+(?:wie|wo|was|warum|welche|womit|wozu)\b|(?:wie|wo|was|welche|womit|warum)\b.{0,45}\b(?:das|damit|dabei|dort|ihnen|ihn|diese[rsnm]?)\b|(?:das|es)\s+(?:geht|klappt|funktioniert)\b)',re.I)
+FOLLOWUP=re.compile(r'^\s*(?:und\s+)?(?:(?:wie|wozu|warum|wo|womit)(?:\s+(?:genau|jetzt|weiter))?[?!. ]*$|(?:wie|wo|was|welche|womit|warum)\b.{0,45}\b(?:das|damit|dabei|dort|ihnen|ihn|diese[rsnm]?)\b|(?:das|es)\s+(?:geht|klappt|funktioniert)\b)',re.I)
 
 
 def relevant_notes(question,mods,turns=()):
@@ -49,11 +49,13 @@ def relevant_notes(question,mods,turns=()):
 
 
 def scoped_turns(question,mods,turns):
-    if not turns or not FOLLOWUP.search(question) or GAME_SUBJECT.search(question) or REAL_WORLD.search(question):return []
+    if not turns or GAME_SUBJECT.search(question) or REAL_WORLD.search(question):return []
     current,_=relevant_notes(question,mods)
     previous=next((t['content'] for t in reversed(turns) if t['role']=='user'),'')
     old,_=relevant_notes(previous,mods)
-    if current and not set(current).intersection(old):return []
+    same_mod=bool(set(current).intersection(old))
+    if current and not same_mod:return []
+    if not FOLLOWUP.search(question) and not (same_mod and re.match(r'\s*und\b',question,re.I)):return []
     return turns
 
 

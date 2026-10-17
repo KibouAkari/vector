@@ -54,6 +54,8 @@ class Knowledge(unittest.TestCase):
         self.assertEqual(len(payload),2);self.assertNotIn('openpartiesandclaims',str(payload))
         selected,hints=knowledge.relevant_notes('Wie züchte ich Kühe in Minecraft?',['openpartiesandclaims'],[{'role':'user','content':'Wie geht eine Party?'}])
         self.assertEqual((selected,hints),([],[]))
+        turns=[{'role':'user','content':'Wie geht eine Party?'},{'role':'assistant','content':'Eine Party teilt Claim-Rechte.'}]
+        self.assertEqual(knowledge.scoped_turns('Und wie vermehre ich Schafe?',['openpartiesandclaims'],turns),[])
         self.answer('Und wozu?');self.assertEqual(len(self.calls[-1]['messages']),4)
     def test_explicit_game_skips_misclassifying_router(self):
         self.route='other';self.answer('Wie züchte ich Kühe in Minecraft?')
