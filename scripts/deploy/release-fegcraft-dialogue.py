@@ -37,6 +37,7 @@ URL = 'https://' + DOMAIN + '/vector-fegcraft-assets/'
 ASSETS = {'vector-avatar.png': 'b0861cbad964bd8600788f0892bfdad853fa7e091d3e06e62c8ba308f79d73f4',
           'vector-chat-26-2.zip': 'e43b8d1783e59ec8c717f1567a23241461f8a5d5efc3ae56ab4b9a5413445ce4'}
 PACK_SHA1 = 'c3ad9bccc44029b8f907b7c7299af8bb59a7e18a'
+OLD_ADDON_SHA = '0be86352e50597fc5e8e82742d87bba3ef924b8d1a8c2230c03bc89d261bc671'
 ADDON_SHA = 'b09bf0e10df61ef4d758e79a183ada76be5ebc5c22ba59e7871c5dc66548db94'
 NATIVE_IMAGE = 'sha256:eca0b83a886fcc9952ef13755853ef63134e5c76733d40564460398776c92dd7'
 INTEGRATION_SHA = '75e039ac6c8edad3c9423c91638ffd15d7c9b95dadb60bf69349da838afbf337'
@@ -449,17 +450,20 @@ def release():
     service = inspect(SERVICE); game = inspect(GAME)
     directory, manifest = namespace['installation'](service)
     if directory != INSTALL or game['Image'] != manifest['minecraft_image']: raise RuntimeError('BASELINE_CHANGED')
-    if manifest.get('dialogue_release'):
-        completed_release(manifest)
-        return
     if (service.get('Image') != NATIVE_IMAGE
             or not any(m.get('Source') == str(INSTALL / 'code') and m.get('Destination') == '/code' and m.get('RW') is False for m in service.get('Mounts', []))):
         raise RuntimeError('PRIVATE_SERVICE_RUNTIME_CHANGED')
     if (large_digest(DATA / 'mods/dcintegration-fabric-MC26.2-3.2.1.jar') != INTEGRATION_SHA
             or large_digest(DATA / 'versions/26.2/server-26.2.jar') != GAME_SHA):
         raise RuntimeError('QUALIFIED_GAME_OR_API_CHANGED')
-    if service['State'].get('Health', {}).get('Status') != 'healthy' or game['State'].get('Health', {}).get('Status') != 'healthy':
+    if (not service['State'].get('Running') or not game['State'].get('Running')
+            or service['State'].get('Health', {}).get('Status') != 'healthy' or game['State'].get('Health', {}).get('Status') != 'healthy'):
         raise RuntimeError('PILOT_NOT_HEALTHY')
+    if manifest.get('dialogue_release'):
+        completed_release(manifest)
+        return
+    if digest(DATA / 'DiscordIntegration-Data/addons/vector-minecraft-0.1.0.jar') != OLD_ADDON_SHA:
+        raise RuntimeError('ORIGINAL_ADDON_CHANGED')
     env = dict(value.split('=', 1) for value in game['Config']['Env'] if '=' in value)
     if env.get('VERSION') != '26.2' or any(env.get(key) for key in PACK_ENV): raise RuntimeError('GAME_ENVIRONMENT_CHANGED')
     labels = game['Config'].get('Labels') or {}

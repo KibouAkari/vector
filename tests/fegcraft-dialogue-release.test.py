@@ -29,6 +29,11 @@ server {
 
 
 class Release(unittest.TestCase):
+    def setUp(self):
+        # Production requires root. Exercise transactions in CI without requiring root ownership.
+        ownership = patch.object(m.os, 'chown', return_value=None)
+        ownership.start(); self.addCleanup(ownership.stop)
+
     def test_exact_https_server_and_closed_public_files(self):
         result = m.patch_nginx(SITE).decode()
         self.assertEqual(result.count('location = /vector-fegcraft-assets/'), 2)
@@ -150,9 +155,9 @@ class Release(unittest.TestCase):
                 def config(path, project): return candidate_compose if path.name == 'compose.candidate.yml' else before_compose
                 protected_identity = {'app': ['unchanged', 'image', 'started']}
                 with patch.multiple(m, ROOT=root, REPO=root / 'repo', DATA=data, INSTALL=install, REPORT=report,
-                        CAPTURE=capture, PUBLIC=public, GAME_COMPOSE=game_compose, APP_COMPOSE=app, ASSETS=assets, ADDON_SHA=m.sha(new_addon)), \
+                        CAPTURE=capture, PUBLIC=public, GAME_COMPOSE=game_compose, APP_COMPOSE=app, ASSETS=assets, ADDON_SHA=m.sha(new_addon), OLD_ADDON_SHA=m.sha(b'old addon')), \
                         patch.dict(os.environ, {'VECTOR_REQUIRE_LOGO_PACK': '1'}), patch.object(m, 'nginx_site', return_value=site), \
-                        patch.object(m, 'inspect', side_effect=lambda name: game if name == m.GAME else {'Image': m.NATIVE_IMAGE, 'Mounts': [{'Source': str(install / 'code'), 'Destination': '/code', 'RW': False}], 'State': {'Health': {'Status': 'healthy'}}}), \
+                        patch.object(m, 'inspect', side_effect=lambda name: game if name == m.GAME else {'Image': m.NATIVE_IMAGE, 'Mounts': [{'Source': str(install / 'code'), 'Destination': '/code', 'RW': False}], 'State': {'Running': True, 'Health': {'Status': 'healthy'}}}), \
                         patch.object(m, 'identities', return_value=protected_identity), patch.object(m, 'run', side_effect=command), \
                         patch.object(m, 'compose_config', side_effect=config), patch.object(m, 'verify_assets', side_effect=RuntimeError('SYNTHETIC_HTTPS_FAILURE') if case == 'https-fail' else None), \
                         patch.object(m, 'large_digest', side_effect=lambda path: m.INTEGRATION_SHA if path.suffix == '.jar' and path.name.startswith('dcintegration') else m.GAME_SHA), \
