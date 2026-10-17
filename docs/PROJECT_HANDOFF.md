@@ -1,12 +1,12 @@
 # Vector project handoff
 
-Updated 2026-10-17, PR #52. Read this file, AGENTS.md and docs/OWNER_PREFERENCES.md first, then verify current GitHub/server state. These are project instructions, not public-assistant memory. This file replaces accumulated historical "current" sections; [the complete earlier handoff](https://github.com/KibouAkari/vector/blob/4f29682b9698ca314a64036a557bd518f760d17b/docs/PROJECT_HANDOFF.md) remains immutable in Git.
+Updated 2026-10-17, PR #53. Read this file, AGENTS.md and docs/OWNER_PREFERENCES.md first, then verify current GitHub/server state. These are project instructions, not public-assistant memory. This file replaces accumulated historical "current" sections; [the complete earlier handoff](https://github.com/KibouAkari/vector/blob/4f29682b9698ca314a64036a557bd518f760d17b/docs/PROJECT_HANDOFF.md) remains immutable in Git.
 
 ## Working agreement
 
 The owner Simi executes server commands; this workspace has no SSH/server access. Concise natural German, Swiss spelling, no emojis. Supply full copyable immutable-pin commands, not only downloads. Scripts belong under /root/vector-workspace/current and run through /root/vector-workspace/bin/run. Fetch/validate revision ancestry or exact branch head, syntax and existing content. Reject symlinks/differing files; preserve failed scripts and rollback. Repeated release attempts can mean deployment already succeeded: inspect evidence before mutation. Continue already authorized work, review affected PRs, run meaningful tests, update CHANGELOG and this handoff. Keep secrets, owner prompts, player records, raw logs/config/screenshots and installed game assets out of Git; synthetic fixtures only.
 
-Owner authorization includes final Minecraft integration and one brief introduction after qualification. It does not authorize duplicate announcements on tests/restart/uncertain delivery. Never claim deployment or real-channel delivery from source/isolated tests alone.
+Owner authorization includes final Minecraft integration. Owner update 2026-10-17 explicitly requests the one brief welcome before manual chat tests, after installed service/game readiness checks; this supersedes the earlier wait for full real-channel qualification. It does not authorize duplicate announcements on tests/restart/uncertain delivery. Never claim deployment or real-channel delivery from source/isolated tests alone.
 
 ## Current production baseline
 
@@ -87,4 +87,19 @@ Seven offline profile/publication/partial-ownership/rollback/private-health test
 
 After successful installation the owner should send one addressed question in Minecraft, for example hey Vector, wer hat die meisten Mobkills? Then a recipe question and a plain unaddressed chat question. Confirm authenticated greeting, real statistics/base-recipe response, ordinary chat ignored and exactly one copy in the existing Discord channel. Do not claim Discord-origin requests work; that listener is out of scope.
 
-Introduction stays disabled during this first real game/relay check. After owner-observed success, prepare the guarded one-time welcome enablement, preserve any existing introduction-v1.attempted marker, and account for the addon's startup-read configuration (changing introductionEnabled requires reload/restart). The owner has already authorized that eventual introduction, not repeated test sends. Full knowledge/mod recipe coverage and logo/head remain unimplemented/unqualified; this pilot answers saved stats, public mod IDs and supported vanilla-base recipes. Freeform model quality/slot-role/accounting gates remain required before enabling models. Keep the qualified web app baseline unchanged.
+The owner now explicitly requests the welcome before the first manual test. Do not enable the addon's startup-read introduction flag and restart again merely to announce; use the fixed one-shot script below, preserving the same introduction-v1.attempted marker. Full knowledge/mod recipe coverage and logo/head remain unimplemented/unqualified; this pilot answers saved stats, public mod IDs and supported vanilla-base recipes. Freeform model quality/slot-role/accounting gates remain required before enabling models. Keep the qualified web app baseline unchanged.
+
+
+## Current owner action: fixed one-time welcome before tests, PR #53
+
+Owner says Minecraft restarted but no welcome was sent, and asks for the announcement now before manual questions. No terminal install report was supplied, so do not assume its final status. The disabled introduction was intentional in PR #52; the owner now overrides that timing preference. Existing question/relay qualification remains unverified.
+
+Prepare scripts/deploy/announce-fegcraft-assistant.py as current/vector-fegcraft-welcome.py at the final reviewed PR #53 pin and run through the usual runner. Owner should be online in Minecraft to see the in-game announcement. No extra server restart, rebuild or introductionEnabled edit is needed.
+
+The script discovers the exact installed private Compose release through the sidecar's owned Compose labels, requires the completed installed_pending_real_channel manifest, checks profile/game-file hashes, Minecraft image and healthy game/service, then probes private health and the console helper. If install did not finish, it stops before any message. It hashes the HMAC token locally only for owned-file validation and never exports its raw value.
+
+The closed constant text introduces Vector truthfully for saved statistics, mods and base recipes. It uses the existing mc-send-to-console helper with a single fixed say command, not a chat-command/tool API or shell. Both stdout/stderr are kept private. Local Discord relay configuration booleans are reported only as configuration hints, never delivery acknowledgments; no Discord API token/channel is read into model context.
+
+It creates/fsyncs/chowns data/DiscordIntegration-Data/vector/introduction-v1.attempted BEFORE submission, so later invocations/addon startup cannot repeat it. Failure/timeouts keep the marker. Never delete/retry an uncertain attempt automatically. Console acceptance is not proof that an online player or Discord received it. Ask the owner to observe the welcome, then test an addressed statistics/recipe question and ordinary-chat silence; preserve actual observations.
+
+Four offline tests cover exact single fixed submission, repeat suppression, retained marker after failed submission, unrecognized release path and symlink rejection. Actual server execution/message delivery remains pending. Keep the addon's introductionEnabled=false; the shared marker already covers the owner-requested announcement. Do not claim complete Minecraft knowledge, logo/head, real routing or Discord delivery from the announcement alone.

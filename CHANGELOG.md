@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-17 — Owner-requested welcome before manual chat testing (PR #53)
+
+- Owner reports Minecraft restarted but no introduction appeared. The pilot intentionally left introductions disabled; installation success/real routing is not independently confirmed without its manifest/output.
+- Apply the owner's explicit new timing preference: prepare one fixed short Minecraft welcome before manual tests, without another restart. Verify completed installation ownership/profile/file hashes and healthy service/game first; stop if installation failed.
+- Submit only the closed welcome text through the existing game console helper and preserve the addon's durable introduction-v1.attempted marker before submission. No shell, model path, configurable user command or automatic retry. The marker remains on failure/uncertain delivery and prevents a later addon introduction too.
+- Read relay configuration locally and report only boolean hints, without exporting tokens/config; report console acceptance separately from actual delivery. The existing relay may forward the announcement depending on configuration; no Discord delivery is claimed.
+- Four offline fixed-command/marker/failure/path tests pass. Actual welcome submission is pending owner execution. Update owner preferences and project handoff; no service/app rebuild or restart.
+
+
 ## 2026-10-17 — Qualified installed recipe catalog and guarded Minecraft pilot installer (PR #52)
 
 - Owner installed-base HTTP qualification passed: 975 supported recipes, 610 unsupported entries explicitly excluded, actual three-recipe requests around 47–50 ms in this one run, zero model/cloud calls or messages, cleanup and unchanged production verified. Effective modded recipes remain unqualified.
