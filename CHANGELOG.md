@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-17 — Minimal local prompt and rendering controls after verified artifacts (PR #67)
+
+- Owner PR #66 audit verified both actual registered weight sizes/SHA256, registry identities and known templates, with empty system fields and native0.40.4. Zero inference/cloud/DB/messages and unchanged production. Integrity success does not qualify factual knowledge; no corrupt weight file observed.
+- Review versioned native routes: Jinja Qwen syntax alone is not a bad template; native chat and Go/rendered paths coexist. No template/environment/runtime changes or model repair/download.
+- Add eight fixed private Qwen controls: two Minecraft questions, English/German, normal chat/manual raw ChatML. Remove rich-prompt/schema/history/fact/version confounds while keeping sampling, seed, stops and output bound equal. Audit metadata drift fails before inference. Retain real shared admission, exact/unknown usage, unprivileged isolation, bounded client and verified cleanup/unload through the unchanged evaluator.
+- Keep raw synthetic answers for human factual review, with no keyword verdict, automatic winner or activation. Add transport/usage/drift/cleanup tests and CI syntax/test coverage; update handoff. No game/app/assistant/backup change, restart, announcement or relaxation of the full quality and private-data gates.
+
 ## 2026-10-17 — Audit actual local model artifacts before further inference (PR #66)
 
 - Actual PR #65 comparison completed with0/16 combined passing cases across both existing models and both formats. Qwen/Hermes fabricated basic Minecraft mechanics; Hermes also timed out/was slow. Known usage2189 input/557 output plus3 unknown attempts means exact totals NULL. No cloud fee, activation/messages or production change; cleanup/unload verified.

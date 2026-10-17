@@ -69,6 +69,8 @@ jobs:
           python3 tests/fegcraft-general-knowledge.test.py
           python3 tests/fegcraft-general-evaluation.test.py
           python3 tests/fegcraft-model-format.test.py
+          python3 tests/fegcraft-minimal-prompts.test.py
+          python3 -m py_compile scripts/deploy/diagnose-fegcraft-minimal-prompts.py
           python3 tests/local-model-artifact-audit.test.py
           python3 -m py_compile scripts/diagnostics/audit-local-model-artifacts.py
           python3 -m py_compile scripts/deploy/diagnose-fegcraft-model-format.py
