@@ -86,13 +86,16 @@ class Handler(BaseHTTPRequestHandler):
         try:
             value = json.loads(raw)
             result = self.server.assistant.handle(value)
-            return self.respond(200, result)
+            status = 200
         except (ValueError, TypeError, KeyError):
-            return self.respond(400, {'error': 'INVALID_REQUEST'})
+            status, result = 400, {'error': 'INVALID_REQUEST'}
         except Exception:
-            return self.respond(503, {'error': 'LOCAL_UNAVAILABLE'})
+            status, result = 503, {'error': 'LOCAL_UNAVAILABLE'}
         finally:
             self.server.slot.release()
+        # A client can send its next question as soon as it reads this response.
+        # Release completed computation before making that completion visible.
+        return self.respond(status, result)
 
 
 def main():

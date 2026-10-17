@@ -58,12 +58,15 @@ jobs:
           python3 tests/app-listener-fix.test.py
           python3 -m py_compile scripts/deploy/fix-app-listener.py
           bash -n scripts/deploy/stage-chat-controls.sh
+          bash -n scripts/deploy/stage-fresh-statistics.sh
 
       - name: Test local FEGCraft statistics and admission foundation
         run: |
           python3 tests/fegcraft-stats.test.py
           python3 tests/fegcraft-policy.test.py
           python3 tests/fegcraft-runtime.test.py
+          python3 tests/fegcraft-knowledge-evaluation.test.py
+          python3 -m py_compile scripts/deploy/evaluate-fegcraft-knowledge.py
           python3 tests/fegcraft-evaluation.test.py
 
       - name: Test offline model broker policy

@@ -14,7 +14,8 @@ import unittest
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT / 'services/fegcraft-assistant'))
 from runtime import Assistant, State, safe_answer, LocalKnowledge
-from server import Service
+from server import Service, Handler
+from unittest.mock import patch
 
 
 class RuntimeTests(unittest.TestCase):
@@ -45,6 +46,16 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(result['status'], 'answered')
         self.assertIn("Yoo ExampleOne, Mobkills: ExampleOne 52'000 Kills", result['text'])
         self.assertIn('gespeicherte', result['text'])
+
+    def test_all_record_holders_are_fresh_and_cover_five_categories(self):
+        first=self.ai.handle(self.payload('hey Vector, kannst du mir einfach nur alle Rekordhalter geben?'))
+        for label in ('Spielzeit:','Strecke:','Mobkills:','Spielerkills:','Tode:'):
+            self.assertIn(label,first['text'])
+        path=self.stats/(self.uid+'.json')
+        path.write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':53000,'minecraft:play_time':72000}}}))
+        second=self.ai.handle(self.payload('hey Vector, alle Rekordhalter'))
+        self.assertIn("53'000 Kills",second['text'])
+        self.assertNotIn("52'000 Kills",second['text'])
 
     def test_private_topics_neutral_without_model(self):
         for text in ('hey Vector, was ist der seed?', 'hi Vector, kann ExampleOne gamemode creative nutzen?', 'hallo Vector, cheatet ExampleOne?'):
@@ -101,6 +112,26 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(model.calls, 1)
         with self.assertRaises(ValueError):
             LocalKnowledge('unused', endpoint='https://external.example.invalid')
+
+    def test_immediate_next_request_during_previous_response_delivery_is_not_busy(self):
+        service=Service(('127.0.0.1',0),self.ai,self.key,lambda:1_000_000_000)
+        release=threading.Event();original=Handler.respond
+        def delayed(handler,status,payload):
+            original(handler,status,payload)
+            if status==200 and payload.get('status')=='answered':release.wait(2)
+        def send(raw):
+            connection=HTTPConnection(*service.server_address,timeout=2)
+            signature=hmac.new(self.key,b'1000000000\n'+raw,hashlib.sha256).hexdigest()
+            connection.request('POST','/v1/minecraft',raw,{'X-Vector-Time':'1000000000','X-Vector-Signature':signature})
+            response=connection.getresponse();result=(response.status,json.loads(response.read()));connection.close();return result
+        with patch.object(Handler,'respond',delayed):
+            thread=threading.Thread(target=service.serve_forever,daemon=True);thread.start()
+            try:
+                raw=json.dumps(self.payload('hey Vector, wer hat die meisten mobkills?')).encode()
+                self.assertEqual(send(raw)[0],200)
+                self.assertEqual(send(raw),(200,{'status':'duplicate'}))
+            finally:
+                release.set();service.shutdown();service.server_close()
 
     def test_authenticated_http_boundary_and_busy(self):
         service = Service(('127.0.0.1', 0), self.ai, self.key, lambda: 1000)
