@@ -39,7 +39,7 @@ class GeneralKnowledge(LocalKnowledge):
         if not isinstance(mods,list) or len(mods)>200 or any(not isinstance(x,str) or not re.fullmatch(r'[a-z0-9_.-]{1,64}',x) for x in mods) or len(', '.join(mods))>2400:
             raise ValueError('LOCAL_MOD_INVENTORY_LIMIT')
         if forbidden(question):self.clear(scope);raise ValueError('FORBIDDEN_LOCAL_INPUT')
-        if re.search(r'(?:wie viele|wieviel|wer|wem).{0,50}(?:claim|part|mitglied|recht)',question,re.I):
+        if re.search(r'\b(?:wie viele|wieviel|wer|wem)\b.{0,50}\b(?:claims?|part(?:y|ys|ies)|mitglied\w*|recht\w*)\b',question,re.I):
             self.clear(scope)
             return 'aktuelle Claim-Besitzer, Mitgliedschaften und Serverlimits kann ich hier nicht prüfen. Sieh dafür in die Claim- oder Party-Übersicht; welches Menü hast du geöffnet?'
         topics=['minecraft','other',*mods]

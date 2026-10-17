@@ -49,6 +49,10 @@ class Knowledge(unittest.TestCase):
     def test_other_topics_and_live_claim_facts_do_not_invent(self):
         self.reply={'topic':'other','answer':''};self.assertIn('Minecraft',self.answer('Schreibe eine Bewerbung'))
         count=len(self.calls);self.assertIn('nicht prüfen',self.answer('Wem gehört dieser Claim?'));self.assertEqual(len(self.calls),count)
+    def test_party_creation_is_not_confused_with_private_ownership(self):
+        self.answer('Wie werden Partys erstellt?')
+        self.assertEqual(len(self.calls),1)
+
     def test_native_usage_contains_no_prompt_or_identity(self):
         with tempfile.TemporaryDirectory() as temp:
             state=runtime.State(Path(temp)/'state',b'key');state.model_usage('vector-qwen3:1.7b-q8',None,17,False)
