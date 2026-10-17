@@ -36,6 +36,8 @@ class GeneralKnowledge(LocalKnowledge):
             while len(self.context)>256:self.context.popitem(last=False)
     def answer_scoped(self,question,mods,scope):
         if not isinstance(question,str) or len(question)>1200:raise ValueError('LOCAL_QUESTION_LIMIT')
+        if not isinstance(mods,list) or len(mods)>200 or any(not isinstance(x,str) or not re.fullmatch(r'[a-z0-9_.-]{1,64}',x) for x in mods) or len(', '.join(mods))>2400:
+            raise ValueError('LOCAL_MOD_INVENTORY_LIMIT')
         if forbidden(question):self.clear(scope);raise ValueError('FORBIDDEN_LOCAL_INPUT')
         if re.search(r'(?:wie viele|wieviel|wer|wem).{0,50}(?:claim|part|mitglied|recht)',question,re.I):
             self.clear(scope)

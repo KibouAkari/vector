@@ -27,7 +27,7 @@ class Opener:
   return io.BytesIO(json.dumps({'model':value['model'],'done':True,'done_reason':'stop','prompt_eval_count':100,'eval_count':10,'message':{'content':json.dumps({'topic':topic,'answer':answer})}}).encode())
 urllib.request.build_opener=lambda *args:Opener()
 '''.replace('WRONG',str(wrong))
-        source=m.HARNESS.replace("sys.path.insert(0,'/code/services/fegcraft-assistant')",'sys.path.insert(0,'+repr(str(ROOT/'services/fegcraft-assistant'))+')')
+        source=m.HARNESS.replace("Path('/code/mods.json').read_text()",repr('[\"carryon\",\"openpartiesandclaims\",\"fabric-api\",\"travelersbackpack\"]')).replace("sys.path.insert(0,'/code/services/fegcraft-assistant')",'sys.path.insert(0,'+repr(str(ROOT/'services/fegcraft-assistant'))+')')
         result=subprocess.run([sys.executable,'-c',setup+source],capture_output=True,text=True,timeout=10)
         self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
     def test_composed_routes_context_boundaries_and_native_usage(self):

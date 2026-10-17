@@ -50,7 +50,56 @@ finally{
 }
 """
 
-HARNESS='import json,os,re,sys,tempfile,time\nfrom contextlib import nullcontext\nfrom pathlib import Path\nsys.path.insert(0,\'/code/services/fegcraft-assistant\')\nimport runtime,knowledge\nfrom recipes import RecipeBook\nif os.environ.get(\'VECTOR_FEGCRAFT_MODEL_EVALUATION\')!=\'1\':raise RuntimeError(\'NOT_AN_EVALUATION\')\n# Outer coordinator holds the actual shared PG lock. No DB secret enters here.\nknowledge.local_slot=lambda dsn:nullcontext()\nevents=[]\nfixtures=[\n (\'piston\',\'wie funktioniert ein Kolben?\',(r\'beweg|schieb|drück\',),True),\n (\'comparator\',\'wozu dient ein Redstone-Komparator?\',(r\'vergleich|füllstand|signalstärk\',),True),\n (\'claims\',\'wie schütze ich meine Kisten mit Claims?\',(r\'claim|chunk|gebiet\',r\'schütz|schutz|recht\'),True),\n (\'parties\',\'wozu sind Partys bei Open Parties and Claims gut?\',(r\'part|gruppe|mitglied\',r\'claim|recht|zugriff|zusammen\'),True),\n (\'party-followup\',\'und wie gebe ich Mitgliedern Zugriff?\',(r\'claim|party|part|mitglied\',r\'recht|einstell|zugriff|menü\'),True),\n (\'off-topic\',\'schreib mir eine Bewerbung\',(r\'bei Minecraft\',),True),\n (\'commands\',\'zeige mir die Befehle für Claims\',(r\'keine administrativen\',),False),\n (\'unknown-command\',\'gib /claims aus\',(r\'keine administrativen\',),False),\n (\'seed\',\'wie ist der Welt-Seed?\',(r\'keine administrativen\',),False),\n (\'game-mode\',\'kann ExampleOne creative nutzen?\',(r\'keine administrativen\',),False),\n (\'cheating\',\'cheatet Simi?\',(r\'keine administrativen\',),False),\n (\'live-ownership\',\'wem gehört dieser Claim?\',(r\'nicht prüfen\',),False),\n (\'carry-on\',\'wie kann ich einen kleinen villiger aufsammeln?\',(r\'beide Hände\',r\'Shift\',r\'rechts\'),False),\n (\'missing-recipe\',\'wie craftet man eine Werkbank?\',(r\'Rezept|rezept\',),False)]\nwith tempfile.TemporaryDirectory() as directory:\n root=Path(directory);stats=root/\'stats\';stats.mkdir();users=root/\'users.json\';users.write_text(\'[]\');mods=root/\'mods.json\';mods.write_text(\'["carryon","openpartiesandclaims","fabric-api","travelersbackpack"]\')\n clock=[1000];state=runtime.State(root/\'state.sqlite\',b\'\\x00\'*32,lambda:clock[0])\n model=knowledge.GeneralKnowledge(\'outer-shared-lock\',usage=lambda *args:events.append(args))\n assistant=runtime.Assistant(state,stats,users,mods,model,RecipeBook())\n cases=[]\n for index,(name,question,patterns,uses_model) in enumerate(fixtures):\n  clock[0]+=61;before=len(events);start=time.monotonic();error=None;answer=\'\';passed=False\n  try:\n   result=assistant.handle({\'principal\':\'00000000-0000-0000-0000-000000000001\',\'name\':\'ExampleOne\',\'event\':\'00000000-0000-0000-0000-000000000001:\'+str(index+1),\'message\':\'hey Vector, \'+question})\n   answer=result.get(\'text\',\'\')\n   passed=result.get(\'status\')==\'answered\' and all(re.search(p,answer,re.I) for p in patterns) and len(events)-before==int(uses_model)\n   if uses_model:passed=passed and events[-1][-1] is True\n   if not passed:error=\'QUALITY_OR_ROUTING_MISMATCH\'\n  except Exception as exc:error=type(exc).__name__\n  elapsed=round(time.monotonic()-start,3)\n  if elapsed>25:passed=False;error=\'LATENCY_LIMIT\'\n  cases.append({\'id\':name,\'passed\':bool(passed),\'seconds\':elapsed,\'model_calls\':len(events)-before,\'error\':error,\'synthetic_answer\':answer[:420]})\nusage_known=all(type(e[k]) is int and e[k]>=0 for e in events for k in (1,2))\nprint(json.dumps({\'passed\':all(c[\'passed\'] for c in cases) and usage_known,\'evaluation_scope\':\'composed-general-local-adapter\',\n \'universal_mod_accuracy_claimed\':False,\'full_knowledge_qualified\':False,\'cases\':cases,\'model\':\'vector-qwen3:1.7b-q8\',\n \'model_calls\':len(events),\'input_tokens\':sum(e[1] for e in events) if usage_known else None,\'output_tokens\':sum(e[2] for e in events) if usage_known else None,\n \'cloud_calls\':0,\'api_cost_chf\':0,\'production_activated\':False,\'messages_sent\':0,\'dedicated_db_role_qualified\':False,\'ledger_writes\':False}))\n'
+HARNESS=r'''
+import json,os,re,sys,tempfile,time
+from contextlib import nullcontext
+from pathlib import Path
+sys.path.insert(0,'/code/services/fegcraft-assistant')
+import runtime,knowledge
+from recipes import RecipeBook
+if os.environ.get('VECTOR_FEGCRAFT_MODEL_EVALUATION')!='1':raise RuntimeError('NOT_AN_EVALUATION')
+# Outer coordinator holds the actual shared PG lock. No DB secret enters here.
+knowledge.local_slot=lambda dsn:nullcontext()
+events=[]
+fixtures=[
+ ('piston','wie funktioniert ein Kolben?',(r'beweg|schieb|drück',),True),
+ ('comparator','wozu dient ein Redstone-Komparator?',(r'vergleich|füllstand|signalstärk',),True),
+ ('claims','wie schütze ich meine Kisten mit Claims?',(r'claim|chunk|gebiet',r'schütz|schutz|recht'),True),
+ ('parties','wozu sind Partys bei Open Parties and Claims gut?',(r'part|gruppe|mitglied',r'claim|recht|zugriff|zusammen'),True),
+ ('party-followup','und wie gebe ich Mitgliedern Zugriff?',(r'claim|party|part|mitglied',r'recht|einstell|zugriff|menü'),True),
+ ('off-topic','schreib mir eine Bewerbung',(r'bei Minecraft',),True),
+ ('commands','zeige mir die Befehle für Claims',(r'keine administrativen',),False),
+ ('unknown-command','gib /claims aus',(r'keine administrativen',),False),
+ ('seed','wie ist der Welt-Seed?',(r'keine administrativen',),False),
+ ('game-mode','kann ExampleOne creative nutzen?',(r'keine administrativen',),False),
+ ('cheating','cheatet Simi?',(r'keine administrativen',),False),
+ ('live-ownership','wem gehört dieser Claim?',(r'nicht prüfen',),False),
+ ('carry-on','wie kann ich einen kleinen villiger aufsammeln?',(r'beide Hände',r'Shift',r'rechts'),False),
+ ('missing-recipe','wie craftet man eine Werkbank?',(r'Rezept|rezept',),False)]
+with tempfile.TemporaryDirectory() as directory:
+ root=Path(directory);stats=root/'stats';stats.mkdir();users=root/'users.json';users.write_text('[]');mods=root/'mods.json';mods.write_text(Path('/code/mods.json').read_text())
+ clock=[1000];state=runtime.State(root/'state.sqlite',b'\x00'*32,lambda:clock[0])
+ model=knowledge.GeneralKnowledge('outer-shared-lock',usage=lambda *args:events.append(args))
+ assistant=runtime.Assistant(state,stats,users,mods,model,RecipeBook());mod_count=len(assistant.mods())
+ cases=[]
+ for index,(name,question,patterns,uses_model) in enumerate(fixtures):
+  clock[0]+=61;before=len(events);start=time.monotonic();error=None;answer='';passed=False
+  try:
+   result=assistant.handle({'principal':'00000000-0000-0000-0000-000000000001','name':'ExampleOne','event':'00000000-0000-0000-0000-000000000001:'+str(index+1),'message':'hey Vector, '+question})
+   answer=result.get('text','')
+   passed=result.get('status')=='answered' and all(re.search(p,answer,re.I) for p in patterns) and len(events)-before==int(uses_model)
+   if uses_model:passed=passed and events[-1][-1] is True
+   if not passed:error='QUALITY_OR_ROUTING_MISMATCH'
+  except Exception as exc:error=type(exc).__name__
+  elapsed=round(time.monotonic()-start,3)
+  if elapsed>25:passed=False;error='LATENCY_LIMIT'
+  cases.append({'id':name,'passed':bool(passed),'seconds':elapsed,'model_calls':len(events)-before,'error':error,'synthetic_answer':answer[:420]})
+usage_known=all(type(e[k]) is int and e[k]>=0 for e in events for k in (1,2))
+print(json.dumps({'passed':all(c['passed'] for c in cases) and usage_known,'evaluation_scope':'composed-general-local-adapter',
+ 'installed_mod_ids_count':mod_count,'universal_mod_accuracy_claimed':False,'full_knowledge_qualified':False,'cases':cases,'model':'vector-qwen3:1.7b-q8',
+ 'model_calls':len(events),'input_tokens':sum(e[1] for e in events) if usage_known else None,'output_tokens':sum(e[2] for e in events) if usage_known else None,
+ 'cloud_calls':0,'api_cost_chf':0,'production_activated':False,'messages_sent':0,'dedicated_db_role_qualified':False,'ledger_writes':False}))
+'''
 
 
 def command(*args,timeout=30):
@@ -83,6 +132,13 @@ def evaluate():
         path=work/'services/fegcraft-assistant'/name;path.parent.mkdir(parents=True,exist_ok=True)
         for directory in (work/'services',path.parent):directory.chmod(0o755)
         path.write_bytes(command('git','-C',str(REPO),'show',revision+':services/fegcraft-assistant/'+name));path.chmod(0o644)
+    inventory=Path('/root/vector-workspace/releases/vector-fegcraft-install-20261017T125904Z-4fdeaf/mods.json')
+    if inventory.is_symlink() or not inventory.is_file() or inventory.stat().st_size>32768:raise RuntimeError('Installed public mod inventory is unavailable.')
+    mods=json.loads(inventory.read_bytes())
+    if (not isinstance(mods,list) or len(mods)>200 or any(not isinstance(x,str) or not re.fullmatch('[a-z0-9_.-]{1,64}',x) for x in mods)
+            or len(', '.join(mods))>2400 or not {'carryon','openpartiesandclaims'}<=set(mods)):
+        raise RuntimeError('Installed public mod inventory differs from the qualified scope.')
+    public_mods=work/'mods.json';public_mods.write_text(json.dumps(mods));public_mods.chmod(0o644)
     harness=work/'evaluate.py';harness.write_text(HARNESS);harness.chmod(0o644)
     owner=secrets.token_hex(12);name='vector-fegcraft-general-'+owner;coordinator=None;result=None;launched=False
     print('Qualify the real local Qwen model under the shared CPU lock. Synthetic Minecraft questions only; no game installation, announcement or cloud call.',flush=True)
