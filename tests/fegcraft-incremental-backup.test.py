@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -33,6 +34,7 @@ class Incremental(unittest.TestCase):
                    'Mounts':[{'Type':'bind','Source':str(data),'Destination':'/data','RW':True}],
                    'State':{'Running':True,'StartedAt':'initial','OOMKilled':False,'ExitCode':0}}
         self.events=[];self.actual=m.run
+        p=patch.object(m.shutil,'disk_usage',return_value=SimpleNamespace(free=1024**4));p.start();self.addCleanup(p.stop)
         for name,value in dict(ROOT=root,BASE=base,DATA=data,BACKUPS=backups,STATE=state,STAGE=stage,REPOSITORY=state/'repository',PASSWORD=state/'password',CONFIG=state/'owner.json',CANCELLED=False).items():
             p=patch.object(m,name,value);p.start();self.addCleanup(p.stop)
         p=patch.object(m,'run',side_effect=self.command);p.start();self.addCleanup(p.stop)
