@@ -224,7 +224,6 @@ def evaluate():
     result.update(revision=revision,production_unchanged=fingerprint()==before,cleanup_verified=True,weights_unloaded=True)
     result['passed']=result['passed'] and result['production_unchanged']
     result['diagnostic_completed']=diagnostic and result['production_unchanged']
-    result['runtime_source_changed']=False
     (folder/'result.json').write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(result,indent=2));print('Report:',folder/'result.json')
     if not result['production_unchanged']:raise RuntimeError('Production changed during the isolated diagnostic.')
