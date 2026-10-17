@@ -110,6 +110,7 @@ def backup():
         raise RuntimeError('BACKUP_EXPECTED_SERVER_FILES_MISSING')
     game = inspect()
     if game['State'].get('Restarting'): raise RuntimeError('BACKUP_GAME_IS_RESTARTING')
+    if game.get('HostConfig', {}).get('AutoRemove'): raise RuntimeError('BACKUP_AUTO_REMOVE_CONTAINER_REFUSED')
     verify_bind(game)
     required = required_space(); free = shutil.disk_usage(BACKUPS).free
     if free < required: raise RuntimeError('BACKUP_INSUFFICIENT_SPACE_BEFORE_STOP')

@@ -88,6 +88,11 @@ class Backup(unittest.TestCase):
         self.game['State']['Running']=False; self.execute()
         self.assertEqual(self.events,['create','compare']); self.assertFalse(self.game['State']['Running'])
 
+    def test_auto_remove_refused_before_stop(self):
+        self.game['HostConfig']={'AutoRemove': True}
+        with self.assertRaisesRegex(RuntimeError,'AUTO_REMOVE'): self.execute()
+        self.assertEqual(self.events,[])
+
     def test_space_failure_never_stops(self):
         with patch.object(m,'required_space',return_value=10**30):
             with self.assertRaisesRegex(RuntimeError,'INSUFFICIENT_SPACE'): self.execute()
