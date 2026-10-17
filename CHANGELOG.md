@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 — Bounded deeper recipe archives and useful failure evidence (PR #49)
+
+- Owner recipe preflight stopped at NESTING_LIMIT, with production unchanged and no activation. The original two-level archive traversal was insufficient; installed recipe coverage is still unknown.
+- Support up to eight nested JAR levels with an additional 256 MiB budget for simultaneously retained inflated archive payloads. Retain existing total-read, entry, archive, time and path guards. Over-budget inputs still fail instead of silently skipping resources.
+- Save bounded progress counters and the current public archive/member/depth on failed and successful runs, so a limit failure identifies the resource without exporting configuration or player data.
+- Eleven offline regressions pass, including a four-level dependency bundle, pre-decompression live-budget rejection, cleanup after an invalid child archive and the retained depth/deadline guards. Actual installed-archive traversal remains pending; no app rebuild/release, inference or Minecraft activation is involved.
+
+
 ## 2026-10-17 — Observed fresh-statistics deployment and installed recipe preflight (PR #48)
 
 - Record owner-confirmed native privacy qualification and successful fe12d19 / image 8d4645d production release, including all-interface and actual Nginx HTTPS health. Preserve the new release/rollback/profile baseline and HOSTNAME=0.0.0.0; no repeated build/release is requested.
