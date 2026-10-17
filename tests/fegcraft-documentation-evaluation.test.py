@@ -34,7 +34,8 @@ class Opener:
   if 'mitgliedern' in q:selected='claims-menu'
   if 'gruppe' in q:selected='voice-groups'
   if 'lebenspunkte' in q:selected='none'
-  if VARIANT=='wrong-relevance' and 'mitgliedern' in q:selected='party-rights'
+  if VARIANT=='wrong-relevance' and 'gruppe' in q:selected='voice-menu'
+  if VARIANT=='wrong-kind' and 'mitgliedern' in q:selected='party-rights'
   if VARIANT=='unknown-id':selected='not-in-evidence'
   body={'passage':selected}
   if VARIANT=='freeform':body={'answer':'Schmelze Glas aus Stein.'}
@@ -68,8 +69,15 @@ urllib.request.build_opener=lambda *args:Opener()
     def test_valid_but_irrelevant_selection_still_fails_quality(self):
         result = self.run_harness('wrong-relevance')
         self.assertFalse(result['passed'])
+        case = next(c for c in result['cases'] if c['id']=='voice-group')
+        self.assertFalse(case['passed'])
+
+    def test_owner_observed_overview_cannot_be_selected_for_action_followup(self):
+        result = self.run_harness('wrong-kind')
+        self.assertFalse(result['passed'])
         case = next(c for c in result['cases'] if c['id']=='party-followup')
         self.assertFalse(case['passed'])
+        self.assertEqual(case['adapter_error'], 'INVALID_SOURCE_SELECTION')
 
     def test_model_cannot_smuggle_freeform_or_unknown_source_into_chat(self):
         for variant in ('freeform', 'unknown-id', 'length'):

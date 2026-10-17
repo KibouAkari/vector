@@ -15,7 +15,7 @@ ROOT = Path('/root/vector-workspace')
 REPO = ROOT/'github/vector'
 MODEL = 'vector-qwen3-instruct2507:4b-q4km'
 DIGEST = 'b7613a8eda1dbb8ce133679f38f5791e4fd70017c2f37fe8eaa0d5a0d7a9e9c1'
-CATALOG_SHA256 = '3eb41483491e4e3c773ad84e2b5cf6011af11bd4f951f3bd062307886f8da934'
+CATALOG_SHA256 = '87728b36f9a97313428a7c18a74259873c5cf5c7fef8ced6ffc9166250f2130c'
 
 
 def replace_once(text, old, new):

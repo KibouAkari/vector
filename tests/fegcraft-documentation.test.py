@@ -16,7 +16,7 @@ import documentation as d
 import knowledge
 
 CATALOG = ROOT/'services/fegcraft-assistant/public-knowledge.json'
-PIN = '3eb41483491e4e3c773ad84e2b5cf6011af11bd4f951f3bd062307886f8da934'
+PIN = '87728b36f9a97313428a7c18a74259873c5cf5c7fef8ced6ffc9166250f2130c'
 MODS = ['carryon', 'openpartiesandclaims', 'voicechat', 'travelersbackpack']
 
 
@@ -103,6 +103,43 @@ class Documentation(unittest.TestCase):
         self.answer('Wie bekomme ich Glas?')
         self.assertNotIn('previous_question', json.loads(self.calls[-1][0]['messages'][-1]['content']))
 
+    def test_action_and_purpose_are_distinct_across_unrelated_topics(self):
+        pairs = [('Wozu sind Partys gut?', 'explanation'), ('Und wie gebe ich Mitgliedern Zugriff?', 'procedure'), ('Wie funktioniert ein Kolben?', 'explanation'), ('Wie öffne ich den Sprachchat?', 'procedure'), ('Was ist ein Backpack?', 'explanation'), ('Was muss ich für Glas tun?', 'procedure'), ('Wie viele Lebenspunkte hat eine Kuh?', 'any'), ('Kannst du erklären, wie ich eine Gruppe erstelle und warum das hilft?', 'procedure')]
+        for question, intent in pairs:
+            self.assertEqual(d.answer_intent(question), intent, question)
+        for question in ('Und wie gebe ich Mitgliedern Zugriff?', 'Wie schütze ich meine Kisten mit Claims?'):
+            self.assertEqual([r['id'] for r in self.index.search(question, MODS)], ['claims-menu'])
+        self.assertNotIn('claims-menu', [r['id'] for r in self.index.search('Wozu sind Partys gut?', MODS)])
+
+    def test_followup_with_its_own_subject_words_retains_author_context(self):
+        self.answer('Wozu sind Partys gut?')
+        self.answer('Und wie gebe ich Mitgliedern Zugriff?')
+        data = json.loads(self.calls[-1][0]['messages'][-1]['content'])
+        self.assertEqual(data['previous_question'], 'Wozu sind Partys gut?')
+        self.assertEqual([p['id'] for p in data['passages']], ['claims-menu'])
+        self.assertIn('Schutz und Zugriffsrechte', data['passages'][0]['text'])
+        self.answer('Und wie gebe ich Mitgliedern Zugriff?', ('minecraft', 'two'))
+        self.assertNotIn('previous_question', json.loads(self.calls[-1][0]['messages'][-1]['content']))
+
+    def test_missing_procedure_never_falls_back_to_a_purpose_passage(self):
+        self.assertTrue(self.index.search('Wofür ist Travelers Backpack gut?', MODS))
+        self.answer('Wofür ist Travelers Backpack gut?')
+        before = len(self.calls)
+        self.assertEqual(self.answer('Wie erweitere ich Travelers Backpack?'), d.MISSING)
+        self.assertEqual(len(self.calls), before)
+        self.assertEqual(self.model.prior(('minecraft', 'one')), [])
+
+    def test_reviewed_limitation_can_answer_how_without_inventing_a_procedure(self):
+        rows = self.index.search('Wie züchte ich Papageien?', MODS)
+        self.assertEqual([r['id'] for r in rows], ['parrot-taming'])
+        self.assertIn('nicht gezüchtet', self.answer('Wie züchte ich Papageien?'))
+
+    def test_dependent_action_does_not_inherit_the_previous_explanation_intent(self):
+        self.answer('Wozu sind Partys gut?')
+        self.answer('Und wie genau?')
+        payload = json.loads(self.calls[-1][0]['messages'][-1]['content'])
+        self.assertEqual([p['id'] for p in payload['passages']], ['claims-menu'])
+
     def test_new_author_platform_expiry_and_native_clear_have_no_context(self):
         for scope in (('minecraft', 'two'), ('discord', 'one')):
             self.answer('Wie geht der Sprachchat?')
@@ -176,6 +213,19 @@ class Documentation(unittest.TestCase):
             path.write_bytes(raw)
             with self.assertRaisesRegex(ValueError, 'FORBIDDEN'):
                 d.DocumentationIndex(path, hashlib.sha256(raw).hexdigest())
+
+    def test_answer_kind_is_required_reviewed_metadata(self):
+        for kinds in ([], ['unreviewed'], ['procedure', 'procedure'], 'procedure'):
+            with tempfile.TemporaryDirectory() as temp:
+                value = json.loads(CATALOG.read_bytes())
+                value['passages'][0]['kinds'] = kinds
+                raw = json.dumps(value).encode()
+                path = Path(temp)/'catalog'
+                path.write_bytes(raw)
+                with self.assertRaisesRegex(ValueError, 'INVALID_DOCUMENTATION_KIND'):
+                    d.DocumentationIndex(path, hashlib.sha256(raw).hexdigest())
+        with self.assertRaisesRegex(ValueError, 'INVALID_DOCUMENTATION_INTENT'):
+            self.index.search('Glas', MODS, intent='unbounded')
 
 
 if __name__ == '__main__':

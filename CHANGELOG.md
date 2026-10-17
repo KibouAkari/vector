@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-18 — Procedural followups cannot repeat purpose explanations (PR #71)
+
+- Record the owner's actual25/26 selector result: only party-followup chose an overview instead of a useful step. Cold10.639s/warm median4.567s and all latency gates passed; exact2298 input/138 output across14 calls, no cloud/messages/activation, unchanged production and verified cleanup/unload. Quality remains failed.
+- Add required reviewed answer kinds and generic requested-answer-form filtering before selection. Procedures cannot fall back to overview prose; reviewed limitations remain valid. Keep same-author dependent context when a followup names its subject, and preserve the current action intent when inheriting topic.
+- Update the same sourced Claim UI fact and catalog pin/schema. Retain the full26-case native quality/safety/usage/deadline gate,14 calls, disabled production mode and dedicated-role/deployment requirements.
+- Three actual scratch selector controls chose the correct purpose/own action/new-topic entries; fresh loads on different hardware are not owner timing proof. Seven new behavior regressions bring selector/index/composed tests to28. No download/import, restart, deployment, backup run or chat send. Update current handoff and next v2 script target.
+
 ## 2026-10-18 — Offline reviewed passage selection after failed grounded prose (PR #70)
 
 - Record owner's complete63-ID/64-JAR public source inventory; explicitly reject the Fabric example-template link, retain WWOO version ambiguity and8 missing sources. Add per-ID review status without claiming full documentation coverage.
