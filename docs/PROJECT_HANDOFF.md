@@ -1,6 +1,6 @@
 # Vector project handoff
 
-Updated 2026-10-17, PR #51. Read this file, AGENTS.md and docs/OWNER_PREFERENCES.md first, then verify current GitHub/server state. These are project instructions, not public-assistant memory. This file replaces accumulated historical "current" sections; [the complete earlier handoff](https://github.com/KibouAkari/vector/blob/4f29682b9698ca314a64036a557bd518f760d17b/docs/PROJECT_HANDOFF.md) remains immutable in Git.
+Updated 2026-10-17, PR #52. Read this file, AGENTS.md and docs/OWNER_PREFERENCES.md first, then verify current GitHub/server state. These are project instructions, not public-assistant memory. This file replaces accumulated historical "current" sections; [the complete earlier handoff](https://github.com/KibouAkari/vector/blob/4f29682b9698ca314a64036a557bd518f760d17b/docs/PROJECT_HANDOFF.md) remains immutable in Git.
 
 ## Working agreement
 
@@ -10,7 +10,7 @@ Owner authorization includes final Minecraft integration and one brief introduct
 
 ## Current production baseline
 
-- Repository: KibouAkari/vector, server checkout /root/vector-workspace/github/vector. Check current main/open PRs; PR #51 is the current source work, not a production deployment.
+- Repository: KibouAkari/vector, server checkout /root/vector-workspace/github/vector. Check current main/open PRs; PR #52 is the current source work, not a production deployment.
 - App source /opt/vector/app, Compose /opt/vector/docker-compose.yml, Minecraft /opt/fegcraft-updated, evidence /root/vector-workspace/releases.
 - Owner-confirmed live app commit fe12d19bbc079074c51de8654e8c830b187923aa; image sha256:8d4645d72630974981ceb9985332473d41f03563b9a8f52a2b808f63387ec9cd; tag vector-app:staging-b9d34da-20261017T001416Z-b7e4cf.
 - Release /root/vector-workspace/releases/vector-fresh-statistics-release-20261017T002400Z-75c2c0. Its compose.candidate.yml is the current persistent profile; guarded rollback is its rollback.sh. Preserve HOSTNAME=0.0.0.0. Do not use older composer/runtime/chat-controls releases or rollbacks against this profile.
@@ -59,10 +59,32 @@ New recipes.py builds supported shaped/shapeless crafting facts only from the ex
 
 Assistant has a backwards-compatible optional injected RecipeBook, before optional model routing. The actual server entrypoint ALWAYS supplies a book: empty if disabled, or /inputs/recipes.json with VECTOR_FEGCRAFT_RECIPES=1. Missing/invalid enabled catalog fails startup. Empty/unknown recipes cannot go to Qwen through that service. PRIVATE/stats checks still precede recipe handling. General Minecraft questions must not be mistaken for crafting just because Minecraft contains "craft".
 
-Next owner entrypoint: scripts/deploy/evaluate-fegcraft-recipes.py at the final reviewed PR #51 pin, prepared as current/vector-fegcraft-base-recipes-evaluation.py with VECTOR_FEGCRAFT_REV. It builds the actual full catalog privately and uses the existing pinned Python image in an unprivileged UID 65534, network-none, read-only, one-CPU/256-MiB container with temporary SQLite state and no production/cloud credentials.
+Owner installed-base qualification PASSED at 98bad3fba4b0f8ed9d90a845d66b4d4c3f896059:
+- /root/vector-workspace/releases/vector-fegcraft-base-recipes-20261017T122615Z-5504b8/result.json.
+- 975 supported recipes, 610 unsupported entries; catalog SHA-256 d63d09054ddd1195bbd10c5dbeecc78ee43aadd6989eff48d6b429a6901b89ad; source hash as above. Keep that private recipes.json for installation; do not rebuild/rescan.
+- Real isolated Service/Assistant HMAC HTTP, privacy/signature, ordinary-chat silence, replay/user limit, missing catalog without model calls and fresh synthetic stats passed. Three measured recipe requests were 47.27, 50.49 and 47.40 ms, a single-run observation, not a public-channel latency guarantee.
+- Cleanup and production unchanged passed, model/cloud calls/messages/API fees zero. Effective modded recipe precedence remains false. No addon/service installation or introduction was performed.
 
-Its real Service/Assistant HMAC HTTP checks cover three actual base recipes, private seed rejection, ordinary-chat silence, invalid signature, replay/user limits, missing catalog without model calls and fresh synthetic stats. Recipe timings are measured. Private recipes.json/result.json are retained in releases/vector-fegcraft-base-recipes-*, cleanup and eight production identities/profile hashes verified. Parent evidence stays 0700; mounted public code/catalog have readable modes. No app build/release, model loading, game restart/install or announcement.
+## Next owner action: guarded deterministic Minecraft pilot, PR #52
 
-Local validation passed nine parser/catalog/routing tests, two actual HTTP harness tests including bad-quantity rejection, eleven existing runtime tests and four legacy model-harness tests. The three owner-supplied public 26.2 documents also formatted correctly locally. Actual installed full-catalog/HTTP qualification remains PENDING.
+Prepare scripts/deploy/install-fegcraft-assistant.py at the final reviewed PR #52 pin as current/vector-fegcraft-assistant-install.py, using VECTOR_FEGCRAFT_REV and the standard runner. Preserve failed scripts/reports. This is an owner-authorized installation with a graceful Minecraft restart; say so clearly in the command's accompanying text.
 
-After success: reuse that exact catalog and unchanged captured addon evidence; prepare guarded standalone service/addon packaging, rollback and installation, then real Minecraft callback and existing Discord relay delivery checks. Finish allowed knowledge coverage explicitly; deterministic-only operation must not be described as complete freeform Minecraft knowledge. Send the authorized welcome once only after final qualification, preserving attempted-delivery state. Do not redeploy the qualified web app merely because the external repository advanced.
+The installer reuses the exact qualified catalog and captured addon JAR at /root/vector-workspace/releases/vector-fegcraft-bridge-evaluation-20261016T224316Z-280627/vector-minecraft-0.1.0.jar, validates hashes and unchanged service/addon source, and refuses existing Vector game files or an existing service needing reconciliation. It derives nonroot game UID/GID from configured image UID/GID defaults, requires configured VERSION=26.2 to avoid an implicit game upgrade on restart, and validates the unchanged game JAR, data mount, mc-net and installed integration hash, and prepares a private release directory under releases/vector-fegcraft-install-*.
+
+A separate persistent Compose project/container vector-fegcraft-assistant uses the existing native Python image, nonroot game UID, read-only root, dropped capabilities, one CPU/256 MiB, no public ports and only mc-net. It does not mount private Vector memory, app secrets, Docker socket, server config or world/level files. Only /state is writable. Existing app/game Compose files are never rewritten; no app rebuild/release is needed. The source files and standalone Compose profile remain in the private installation release; Docker restart policy is unless-stopped.
+
+Game files installed exclusively:
+- data/DiscordIntegration-Data/addons/vector-minecraft-0.1.0.jar
+- data/DiscordIntegration-Data/vector/bridge.properties
+- data/DiscordIntegration-Data/vector/token, shared read-only into the private service. The token never enters logs, Git, chat or model input. The existing /data mount avoids recreating Minecraft merely for a new secret mount.
+- enabled=true but introductionEnabled=false, with tokenFile=/data/DiscordIntegration-Data/vector/token. No welcome marker is created by the installer.
+
+The service's signed ignored health request does not consume chat limits. Its real-data read probe validates complete saved stats, readable public mod IDs and 975 catalog entries before cutover without exporting player values. Only after service health and read access pass does Docker restart Minecraft normally with a 120-second stop allowance. The installer waits for addon registration and game readiness, verifying seven other identities and existing profile hashes. It sends no chat/console commands and calls no model/cloud provider.
+
+Every owned game file is exclusively published with durable hashes; manifest.json and rollback.sh stay in the installation release. Unknown/changed files or foreign services are not deleted. A pre-cutover failure removes only recognized new files/service without restarting Minecraft; a post-cutover rollback removes the same owned artifacts/service and restarts only Minecraft. State/evidence are retained. If a partial/unknown state fails a guard, inspect the private manifest rather than overwrite it or rerun an unrelated release. A repeated successful installation is not automatically reapplied: SERVICE_ALREADY_EXISTS_CHECK_ITS_RELEASE_RECORD means reconcile the exact existing release.
+
+Seven offline profile/publication/partial-ownership/rollback/private-health tests pass; the real signed health probe uses no rate events. No host Docker/game is available in this workspace, so actual installation, callback and delivery remain PENDING. The recipe-qualified service source and captured addon are unchanged; this is installer/tests/docs/workflow only.
+
+After successful installation the owner should send one addressed question in Minecraft, for example hey Vector, wer hat die meisten Mobkills? Then a recipe question and a plain unaddressed chat question. Confirm authenticated greeting, real statistics/base-recipe response, ordinary chat ignored and exactly one copy in the existing Discord channel. Do not claim Discord-origin requests work; that listener is out of scope.
+
+Introduction stays disabled during this first real game/relay check. After owner-observed success, prepare the guarded one-time welcome enablement, preserve any existing introduction-v1.attempted marker, and account for the addon's startup-read configuration (changing introductionEnabled requires reload/restart). The owner has already authorized that eventual introduction, not repeated test sends. Full knowledge/mod recipe coverage and logo/head remain unimplemented/unqualified; this pilot answers saved stats, public mod IDs and supported vanilla-base recipes. Freeform model quality/slot-role/accounting gates remain required before enabling models. Keep the qualified web app baseline unchanged.

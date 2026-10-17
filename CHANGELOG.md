@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-17 — Qualified installed recipe catalog and guarded Minecraft pilot installer (PR #52)
+
+- Owner installed-base HTTP qualification passed: 975 supported recipes, 610 unsupported entries explicitly excluded, actual three-recipe requests around 47–50 ms in this one run, zero model/cloud calls or messages, cleanup and unchanged production verified. Effective modded recipes remain unqualified.
+- Prepare a guarded standalone private assistant service using the existing pinned Python image, exact qualified catalog/source and captured unchanged addon artifact. No app build/release or edits to either existing Compose file. Read-only mounts include only approved saved stats/usercache, public mod IDs, base catalog, service code and its HMAC token; only new SQLite state is writable.
+- The owner-run installer checks existing evidence/source hashes, fresh real-data access as the game UID, private health, explicit game version pin, unchanged game JAR, existing mount/network and integration hash before restarting only Minecraft gracefully. It requires addon registration plus game readiness, retains other service identities/profile hashes and leaves introduction/freeform models disabled.
+- Persist exclusive file ownership hashes and a guarded rollback, refuse unexpected files/services/drift, preserve state/evidence. Failures before cutover do not restart Minecraft; after cutover the rollback restarts only Minecraft. Real game/Discord delivery and eventual once-only introduction remain pending owner testing.
+- Seven offline profile/file/rollback/private-health regressions pass, including a real signed ignored HTTP probe without rate events. Actual installation has not been executed; this source PR does not claim production activation.
+
+
 ## 2026-10-17 — Installed vanilla recipe answers and isolated HTTP qualification (PR #51)
 
 - Owner v3 inventory passed: 357 installed archives examined, 9,987 recipe documents, 153 identical archives skipped, 180,452 entries inspected, production unchanged, zero model/cloud calls/messages. It also found historical 1.21.4 cache assets; inventory success does not establish active recipe precedence.
