@@ -21,3 +21,7 @@ The eventual service-only update needs a qualified `psycopg` driver and a dedica
 - Ollama API: https://docs.ollama.com/api/chat — structured response schema, no thinking, bounded generation and five-minute residency. Unload is explicit after the isolated benchmark.
 
 No third-party mod code or documentation text is redistributed by these short factual hints. Existing model/source licenses still apply. The model is not granted more capability because it is described as uncensored.
+
+## Observed failure and focused diagnostics
+
+Owner's full real-model evaluation at `vector-fegcraft-general-20261017T172631Z-d8d45e` failed. Broad mode stays OFF. Run the same revision-pinned evaluator with `VECTOR_FEGCRAFT_GENERAL_DIAGNOSTIC=1` to observe four failed independent synthetic cases without changing the runtime or prompt. The wrapper records bounded synthetic raw model output, exact safe rejection code, native completion reason, actual durations and usage; no real messages or private context are accepted. Known token subsets and unknown-call count supplement NULL exact totals after a timeout. Diagnostic reports always remain activation-ineligible, even if all focused cases happen to pass. A successful diagnostic command means collection/cleanup succeeded, not that the quality gate passed. Full qualification remains required after a targeted fix.
