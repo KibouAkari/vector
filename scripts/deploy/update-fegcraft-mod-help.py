@@ -241,7 +241,7 @@ def main():
                 run('docker','rm','-f',item['Id'])
         atomic(directory/'qualification.log',result.stdout+result.stderr)
         if result.returncode: raise RuntimeError('MOD_HELP_ISOLATED_HTTP_FAILED')
-        atomic(directory/'result.json',(json.dumps({'passed':True,'revision':revision,'tests':9,'synthetic_only':True,
+        atomic(directory/'result.json',(json.dumps({'passed':True,'revision':revision,'tests':10,'synthetic_only':True,
              'model_calls':0,'cloud_calls':0,'messages_sent':0,'production_activated':False},indent=2)+'\n').encode())
         print('Isolierte signierte HTTP-Prüfungen bestanden. Keine Spielnachricht oder Modellanfrage.',flush=True)
         if sys.argv[1:] == ['--deploy']: deploy(directory,helper(directory),revision,code)

@@ -200,7 +200,9 @@ class ModHelp:
             self.clear(scope)
             if trouble:
                 return 'was genau klappt nicht? Nenne den Gegenstand oder die Mod und was beim Versuch passiert.'
-            if villager and re.search(r'wie|kann|hilfe|problem', q):
+            data_or_recipe = (any(re.search(pattern, q) for pattern in METRIC_WORDS.values())
+                              or re.search(r'rekord|record|statistik|statistic|rangliste|\bstats\b|craft|rezept|recipe', q))
+            if villager and not data_or_recipe and re.search(r'\b(?:wie|kann|hilfe|problem)\b', q):
                 return 'möchtest du den Villager aufheben, transportieren oder mit ihm handeln?'
             return None
         installed = mods() if callable(mods) else mods

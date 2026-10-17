@@ -108,6 +108,12 @@ class ModHelpTests(unittest.TestCase):
         (self.stats/(self.uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':17}}}))
         self.assertIn('17 Kills',self.ask('wer hat die meisten Mobkills?')['text'])
 
+    def test_player_named_villager_still_routes_to_statistics(self):
+        self.users.write_text(json.dumps([{'uuid':self.uid,'name':'Villager'}]))
+        result=self.ask('wie viele Mobkills hat Villager?')['text']
+        self.assertIn('12 Kills',result); self.assertIn('Rang 1',result)
+        self.assertNotIn('aufheben',result)
+
     def test_replay_does_not_restore_expired_topic(self):
         event=self.uid+':999'
         self.ask('kleinen villager aufsammeln',event=event)
