@@ -36,3 +36,5 @@ Read this file and PROJECT_HANDOFF.md at the start of a continuation. These are 
 
 
 - Owner update 2026-10-17: show Vector as <Vector> with the actual Vector logo as a Minecraft head and per-message Discord avatar. Preserve unrelated server/bot identities and the durable one-time welcome marker. The welcome is confirmed visible in both chats; styling must not resend it. Pair the head texture with working client pack delivery and report acceptance/rendering limits honestly.
+
+- Owner choice 2026-10-17: the small logo-only Minecraft resource pack shall be mandatory. Explain the one game recreation and client acceptance before the guarded deployment command; preserve all other resource/game settings and the delivered welcome marker.
