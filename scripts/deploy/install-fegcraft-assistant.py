@@ -25,6 +25,7 @@ CAPTURE = ROOT / 'releases/vector-fegcraft-bridge-evaluation-20261016T224316Z-28
 ADDON_SHA = '0be86352e50597fc5e8e82742d87bba3ef924b8d1a8c2230c03bc89d261bc671'
 CATALOG_SHA = 'd63d09054ddd1195bbd10c5dbeecc78ee43aadd6989eff48d6b429a6901b89ad'
 INTEGRATION_SHA = '75e039ac6c8edad3c9423c91638ffd15d7c9b95dadb60bf69349da838afbf337'
+SOURCE_SHA = '183c0499c5f855570ee487dd38e141a53f0121f83a0b07a3bac2d8b6698823e8'
 OTHERS = ('vector-app','vector-worker','vector-runner','vector-postgres','vector-redis','vector-local-inference','vector-privacy-ner')
 
 HEALTH = r'''import hashlib,hmac,json,time,urllib.request
@@ -111,6 +112,8 @@ def evidence():
             or recipe.get('production_unchanged') is not True or recipe.get('revision')!=QUALIFIED
             or recipe.get('model_calls')!=0 or recipe.get('cloud_calls')!=0
             or recipe.get('native_image')!=IMAGE or recipe.get('scope')!='installed-vanilla-base'
+            or recipe.get('catalog_source_sha256')!=SOURCE_SHA
+            or digest(DATA/'versions/26.2/server-26.2.jar')!=SOURCE_SHA
             or recipe.get('recipes')!=975 or recipe.get('catalog_sha256')!=CATALOG_SHA
             or digest(RECIPES/'recipes.json')!=CATALOG_SHA
             or capture.get('passed') is not True or capture.get('cleanup_verified') is not True
@@ -199,6 +202,7 @@ def install():
     if digest(DATA/'mods/dcintegration-fabric-MC26.2-3.2.1.jar')!=INTEGRATION_SHA:
         raise RuntimeError('INTEGRATION_CHANGED')
     env=dict(x.split('=',1) for x in mc['Config']['Env'] if '=' in x)
+    if env.get('VERSION')!='26.2':raise RuntimeError('GAME_VERSION_MUST_BE_PINNED_TO_26_2_BEFORE_RESTART')
     if not re.fullmatch(r'[0-9]{1,6}',env.get('UID','1000')) or not re.fullmatch(r'[0-9]{1,6}',env.get('GID','1000')):
         raise RuntimeError('UNEXPECTED_GAME_UID')
     uid,gid=int(env.get('UID','1000')),int(env.get('GID','1000'))
@@ -279,6 +283,7 @@ def install():
         registered=False
         while time.monotonic()<deadline:
             item=inspect('fegcraft-updated')
+            if item['Id']!=mc['Id'] or item['Image']!=mc['Image']:raise RuntimeError('GAME_IDENTITY_CHANGED')
             if not item['State']['Running']:raise RuntimeError('MINECRAFT_STOPPED')
             output=subprocess.run(['docker','logs','--since',since,'--tail','500','fegcraft-updated'],capture_output=True,timeout=20)
             if output.returncode:raise RuntimeError('GAME_LOG_CHECK_FAILED')
