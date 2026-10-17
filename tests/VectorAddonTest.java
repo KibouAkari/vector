@@ -10,6 +10,18 @@ import java.util.concurrent.Flow;
 
 public final class VectorAddonTest {
     public static void main(String[] args) throws Exception {
+        var serializer = dcshadow.net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson();
+        var marked = serializer.serializeToTree(VectorAddon.presentation("Synthetic answer", true));
+        String rendered = marked.toString();
+        if (!rendered.contains("vector:entity/vector") || !rendered.contains("player")
+                || !rendered.contains("<Vector> ") || rendered.contains("[Vector]")
+                || rendered.contains("Server") || rendered.contains("clickEvent")
+                || rendered.contains("click_event")) throw new AssertionError("Identity component changed");
+        if (!serializer.serializeToTree(serializer.deserializeFromTree(marked)).equals(marked))
+            throw new AssertionError("Installed serializer lost the logo component");
+        String plain = serializer.serializeToTree(VectorAddon.presentation("Synthetic answer", false)).toString();
+        if (plain.contains("texture") || !plain.contains("<Vector> "))
+            throw new AssertionError("Pack-disabled fallback changed");
         if (!VectorAddon.safe("Yoo ExampleOne, Mobkills: ExampleTwo 52'000 Kills.")) throw new AssertionError();
         for (String value : List.of("/op ExampleOne", "@everyone", "https://example.invalid", "Hallo\nWelt", "gamemode creative", "\ud83d\ude00", "Text\u202eab")) {
             if (VectorAddon.safe(value)) throw new AssertionError("Unsafe output accepted");
@@ -42,3 +54,4 @@ public final class VectorAddonTest {
         System.out.println("Addon HMAC, output policy, bounded body and durable introduction claim passed");
     }
 }
+

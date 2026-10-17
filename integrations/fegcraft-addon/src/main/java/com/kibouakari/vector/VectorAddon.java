@@ -5,6 +5,8 @@ import dcshadow.com.google.gson.JsonObject;
 import dcshadow.net.kyori.adventure.text.Component;
 import dcshadow.net.kyori.adventure.text.TextComponent;
 import dcshadow.net.kyori.adventure.text.format.TextColor;
+import dcshadow.net.kyori.adventure.key.Key;
+import dcshadow.net.kyori.adventure.text.object.ObjectContents;
 import de.erdbeerbaerlp.dcintegration.common.DiscordIntegration;
 import de.erdbeerbaerlp.dcintegration.common.addon.DiscordIntegrationAddon;
 import de.erdbeerbaerlp.dcintegration.common.api.DiscordEventHandler;
@@ -69,6 +71,16 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     private Path introMarker;
     private boolean introduction;
     private String avatar = "";
+    private boolean logo;
+
+    /** Fixed local texture only; no fake player identity or profile lookup. */
+    static Component presentation(String message, boolean logo) {
+        Component result = Component.empty();
+        if (logo) result = result.append(Component.object(ObjectContents.playerHead()
+            .texture(Key.key("vector:entity/vector")).hat(false).build())).append(Component.space());
+        return result.append(Component.text("<Vector> ", TextColor.color(0x8de0b7)))
+            .append(Component.text(message, TextColor.color(0xf0f7f3)));
+    }
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).followRedirects(HttpClient.Redirect.NEVER)
         .proxy(new java.net.ProxySelector() {
             public List<java.net.Proxy> select(URI uri) { return List.of(java.net.Proxy.NO_PROXY); }
@@ -105,11 +117,15 @@ public final class VectorAddon implements DiscordIntegrationAddon {
             introduction = "true".equals(properties.getProperty("introductionEnabled", "false"));
             avatar = properties.getProperty("avatarUrl", "");
             if (!avatar.isEmpty() && !avatar.matches("https://[A-Za-z0-9./_-]{1,240}\\.png")) throw new IllegalArgumentException();
+            String texture = properties.getProperty("logoTexture", "");
+            if (!texture.isEmpty() && !texture.equals("vector:entity/vector")) throw new IllegalArgumentException();
+            logo = !texture.isEmpty();
+            if (!avatar.isEmpty() && !Configuration.instance().webhook.enable) throw new IllegalArgumentException();
             start(new Bridge() {
                 public void schedule(Runnable task) throws Exception { execute.invoke(minecraft, task); }
                 public String playerName(UUID player) { return dc.getServerInterface().getPlayers().get(player); }
                 public void publish(String message) {
-                    dc.getServerInterface().sendIngameMessage(Component.text("[Vector] ", TextColor.color(0x8de0b7)).append(Component.text(message)));
+                    dc.getServerInterface().sendIngameMessage(presentation(message, logo));
                     // System output is not a player hook; forward exactly once.
                     dc.sendMessage("Vector", message, dc.getChannel(Configuration.instance().advanced.chatOutputChannelID), avatar);
                 }
@@ -314,3 +330,4 @@ public final class VectorAddon implements DiscordIntegrationAddon {
         if (worker != null) worker.shutdownNow();
     }
 }
+

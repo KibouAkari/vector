@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 — Vector player-style name and local logo assets (PR #54)
+
+- Owner confirms the pilot installed successfully and the single welcome appeared in both chats. Preserve its durable marker. Diagnostics confirm active Discord webhook, no avatar and no existing server resource pack.
+- Render <Vector> directly through the addon, with an optional native player-head object using a fixed local pack texture. Retain plain-name output until pack availability. Keep per-message webhook name/avatar scoped to Vector, without fake login, commands, profile lookup or global server/bot renaming.
+- Render the existing SVG offline into a PNG avatar and deterministic 26.2 logo-only resource pack. Six image/UV/archive/version/path checks pass. Addon compiles against the installed nested API; its native object survives serialization. Local signed HTTP first/restart/limits/introduction checks pass.
+- Add isolated owner qualification: verify completed installation, marker, exact game/resource format, webhook and site hints; compile/capture with pinned isolated runtime and prepare private assets. Verify production unchanged, with no restart, models/cloud calls or real messages.
+- Production identity installation, public HTTPS assets, pack delivery and actual client/avatar rendering remain pending owner qualification and a separate guarded update. Update handoff and owner preferences with observed state and next steps.
+
 ## 2026-10-17 — Owner-requested welcome before manual chat testing (PR #53)
 
 - Owner reports Minecraft restarted but no introduction appeared. The pilot intentionally left introductions disabled; installation success/real routing is not independently confirmed without its manifest/output.
@@ -503,4 +511,5 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The owner observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at vector-privacy-composer-release-20261016T123251Z-4139a9. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
+
 
