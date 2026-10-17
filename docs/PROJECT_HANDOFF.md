@@ -1,5 +1,16 @@
 # Vector project handoff
 
+## Current owner step: recipe inventory retry (PR #49, 2026-10-17)
+
+The owner executed the PR #48 recipe preflight at dd7b5fddd141714977725e17ca27ec31fc89c738. It failed with NESTING_LIMIT, not a model or production fault. Evidence: /root/vector-workspace/releases/vector-fegcraft-recipes-20261017T102149Z-600e76/result.json; production_unchanged true, candidate_inventory_complete false, effective_recipes_qualified false, production_activated false. No installed recipe documents were reported by that failed run. Preserve it and the failed current/vector-fegcraft-recipe-preflight.py.
+
+PR #49 changes only the diagnostic/tests/docs. The original depth cap of two could reject normal deeper Fabric dependency bundles. The retry allows eight nesting levels and additionally caps simultaneously retained inflated nested archive payloads at 256 MiB. Existing total read/hash, count, time, symlink, duplicate and member guards remain. The live-payload budget is not a promise that total Python process RAM stays below 256 MiB; buffers and archive indexes add overhead. A remaining limit failure still aborts coverage, with diagnostic_progress identifying the last public archive/member/depth and work counters.
+
+Next owner step is a new current/vector-fegcraft-recipe-preflight-v2.py from the final reviewed PR #49 pin, same VECTOR_FEGCRAFT_REV environment and workspace runner. Validate origin/main ancestry and script syntax/content; do not overwrite the old failed script. It remains read-only for game/app configuration, with private evidence output only, no model calls, game restart, installation or announcement. The web app stays at the already qualified fe12d19 / image 8d4645d release recorded below. The once-only introduction remains pending final integration qualification.
+
+Eleven synthetic archive tests pass locally. The installed server retry has not yet run; deeper traversal support does not establish effective recipe precedence. Continue deterministic recipe lookup after actual assets are available, then service/addon packaging and actual game/Discord relay qualification. Do not repeat app staging/release or ungrounded Qwen recipe diagnostics.
+
+
 ## Current continuation: observed release and recipe evidence (PR #48, 2026-10-17)
 
 This section supersedes older "current production" and "next owner release" instructions below. Do not repeat the app staging, native API qualification or release already completed.

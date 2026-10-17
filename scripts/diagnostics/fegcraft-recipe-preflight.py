@@ -28,6 +28,8 @@ MAX_FILES = 512
 MAX_VISITED = 20_000
 MAX_READ = 1024 * 1024 * 1024
 MAX_HASH = 4 * 1024 * 1024 * 1024
+MAX_DEPTH = 8
+MAX_LIVE_NESTED = 256 * 1024 * 1024
 
 
 class Refused(RuntimeError):
@@ -89,6 +91,14 @@ class Inventory:
         self.targets = {}
         self.versions = []
         self.sources = []
+        self.live_nested = 0
+        self.location = None
+
+    def progress(self):
+        return {'recipe_documents_seen': self.recipe_count,
+                'entries_seen': self.entries, 'member_bytes_read': self.bytes_read,
+                'archive_bytes_hashed': self.bytes_hashed,
+                'location': self.location}
 
     def check(self):
         if time.monotonic() > self.deadline:
@@ -122,15 +132,24 @@ class Inventory:
             nested = NESTED.fullmatch(name)
             if not (match or nested or name == 'version.json'):
                 continue
+            self.location = {'archive': source, 'member': name, 'depth': depth}
             if name in selected or '..' in name.split('/'):
                 raise Refused('AMBIGUOUS_RESOURCE_PATH')
             selected.add(name)
             if nested:
-                if depth >= 2:
+                if depth >= MAX_DEPTH:
                     raise Refused('NESTING_LIMIT')
+                if entry.file_size > MAX_LIVE_NESTED - self.live_nested:
+                    raise Refused('LIVE_NESTED_BYTE_LIMIT')
                 content = self.read(archive, entry, MAX_ARCHIVE)
-                with zipfile.ZipFile(io.BytesIO(content)) as child:
-                    found = self.scan(child, source + '!' + name, depth + 1) or found
+                self.live_nested += len(content)
+                try:
+                    with io.BytesIO(content) as buffer:
+                        with zipfile.ZipFile(buffer) as child:
+                            found = self.scan(child, source + '!' + name, depth + 1) or found
+                finally:
+                    self.live_nested -= len(content)
+                    del content
                 continue
             raw = self.read(archive, entry, MAX_JSON)
             value = json.loads(raw)
@@ -247,12 +266,14 @@ def main():
         before = production_state()
         report = {'revision': revision, 'candidate_inventory_complete': False,
                   'effective_recipes_qualified': False, 'production_activated': False}
+        inventory = Inventory()
         error = None
         try:
-            report.update(Inventory().run(BASE))
+            report.update(inventory.run(BASE))
         except Exception as exc:
             error = str(exc) if isinstance(exc, Refused) else type(exc).__name__
         finally:
+            report['diagnostic_progress'] = inventory.progress()
             report['production_unchanged'] = production_state() == before
             report['error'] = error
             report['passed'] = bool(report['candidate_inventory_complete'] and

@@ -110,7 +110,7 @@ class RecipePreflightTests(unittest.TestCase):
             out.writestr('META-INF/jars/deep.jar', b'not opened')
         with zipfile.ZipFile(io.BytesIO(raw.getvalue())) as archive:
             with self.assertRaisesRegex(m.Refused, 'NESTING_LIMIT'):
-                m.Inventory().scan(archive, 'synthetic', depth=2)
+                m.Inventory().scan(archive, 'synthetic', depth=m.MAX_DEPTH)
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             jar(base / 'server.jar', recipes())
@@ -124,6 +124,45 @@ class RecipePreflightTests(unittest.TestCase):
             result = m.Inventory().run(Path(directory))
             self.assertFalse(result['candidate_inventory_complete'])
             self.assertEqual(len(result['missing_targets']), 3)
+
+    def test_realistic_deep_bundled_dependencies_can_be_scanned(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            path = base / 'server.jar'
+            jar(path, recipes())
+            for index in range(4):
+                raw = path.read_bytes()
+                jar(path, [(f'META-INF/jars/dependency-{index}.jar', raw)])
+            inventory = m.Inventory()
+            result = inventory.run(base)
+            self.assertTrue(result['candidate_inventory_complete'])
+            self.assertEqual(result['recipe_documents'], 3)
+            self.assertFalse(result['effective_recipes_qualified'])
+            self.assertEqual(inventory.live_nested, 0)
+            self.assertEqual(inventory.progress()['location']['depth'], 4)
+
+    def test_live_nested_budget_refuses_before_decompression_and_records_location(self):
+        raw = io.BytesIO()
+        with zipfile.ZipFile(raw, 'w') as out:
+            out.writestr('META-INF/jars/child.jar', b'not decompressed')
+        inventory = m.Inventory()
+        inventory.live_nested = m.MAX_LIVE_NESTED
+        with zipfile.ZipFile(io.BytesIO(raw.getvalue())) as archive:
+            with self.assertRaisesRegex(m.Refused, 'LIVE_NESTED_BYTE_LIMIT'):
+                inventory.scan(archive, 'synthetic.jar', depth=3)
+        self.assertEqual(inventory.bytes_read, 0)
+        self.assertEqual(inventory.progress()['location'], {
+            'archive': 'synthetic.jar', 'member': 'META-INF/jars/child.jar', 'depth': 3})
+
+    def test_bad_nested_archive_restores_live_budget(self):
+        raw = io.BytesIO()
+        with zipfile.ZipFile(raw, 'w') as out:
+            out.writestr('META-INF/jars/child.jar', b'not a ZIP')
+        inventory = m.Inventory()
+        with zipfile.ZipFile(io.BytesIO(raw.getvalue())) as archive:
+            with self.assertRaises(zipfile.BadZipFile):
+                inventory.scan(archive, 'synthetic.jar')
+        self.assertEqual(inventory.live_nested, 0)
 
     def test_archive_modified_during_scan_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
