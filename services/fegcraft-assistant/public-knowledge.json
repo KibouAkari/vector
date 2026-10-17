@@ -1,0 +1,182 @@
+{
+  "schema": 1,
+  "reviewed_at": "2026-10-17",
+  "sources": {
+    "cow": {
+      "url": "https://www.minecraft.net/en-us/article/cow",
+      "author": "Mojang / Duncan Geere",
+      "revision": null,
+      "scope": "vanilla-basics-not-server-configuration",
+      "license": "copyright; original short factual paraphrase only"
+    },
+    "wheat": {
+      "url": "https://www.minecraft.net/en-us/article/taking-inventory--wheat",
+      "author": "Mojang / Duncan Geere",
+      "revision": null,
+      "scope": "vanilla-basics-not-server-configuration",
+      "license": "copyright; original short factual paraphrase only"
+    },
+    "glass": {
+      "url": "https://www.minecraft.net/en-us/article/the-sands-of-time",
+      "author": "Mojang / Sofia Dankis",
+      "revision": null,
+      "scope": "vanilla-basics-not-effective-mod-recipes",
+      "license": "copyright; original short factual paraphrase only"
+    },
+    "piston": {
+      "url": "https://www.minecraft.net/en-us/article/sticky-piston",
+      "author": "Mojang / Duncan Geere",
+      "revision": null,
+      "scope": "vanilla-basics-not-server-configuration",
+      "license": "copyright; original short factual paraphrase only"
+    },
+    "opac": {
+      "url": "https://modrinth.com/mod/open-parties-and-claims",
+      "author": "Xaero96",
+      "revision": null,
+      "scope": "general-public-description; installed-0.31.6-not-exactly-qualified",
+      "license": "LGPL-3.0-only; original short factual paraphrase"
+    },
+    "voicechat": {
+      "url": "https://github.com/henkelmax/simple-voice-chat/blob/d2d1293d68ce7a58d7e13e7c72dc951dce13b699/readme.md",
+      "author": "henkelmax",
+      "revision": "d2d1293d68ce7a58d7e13e7c72dc951dce13b699",
+      "scope": "26.2-branch-general-not-installed-settings",
+      "license": "source license retained upstream; original short factual paraphrase"
+    },
+    "backpack": {
+      "url": "https://github.com/Tiviacz1337/Travelers-Backpack/blob/5c0ba3b4165ef4f775a7eaefb937500de6a0437e/README.md",
+      "author": "Tiviacz1337",
+      "revision": "5c0ba3b4165ef4f775a7eaefb937500de6a0437e",
+      "scope": "26.1-fabric-general-purpose-only; not-26.2-controls",
+      "license": "not established; original short factual paraphrase only"
+    },
+    "comparator": {
+      "url": "https://www.minecraft.net/en-us/article/taking-inventory--redstone-comparator",
+      "author": "Mojang / Duncan Geere",
+      "revision": null,
+      "scope": "vanilla-basics-not-server-configuration",
+      "license": "copyright; original short factual paraphrase only"
+    },
+    "bee": {
+      "url": "https://www.minecraft.net/en-us/article/bee",
+      "author": "Mojang / Duncan Geere",
+      "revision": null,
+      "scope": "vanilla-basics-not-server-configuration",
+      "license": "copyright; original short factual paraphrase only"
+    },
+    "parrot": {
+      "url": "https://www.minecraft.net/en-us/article/parrot",
+      "author": "Mojang / Duncan Geere",
+      "revision": null,
+      "scope": "vanilla-basics-not-server-configuration",
+      "license": "copyright; original short factual paraphrase only"
+    }
+  },
+  "passages": [
+    {
+      "id": "cow-breeding",
+      "topic": "cow",
+      "mod": "",
+      "source": "cow",
+      "terms": "kuh kühe kuhzucht kälber kalb cows cow breed breeding",
+      "text": "Füttere zwei erwachsene Kühe mit Weizen, um ein Kalb zu bekommen. Beide Tiere müssen nahe beieinander stehen."
+    },
+    {
+      "id": "sheep-breeding",
+      "topic": "sheep",
+      "mod": "",
+      "source": "wheat",
+      "terms": "schaf schafe schafzucht sheep",
+      "text": "Schafe lassen sich mit Weizen anlocken und züchten. Füttere dafür zwei erwachsene Schafe mit Weizen."
+    },
+    {
+      "id": "glass-smelting",
+      "topic": "glass",
+      "mod": "",
+      "source": "glass",
+      "terms": "glas glass sand schmelzen glasherstellung",
+      "text": "Für normales Glas Sand mit Brennstoff im normalen Ofen schmelzen. Dies beschreibt die Vanilla-Grundmechanik, keine geprüfte Mod-Anpassung."
+    },
+    {
+      "id": "piston-moving",
+      "topic": "piston",
+      "mod": "",
+      "source": "piston",
+      "terms": "kolben piston pistons klebekolben klebriger redstone",
+      "text": "Ein Kolben bewegt Blöcke mit einem Redstone-Signal. Ein klebriger Kolben zieht einen Block beim Einfahren zurück. Die normale Verschiebegrenze beträgt 12 Blöcke."
+    },
+    {
+      "id": "claims-protection",
+      "topic": "claims",
+      "mod": "openpartiesandclaims",
+      "source": "opac",
+      "terms": "claims claim chunks chunk gebiet kisten kiste schützen schutz",
+      "text": "Claims in Open Parties and Claims schützen beanspruchte Chunks und damit auch Kisten im Gebiet. Besitzer können Ausnahmen für Spielergruppen festlegen. Tatsächliche Rechte sind hier unbekannt."
+    },
+    {
+      "id": "claims-menu",
+      "topic": "claims",
+      "mod": "openpartiesandclaims",
+      "source": "opac",
+      "terms": "claims claim chunks chunk gebiet kisten kiste schützen schutz zugriff zugriffsrechte mitglieder mitgliedern party parties partys opac menü menue",
+      "text": "Öffne die Claim-Einstellungen über die in der Steuerung belegte Mod-Taste. Mit Xaeros World Map geht dies auch per Rechtsklick auf die Karte. Welches Menü hast du geöffnet?"
+    },
+    {
+      "id": "backpack-purpose",
+      "topic": "backpack",
+      "mod": "travelersbackpack",
+      "source": "backpack",
+      "terms": "travelersbackpack travelers backpack rucksack rucksäcke inventar stauraum",
+      "text": "Travelers Backpack bietet einen tragbaren, erweiterbaren Rucksack für zusätzliche Gegenstände. Kapazität und Bedienung hängen von der Version ab."
+    },
+    {
+      "id": "voice-menu",
+      "topic": "voicechat",
+      "mod": "voicechat",
+      "source": "voicechat",
+      "terms": "voicechat voice sprachchat mikrofon mikro microphone ton audio hören hören v taste",
+      "text": "Simple Voice Chat bietet Nähe-Sprachchat. Öffne sein Menü normalerweise mit V, bei geänderter Belegung über die Steuerung. Dort findest du Einstellungen und einen Mikrofontest."
+    },
+    {
+      "id": "voice-groups",
+      "topic": "voicechat",
+      "mod": "voicechat",
+      "source": "voicechat",
+      "terms": "voicechat voice sprachchat gruppe gruppen gruppenchat gruppenmenü group",
+      "text": "Für ein Gespräch ausserhalb der Hörweite öffne im Voice-Chat-Menü die Gruppenansicht. Eine neue Gruppe erhält einen Namen und wird über die Schaltfläche unten erstellt."
+    },
+    {
+      "id": "comparator-signals",
+      "topic": "comparator",
+      "mod": "",
+      "source": "comparator",
+      "terms": "komparator comparator signalstärke signalstärken füllstand füllstände",
+      "text": "Ein Redstone-Komparator vergleicht Signalstärken oder subtrahiert das stärkste Seitensignal vom hinteren Signal. Er kann den Füllstand einer Truhe als Signal ausgeben."
+    },
+    {
+      "id": "bee-honey",
+      "topic": "bee",
+      "mod": "",
+      "source": "bee",
+      "terms": "biene bienen bienennest bienenstock honig honey bee bees nest",
+      "text": "Ein brennendes Lagerfeuer unter dem Nest beruhigt die Bienen, wenn du Honig sammelst. Zum sicheren Umsetzen des Nests nutze nachts ein Werkzeug mit Behutsamkeit."
+    },
+    {
+      "id": "parrot-taming",
+      "topic": "parrot",
+      "mod": "",
+      "source": "parrot",
+      "terms": "papagei papageien parrots parrot",
+      "text": "Papageien lassen sich mit Samen zähmen. Anders als viele friedliche Tiere können sie nicht gezüchtet werden."
+    },
+    {
+      "id": "party-rights",
+      "topic": "claims",
+      "mod": "openpartiesandclaims",
+      "source": "opac",
+      "terms": "party parties partys opac mitglieder mitgliedern zugriff zugriffsrechte",
+      "text": "Partys in Open Parties and Claims bündeln Spieler. Claim-Besitzer können ihrer Party oder Spielergruppen Zugriff erlauben. Aktuelle Rechte und Serverlimits sind hier unbekannt."
+    }
+  ]
+}

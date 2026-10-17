@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-18 — Offline reviewed passage selection after failed grounded prose (PR #70)
+
+- Record owner's complete63-ID/64-JAR public source inventory; explicitly reject the Fabric example-template link, retain WWOO version ambiguity and8 missing sources. Add per-ID review status without claiming full documentation coverage.
+- A new actual scratch4B prose probe still invented glass mechanics despite correct evidence. Replace this candidate's freeform output with local enum-only passage selection; render only an exact reviewed German fact or knowledge-gap reply. Five independent actual reference selections chose the relevant entry/none; different hardware and fresh loads are not owner warm-latency or broad-quality evidence.
+- Add a bounded checksum-pinned offline index,13 short original factual paraphrases with primary-source provenance and version limits, own-author dependent topic context, independent input/output policy and no public runtime fetches. Existing production/default adapter remains unchanged.
+- Compact the project handoff around current evidence, owner rules, production pins and remaining gates; preserve full earlier history through an immutable Git link.
+- Add26-case isolated owner qualification reusing the existing candidate, shared read-only CPU coordinator, unchanged factual/safety/latency/usage gates, verified unload/cleanup and production fingerprints. No download/import, restart, backup run, chat message or activation. Restricted role/driver and guarded assistant-only deployment remain outstanding.
+
 ## 2026-10-17 — Public mod source inventory after failed independent model probes (PR #69)
 
 - Owner4B import/integrity/preservation passed but full quality failed: two timeouts and fabricated cows/sheep/glass. Eleven calls, exact totals NULL after2 unknowns; known1522 input/284 output, warm median7.906s, no cloud/activation/messages, verified unload/cleanup and unchanged production. Preserve inactive candidate; no repeat model download or guard relaxation.
