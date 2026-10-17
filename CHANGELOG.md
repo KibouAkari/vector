@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-17 — Current-subject local help and exact late usage (PR #64)
+
+- Owner's actual PR #63 full-model run removed timeouts/truncation but still failed vague party followup, dinner/game and cow/other routing, plus warm median 8.202s against an unchanged 8s target. Exact native usage 3079 input/258 output for 15 attempts; cloud fee zero, no activation, production unchanged, cleanup/unload verified.
+- Route recognized current Minecraft/mod subjects directly to one bounded local answer call. Unknown topics retain a German few-shot classifier; explicit real-world categories reject locally. Independent questions clear old context; only short dependent own-author followups may carry a prior turn/hint. Do not inherit OPaC notes on a new cow question.
+- Ask for a supported action or specific menu clarification on how-to questions; strengthen followup evaluation and add unfamiliar game/other routing fixtures. Preserve all factual/security checks and latency thresholds; expected stage counts reflect the removed classifier work, with all actual calls accounted.
+- Address PR #63 late review: distinguish correct denials from affirmative false claims in the synthetic factual gate, with adjacent-clause tests. Parse bounded complete native JSON before rejecting a late response, retaining exact token counts while rejecting delivery.
+- Changelog/handoff record actual owner evidence and next pinned full check. No backup change, Minecraft restart/recreation, chat message, model download, cloud fallback or production activation. Actual candidate performance and restricted-role/driver qualification remain pending.
+
+
 ## 2026-10-17 — Compact grounded local Minecraft candidate (PR #63)
 
 - Actual focused diagnostic identified a 22s timeout, inaccurate comparator guidance, truncated/repetitive party hallucinations and wrong off-topic routing; raw synthetic evidence remains on the owner server. Broad model mode stays OFF. Known usage 2133/370 plus one unknown call is not an exact total.

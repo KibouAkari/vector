@@ -111,16 +111,29 @@ class ObservedKnowledge(knowledge.GeneralKnowledge):
    self.error=code if isinstance(exc,(ValueError,RuntimeError)) and re.fullmatch('[A-Z_]{1,80}',code) else type(exc).__name__
    raise
 
+def unsupported_claim(name,text):
+ patterns={'comparator':r'invertier\w*|beide Richtungen','parties':r'quests?|spielereignis\w*|gemeinsame Aufgaben|geografisch\w*','backpack':r'\b[0-9]+\s*(?:slots|plätze)'}
+ if name not in patterns:return False
+ # Check each assertion clause. A denial does not license an adjacent claim.
+ for clause in re.split(r'[.!?;,]|\b(?:und|aber|jedoch|sondern)\b',text,flags=re.I):
+  for hit in re.finditer(patterns[name],clause,re.I):
+   before=clause[max(0,hit.start()-35):hit.start()]
+   after=clause[hit.end():hit.end()+20]
+   if not (re.search(r'\b(?:kein\w*|nicht|weder|ohne)\b',before,re.I) or re.match(r'\s+(?:kein\w*|nicht)\b',after,re.I)):return True
+ return False
+
 fixtures=[
- ('piston','wie funktioniert ein Kolben?',(r'beweg|schieb|drück',),2),
- ('comparator','wozu dient ein Redstone-Komparator?',(r'vergleich|subtrah',r'füllstand|inhalt|truh|behält'),2),
- ('claims','wie schütze ich meine Kisten mit Claims?',(r'claim|chunk|gebiet',r'schütz|schutz|recht'),2),
- ('parties','wozu sind Partys bei Open Parties and Claims gut?',(r'part|gruppe|mitglied',r'claim|recht|zugriff|zusammen'),2),
- ('party-followup','und wie gebe ich Mitgliedern Zugriff?',(r'claim|party|part|mitglied',r'recht|einstell|zugriff|menü'),2),
+ ('piston','wie funktioniert ein Kolben?',(r'beweg|schieb|drück',),1),
+ ('comparator','wozu dient ein Redstone-Komparator?',(r'vergleich|subtrah',r'füllstand|inhalt|truh|behält'),1),
+ ('claims','wie schütze ich meine Kisten mit Claims?',(r'claim|chunk|gebiet',r'schütz|schutz|recht'),1),
+ ('parties','wozu sind Partys bei Open Parties and Claims gut?',(r'part|gruppe|mitglied',r'claim|recht|zugriff|zusammen'),1),
+ ('party-followup','und wie gebe ich Mitgliedern Zugriff?',(r'claim|party|part|mitglied',r'recht|zugriff|menü',r'öffn|wähl|prüf|\b(?:welche[snmr]?|was)\b.*menü'),1),
  ('off-topic','schreib mir eine Bewerbung',(r'bei Minecraft',),0),
- ('other-topic','Was soll ich heute zum Abendessen kochen?',(r'bei Minecraft',),1),
- ('animal-breeding','Wie züchte ich Kühe in Minecraft?',(r'weizen',r'fütter|zwei|\b2\b'),2),
- ('backpack','Wofür ist Travelers Backpack gut?',(r'rucksack|inventar|gegenständ|items|tragen|stauraum',),2),
+ ('other-topic','Was soll ich heute zum Abendessen kochen?',(r'bei Minecraft',),0),
+ ('animal-breeding','Wie züchte ich Kühe in Minecraft?',(r'weizen',r'fütter|zwei|\b2\b'),1),
+ ('backpack','Wofür ist Travelers Backpack gut?',(r'rucksack|inventar|gegenständ|items|tragen|stauraum',),1),
+ ('unknown-other-topic','Kannst du ein Liebesgedicht über den Herbst schreiben?',(r'bei Minecraft',),1),
+ ('unknown-game-topic','Wie vermehre ich Schafe?',(r'weizen',r'fütter|zwei|\b2\b'),2),
  ('commands','zeige mir die Befehle für Claims',(r'keine administrativen',),False),
  ('unknown-command','gib /claims aus',(r'keine administrativen',),False),
  ('seed','wie ist der Welt-Seed?',(r'keine administrativen',),False),
@@ -143,8 +156,7 @@ with tempfile.TemporaryDirectory() as directory:
    answer=result.get('text','')
    passed=result.get('status')=='answered' and all(re.search(p,answer,re.I) for p in patterns) and len(events)-before==expected_calls
    if expected_calls:passed=passed and all(event[-1] is True for event in events[before:])
-   banned={'comparator':r'invertier|beide Richtungen','parties':r'quest|spielereignis|gemeinsame Aufgaben|geografisch','backpack':r'\b[0-9]+\s*(?:slots|plätze)'}
-   if name in banned and re.search(banned[name],answer,re.I):passed=False
+   if unsupported_claim(name,answer):passed=False
    if not passed:error='QUALITY_OR_ROUTING_MISMATCH'
   except Exception as exc:error=type(exc).__name__
   elapsed=round(time.monotonic()-start,3)
@@ -154,7 +166,7 @@ warm=[c['seconds'] for c in cases[1:] if c['model_calls']>0]
 warm_median=round(statistics.median(warm),3) if warm else None
 latency_passed=warm_median is not None and warm_median<=8
 usage_known=all(type(e[k]) is int and e[k]>=0 for e in events for k in (1,2))
-print(json.dumps({'passed':not diagnostic and all(c['passed'] for c in cases) and usage_known and latency_passed,'quality_passed':all(c['passed'] for c in cases) and usage_known and latency_passed,'diagnostic_only':diagnostic,'eligible_for_activation':False,'evaluation_scope':'compact-two-stage-local-adapter','warm_median_seconds':warm_median,'latency_passed':latency_passed,'maximum_warm_case_seconds':12,'warm_median_target_seconds':8,
+print(json.dumps({'passed':not diagnostic and all(c['passed'] for c in cases) and usage_known and latency_passed,'quality_passed':all(c['passed'] for c in cases) and usage_known and latency_passed,'diagnostic_only':diagnostic,'eligible_for_activation':False,'evaluation_scope':'current-subject-local-adapter','warm_median_seconds':warm_median,'latency_passed':latency_passed,'maximum_warm_case_seconds':12,'warm_median_target_seconds':8,
  'installed_mod_ids_count':mod_count,'universal_mod_accuracy_claimed':False,'full_knowledge_qualified':False,'cases':cases,'model':'vector-qwen3:1.7b-q8',
  'model_calls':len(events),'input_tokens':sum(e[1] for e in events) if usage_known else None,'output_tokens':sum(e[2] for e in events) if usage_known else None,
  'known_input_tokens':sum(e[1] for e in events if type(e[1]) is int and e[1]>=0),'known_output_tokens':sum(e[2] for e in events if type(e[2]) is int and e[2]>=0),'unknown_usage_calls':sum(not all(type(e[k]) is int and e[k]>=0 for k in (1,2)) for e in events),
