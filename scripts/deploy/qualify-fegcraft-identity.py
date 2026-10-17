@@ -151,7 +151,9 @@ def main():
         raise RuntimeError('AMBIGUOUS_CAPTURE_RESULT')
     capture = created.pop()
     result = json.loads(read(capture / 'result.json'))
-    if result.get('passed') is not True or result.get('revision') != revision:
+    if (result.get('passed') is not True or result.get('revision') != revision
+            or result.get('discord_channel_bot_replay_and_block_registry_passed') is not True
+            or result.get('statistics_dialogue_tests_passed') is not True):
         raise RuntimeError('IDENTITY_CAPTURE_FAILED')
     builder = module(capture / 'code/scripts/build-fegcraft-identity.py', 'identity_asset_builder')
     manifest = builder.write(release / 'public-assets')
@@ -161,7 +163,9 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if identities() != before or any(digest(p) != value for p, value in hashes.items()):
             raise RuntimeError('PRODUCTION_CHANGED_DURING_QUALIFICATION')
-        welcome.installation(json.loads(run('docker', 'inspect', 'vector-fegcraft-assistant'))[0])
+        after_installation, after_manifest = welcome.installation(json.loads(run('docker', 'inspect', 'vector-fegcraft-assistant'))[0])
+        if (after_installation, after_manifest) != (installation, installed):
+            raise RuntimeError('INSTALLATION_CHANGED_DURING_QUALIFICATION')
     report = {'passed': True, 'revision': revision, 'installation': str(installation), 'capture': str(capture),
               'name_format': '<Vector>', 'minecraft_head': 'native-player-object-with-local-pack-texture',
               'discord_delivery': 'existing-webhook-with-per-message-name-and-public-png-avatar',
@@ -169,6 +173,8 @@ def main():
               'welcome_marker_preserved': True, 'production_unchanged': True, 'production_activated': False,
               'model_calls': 0, 'cloud_calls': 0, 'messages_sent': 0,
               'real_client_rendering_verified': False, 'real_discord_avatar_verified': False}
+    report['dialogue_and_discord_capture_passed'] = result.get('discord_channel_bot_replay_and_block_registry_passed') is True
+    report['statistics_dialogue_tests_passed'] = result.get('statistics_dialogue_tests_passed') is True
     (release / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
     print('Report: ' + str(release / 'result.json'))

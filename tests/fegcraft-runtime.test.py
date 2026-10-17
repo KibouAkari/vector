@@ -159,8 +159,25 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(send(raw, timestamp='1000000000')[0], 503)
         finally:
             service.slot.release()
-        self.assertEqual(send(b'x' * 8193, timestamp='1000000000')[0], 413)
+        # Rejection happens before reading an oversized body. Sending that body
+        # can race the deliberate early close and raise BrokenPipe on the client.
+        connection = HTTPConnection(*service.server_address, timeout=2)
+        try:
+            connection.putrequest('POST', '/v1/minecraft')
+            connection.putheader('Content-Length', str(512 * 1024 + 1))
+            connection.endheaders()
+            response = connection.getresponse()
+            self.assertEqual(response.status, 413)
+            response.read()
+        finally:
+            connection.close()
+        payload = self.payload('hey Vector, wer hat die meisten mobkills?')
+        payload['block_items'] = ['minecraft:synthetic_block_' + str(i) for i in range(512)]
+        encoded = json.dumps(payload).encode()
+        self.assertGreater(len(encoded), 8192)
+        self.assertEqual(send(encoded, timestamp='1000000000')[0], 200)
 
 
 if __name__ == '__main__':
     unittest.main()
+

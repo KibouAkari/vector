@@ -11,6 +11,11 @@ import zipfile
 ID = re.compile(r'minecraft:[a-z0-9_./-]{1,96}\Z')
 INTENT = re.compile(r'\b(?:craft\w*|rezept\w*|recipe\w*|herstell\w*)|\bwie (?:baue|baut|mache|macht|stelle|stellt)', re.I)
 NAMES = {
+    'minecraft:anvil': ('Amboss', 'amboss', 'anvil'),
+    'minecraft:iron_block': ('Eisenblock', 'eisenblock', 'iron block'),
+    'minecraft:stone': ('Stein', 'stein', 'stone'),
+    'minecraft:cobblestone': ('Bruchstein', 'bruchstein', 'cobblestone'),
+    'minecraft:dirt': ('Erde', 'erde', 'dirt'),
     'minecraft:crafting_table': ('Werkbank', 'werkbank', 'crafting table'),
     'minecraft:furnace': ('Ofen', 'ofen', 'furnace'),
     'minecraft:hopper': ('Trichter', 'trichter', 'hopper'),
@@ -232,3 +237,4 @@ class RecipeBook:
             text += ' Anordnung beliebig.'
         text += ' Mod-Anpassungen sind nicht geprüft.'
         return text if len(text) <= 350 else 'das Grundrezept ist für eine kurze Chatantwort zu umfangreich. Bitte grenze die Frage ein.'
+

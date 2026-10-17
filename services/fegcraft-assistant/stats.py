@@ -34,7 +34,7 @@ def read_json(path, limit=2_000_000):
         os.close(fd)
 
 
-def snapshot(stats_dir, usercache, max_players=1000):
+def snapshot(stats_dir, usercache, max_players=1000, include_items=False):
     """Paths are configured by the operator, never taken from a chat message.
 
     Distance deliberately matches the existing seven-category FEGCraft report.
@@ -76,8 +76,17 @@ def snapshot(stats_dir, usercache, max_players=1000):
             uid = path.stem.lower()
             if uid not in names:
                 unknown += 1
-            players.append({'name': names.get(uid), 'values': metrics,
-                            'saved_at': datetime.fromtimestamp(modified, timezone.utc).isoformat()})
+            person = {'name': names.get(uid), 'values': metrics,
+                      'saved_at': datetime.fromtimestamp(modified, timezone.utc).isoformat()}
+            if include_items:
+                for category in ('used', 'mined'):
+                    counters = value['stats'].get('minecraft:' + category, {})
+                    if (not isinstance(counters, dict) or len(counters) > 20000
+                            or any(not isinstance(k, str) or not re.fullmatch(r'[a-z0-9_.-]{1,64}:[a-z0-9_./-]{1,96}', k)
+                                   or type(v) is not int or not 0 <= v <= 2**53 - 1 for k, v in counters.items())):
+                        raise ValueError('Invalid item counters')
+                    person[category] = counters
+            players.append(person)
         except (OSError, ValueError, KeyError, TypeError, OverflowError):
             skipped += 1
     return {'read_at': datetime.now(timezone.utc).isoformat(), 'players': players,
@@ -118,3 +127,23 @@ def records(data, player):
                            'value': person['values'][metric], 'shared': len(top) > 1})
     return {'name': person['name'], 'records': result, 'read_at': data['read_at'],
             'saved_at': person['saved_at']}
+
+
+def rank(data, person, metric):
+    require_complete(data)
+    return 1 + sum(p['values'][metric] > person['values'][metric] for p in data['players'])
+
+
+def block_leaders(data, category, block_items=()):
+    require_complete(data)
+    if category not in ('used', 'mined') or category == 'used' and not block_items:
+        raise ValueError('Live block registry required')
+    allowed = set(block_items)
+    totals = {}
+    for player in data['players']:
+        for identifier, count in player[category].items():
+            if category == 'mined' or identifier in allowed:
+                totals[identifier] = totals.get(identifier, 0) + count
+    highest = max(totals.values(), default=0)
+    return [(identifier, count) for identifier, count in sorted(totals.items()) if count == highest and count > 0]
+

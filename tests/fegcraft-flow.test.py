@@ -21,7 +21,7 @@ def fixtures(directory):
     (directory / 'stats').mkdir(exist_ok=True)
     for number, name, kills in ((1, 'ExampleOne', 40), (2, 'ExampleTwo', 52000)):
         uid = f'00000000-0000-0000-0000-{number:012d}'
-        (directory / 'stats' / (uid + '.json')).write_text(json.dumps({'stats': {'minecraft:custom': {'minecraft:mob_kills': kills, 'minecraft:play_time': 72000}}}))
+        (directory / 'stats' / (uid + '.json')).write_text(json.dumps({'stats': {'minecraft:custom': {'minecraft:mob_kills': kills, 'minecraft:play_time': 72000}, 'minecraft:used': {'minecraft:stone': 100, 'minecraft:diamond_pickaxe': 5000}}}))
     (directory / 'usercache.json').write_text(json.dumps([{'uuid': f'00000000-0000-0000-0000-{n:012d}', 'name': name} for n, name in ((1, 'ExampleOne'), (2, 'ExampleTwo'))]))
     (directory / 'mods.json').write_text('["fabric-api","travelersbackpack"]')
 
@@ -61,3 +61,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

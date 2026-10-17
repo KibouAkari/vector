@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-17 — Natural statistics and existing-channel Discord questions (PR #55)
+
+- Owner confirms real addressed Minecraft statistics/recipe replies and Discord relay delivery. The new logo qualification passed without activation; retain its assets/evidence and delivered welcome marker.
+- Recognize natural death/rank questions and plural record-holder requests; include shared competition ranks and preserve exact/unknown-player checks. Read saved counters freshly. Translate Amboss and Eisenblock.
+- Add bounded block usage/mining queries; only live registered BlockItem IDs classify usage counters, excluding tools. Label usages honestly rather than claiming a complete placement ledger. Missing registry/incomplete data fail explicitly.
+- Add opt-in human Discord input through the existing linked-channel integration hook, without another bot. Reject other channels, DMs, bots, webhooks, ordinary chat and repeated events; preserve normal relay, authenticated author names and durable account/event limits. No model/cloud fallback.
+- Expand isolated capture and semantic tests for Discord boundaries, restart replay, registry transport, natural questions, rank ties and fresh block counts. Keep prompt/reply limits while allowing bounded signed public registry metadata.
+- Fix the later PR #54 review's manifest-snapshot race; exercise the qualifier orchestration against changed production and failed/incomplete captures. These changes are source/qualification only; matching service/addon/identity deployment and actual Discord-input/client-head verification remain pending.
+
 ## 2026-10-17 — Vector player-style name and local logo assets (PR #54)
 
 - Owner confirms the pilot installed successfully and the single welcome appeared in both chats. Preserve its durable marker. Diagnostics confirm active Discord webhook, no avatar and no existing server resource pack.

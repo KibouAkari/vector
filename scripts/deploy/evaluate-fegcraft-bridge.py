@@ -25,11 +25,11 @@ COMMON_DIGEST = '4b0dee9f505d30129b003eae08866be543cddc7b5bc11b7b42bae6b1fb77d0a
 LABEL = 'com.vector.fegcraft-evaluation'
 PRODUCTION = ('fegcraft-updated', 'vector-app', 'vector-privacy-ner', 'vector-local-inference', 'vector-worker', 'vector-runner', 'vector-postgres', 'vector-redis')
 COMPOSE = (Path('/opt/fegcraft-updated/docker-compose.yml'), Path('/opt/vector/docker-compose.yml'))
-EXPORT = ('services/fegcraft-assistant', 'integrations/fegcraft-addon/src', 'tests/VectorAddonTest.java', 'tests/VectorAddonFlowTest.java', 'tests/fegcraft-flow.test.py', 'scripts/build-fegcraft-addon.py', 'scripts/build-fegcraft-identity.py', 'public/vector-assets/brand/vector-mark.svg')
+EXPORT = ('services/fegcraft-assistant', 'integrations/fegcraft-addon/src', 'tests/VectorAddonTest.java', 'tests/VectorAddonFlowTest.java', 'tests/fegcraft-flow.test.py', 'scripts/build-fegcraft-addon.py', 'scripts/build-fegcraft-identity.py', 'public/vector-assets/brand/vector-mark.svg', 'tests/fegcraft-dialogue.test.py', 'tests/fegcraft-runtime.test.py', 'tests/fegcraft-stats.test.py', 'tests/fegcraft-recipes.test.py')
 
 
 LOG_LIMIT = 128 * 1024
-COMPLETION_FLAGS = ('signed_transport_passed', 'service_restart_limits_passed', 'captured_introduction_replay_passed')
+COMPLETION_FLAGS = ('signed_transport_passed', 'service_restart_limits_passed', 'captured_introduction_replay_passed', 'discord_channel_bot_replay_and_block_registry_passed', 'statistics_dialogue_tests_passed')
 
 
 def qualified(result, error, cleanup_errors, checks):
@@ -233,6 +233,12 @@ def main():
             builder.package_addon(build / 'classes', artifact)
             artifact.chmod(0o600)
             result['addon_sha256'] = hashlib.sha256(artifact.read_bytes()).hexdigest()
+            for test in ('fegcraft-dialogue.test.py', 'fegcraft-runtime.test.py', 'fegcraft-stats.test.py', 'fegcraft-recipes.test.py'):
+                name = prefix + '-python-' + str(len(names)); names.append(name)
+                args = container_args(name, owner, 'none', '256m') + mount(code, '/source')
+                args += ['--env', 'PYTHONDONTWRITEBYTECODE=1', '--entrypoint', 'python3', PYTHON, '/source/tests/' + test]
+                run(args, timeout=45, log=release / (test + '.log'))
+            result['statistics_dialogue_tests_passed'] = True
             run(['docker', 'network', 'create', '--internal', '--label', LABEL + '=' + owner, network])
             network_created = True
             net = inspect('network', network)
@@ -263,7 +269,8 @@ def main():
                 if report_path.is_symlink() or report_path.stat().st_size > 16384:
                     raise RuntimeError('CLIENT_REPORT_INVALID')
                 report = json.loads(report_path.read_text())
-                if report.get('passed') is not True or report.get('phase') != phase or report.get('external_messages_sent') != 0:
+                if (report.get('passed') is not True or report.get('phase') != phase or report.get('external_messages_sent') != 0
+                        or report.get('discord_channel_bot_replay_and_block_registry_passed') is not True):
                     raise RuntimeError('CAPTURE_QUALIFICATION_FAILED')
                 result[phase] = report
                 run(['docker', 'logs', '--tail', '80', service_name], log=release / ('service-' + phase + '.log'), check=False)
@@ -271,6 +278,7 @@ def main():
             result['signed_transport_passed'] = True
             result['service_restart_limits_passed'] = True
             result['captured_introduction_replay_passed'] = True
+            result['discord_channel_bot_replay_and_block_registry_passed'] = True
         except KeyboardInterrupt:
             error = 'EVALUATION_INTERRUPTED'
         except Exception as failure:

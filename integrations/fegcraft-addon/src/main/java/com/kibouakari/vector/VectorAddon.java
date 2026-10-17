@@ -2,6 +2,7 @@ package com.kibouakari.vector;
 
 import dcshadow.com.google.gson.Gson;
 import dcshadow.com.google.gson.JsonObject;
+import dcshadow.com.google.gson.JsonArray;
 import dcshadow.net.kyori.adventure.text.Component;
 import dcshadow.net.kyori.adventure.text.TextComponent;
 import dcshadow.net.kyori.adventure.text.format.TextColor;
@@ -35,6 +36,7 @@ import java.util.HexFormat;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
@@ -47,12 +49,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
-/** Uses only the installed bridge. No Discord listener or Minecraft commands. */
+/** Uses the installed bridge; no separate bot or Minecraft commands. */
 public final class VectorAddon implements DiscordIntegrationAddon {
     private static final Logger LOG = Logger.getLogger("VectorMinecraft");
     private static final Pattern GREETING = Pattern.compile("^\\s*(hi|hey|hallo|yo{1,3}|hoi|huhu|hello)\\s+vector(?:\\s*[,!:?]\\s*|\\s+|$)", Pattern.CASE_INSENSITIVE);
     private static final Pattern UNSAFE = Pattern.compile("[/\\\\](give|op|deop|execute|gamemode|tp|teleport|seed|summon|kill|setblock|fill|sudo|bin|etc|opt)\\b|\\b(seed|passwort|password|api.?key|token|rcon|docker|curl|wget|bash|powershell|cheat|gamemode)\\b|https?://|www\\.|@|`|[<>\\x00-\\x1f\\x7f]|\\u00a7", Pattern.CASE_INSENSITIVE);
     private static final URI ENDPOINT = URI.create("http://vector-fegcraft-assistant:8090/v1/minecraft");
+    private static final Pattern BLOCK_USE = Pattern.compile("platzier|gesetzt|placed", Pattern.CASE_INSENSITIVE);
     private static final String INTRO = "Hey zusammen, ich bin Vector, euer neuer Minecraft-Assistent! Ich helfe bei Fragen und Problemen rund um Minecraft und zeige euch Statistiken und Rekorde. Beginnt eure Nachricht einfach mit Hey Vector oder Yoo Vector.";
     private final String session = UUID.randomUUID().toString();
     private final AtomicLong sequence = new AtomicLong();
@@ -66,12 +69,39 @@ public final class VectorAddon implements DiscordIntegrationAddon {
         void schedule(Runnable task) throws Exception;
         String playerName(UUID player);
         void publish(String message);
+        default List<String> blockItems() { return List.of(); }
     }
     private Bridge bridge;
     private Path introMarker;
     private boolean introduction;
     private String avatar = "";
     private boolean logo;
+    private boolean discordInput;
+    private List<String> blockItems;
+
+    private List<String> registeredBlockItems() {
+        if (blockItems != null) return blockItems;
+        try {
+            Object registry = Class.forName("net.minecraft.core.registries.BuiltInRegistries").getField("ITEM").get(null);
+            Class<?> blockItem = Class.forName("net.minecraft.world.item.BlockItem");
+            Method getKey = registry.getClass().getMethod("getKey", Object.class);
+            List<String> ids = new ArrayList<>();
+            int scanned = 0;
+            for (Object item : (Iterable<?>) registry) {
+                if (++scanned > 65536) throw new IllegalArgumentException();
+                if (blockItem.isInstance(item)) {
+                    String id = getKey.invoke(registry, item).toString();
+                    if (!id.matches("[a-z0-9_.-]{1,64}:[a-z0-9_./-]{1,96}") || ids.size() >= 4096) throw new IllegalArgumentException();
+                    ids.add(id);
+                }
+            }
+            blockItems = List.copyOf(ids);
+        } catch (Exception failure) {
+            LOG.warning("Vector public block-item registry unavailable.");
+            blockItems = List.of();
+        }
+        return blockItems;
+    }
 
     /** Fixed local texture only; no fake player identity or profile lookup. */
     static Component presentation(String message, boolean logo) {
@@ -120,24 +150,36 @@ public final class VectorAddon implements DiscordIntegrationAddon {
             String texture = properties.getProperty("logoTexture", "");
             if (!texture.isEmpty() && !texture.equals("vector:entity/vector")) throw new IllegalArgumentException();
             logo = !texture.isEmpty();
+            discordInput = "true".equals(properties.getProperty("discordInputEnabled", "false"));
             if (!avatar.isEmpty() && !Configuration.instance().webhook.enable) throw new IllegalArgumentException();
             start(new Bridge() {
                 public void schedule(Runnable task) throws Exception { execute.invoke(minecraft, task); }
                 public String playerName(UUID player) { return dc.getServerInterface().getPlayers().get(player); }
+                public List<String> blockItems() { return registeredBlockItems(); }
                 public void publish(String message) {
                     dc.getServerInterface().sendIngameMessage(presentation(message, logo));
                     // System output is not a player hook; forward exactly once.
                     dc.sendMessage("Vector", message, dc.getChannel(Configuration.instance().advanced.chatOutputChannelID), avatar);
                 }
-            }, key, introMarker, introduction);
+            }, key, introMarker, introduction, discordInput);
             handler = new DiscordEventHandler() {
                 @Override
                 public boolean onMinecraftMessage(Component message, UUID player) {
                     return chat(message, player);
                 }
+                @Override
+                public void onDiscordMessagePost(net.dv8tion.jda.api.events.message.MessageReceivedEvent event) {
+                    if (!discordInput) return;
+                    var channel = dc.getChannel(Configuration.instance().advanced.chatOutputChannelID);
+                    if (channel == null) return;
+                    discord(event.getChannel().getId(), channel.getId(), event.isFromGuild(),
+                        event.getAuthor().isBot(), event.getMessage().isWebhookMessage(), event.getAuthor().getId(),
+                        event.getMessageId(), event.getMember() == null ? event.getAuthor().getName() : event.getMember().getEffectiveName(),
+                        event.getMessage().getContentRaw());
+                }
             };
             dc.registerEventHandler(handler);
-            LOG.info("Vector Minecraft bridge registered; no Discord listener.");
+            LOG.info("Vector bridge registered; Discord input " + (discordInput ? "enabled in the linked chat channel." : "disabled."));
         } catch (Exception failure) {
             active = false;
             if (worker != null) worker.shutdownNow();
@@ -151,11 +193,16 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     }
 
     void start(Bridge transport, byte[] secret, Path marker, boolean intro) {
+        start(transport, secret, marker, intro, false);
+    }
+
+    void start(Bridge transport, byte[] secret, Path marker, boolean intro, boolean discord) {
         if (active || secret.length != 32) throw new IllegalArgumentException();
         bridge = transport;
         key = secret.clone();
         introMarker = marker;
         introduction = intro;
+        discordInput = discord;
         worker = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1), task -> {
             Thread thread = new Thread(task, "Vector-local-chat");
             thread.setDaemon(true);
@@ -189,26 +236,63 @@ public final class VectorAddon implements DiscordIntegrationAddon {
                 request.addProperty("name", name);
                 request.addProperty("event", session + ":" + sequence.incrementAndGet());
                 request.addProperty("message", message);
-                if (!requestInFlight.compareAndSet(false, true)) return;
-                try {
-                    worker.execute(() -> {
-                        String reply;
-                        try { reply = answer(request); }
-                        finally { requestInFlight.set(false); }
-                        // Admission reopens before delivery is visible. The single
-                        // queue slot covers completion handoff, never HTTP backlog.
-                        if (reply != null) onServer(() -> {
-                            if (!active) return;
-                            introduce();
-                            bridge.publish(reply);
-                        });
-                    });
-                } catch (RejectedExecutionException ignored) {
-                    requestInFlight.set(false);
-                    // No unbounded queue, public busy-message spam or tick delay.
-                }
+                submit(request, message);
             });
         } catch (Exception ignored) { }
+    }
+
+    static String discordName(String value) {
+        StringBuilder name = new StringBuilder();
+        if (value != null) for (char c : value.toCharArray()) {
+            if (name.length() == 32) break;
+            if (Character.isLetterOrDigit(c) || " _.-".indexOf(c) >= 0) name.append(c);
+        }
+        String result = name.toString().strip();
+        return result.isEmpty() || !safe("Hi " + result) ? "DiscordUser" : result;
+    }
+
+    void discord(String channel, String expected, boolean guild, boolean bot, boolean webhook,
+                 String user, String messageId, String name, String message) {
+        if (!active || !discordInput || !guild || bot || webhook || channel == null || !channel.equals(expected)
+                || user == null || messageId == null
+                || !user.matches("[0-9]{17,20}") || !messageId.matches("[0-9]{17,20}")
+                || message == null || message.length() > 1200 || !GREETING.matcher(message).find()) return;
+        // IDs come from the existing authenticated JDA event, never chat text.
+        // Stable namespaces preserve durable per-account limits and event replay.
+        JsonObject request = new JsonObject();
+        request.addProperty("principal", UUID.nameUUIDFromBytes(("vector-discord-user:" + user).getBytes(StandardCharsets.US_ASCII)).toString());
+        request.addProperty("event", UUID.nameUUIDFromBytes(("vector-discord-message:" + messageId).getBytes(StandardCharsets.US_ASCII)) + ":0");
+        request.addProperty("name", discordName(name));
+        request.addProperty("source", "discord");
+        request.addProperty("message", message);
+        onServer(() -> submit(request, message));
+    }
+
+    private void submit(JsonObject request, String message) {
+        if (!active || !requestInFlight.compareAndSet(false, true)) return;
+        if (BLOCK_USE.matcher(message).find()) {
+            JsonArray ids = new JsonArray();
+            try { for (String id : bridge.blockItems()) ids.add(id); }
+            catch (Exception ignored) { }
+            request.add("block_items", ids);
+        }
+        try {
+            worker.execute(() -> {
+                String reply;
+                try { reply = answer(request); }
+                finally { requestInFlight.set(false); }
+                // Admission reopens before delivery is visible. The single
+                // queue slot covers completion handoff, never HTTP backlog.
+                if (reply != null) onServer(() -> {
+                    if (!active) return;
+                    introduce();
+                    bridge.publish(reply);
+                });
+            });
+        } catch (RejectedExecutionException ignored) {
+            requestInFlight.set(false);
+            // No unbounded queue, public busy-message spam or tick delay.
+        }
     }
 
     private void onServer(Runnable task) {
@@ -265,6 +349,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     private String answer(JsonObject payload) {
         try {
             byte[] body = gson.toJson(payload).getBytes(StandardCharsets.UTF_8);
+            if (body.length > 512 * 1024) return null;
             String timestamp = Long.toString(Instant.now().getEpochSecond());
             HttpRequest request = HttpRequest.newBuilder(ENDPOINT).timeout(Duration.ofSeconds(27))
                 .header("Content-Type", "application/json").header("X-Vector-Time", timestamp)

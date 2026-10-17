@@ -148,6 +148,7 @@ jobs:
         run: |
           python3 tests/fegcraft-identity.test.py
           python3 tests/fegcraft-identity-qualification.test.py
+          python3 tests/fegcraft-dialogue.test.py
           python3 -m py_compile scripts/build-fegcraft-identity.py scripts/deploy/qualify-fegcraft-identity.py
 
       - name: Test local JSON ranking aggregation and cost metadata
