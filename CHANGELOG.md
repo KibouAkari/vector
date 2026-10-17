@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 — Fresh complete statistics and Minecraft qualification
+
+- Recognize uninterrupted native statistics followups including all record holders and explicit refresh. Resolve intent from user requests rather than assistant facts; topic switches and mixed/export/admin tasks retain their normal routes. Every completed native statistics request now rereads the fixed sources; completed native jobs are excluded from the short completion replay while queued/running retries still share their job. Ordinary completion dedup remains intact.
+- Return all five record categories through the deterministic reader with exact ties and a fresh read timestamp. Explain that newly performed game actions appear only after Minecraft saves its statistics files. Include read provenance in local job metadata.
+- Add the equivalent complete record-holder response to the private Minecraft service. Release the service computation slot before publishing its HTTP response so an immediately following request is not spuriously busy.
+- Add an owner staging wrapper pinned to the repaired listener/Compose baseline, testing completed-versus-in-flight job reuse and native followup routing in a disposable app/database. Prepare real local Qwen knowledge qualification using the actual bounded adapter and policy, synthetic Minecraft fixtures, shared production read-only advisory-lock admission, separate temporary client and reported native usage. No cloud calls, game installation or introduction are performed by qualification; the dedicated production DB role remains a separate unmet gate.
+- Local verification: 31 focused Node tests, 11 Minecraft runtime/HTTP tests and three knowledge-evaluation tests pass, plus syntax checks and a new actual-PostgreSQL duplicate policy regression prepared for CI. Real owner staging/model qualification and production release remain pending.
+
 ## 2026-10-17 — Owner-confirmed listener and Nginx repair (PR #45)
 
 - The owner completed PR #44 repair at bc52a8f38098eea0e2123f74cc0c8c8392358bed. Runner reported LISTENER FIX SUCCEEDED and SUCCESS: every app IPv4/loopback interface and the host Nginx HTTPS health route passed. The persistent app HOSTNAME is now 0.0.0.0.

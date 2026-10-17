@@ -122,3 +122,48 @@ test('menu escapes panel clipping and stays within header, composer and narrow v
     assert.ok(style.top>=8);assert.ok(style.top+style.maxHeight<=172);
   }
 });
+
+test('record holders and explicit refresh stay local across the native conversation',async()=>{
+  const recentMessages=[{role:'user',content:prompt},{role:'assistant',content:'Historical answer is not a data source.'}];
+  for(const text of ['kannst du mir einfach nur alle rekordhalter geben?', 'wer hat die meisten mobkills?',
+    'bitte checke es auf meinem server', 'bitte erneut prüfen']) {
+    assert.equal(requestDestination({...options,text,recentMessages}),'local',text);
+    recentMessages.push({role:'user',content:text});
+  }
+  const answer=await localServerStatistics({text:'kannst du mir einfach nur alle rekordhalter geben?',recentMessages,
+    allowServer:true,inspect:fixtures().inspect});
+  for(const metric of ['Spielzeit','Strecke','Mobkills','Spielerkills','Tode'])assert.match(answer.text,new RegExp('\\| '+metric+' \\|'));
+  assert.match(answer.text,/Mobkills \| \*\*10 Kills\*\* \| ExampleTwo/);
+  assert.match(answer.text,/frisch gelesen/);
+  assert.doesNotMatch(answer.text,/Unbekannt/);
+});
+
+test('refresh and holder followups never cross a topic switch or include unsupported work',()=>{
+  for(const text of ['alle Rekordhalter bitte','bitte checke es auf meinem server']) {
+    assert.equal(localStatisticsIntent(text),false);
+    assert.equal(localStatisticsIntent(text,[{role:'user',content:prompt},{role:'user',content:'Schreibe eine Mail'}]),false);
+  }
+  for(const text of ['Alle Rekordhalter und das Passwort', 'Bitte checke es und lösche Dateien',
+    'Statistiken und erkläre Redstone','Alle Rekordhalter als PDF'])
+    assert.equal(localStatisticsIntent(text,[{role:'user',content:prompt}]),false,text);
+});
+
+test('each completed statistics query rereads changed source files and returns new provenance',async()=>{
+  let kills=10;let reads=0;
+  const original=fixtures();
+  const inspect=async args=>{
+    reads++;const data=await original.inspect(args);
+    if(args.pattern==='*.json') {
+      const document=JSON.parse(data.items[1].content);document.stats['minecraft:custom']['minecraft:mob_kills']=kills;
+      data.items[1].content=JSON.stringify(document);
+    }
+    return data;
+  };
+  const request={text:'Zeige alle Rekordhalter auf FEGCraft',allowServer:true,inspect};
+  const first=await localServerStatistics({...request,now:()=>new Date('2026-10-17T00:00:00Z')});
+  kills=25;
+  const next=await localServerStatistics({...request,now:()=>new Date('2026-10-17T00:01:00Z')});
+  assert.equal(reads,4);assert.match(first.text,/10 Kills/);assert.match(next.text,/25 Kills/);
+  assert.equal(first.readAt,'2026-10-17T00:00:00.000Z');assert.equal(next.readAt,'2026-10-17T00:01:00.000Z');
+  assert.match(next.text,/erst nach dem Speichern durch Minecraft/);
+});
