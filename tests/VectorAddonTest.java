@@ -9,7 +9,56 @@ import java.util.List;
 import java.util.concurrent.Flow;
 
 public final class VectorAddonTest {
+    static void ownerWelcome() throws Exception {
+        Path directory = Files.createTempDirectory("vector-owner-welcome");
+        try {
+            String boot = "00000000-0000-0000-0000-000000000001";
+            boolean[] alive = {true};
+            java.util.List<Runnable> scheduled = new java.util.ArrayList<>();
+            java.util.List<String> messages = new java.util.ArrayList<>();
+            VectorAddon.Bridge bridge = new VectorAddon.Bridge() {
+                public void schedule(Runnable task) { scheduled.add(task); }
+                public String playerName(java.util.UUID value) { throw new AssertionError("Not a player request"); }
+                public void publish(String text) { messages.add(text); }
+            };
+            Path legacy = directory.resolve("introduction-v1.attempted"); Files.writeString(legacy, "old welcome");
+            VectorAddon.OwnerWelcome welcome = new VectorAddon.OwnerWelcome(directory, boot, () -> alive[0]);
+            long zero = 100;
+            if (welcome.poll(bridge, zero) || !scheduled.isEmpty()) throw new AssertionError("Unarmed welcome");
+            Files.writeString(welcome.request, boot + "\n");
+            if (welcome.poll(bridge, zero)) throw new AssertionError("No delay");
+            if (welcome.poll(bridge, zero + java.util.concurrent.TimeUnit.SECONDS.toNanos(15) - 1) || !scheduled.isEmpty())
+                throw new AssertionError("Welcome before fifteen seconds");
+            if (!welcome.poll(bridge, zero + java.util.concurrent.TimeUnit.SECONDS.toNanos(15)) || scheduled.size() != 1)
+                throw new AssertionError("Welcome handoff absent");
+            if (!messages.isEmpty() || Files.exists(welcome.marker)) throw new AssertionError("Delivery outside scheduled game task");
+            scheduled.remove(0).run();
+            if (messages.size() != 1 || !Files.exists(welcome.marker) || !Files.readString(legacy).equals("old welcome"))
+                throw new AssertionError("Owner welcome/legacy marker changed");
+            if (!welcome.poll(bridge, Long.MAX_VALUE) || !scheduled.isEmpty()) throw new AssertionError("Duplicate handoff");
+            VectorAddon.OwnerWelcome reload = new VectorAddon.OwnerWelcome(directory, boot, () -> true);
+            if (!reload.poll(bridge, zero)) throw new AssertionError("Attempt marker ignored");
+            Files.delete(welcome.marker);
+            VectorAddon.OwnerWelcome stale = new VectorAddon.OwnerWelcome(directory, "00000000-0000-0000-0000-000000000002", () -> true);
+            if (!stale.poll(bridge, zero) || !scheduled.isEmpty()) throw new AssertionError("Stale boot signal replayed");
+            Files.writeString(welcome.request, boot);
+            VectorAddon.OwnerWelcome stopped = new VectorAddon.OwnerWelcome(directory, boot, () -> alive[0]);
+            stopped.poll(bridge, zero); stopped.poll(bridge, zero + java.util.concurrent.TimeUnit.SECONDS.toNanos(15));
+            alive[0] = false; scheduled.remove(0).run();
+            if (Files.exists(welcome.marker) || messages.size() != 1) throw new AssertionError("Welcome after unload");
+            Files.delete(welcome.request); Files.createSymbolicLink(welcome.request, legacy);
+            VectorAddon.OwnerWelcome symlink = new VectorAddon.OwnerWelcome(directory, boot, () -> true);
+            try { symlink.poll(bridge, zero); throw new AssertionError("Symlink request accepted"); }
+            catch (java.io.IOException expected) { }
+            Files.delete(welcome.request);
+        } finally {
+            try (var entries = Files.list(directory)) { for (Path entry : entries.toList()) Files.delete(entry); }
+            Files.delete(directory);
+        }
+    }
+
     public static void main(String[] args) throws Exception {
+        ownerWelcome();
         if (!VectorAddon.discordName("Example Discord").equals("Example Discord")) throw new AssertionError("Discord display name changed");
         if (!VectorAddon.discordName("@<>\n").equals("DiscordUser")) throw new AssertionError("Unsafe Discord name accepted");
         var serializer = dcshadow.net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson();

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-17 — Pre-recreation persistence audit and owner-authorized native welcome (PR #57)
+
+- Hold the supplied PR #56 deployment: owner has not run it and requests current persistence verification plus one additional native Vector welcome, 15 seconds after readiness. Record this narrow authorization separately; retain the old welcome marker and mandatory logo-pack choice. No backup or production change is claimed.
+- Add a read-only host-bind/world/Compose/version/type/user/image/startup-options and writable-container-layer audit. Refuse ambiguous/unpersisted data; keep unknown filenames private. Recheck stable host directory identities and report loader pin status without claiming zero risk or a verified backup.
+- Add default-off session-bound owner welcome control. The owner-only arming helper checks healthy current ownership/readiness and atomically exposes a readable signal. The addon waits at least 15 monotonic seconds, schedules native Vector/head/avatar delivery, and durably claims its independent v2 event before sending. Existing/stale signals, repeat polls and unload cannot cause automatic resend. No console command, fake user or inference.
+- Add audit-before/after isolated qualification of the changed addon, with required native welcome test proof. Synthetic tests cover mount/version/destructive-option/root-layer boundaries, durable arming, delayed scheduled delivery, session/marker/unload/symlink handling and changed/failed qualification gates. Existing signed first/restart chat captures pass locally. Update CI and project handoff; actual host audit, new qualification/deployment and native greeting delivery remain pending.
+
 ## 2026-10-17 — Guarded combined FEGCraft dialogue and identity update (PR #56)
 
 - Owner's combined source qualification passed: both restart captures, extended statistics and linked-channel Discord boundaries, exact prepared logo assets, no production changes/model requests/messages. Reuse this evidence and captured JAR without another build.

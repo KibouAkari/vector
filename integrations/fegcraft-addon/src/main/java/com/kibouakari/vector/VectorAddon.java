@@ -30,6 +30,10 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.StandardCopyOption;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.BooleanSupplier;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
@@ -63,6 +67,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     private volatile ThreadPoolExecutor worker;
     private final AtomicBoolean requestInFlight = new AtomicBoolean();
     private volatile boolean active;
+    private volatile ScheduledExecutorService ownerWelcomeTimer;
     private DiscordEventHandler handler;
     private byte[] key;
     interface Bridge {
@@ -179,10 +184,12 @@ public final class VectorAddon implements DiscordIntegrationAddon {
                 }
             };
             dc.registerEventHandler(handler);
+            if ("true".equals(properties.getProperty("ownerWelcomeEnabled", "false"))) startOwnerWelcome(directory);
             LOG.info("Vector bridge registered; Discord input " + (discordInput ? "enabled in the linked chat channel." : "disabled."));
         } catch (Exception failure) {
             active = false;
             if (worker != null) worker.shutdownNow();
+            if (ownerWelcomeTimer != null) ownerWelcomeTimer.shutdownNow();
             LOG.warning("Vector bridge initialization failed; no secret details logged.");
         }
     }
@@ -379,6 +386,85 @@ public final class VectorAddon implements DiscordIntegrationAddon {
         }
     }
 
+    /** Owner arms this once only after deployment readiness; ordinary chat cannot arm it. */
+    static final class OwnerWelcome {
+        final Path request;
+        final Path marker;
+        final String boot;
+        final BooleanSupplier alive;
+        private long due;
+        private boolean armed;
+        private boolean handedOff;
+
+        OwnerWelcome(Path directory, String boot, BooleanSupplier alive) throws IOException {
+            if (!boot.matches("[a-f0-9-]{36}")) throw new IllegalArgumentException();
+            for (Path path = directory; path != null; path = path.getParent()) {
+                if (Files.isSymbolicLink(path)) throw new IOException("OWNER_WELCOME_DIRECTORY_INVALID");
+            }
+            this.request = directory.resolve("owner-welcome-v2.ready");
+            this.marker = directory.resolve("owner-welcome-v2.attempted");
+            this.boot = boot;
+            this.alive = alive;
+            Path instance = directory.resolve("owner-welcome-v2.instance");
+            if (Files.exists(instance, LinkOption.NOFOLLOW_LINKS)
+                    && !Files.isRegularFile(instance, LinkOption.NOFOLLOW_LINKS)) throw new IOException("OWNER_INSTANCE_INVALID");
+            Path temporary = Files.createTempFile(directory, ".owner-instance-", ".tmp");
+            try {
+                try (FileChannel file = FileChannel.open(temporary, StandardOpenOption.WRITE)) {
+                    file.write(StandardCharsets.US_ASCII.encode(boot + "\n")); file.force(true);
+                }
+                Files.move(temporary, instance, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                try (FileChannel parent = FileChannel.open(directory, StandardOpenOption.READ)) { parent.force(true); }
+            } finally { Files.deleteIfExists(temporary); }
+        }
+
+        boolean poll(Bridge bridge, long now) throws Exception {
+            if (handedOff || !alive.getAsBoolean() || Files.exists(marker, LinkOption.NOFOLLOW_LINKS)) return true;
+            if (!armed) {
+                if (!Files.exists(request, LinkOption.NOFOLLOW_LINKS)) return false;
+                if (!Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS) || Files.size(request) > 64)
+                    throw new IOException("OWNER_REQUEST_INVALID");
+                String value;
+                try (InputStream stream = Files.newInputStream(request, LinkOption.NOFOLLOW_LINKS)) {
+                    value = new String(stream.readNBytes(65), StandardCharsets.US_ASCII).strip();
+                }
+                // A signal from any earlier game/addon session can never resend.
+                if (!value.equals(boot)) return true;
+                due = now + TimeUnit.SECONDS.toNanos(15); armed = true;
+                return false;
+            }
+            if (now - due < 0) return false;
+            handedOff = true;
+            bridge.schedule(() -> {
+                if (!alive.getAsBoolean()) return;
+                try {
+                    if (claimIntroduction(marker)) {
+                        bridge.publish(INTRO);
+                        LOG.info("Vector owner welcome attempted through native bridge.");
+                    }
+                } catch (Exception uncertain) {
+                    LOG.warning("Vector owner welcome not retried; inspect its attempt marker.");
+                }
+            });
+            return true;
+        }
+    }
+
+    private void startOwnerWelcome(Path directory) throws IOException {
+        OwnerWelcome welcome = new OwnerWelcome(directory, UUID.randomUUID().toString(), () -> active);
+        ownerWelcomeTimer = Executors.newSingleThreadScheduledExecutor(task -> {
+            Thread thread = new Thread(task, "Vector-owner-welcome"); thread.setDaemon(true); return thread;
+        });
+        ownerWelcomeTimer.scheduleWithFixedDelay(() -> {
+            try {
+                if (welcome.poll(bridge, System.nanoTime())) ownerWelcomeTimer.shutdown();
+            } catch (Exception invalid) {
+                LOG.warning("Vector owner welcome disabled; control file requires review.");
+                ownerWelcomeTimer.shutdown();
+            }
+        }, 0, 1, TimeUnit.SECONDS);
+    }
+
     private void introduce() {
         if (!introduction) return;
         try {
@@ -413,6 +499,7 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     void stop() {
         active = false;
         if (worker != null) worker.shutdownNow();
+        if (ownerWelcomeTimer != null) ownerWelcomeTimer.shutdownNow();
     }
 }
 
