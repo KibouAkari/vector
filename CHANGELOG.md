@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-18 — Complete container-protection evidence and broaden native qualification (PR #72)
+
+- Owner v2 ran correctly: party followup passed, but chest protection chose none. Keep25/26 as failed quality; warm median4.234s/cold10.179s passed timing, exact2193 input/136 output across14 calls, no unknown/cloud/messages/activation, unchanged production and verified unload/cleanup.
+- Add a separate source-reviewed free-chunk/container protection procedure and aliases, preserving the existing permissions guide. No prompt/model/routing changes or forced answer fallback. Catalog14 passages; installed version/settings and all-mod coverage remain unqualified.
+- First six actual scratch controls caught a furnace wording gap (5/6); after completing the generic container guidance, six new controls selected the intended chest/area/furnace/purpose/followup entries. Fresh loads on different hardware are not owner timings or broad relevance proof.
+- Expand actual owner qualification to31 cases/17 calls. Keep all26 existing cases and strengthen chest protection to require the claiming step; add3 action paraphrases, unavailable live limit and missing backpack procedure. Original safety/usage/deadline/cleanup gates remain. Thirty selector/index/composed tests and unchanged native foundation suites passed locally. No production change, download/import, restart, backup or chat send; update handoff and new v3 target.
+
 ## 2026-10-18 — Procedural followups cannot repeat purpose explanations (PR #71)
 
 - Record the owner's actual25/26 selector result: only party-followup chose an overview instead of a useful step. Cold10.639s/warm median4.567s and all latency gates passed; exact2298 input/138 output across14 calls, no cloud/messages/activation, unchanged production and verified cleanup/unload. Quality remains failed.

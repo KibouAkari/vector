@@ -218,6 +218,17 @@
       "kinds": [
         "explanation"
       ]
+    },
+    {
+      "id": "claims-claim",
+      "topic": "claims",
+      "mod": "openpartiesandclaims",
+      "source": "opac",
+      "terms": "claims claim chunk chunks gebiet bereich bereiche kiste kisten truhe truhen schützen schütze schutz sichern sichere beanspruchen beanspruche ofen öfen block blöcke",
+      "text": "Zum Schutz von Kisten, Truhen und Öfen beanspruche den freien Chunk in der Claim-Oberfläche. Prüfe dort die Schutzrechte. In Xaeros World Map öffnet Rechtsklick auf die Karte die Claim-Verwaltung.",
+      "kinds": [
+        "procedure"
+      ]
     }
   ]
 }
