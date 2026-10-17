@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import select
 import subprocess
 import sys
 
@@ -133,6 +134,8 @@ def evaluate():
     try:
         coordinator=subprocess.Popen(['docker','exec','-i','vector-app','node','--input-type=module','-e',COORDINATOR],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         # The coordinator has bounded database/network deadlines and a hard lease.
+        if not select.select([coordinator.stdout],[],[],45)[0]:
+            raise RuntimeError('Local slot readiness timed out; no benchmark was started.')
         ready=coordinator.stdout.readline()
         if json.loads(ready or b'{}')!={'ready':True}:raise RuntimeError('Local slot/model unavailable; no benchmark was started.')
         launched=True
