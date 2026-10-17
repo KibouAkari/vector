@@ -202,6 +202,13 @@ def deploy(directory, h, revision, code):
                      'messages_sent':0,'welcome_sent':False,'rollback':str(directory/'rollback.sh')},indent=2))
 
 
+def wants_deploy(args, environment):
+    flag = environment.get('VECTOR_FEGCRAFT_MOD_HELP_DEPLOY', '0')
+    if flag not in ('0','1') or args not in ([],['--deploy']):
+        raise RuntimeError('MOD_HELP_ARGUMENTS_INVALID')
+    return args == ['--deploy'] or flag == '1'
+
+
 def main():
     os.umask(0o077); sys.dont_write_bytecode = True
     if os.geteuid() != 0: raise RuntimeError('ROOT_OWNER_REQUIRED')
@@ -209,7 +216,7 @@ def main():
     with (ROOT / '.chat-release.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX | fcntl.LOCK_NB)
         if len(sys.argv) == 3 and sys.argv[1] == '--rollback': return rollback(Path(sys.argv[2]))
-        if sys.argv[1:] not in ([],['--deploy']): raise RuntimeError('MOD_HELP_ARGUMENTS_INVALID')
+        activate = wants_deploy(sys.argv[1:], os.environ)
         revision = os.environ.get('VECTOR_FEGCRAFT_REV','')
         if not re.fullmatch('[a-f0-9]{40}',revision): raise RuntimeError('MOD_HELP_PIN_REQUIRED')
         directory = ROOT/'releases'/('vector-fegcraft-mod-help-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+secrets.token_hex(3))
@@ -244,7 +251,7 @@ def main():
         atomic(directory/'result.json',(json.dumps({'passed':True,'revision':revision,'tests':10,'synthetic_only':True,
              'model_calls':0,'cloud_calls':0,'messages_sent':0,'production_activated':False},indent=2)+'\n').encode())
         print('Isolierte signierte HTTP-Prüfungen bestanden. Keine Spielnachricht oder Modellanfrage.',flush=True)
-        if sys.argv[1:] == ['--deploy']: deploy(directory,helper(directory),revision,code)
+        if activate: deploy(directory,helper(directory),revision,code)
         else: print('Nur geprüft. Keine Produktionsänderung.')
 
 

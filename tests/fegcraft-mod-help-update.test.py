@@ -85,6 +85,13 @@ class Update(unittest.TestCase):
 
 
 class Baseline(unittest.TestCase):
+    def test_default_only_qualifies_and_runner_flag_is_explicit(self):
+        self.assertFalse(m.wants_deploy([],{}))
+        self.assertTrue(m.wants_deploy([],{'VECTOR_FEGCRAFT_MOD_HELP_DEPLOY':'1'}))
+        self.assertTrue(m.wants_deploy(['--deploy'],{}))
+        with self.assertRaisesRegex(RuntimeError,'ARGUMENTS'):m.wants_deploy([],{'VECTOR_FEGCRAFT_MOD_HELP_DEPLOY':'yes'})
+        with self.assertRaisesRegex(RuntimeError,'ARGUMENTS'):m.wants_deploy(['other'],{})
+
     def test_actual_runtime_must_match_owned_profile(self):
         with tempfile.TemporaryDirectory() as temporary:
             install=Path(temporary);(install/'code').mkdir();(install/'mods.json').write_text('["carryon"]')
