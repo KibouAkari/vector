@@ -5,7 +5,7 @@
 - Owner reports Minecraft restarted but no introduction appeared. The pilot intentionally left introductions disabled; installation success/real routing is not independently confirmed without its manifest/output.
 - Apply the owner's explicit new timing preference: prepare one fixed short Minecraft welcome before manual tests, without another restart. Verify completed installation ownership/profile/file hashes and healthy service/game first; stop if installation failed.
 - Submit only the closed welcome text through the existing game console helper and preserve the addon's durable introduction-v1.attempted marker before submission. No shell, model path, configurable user command or automatic retry. The marker remains on failure/uncertain delivery and prevents a later addon introduction too.
-- Read only relay configuration booleans locally, without exporting tokens/config; report console acceptance separately from actual delivery. The existing relay may forward the announcement depending on configuration; no Discord delivery is claimed.
+- Read relay configuration locally and report only boolean hints, without exporting tokens/config; report console acceptance separately from actual delivery. The existing relay may forward the announcement depending on configuration; no Discord delivery is claimed.
 - Four offline fixed-command/marker/failure/path tests pass. Actual welcome submission is pending owner execution. Update owner preferences and project handoff; no service/app rebuild or restart.
 
 

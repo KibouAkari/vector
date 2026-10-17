@@ -14,7 +14,7 @@ import tomllib
 ROOT=Path('/root/vector-workspace')
 DATA=Path('/opt/fegcraft-updated/data')
 SERVICE='vector-fegcraft-assistant'
-TEXT='[Vector] Hallo zusammen, ich bin Vector, euer neuer Minecraft-Assistent. Ich helfe bei Statistiken, Mods und Grundrezepten. Fragt mich mit hey Vector oder yoo Vector.'
+TEXT='[Vector] Hallo zusammen, ich bin Vector, euer neuer Assistent für Minecraft. Ich helfe bei Statistiken, Mods und Grundrezepten. Fragt mich mit hey Vector oder yoo Vector.'
 
 
 def run(*args):

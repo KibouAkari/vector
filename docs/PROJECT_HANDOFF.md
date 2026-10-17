@@ -96,7 +96,7 @@ Owner says Minecraft restarted but no welcome was sent, and asks for the announc
 
 Prepare scripts/deploy/announce-fegcraft-assistant.py as current/vector-fegcraft-welcome.py at the final reviewed PR #53 pin and run through the usual runner. Owner should be online in Minecraft to see the in-game announcement. No extra server restart, rebuild or introductionEnabled edit is needed.
 
-The script discovers the exact installed private Compose release through the sidecar's owned Compose labels, requires the completed installed_pending_real_channel manifest, checks profile/game-file hashes, Minecraft image and healthy game/service, then probes private health and the console helper. If install did not finish, it stops before any message. It never reads or exports the HMAC token.
+The script discovers the exact installed private Compose release through the sidecar's owned Compose labels, requires the completed installed_pending_real_channel manifest, checks profile/game-file hashes, Minecraft image and healthy game/service, then probes private health and the console helper. If install did not finish, it stops before any message. It hashes the HMAC token locally only for owned-file validation and never exports its raw value.
 
 The closed constant text introduces Vector truthfully for saved statistics, mods and base recipes. It uses the existing mc-send-to-console helper with a single fixed say command, not a chat-command/tool API or shell. Both stdout/stderr are kept private. Local Discord relay configuration booleans are reported only as configuration hints, never delivery acknowledgments; no Discord API token/channel is read into model context.
 
