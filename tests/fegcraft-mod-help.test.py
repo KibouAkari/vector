@@ -108,6 +108,13 @@ class ModHelpTests(unittest.TestCase):
         (self.stats/(self.uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':17}}}))
         self.assertIn('17 Kills',self.ask('wer hat die meisten Mobkills?')['text'])
 
+    def test_inventory_with_mod_name_is_not_a_control_question(self):
+        self.ask('kleinen villager aufsammeln')
+        result=self.ask('welche Mods ausser Carry On sind installiert?')['text']
+        self.assertIn('Mod-IDs',result); self.assertIn('fabric-api',result); self.assertNotIn('Shift',result)
+        self.assertEqual(len(self.ai.mod_help.context),0)
+        self.assertIn('was genau',self.ask('geht nicht')['text'])
+
     def test_explicit_crafting_with_mod_name_keeps_recipe_boundary(self):
         self.ask('kleinen villager aufsammeln')
         result=self.ask('wie craftet man einen Carry-On-Block?')['text']

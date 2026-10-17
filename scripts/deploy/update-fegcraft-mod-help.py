@@ -51,7 +51,8 @@ def atomic(path, raw, mode=0o600):
     safe(path); temporary = path.parent / ('.mod-help-' + secrets.token_hex(8))
     try:
         fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, mode)
-        with os.fdopen(fd, 'wb') as handle: handle.write(raw); handle.flush(); os.fsync(handle.fileno())
+        with os.fdopen(fd, 'wb') as handle:
+            os.fchmod(handle.fileno(), mode); handle.write(raw); handle.flush(); os.fsync(handle.fileno())
         os.replace(temporary, path)
         fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         try: os.fsync(fd)
@@ -202,6 +203,15 @@ def deploy(directory, h, revision, code):
                      'messages_sent':0,'welcome_sent':False,'rollback':str(directory/'rollback.sh')},indent=2))
 
 
+def prepare_public(directory):
+    public = directory/'synthetic'
+    code = public/'services/fegcraft-assistant'
+    tests = public/'tests'
+    for path in (public, code.parent, code, tests):
+        path.mkdir(mode=0o755); path.chmod(0o755)
+    return public, code, tests
+
+
 def wants_deploy(args, environment):
     flag = environment.get('VECTOR_FEGCRAFT_MOD_HELP_DEPLOY', '0')
     if flag not in ('0','1') or args not in ([],['--deploy']):
@@ -222,9 +232,7 @@ def main():
         directory = ROOT/'releases'/('vector-fegcraft-mod-help-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+secrets.token_hex(3))
         safe(directory); directory.mkdir(mode=0o700)
         print('Qualifikation und Dienstbelege: '+str(directory),flush=True)
-        public = directory/'synthetic'; public.mkdir(mode=0o755)
-        code = public/'services/fegcraft-assistant'; code.mkdir(parents=True,mode=0o755); code.parent.chmod(0o755)
-        tests = public/'tests'; tests.mkdir(mode=0o755)
+        public, code, tests = prepare_public(directory)
         for source, target in [('services/fegcraft-assistant/'+name,code/name) for name in FILES] + [('tests/fegcraft-mod-help.test.py',tests/'fegcraft-mod-help.test.py'),('scripts/deploy/install-fegcraft-assistant.py',directory/'installer.py')]:
             content = run('git','-C',str(REPO),'show',revision+':'+source); ast.parse(content)
             atomic(target,content,0o644 if target.is_relative_to(public) else 0o600)
@@ -248,7 +256,7 @@ def main():
                 run('docker','rm','-f',item['Id'])
         atomic(directory/'qualification.log',result.stdout+result.stderr)
         if result.returncode: raise RuntimeError('MOD_HELP_ISOLATED_HTTP_FAILED')
-        atomic(directory/'result.json',(json.dumps({'passed':True,'revision':revision,'tests':11,'synthetic_only':True,
+        atomic(directory/'result.json',(json.dumps({'passed':True,'revision':revision,'tests':12,'synthetic_only':True,
              'model_calls':0,'cloud_calls':0,'messages_sent':0,'production_activated':False},indent=2)+'\n').encode())
         print('Isolierte signierte HTTP-Prüfungen bestanden. Keine Spielnachricht oder Modellanfrage.',flush=True)
         if activate: deploy(directory,helper(directory),revision,code)

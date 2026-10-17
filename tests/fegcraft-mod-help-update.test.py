@@ -4,6 +4,7 @@ import contextlib
 import io
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -85,6 +86,19 @@ class Update(unittest.TestCase):
 
 
 class Baseline(unittest.TestCase):
+    def test_public_source_permissions_survive_private_umask(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary); old=os.umask(0o077)
+            try:
+                public,code,tests=m.prepare_public(root)
+                for path in (public,code.parent,code,tests):self.assertEqual(path.stat().st_mode & 0o777,0o755)
+                source=code/'synthetic.py';m.atomic(source,b'pass\n',0o644)
+                self.assertEqual(source.stat().st_mode & 0o777,0o644)
+                evidence=root/'private.json';m.atomic(evidence,b'{}')
+                self.assertEqual(evidence.stat().st_mode & 0o777,0o600)
+                self.assertEqual(root.stat().st_mode & 0o777,0o700)
+            finally:os.umask(old)
+
     def test_default_only_qualifies_and_runner_flag_is_explicit(self):
         self.assertFalse(m.wants_deploy([],{}))
         self.assertTrue(m.wants_deploy([],{'VECTOR_FEGCRAFT_MOD_HELP_DEPLOY':'1'}))

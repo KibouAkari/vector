@@ -26,6 +26,7 @@ METRIC_WORDS = {
     'deaths': r'\btod(?:e|esfälle)?\b|gestorben|\bstarb\b|\bstarben\b|\bsterben\b|\bstirbt\b|\bdied\b|\bdeaths?\b',
 }
 PRIVATE = re.compile(r'seed|welt.?schlüssel|passw[oö]rt|password|api.?key|token|credential|/opt/|/etc/|rcon|docker|system.?prompt|ignore.*(?:instructions|regeln)|ignoriere.*(?:anweisung|regel)|gamemode|creative|kreativmodus|cheat|hack|operator|admin.?recht', re.I)
+MOD_INVENTORY = re.compile(r'welche.*mods|mod.?liste|installierte.*mods', re.I)
 TOPIC = re.compile(r'minecraft|redstone|craft|rezept|recipe|item|block|blöck|erz|verzauber|enchant|villager|dorfbewohner|creeper|zombie|skelett|enderman|nether|ender|farm|kolben|piston|trichter|hopper|komparator|comparator|repeater|verstärker|biom|elytra|rüstung|werkbank|schmelz|ofen|diamant|eisen|mod\b|mods\b|rucksack|backpack|claim|grab|graves|lag\b|fps\b|chunk|server.*(?:ruckel|problem|fehler)', re.I)
 UNSAFE_OUTPUT = re.compile(r'[/\\](?:give|op|deop|execute|gamemode|tp|teleport|seed|summon|kill|setblock|fill|sudo|bin|etc|opt)\b|\b(?:seed|passwort|password|api.?key|token|rcon|docker|curl|wget|bash|powershell|cheat|gamemode)\b|https?://|www\.|@|`|[<>\x00-\x1f\x7f]|\u00a7', re.I)
 
@@ -184,7 +185,7 @@ class ModHelp:
 
     def answer(self, question, mods, scope):
         q = unicodedata.normalize('NFKC', question).casefold()
-        if re.search(r'\b(?:craft\w*|rezept\w*|recipe\w*|herstell\w*)', q):
+        if MOD_INVENTORY.search(q) or re.search(r'\b(?:craft\w*|rezept\w*|recipe\w*|herstell\w*)', q):
             self.clear(scope)
             return None
         explicit = bool(re.search(r'\bcarry[ -]?on\b', q))
@@ -282,7 +283,7 @@ class Assistant:
                 answer = self.recipes.answer(question)
             if answer is None:
                 mods = self.mods()
-                if re.search(r'welche.*mods|mod.?liste|installierte.*mods', question, re.I):
+                if MOD_INVENTORY.search(question):
                     listed = []
                     for mod in mods:
                         if len(', '.join(listed + [mod])) > 240:
