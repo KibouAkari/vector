@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-17 — Grounded Carry On help and service-only update (PR #59)
+
+- Owner confirms the repaired offline backup was cancelled after roughly 36 minutes; the same Minecraft container restarted and is healthy. Retain the partial snapshot.tar as unverified; never treat it as a completed backup. Do not rerun the long offline workflow or recreate Minecraft. The unknown writable-layer path, loader pin and native welcome/identity cutover remain held.
+- Add reviewed Carry On pickup/placement guidance from the mod author’s instructions, gated on its installed mod ID. Recognize German spelling variants, separated verbs and common Swiss phrasing without requiring a mod name. Explain both empty hands/default sneak and right-click, ask useful troubleshooting questions and respect claim restrictions without commands. This is grounded fast-path help, not activation of the unqualified freeform model.
+- Retain only a bounded, expiring topic enum per authenticated author and source in RAM for short hands/placement/failure followups. Clear it on unrelated/private requests and success; do not read ordinary chat or other users, persist prompts, relax greeting/privacy/output/rate/replay boundaries or reuse old statistics. Replace the repeated capabilities fallback with a targeted clarification.
+- Add isolated signed-loopback HTTP qualification with synthetic fixtures and a guarded updater for only the existing standalone Vector service. Reuse its qualified image, data mounts, token and SQLite state. Validate original code/profile/runtime/ownership, preserve private rollback and update the installation manifest coherently. Check the unchanged Minecraft/other container starts and Compose hashes before/after; never stop/recreate the game, run a backup, call models/cloud or send a welcome.
+- Address review: explicitly apply public source file/directory modes under the private umask, retain private evidence permissions, and keep installed-mod inventory questions ahead of Carry On interpretation.
+- Twelve HTTP tests plus nine synthetic update/rollback/changed-state tests pass locally, along with existing runtime/dialogue/recipe checks. Add CI and update preferences/handoff. Actual isolated image qualification, owner deployment and public-channel observation remain pending.
+
 ## 2026-10-17 — Repair truncated Minecraft backup and retain recreation gate (PR #58)
 
 - Owner reports the existing backup script is syntactically truncated; no completed backup was verified. The read-only cutover audit confirms the live data/world bind but blocks on one unreviewed writable-layer path; Fabric loader is not pinned. Keep the old integration deployment held.

@@ -148,6 +148,9 @@ jobs:
         run: |
           python3 tests/fegcraft-identity.test.py
           python3 tests/fegcraft-identity-qualification.test.py
+          python3 tests/fegcraft-mod-help.test.py
+          python3 tests/fegcraft-mod-help-update.test.py
+          python3 -m py_compile scripts/deploy/update-fegcraft-mod-help.py
           python3 tests/fegcraft-dialogue.test.py
           python3 tests/fegcraft-dialogue-release.test.py
           python3 tests/fegcraft-backup.test.py
