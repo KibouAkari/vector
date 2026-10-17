@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 — Repair truncated Minecraft backup and retain recreation gate (PR #58)
+
+- Owner reports the existing backup script is syntactically truncated; no completed backup was verified. The read-only cutover audit confirms the live data/world bind but blocks on one unreviewed writable-layer path; Fabric loader is not pinned. Keep the old integration deployment held.
+- Add an owner-run, revision-pinned repair that preserves the broken original privately, parses all replacements before installation, refuses valid unrelated scripts/symlinks/unexpected permissions, supports guarded rollback and does not operate containers. Classify the private audit path without publishing arbitrary filenames or weakening the gate.
+- Replace the backup entrypoint with a full-module Python implementation. Check live bind identity and free space before stopping; snapshot and compare the persistent server folder while stopped, restart the same original container in recovery, compress/test/check required members and publish an exclusive SHA-256 archive. Keep hidden configuration, old backups and unknown backup directories; exclude only backups and the changing root backup log. No retention deletion, container recreation, public messages or claim to include writable container-layer data.
+- Address review findings: target stop/start/stat by immutable container ID, refuse extra mounts, settle ambiguous stop completion with bounded Docker wait before recovery, and retain a complete installed pair if post-publication fsync fails.
+- Synthetic tests use real GNU tar/gzip for archive contents, comparison, checksums and retained files; simulate stop timeout, deferred signal cancellation, archive/source failure, replacement, stopped-game and health failure. Cover repair/idempotence/rollback/later edits/private diagnostics. Update CI and handoff. A real host backup, root-layer review, loader pin and native welcome qualification remain pending owner execution.
+
 ## 2026-10-17 — Pre-recreation persistence audit and owner-authorized native welcome (PR #57)
 
 - Hold the supplied PR #56 deployment: owner has not run it and requests current persistence verification plus one additional native Vector welcome, 15 seconds after readiness. Record this narrow authorization separately; retain the old welcome marker and mandatory logo-pack choice. No backup or production change is claimed.
