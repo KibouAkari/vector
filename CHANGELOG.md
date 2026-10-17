@@ -4,8 +4,8 @@
 
 - Record owner-confirmed native privacy qualification and successful fe12d19 / image 8d4645d production release, including all-interface and actual Nginx HTTPS health. Preserve the new release/rollback/profile baseline and HOSTNAME=0.0.0.0; no repeated build/release is requested.
 - Actual synthetic recipe diagnostics confirm factual hallucinations from Qwen 1.7B in all three failed crafting cases. Keep knowledge disabled; do not relax the gate. Three local calls, zero cloud/API fees, cleanup/unload verified; no Minecraft activation or announcement.
-- Add a bounded owner-run inventory of installed public game/mod recipe assets, including nested JARs, version evidence, exact target documents, hashes, variants and schemas. Ignore config/player/log files, reject unsafe or oversized members, and never treat candidate assets as verified effective recipes. No inference, game restart, messages or production configuration changes.
-- Seven offline archive/precedence-boundary tests pass with synthetic assets; actual installed-resource inventory and final recipe/runtime/channel qualification remain pending.
+- Add a bounded owner-run inventory of installed public game/mod recipe assets, including nested JARs, version evidence, exact target documents, hashes, variants and schemas. Ignore player/log files and configuration content (Compose files are hashed only), reject unsafe or oversized members, and never treat candidate assets as verified effective recipes. No inference, game restart, messages or production configuration changes.
+- Eight offline archive/precedence-boundary tests pass with synthetic assets; actual installed-resource inventory and final recipe/runtime/channel qualification remain pending.
 
 
 ## 2026-10-17 — Qualified fresh-statistics release and recipe diagnostics (PR #47)

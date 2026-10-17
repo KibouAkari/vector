@@ -125,6 +125,24 @@ class RecipePreflightTests(unittest.TestCase):
             self.assertFalse(result['candidate_inventory_complete'])
             self.assertEqual(len(result['missing_targets']), 3)
 
+    def test_archive_modified_during_scan_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            path = base / 'server.jar'
+            jar(path, recipes())
+            inventory = m.Inventory()
+            original = inventory.scan
+
+            def changing_scan(*args, **kwargs):
+                result = original(*args, **kwargs)
+                with path.open('ab') as handle:
+                    handle.write(b'changed')
+                return result
+
+            inventory.scan = changing_scan
+            with self.assertRaisesRegex(m.Refused, 'ARCHIVE_CHANGED'):
+                inventory.run(base)
+
 
 if __name__ == '__main__':
     unittest.main()
