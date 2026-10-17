@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import secrets
 import shutil
+import shlex
 import stat
 import subprocess
 import sys
@@ -58,12 +59,47 @@ def atomic(path,raw,mode=0o600):
     finally:temporary.unlink(missing_ok=True)
 
 
-def pause_lines(raw):
-    text=raw.decode();lines=text.splitlines(keepends=True);count=0;result=[]
+def invokes_owned_backup(command):
+    lexer=shlex.shlex(command,posix=True,punctuation_chars=';&|<>')
+    lexer.whitespace_split=True;lexer.commenters='#'
+    try:tokens=list(lexer)
+    except ValueError:raise RuntimeError('INCREMENTAL_CRON_COMMAND_UNPARSEABLE')
+    cwd=None;segments=[];part=[]
+    for word in [*tokens,';']:
+        if word in (';','&&','||','|','&'):
+            segments.append(part);part=[]
+        else:part.append(word)
+    for words in segments:
+        if not words:continue
+        # Only command positions and supported interpreter script positions count.
+        # Redirection destinations, echo arguments and shell comments do not.
+        words=words[:next((n for n,w in enumerate(words) if '<' in w or '>' in w),len(words))]
+        while words and re.match('[A-Za-z_][A-Za-z0-9_]*=',words[0]):words=words[1:]
+        if not words:continue
+        if words[0]=='cd':
+            cwd=words[1] if len(words)==2 else None
+            continue
+        owned={str(BASE/'backup_minecraft.sh'),str(BASE/'backup_minecraft.py')}
+        if cwd==str(BASE):owned|={'./backup_minecraft.sh','./backup_minecraft.py','backup_minecraft.sh','backup_minecraft.py'}
+        if words[0] in owned:return True
+        interpreters={'bash','sh','python3','/bin/bash','/bin/sh','/usr/bin/bash','/usr/bin/sh','/usr/bin/python3','/usr/local/bin/python3','.','source'}
+        if words[0] in interpreters:
+            arguments=words[1:]
+            # -c is shell/program text, never an owned script-path argument.
+            if '-c' in arguments or '-m' in arguments:continue
+            while arguments and arguments[0].startswith('-'):arguments=arguments[1:]
+            if arguments and arguments[0] in owned:return True
+    return False
+
+
+def pause_lines(raw,*,system=False):
+    lines=raw.decode().splitlines(keepends=True);count=0;result=[]
     for line in lines:
-        active=line.lstrip()
-        match=(not active.startswith('#') and '/opt/fegcraft-updated' in line
-               and re.search(r'\bbackup_minecraft\.(?:sh|py)\b',line))
+        text=line.strip();match=False
+        if text and not text.startswith('#') and not re.match(r'[A-Za-z_][A-Za-z0-9_]*\s*=',text):
+            fields=text.split(None,(2 if system else 1) if text.startswith('@') else (6 if system else 5))
+            needed=(3 if system else 2) if text.startswith('@') else (7 if system else 6)
+            if len(fields)==needed:match=invokes_owned_backup(fields[-1])
         if match:result.append('# VECTOR_INCREMENTAL_REPLACED '+line);count+=1
         else:result.append(line)
     return ''.join(result).encode(),count
@@ -82,7 +118,7 @@ def pause_cron(directory):
     paths=[Path('/etc/crontab'),*sorted(Path('/etc/cron.d').glob('*'))]
     for path in paths:
         if path==CRON or not path.is_file():continue
-        raw=read(path);new,n=pause_lines(raw)
+        raw=read(path);new,n=pause_lines(raw,system=True)
         if n:
             atomic(directory/('cron-'+sha(str(path).encode())+'.before'),raw)
             atomic(path,new,stat.S_IMODE(path.stat().st_mode));count+=n

@@ -65,6 +65,14 @@ class Incremental(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'PHASE_TIMEOUT'):m.backup()
             snapshot.assert_not_called()
         self.assertEqual(self.events,['stop','start']);self.assertTrue(self.game['State']['Running'])
+    def test_unverified_precopy_does_not_relax_first_snapshot_budget(self):
+        (self.state/'seeded').write_text('legacy precopy marker is not proof')
+        free=[1024**4]
+        def copied(*args,**kwargs):free[0]=30*1024**3
+        with patch.object(m,'repository_owner',return_value={'repository_id':'a'*64}),patch.object(m,'required_space',return_value=160*1024**3),patch.object(m,'sync_stage',side_effect=copied),patch.object(m.shutil,'which',return_value='/fixture'),patch.object(m.shutil,'disk_usage',side_effect=lambda _:SimpleNamespace(free=free[0])):
+            with self.assertRaisesRegex(RuntimeError,'LOW_SPACE_AFTER_PRECOPY_BEFORE_STOP'):m.backup()
+        self.assertEqual(self.events,[]);self.assertFalse((self.state/'verified-snapshot.json').exists())
+
     def test_changed_repo_refused_before_stop(self):
         with patch.object(m,'repository_owner',side_effect=RuntimeError('ID_CHANGED')),patch.object(m.shutil,'which',return_value='/fixture'):
             with self.assertRaisesRegex(RuntimeError,'ID_CHANGED'):m.backup()
@@ -108,6 +116,16 @@ class Installation(unittest.TestCase):
         self.assertEqual(count,1);self.assertIn(b'# VECTOR_INCREMENTAL_REPLACED 0 3',changed)
         self.assertTrue(changed.endswith(b'0 4 * * * /opt/other/backup.sh\n'))
         self.assertEqual(i.pause_lines(changed),(changed,0))
+    def test_unrelated_jobs_environment_and_shell_comments_are_preserved(self):
+        raw=(b'MAILTO="/opt/fegcraft-updated/backup_minecraft.sh"\n'
+             b'0 3 * * * /opt/fegcraft-updated-old/backup_minecraft.sh\n'
+             b'0 3 * * * /opt/other/backup_minecraft.sh >> /opt/fegcraft-updated/backup.log\n'
+             b'0 3 * * * echo ok # /opt/fegcraft-updated/backup_minecraft.sh\n'
+             b'0 3 * * * echo "/opt/fegcraft-updated/backup_minecraft.sh"\n')
+        self.assertEqual(i.pause_lines(raw),(raw,0))
+        self.assertEqual(i.pause_lines(b'@daily root /bin/bash /opt/fegcraft-updated/backup_minecraft.sh\n',system=True)[1],1)
+        self.assertEqual(i.pause_lines(b'0 3 * * * cd /opt/fegcraft-updated && ./backup_minecraft.sh\n')[1],1)
+
     def test_atomic_mode_and_symlink_rejection(self):
         with tempfile.TemporaryDirectory() as temp:
             folder=Path(temp);target=folder/'file';i.atomic(target,b'private',0o600)

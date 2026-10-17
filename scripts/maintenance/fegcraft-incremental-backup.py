@@ -219,17 +219,45 @@ def re_full_snapshot(value):
     return len(value)==64 and all(c in '0123456789abcdef' for c in value)
 
 
+def verified_seed(owner):
+    marker=STATE/'verified-snapshot.json';safe(marker)
+    if not marker.exists():return False
+    value=json.loads(marker.read_bytes())
+    if (set(value)!={'repository_id','snapshot'} or value['repository_id']!=owner['repository_id']
+            or not isinstance(value['snapshot'],str) or not re_full_snapshot(value['snapshot'])):
+        raise RuntimeError('INCREMENTAL_VERIFIED_SEED_INVALID')
+    snapshot=json.loads(run(restic('cat','snapshot',value['snapshot'])))
+    if snapshot.get('hostname')!='fegcraft-updated' or snapshot.get('paths')!=[str(STAGE)] or 'vector-nightly-v1' not in snapshot.get('tags',[]):
+        raise RuntimeError('INCREMENTAL_VERIFIED_SEED_CHANGED')
+    return True
+
+
+def publish_verified_seed(owner,snapshot):
+    target=STATE/'verified-snapshot.json';safe(target)
+    fd,name=tempfile.mkstemp(prefix='.verified-',dir=STATE)
+    temporary=Path(name)
+    try:
+        with os.fdopen(fd,'w') as output:
+            json.dump({'repository_id':owner['repository_id'],'snapshot':snapshot},output)
+            output.flush();os.fsync(output.fileno())
+        os.replace(temporary,target)
+        directory=os.open(STATE,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+        try:os.fsync(directory)
+        finally:os.close(directory)
+    finally:temporary.unlink(missing_ok=True)
+
+
 def backup():
     os.umask(0o077)
     for command in ('docker','rsync','restic','ionice','nice'):
         if shutil.which(command) is None: raise RuntimeError('INCREMENTAL_DEPENDENCY_MISSING:'+command)
-    repository_owner()
+    owner=repository_owner();seeded=verified_seed(owner)
     for path in (BASE,DATA,DATA/'world',DATA/'world/level.dat',BASE/'docker-compose.yml'):safe(path)
     if not (DATA/'world/level.dat').is_file() or not (BASE/'docker-compose.yml').is_file(): raise RuntimeError('INCREMENTAL_SOURCE_MISSING')
     game=inspect(); verify_bind(game)
     verify_source_links()
     if game.get('HostConfig',{}).get('AutoRemove') or game['State'].get('Restarting'): raise RuntimeError('INCREMENTAL_GAME_STATE_INVALID')
-    needed=20*1024**3 if (STATE/'seeded').is_file() else max(20*1024**3,required_space())
+    needed=20*1024**3 if seeded else max(20*1024**3,required_space())
     if shutil.disk_usage(BACKUPS).free < needed: raise RuntimeError('INCREMENTAL_LOW_SPACE_BEFORE_STOP')
     if (DATA/'world/level.dat').stat().st_size>16*1024**2: raise RuntimeError('INCREMENTAL_WORLD_HEADER_LIMIT')
     initial=[(p.stat().st_dev,p.stat().st_ino) for p in (DATA,DATA/'world')]
@@ -237,7 +265,10 @@ def backup():
     log('Arbeitsbelege: '+str(work))
     log('Vorabgleich bei laufendem Minecraft. Die erste Kopie kann länger dauern; der Server wird dafür nicht angehalten.')
     sync_stage(work/'rsync-online.log')
-    (STATE/'seeded').write_text('online-precopy-complete\n')
+    # A copied staging tree is NOT a verified repository snapshot. Budget for
+    # the outstanding initial snapshot until it has actually been restored.
+    outstanding=20*1024**3 if seeded else max(20*1024**3,required_space()//2+20*1024**3)
+    if shutil.disk_usage(BACKUPS).free<outstanding:raise RuntimeError('INCREMENTAL_LOW_SPACE_AFTER_PRECOPY_BEFORE_STOP')
     check_cancel()
     was_running=game['State']['Running'];restart_needed=False;stop_confirmed=False
     with (ROOT/'.chat-release.lock').open('a') as lock:
@@ -269,6 +300,7 @@ def backup():
     restored=run(restic('dump',snapshot,str(STAGE/'data/world/level.dat')),timeout=120)
     if hashlib.sha256(restored).hexdigest()!=expected:raise RuntimeError('INCREMENTAL_RESTORE_PROBE_FAILED')
     repository_owner()
+    publish_verified_seed(owner,snapshot)
     result={'snapshot':snapshot,'consistent_staging_completed':True,'world_restore_probe_passed':True,
             'container_recreated':False,'same_container_id':game['Id'],'final_sync_limit_seconds':FINAL_SECONDS,
             'offline_total_limit_claimed':False,'initially_running':was_running,'old_archives_deleted':0,
