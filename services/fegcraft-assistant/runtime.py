@@ -291,8 +291,10 @@ class Assistant:
                         answer = self.knowledge.answer(question, mods)
                     except Exception:
                         answer = 'die lokale Antwort ist gerade nicht verfügbar. Bitte versuche es später erneut.'
-                else:
+                elif TOPIC.search(question):
                     answer = 'welche Aktion oder welcher Gegenstand macht dir Probleme? Nenne bitte die Mod oder beschreibe kurz, was du versucht hast.'
+                else:
+                    answer = 'bleiben wir bitte bei Minecraft. Welche Frage zum Spiel oder zu einer Mod hast du?'
         # Deterministic responses use the same presentation/command boundary.
         return {'status': 'answered', 'text': safe_answer(prefix + answer)}
 
