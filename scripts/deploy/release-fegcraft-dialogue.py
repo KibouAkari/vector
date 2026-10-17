@@ -301,7 +301,19 @@ def wait_ready(name, game=False):
     raise RuntimeError('SERVICE_READINESS_TIMEOUT')
 
 
+def assistant_identity(value):
+    labels = value['Config'].get('Labels') or {}
+    keys = ('com.vector.installation', 'com.docker.compose.project',
+            'com.docker.compose.service', 'com.docker.compose.project.config_files')
+    mounts = [{key: mount.get(key) for key in ('Type', 'Source', 'Destination', 'RW')}
+              for mount in value.get('Mounts', []) if mount.get('Destination') == '/code']
+    return {'id': value['Id'], 'image': value['Image'], 'user': value['Config'].get('User'),
+            'labels': {key: labels.get(key) for key in keys}, 'code_mount': mounts}
+
+
 def protected(plan):
+    if assistant_identity(inspect(SERVICE)) != plan['assistant']:
+        raise RuntimeError('ASSISTANT_CONTAINER_OWNERSHIP_CHANGED')
     if identities() != plan['others'] or digest(APP_COMPOSE) != plan['app_compose']:
         raise RuntimeError('UNRELATED_PRODUCTION_CHANGED')
     if digest(Path(plan['marker'])) != plan['marker_sha'] or digest(Path(plan['token'])) != plan['token_sha']:
@@ -457,6 +469,7 @@ def release():
             or large_digest(DATA / 'versions/26.2/server-26.2.jar') != GAME_SHA):
         raise RuntimeError('QUALIFIED_GAME_OR_API_CHANGED')
     if (not service['State'].get('Running') or not game['State'].get('Running')
+            or service['State'].get('Restarting') or game['State'].get('Restarting')
             or service['State'].get('Health', {}).get('Status') != 'healthy' or game['State'].get('Health', {}).get('Status') != 'healthy'):
         raise RuntimeError('PILOT_NOT_HEALTHY')
     if manifest.get('dialogue_release'):
@@ -498,7 +511,7 @@ def release():
     print('Update evidence: ' + str(release_dir), flush=True)
     marker = DATA / 'DiscordIntegration-Data/vector/introduction-v1.attempted'
     token = DATA / 'DiscordIntegration-Data/vector/token'
-    plan = {'status': 'prepared', 'files': [], 'others': identities(), 'app_compose': digest(APP_COMPOSE),
+    plan = {'status': 'prepared', 'files': [], 'others': identities(), 'assistant': assistant_identity(service), 'app_compose': digest(APP_COMPOSE),
             'marker': str(marker), 'marker_sha': digest(marker), 'token': str(token), 'token_sha': digest(token),
             'service_compose': digest(INSTALL / 'compose.json'), 'game_image': game['Image'],
             'game_project': project, 'game_service': game_service,

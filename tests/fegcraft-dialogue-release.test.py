@@ -123,6 +123,12 @@ class Release(unittest.TestCase):
                     'Config': {'Env': ['VERSION=26.2'], 'Labels': {'com.docker.compose.project': 'game',
                     'com.docker.compose.service': 'mc', 'com.docker.compose.project.config_files': str(game_compose),
                     'com.docker.compose.project.working_dir': str(data.parent)}}}
+                assistant = {'Id': 'owned-assistant', 'Image': m.NATIVE_IMAGE,
+                    'Mounts': [{'Type': 'bind', 'Source': str(install / 'code'), 'Destination': '/code', 'RW': False}],
+                    'Config': {'User': '1000:1000', 'Labels': {'com.vector.installation': 'synthetic-owner',
+                        'com.docker.compose.project': m.SERVICE, 'com.docker.compose.service': 'assistant',
+                        'com.docker.compose.project.config_files': str(install / 'compose.json')}},
+                    'State': {'Running': True, 'Health': {'Status': 'healthy'}}}
                 calls = []; failed = [False]
                 before_compose = {'services': {'mc': {'image': 'old-game', 'environment': {'VERSION': 'latest' if case == 'floating-version' else '26.2'}}}}
                 candidate_compose = copy.deepcopy(before_compose)
@@ -157,7 +163,7 @@ class Release(unittest.TestCase):
                 with patch.multiple(m, ROOT=root, REPO=root / 'repo', DATA=data, INSTALL=install, REPORT=report,
                         CAPTURE=capture, PUBLIC=public, GAME_COMPOSE=game_compose, APP_COMPOSE=app, ASSETS=assets, ADDON_SHA=m.sha(new_addon), OLD_ADDON_SHA=m.sha(b'old addon')), \
                         patch.dict(os.environ, {'VECTOR_REQUIRE_LOGO_PACK': '1'}), patch.object(m, 'nginx_site', return_value=site), \
-                        patch.object(m, 'inspect', side_effect=lambda name: game if name == m.GAME else {'Image': m.NATIVE_IMAGE, 'Mounts': [{'Source': str(install / 'code'), 'Destination': '/code', 'RW': False}], 'State': {'Running': True, 'Health': {'Status': 'healthy'}}}), \
+                        patch.object(m, 'inspect', side_effect=lambda name: game if name == m.GAME else assistant), \
                         patch.object(m, 'identities', return_value=protected_identity), patch.object(m, 'run', side_effect=command), \
                         patch.object(m, 'compose_config', side_effect=config), patch.object(m, 'verify_assets', side_effect=RuntimeError('SYNTHETIC_HTTPS_FAILURE') if case == 'https-fail' else None), \
                         patch.object(m, 'large_digest', side_effect=lambda path: m.INTEGRATION_SHA if path.suffix == '.jar' and path.name.startswith('dcintegration') else m.GAME_SHA), \
@@ -175,6 +181,28 @@ class Release(unittest.TestCase):
                         self.assertEqual(json.loads((install / 'manifest.json').read_text())['files'][str(addon)], m.sha(new_addon))
                         count = len(calls); m.release()
                         self.assertFalse(any(args[:2] == ('docker', 'stop') for args in calls[count:]))
+                        game_baseline = copy.deepcopy(game); assistant_baseline = copy.deepcopy(assistant)
+                        for changed in ('assistant-stopped', 'assistant-restarting', 'assistant-health', 'assistant-image',
+                                        'assistant-mount', 'game-stopped', 'game-restarting', 'game-health'):
+                            game.clear(); game.update(copy.deepcopy(game_baseline))
+                            assistant.clear(); assistant.update(copy.deepcopy(assistant_baseline))
+                            if changed == 'assistant-stopped': assistant['State']['Running'] = False
+                            if changed == 'assistant-restarting': assistant['State']['Restarting'] = True
+                            if changed == 'assistant-health': assistant['State']['Health']['Status'] = 'unhealthy'
+                            if changed == 'assistant-image': assistant['Image'] = 'unknown-image'
+                            if changed == 'assistant-mount': assistant['Mounts'][0]['Source'] = '/unknown/code'
+                            if changed == 'game-stopped': game['State']['Running'] = False
+                            if changed == 'game-restarting': game['State']['Restarting'] = True
+                            if changed == 'game-health': game['State']['Health']['Status'] = 'unhealthy'
+                            count = len(calls)
+                            with self.subTest(repeat=changed), self.assertRaises(RuntimeError): m.release()
+                            self.assertFalse(any(args[:2] == ('docker', 'stop') for args in calls[count:]))
+                        game.clear(); game.update(game_baseline); assistant.clear(); assistant.update(assistant_baseline)
+                        assistant['Id'] = 'unrelated-replacement'
+                        count = len(calls)
+                        with self.assertRaisesRegex(RuntimeError, 'ASSISTANT_CONTAINER_OWNERSHIP_CHANGED'): m.rollback(releases[0])
+                        self.assertFalse(any(args[:2] == ('docker', 'stop') for args in calls[count:]))
+                        assistant['Id'] = 'owned-assistant'
                         m.rollback(releases[0])
                         self.assertEqual(json.loads((install / 'manifest.json').read_text()), manifest)
                         self.assertEqual(addon.read_bytes(), b'old addon')
