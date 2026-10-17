@@ -165,7 +165,7 @@ Owner-confirmed repair on 2026-10-17 Europe/Zurich:
 Next owner phase: refresh the web page, confirm dropdown and privacy switch, then run the same player statistics question in Auto and a synthetic email test. Do not repeat deployments or rebuild merely to discover state. Minecraft installation and its announcement remain pending.
 
 
-## Current priority: fresh record queries and final Minecraft integration
+## Current priority: PR #46 fresh records and final Minecraft integration
 
 Owner update 2026-10-17 02:01 Europe/Zurich: the repaired web app now completes a five-category native player statistics request (vector-local-statistics, CHF 0), so basic production native execution is observed. However a followup asking for all record holders went to a cloud text answer using the earlier player response, then a further server request used cloud tools and returned an incomplete list. Do not record those cloud claims as definitive source evidence or commit player values.
 

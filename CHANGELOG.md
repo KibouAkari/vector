@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-17 — Fresh complete statistics and Minecraft qualification
+## 2026-10-17 — Fresh complete statistics and Minecraft qualification (PR #46)
 
 - Recognize uninterrupted native statistics followups including all record holders and explicit refresh. Resolve intent from user requests rather than assistant facts; topic switches and mixed/export/admin tasks retain their normal routes. Every completed native statistics request now rereads the fixed sources; completed native jobs are excluded from the short completion replay while queued/running retries still share their job. Ordinary completion dedup remains intact.
 - Return all five record categories through the deterministic reader with exact ties and a fresh read timestamp. Explain that newly performed game actions appear only after Minecraft saves its statistics files. Include read provenance in local job metadata.
