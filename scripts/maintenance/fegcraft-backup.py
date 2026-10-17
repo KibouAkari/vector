@@ -19,10 +19,21 @@ BASE = Path('/opt/fegcraft-updated')
 DATA = BASE / 'data'
 BACKUPS = BASE / 'backups'
 GAME = 'fegcraft-updated'
+CANCELLED = False
 
 
 def log(text):
     print('[' + datetime.now().astimezone().isoformat(timespec='seconds') + '] ' + text, flush=True)
+
+
+def request_cancel(_signal, _frame):
+    global CANCELLED
+    CANCELLED = True
+    log('Abbruch vorgemerkt. Laufender Schritt wird beendet; derselbe Container wird gegebenenfalls wieder gestartet.')
+
+
+def check_cancel():
+    if CANCELLED: raise RuntimeError('BACKUP_CANCELLED_AFTER_ACTIVE_COMMAND')
 
 
 def safe(path):
@@ -126,15 +137,18 @@ def backup():
             restart_needed = True  # Also recover after an ambiguous stop timeout.
             log('Stoppe Minecraft regulär für den Dateisnapshot ...')
             run(['docker', 'stop', '--time', '120', GAME], timeout=180)
+        check_cancel()
         stopped = owned(game)
         if stopped['State']['Running'] or stopped['State'].get('OOMKilled') or stopped['State'].get('ExitCode', 0) not in (0, 143):
             raise RuntimeError('BACKUP_CLEAN_STOP_NOT_CONFIRMED')
         log('Erstelle und vergleiche den Dateisnapshot ...')
         run(['tar', '--create', '--file', str(plain), '--directory', str(BASE), '--acls', '--xattrs', '--numeric-owner',
              '--exclude=./backups', '--exclude=./backup.log', '.'], timeout=21600, diagnostic=work / 'tar-create.stderr')
+        check_cancel()
         if owned(game)['State']['Running']: raise RuntimeError('BACKUP_GAME_STARTED_DURING_SNAPSHOT')
         run(['tar', '--compare', '--file', str(plain), '--directory', str(BASE), '--acls', '--xattrs', '--numeric-owner'],
             timeout=21600, diagnostic=work / 'tar-compare.stderr')
+        check_cancel()
         if owned(game)['State']['Running']: raise RuntimeError('BACKUP_GAME_STARTED_DURING_COMPARE')
     finally:
         if restart_needed:
@@ -144,6 +158,7 @@ def backup():
     with compressed.open('xb') as output:
         run(['gzip', '-1', '--stdout', str(plain)], output=output, timeout=21600, diagnostic=work / 'gzip.stderr')
         output.flush(); os.fsync(output.fileno())
+    check_cancel()
     run(['gzip', '--test', str(compressed)], timeout=21600, diagnostic=work / 'gzip-test.stderr')
     run(['tar', '--list', '--gzip', '--file', str(compressed), './data/world/level.dat', './docker-compose.yml'],
         timeout=21600, diagnostic=work / 'tar-members.stderr')
@@ -177,7 +192,7 @@ def main():
         fcntl.flock(global_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         fcntl.flock(backup_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         for signum in (signal.SIGINT, signal.SIGTERM):
-            signal.signal(signum, lambda _signal, _frame: (_ for _ in ()).throw(KeyboardInterrupt()))
+            signal.signal(signum, request_cancel)
         backup()
 
 

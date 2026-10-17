@@ -32,7 +32,7 @@ class Backup(unittest.TestCase):
                      'Mounts': [{'Type': 'bind','Source': str(self.data),'Destination': '/data','RW': True}],
                      'State': {'Running': True, 'StartedAt': 'synthetic-start', 'ExitCode': 0, 'OOMKilled': False}}
         self.events = []; self.fail = None; self.actual_run = m.run
-        for name, value in [('ROOT',self.root),('BASE',self.base),('DATA',self.data),('BACKUPS',self.backups)]:
+        for name, value in [('ROOT',self.root),('BASE',self.base),('DATA',self.data),('BACKUPS',self.backups),('CANCELLED',False)]:
             p = patch.object(m,name,value); p.start(); self.addCleanup(p.stop)
         p = patch.object(m,'run',side_effect=self.command); p.start(); self.addCleanup(p.stop)
         p = patch.object(m.shutil,'which',side_effect=lambda command: '/synthetic/' + command); p.start(); self.addCleanup(p.stop)
@@ -43,6 +43,7 @@ class Backup(unittest.TestCase):
             if args[1] == 'exec': return ''.join(f'{p.stat().st_dev}:{p.stat().st_ino}\n' for p in (self.data,self.data/'world')).encode()
             if args[1] == 'stop':
                 self.events.append('stop'); self.game['State']['Running'] = False
+                if self.fail == 'cancel': m.request_cancel(None,None)
                 if self.fail == 'stop': raise subprocess.TimeoutExpired(args,180)
                 return b''
             if args[1] == 'start': self.events.append('start'); self.game['State']['Running'] = True; return b''
@@ -78,6 +79,12 @@ class Backup(unittest.TestCase):
                 with self.assertRaises((RuntimeError,subprocess.TimeoutExpired)): self.execute()
                 self.assertTrue(self.game['State']['Running']); self.assertEqual(self.events[-1],'start')
                 self.assertFalse(list(self.backups.glob('fegcraft-updated_*.tar.gz')))
+
+    def test_cancel_waits_for_stop_then_recovers_before_archiving(self):
+        self.fail='cancel'
+        with self.assertRaisesRegex(RuntimeError,'CANCELLED'): self.execute()
+        self.assertEqual(self.events,['stop','start']); self.assertTrue(self.game['State']['Running'])
+        self.assertFalse(list(self.backups.glob('fegcraft-updated_*.tar.gz')))
 
     def test_replacement_not_started(self):
         self.fail='replacement'
