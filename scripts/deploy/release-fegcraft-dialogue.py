@@ -506,6 +506,8 @@ def release():
     candidate = release_dir / 'compose.candidate.yml'
     atomic(candidate, patch_compose(read(GAME_COMPOSE), game_service, game['Image']), 0, 0, 0o600)
     before_compose = compose_config(GAME_COMPOSE, project)
+    if before_compose['services'][game_service].get('environment', {}).get('VERSION') != '26.2':
+        raise RuntimeError('PERSISTENT_GAME_VERSION_MUST_BE_26_2')
     if json.loads(run('docker', 'image', 'inspect', before_compose['services'][game_service]['image']))[0]['Id'] != game['Image']:
         raise RuntimeError('CURRENT_LOCAL_IMAGE_TAG_CHANGED')
     validate_candidate(before_compose, compose_config(candidate, project), game_service, game['Image'])

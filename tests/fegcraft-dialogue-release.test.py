@@ -87,7 +87,7 @@ class Release(unittest.TestCase):
             with self.assertRaises(RuntimeError): m.write_records(root, plan, reverse=True)
 
     def test_release_and_failure_restoration_orchestration(self):
-        for case in ('success', 'nginx-fail', 'probe-fail', 'unqualified', 'changed-code', 'recreate-fail', 'https-fail'):
+        for case in ('success', 'nginx-fail', 'probe-fail', 'unqualified', 'changed-code', 'recreate-fail', 'https-fail', 'floating-version'):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temp:
                 root = Path(temp); data = root / 'game/data'; install = root / 'releases/installed'
                 report = root / 'releases/report'; capture = root / 'releases/capture'; public = root / 'www/vector'
@@ -124,7 +124,7 @@ class Release(unittest.TestCase):
                     'com.docker.compose.service': 'mc', 'com.docker.compose.project.config_files': str(game_compose),
                     'com.docker.compose.project.working_dir': str(data.parent)}}}
                 calls = []; failed = [False]
-                before_compose = {'services': {'mc': {'image': 'old-game', 'environment': {'VERSION': '26.2'}}}}
+                before_compose = {'services': {'mc': {'image': 'old-game', 'environment': {'VERSION': 'latest' if case == 'floating-version' else '26.2'}}}}
                 candidate_compose = copy.deepcopy(before_compose)
                 candidate_compose['services']['mc']['image'] = game['Image']; candidate_compose['services']['mc']['environment'].update(m.PACK_ENV)
                 def command(*args, **kwargs):
@@ -184,7 +184,7 @@ class Release(unittest.TestCase):
                         with self.assertRaises(RuntimeError): m.release()
                         self.assertEqual(addon.read_bytes(), b'old addon')
                         self.assertEqual(site.read_bytes(), SITE)
-                        if case in ('nginx-fail', 'unqualified', 'changed-code', 'https-fail'):
+                        if case in ('nginx-fail', 'unqualified', 'changed-code', 'https-fail', 'floating-version'):
                             self.assertFalse(any(args[:2] == ('docker', 'stop') for args in calls))
                     self.assertEqual(marker.read_text(), 'already delivered')
                     self.assertEqual(app.read_text(), 'unchanged app')
