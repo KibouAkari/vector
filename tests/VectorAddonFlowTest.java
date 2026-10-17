@@ -43,6 +43,7 @@ public final class VectorAddonFlowTest {
             return player.equals(ONE) ? "ExampleOne" : player.equals(TWO) ? "ExampleTwo" : null;
         }
         public void publish(String message) { checkThread(); messages.add(message); }
+        public java.util.List<String> blockItems() { checkThread(); return java.util.List.of("minecraft:stone"); }
         static void checkThread() {
             if (!Thread.currentThread().getName().equals("captured-minecraft")) throw new AssertionError("Game access outside scheduled thread");
         }
@@ -101,6 +102,9 @@ public final class VectorAddonFlowTest {
             VectorAddon first = addon(bridge, key, marker, false);
             try {
                 if (phase.equals("first")) {
+                    first.discord("100000000000000001", "100000000000000001", true, false, false,
+                        "200000000000000001", "300000000000000001", "Example Discord", "hey Vector, wer hat die meisten Mobkills?");
+                    bridge.silent(200);
                     chat(first, ONE, "wer hat die meisten Mobkills?");
                     bridge.silent(200);
                     if (bridge.lookups.get() != 0) throw new AssertionError("Ordinary chat consumed identity work");
@@ -140,6 +144,27 @@ public final class VectorAddonFlowTest {
                 } finally { reloaded.stop(); }
             }
             result.addProperty("passed", true);
+            VectorAddon discord = new VectorAddon();
+            discord.start(bridge, key, marker, false, true);
+            try {
+                String channel = "100000000000000001", user = "200000000000000001", event = "300000000000000001";
+                discord.discord("other", channel, true, false, false, user, event, "Example Discord", "hey Vector, wer hat die meisten Mobkills?");
+                discord.discord(channel, channel, true, true, false, user, event, "Example Discord", "hey Vector, wer hat die meisten Mobkills?");
+                discord.discord(channel, channel, true, false, true, user, event, "Example Discord", "hey Vector, wer hat die meisten Mobkills?");
+                discord.discord(channel, channel, false, false, false, user, event, "Example Discord", "hey Vector, wer hat die meisten Mobkills?");
+                discord.discord(channel, channel, true, false, false, user, event, "Example Discord", "ordinary chat");
+                bridge.silent(200);
+                discord.discord(channel, channel, true, false, false, user, event, "Example Discord", "hey Vector, wer hat die meisten Mobkills?");
+                if (phase.equals("first")) {
+                    String answer = bridge.take();
+                    if (!answer.startsWith("Hey Example Discord,") || !answer.contains("ExampleTwo 52'000 Kills")) throw new AssertionError("Discord principal/name lost");
+                    discord.discord(channel, channel, true, false, false, user, event, "Example Discord", "hey Vector, wer hat die meisten Mobkills?");
+                    bridge.silent(600); // Let the suppressed duplicate finish its bounded worker handoff.
+                    discord.discord(channel, channel, true, false, false, user, "300000000000000002", "Example Discord", "hi Vector, welcher Block wurde am meisten platziert?");
+                    if (!bridge.take().contains("Stein 200 Mal")) throw new AssertionError("Live public block registry lost");
+                } else bridge.silent(300);
+            } finally { discord.stop(); }
+            result.addProperty("discord_channel_bot_replay_and_block_registry_passed", true);
             result.addProperty("forwarding_preserved", true);
             result.addProperty("identity_and_delivery_on_scheduled_thread", true);
             result.addProperty("ordinary_chat_ignored", true);
@@ -151,3 +176,4 @@ public final class VectorAddonFlowTest {
         }
     }
 }
+

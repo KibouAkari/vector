@@ -73,7 +73,9 @@ class Handler(BaseHTTPRequestHandler):
             size = int(self.headers.get('Content-Length', '-1'))
         except ValueError:
             size = -1
-        if not 1 <= size <= 8192:
+        # Authenticated requests may include the current public block-item IDs.
+        # Messages still have a separate 1200-character limit; replies stay 8192 B.
+        if not 1 <= size <= 512 * 1024:
             return self.respond(413, {'error': 'REQUEST_LIMIT'})
         timestamp, signature = self.headers.get('X-Vector-Time', ''), self.headers.get('X-Vector-Signature', '')
         if not re.fullmatch(r'[0-9]{10}', timestamp) or not re.fullmatch(r'[a-f0-9]{64}', signature) or abs(self.server.clock() - int(timestamp)) > 60:
@@ -123,4 +125,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 

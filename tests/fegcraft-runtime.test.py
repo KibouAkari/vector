@@ -159,8 +159,9 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(send(raw, timestamp='1000000000')[0], 503)
         finally:
             service.slot.release()
-        self.assertEqual(send(b'x' * 8193, timestamp='1000000000')[0], 413)
+        self.assertEqual(send(b'x' * (512 * 1024 + 1), timestamp='1000000000')[0], 413)
 
 
 if __name__ == '__main__':
     unittest.main()
+

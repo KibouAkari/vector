@@ -20,7 +20,7 @@ METRIC_WORDS = {
     'mob_kills': r'mob.?kills|monster|mobs|getötete.*(?:kreaturen|monster)',
     'play_time': r'spielzeit|spielstunden|play.?time|(?:längsten|meisten).*gespielt',
     'distance': r'strecke|distanz|kilometer|gelaufen|gereist',
-    'deaths': r'tode|gestorben|todesfälle|deaths',
+    'deaths': r'\btod(?:e|esfälle)?\b|gestorben|\bstarb\b|\bstarben\b|\bsterben\b|\bstirbt\b|\bdied\b|\bdeaths?\b',
 }
 PRIVATE = re.compile(r'seed|welt.?schlüssel|passw[oö]rt|password|api.?key|token|credential|/opt/|/etc/|rcon|docker|system.?prompt|ignore.*(?:instructions|regeln)|ignoriere.*(?:anweisung|regel)|gamemode|creative|kreativmodus|cheat|hack|operator|admin.?recht', re.I)
 TOPIC = re.compile(r'minecraft|redstone|craft|rezept|recipe|item|block|blöck|erz|verzauber|enchant|villager|dorfbewohner|creeper|zombie|skelett|enderman|nether|ender|farm|kolben|piston|trichter|hopper|komparator|comparator|repeater|verstärker|biom|elytra|rüstung|werkbank|schmelz|ofen|diamant|eisen|mod\b|mods\b|rucksack|backpack|claim|grab|graves|lag\b|fps\b|chunk|server.*(?:ruckel|problem|fehler)', re.I)
@@ -130,11 +130,19 @@ class Assistant:
         self.recipes = recipes
 
     def handle(self, payload):
-        if not isinstance(payload, dict) or set(payload) != {'principal', 'name', 'event', 'message'}:
+        base = {'principal', 'name', 'event', 'message'}
+        if not isinstance(payload, dict) or not base <= set(payload) or set(payload) - base - {'source', 'block_items'}:
             raise ValueError('INVALID_REQUEST')
         principal, name, event, message = (payload[k] for k in ('principal', 'name', 'event', 'message'))
-        if not isinstance(principal, str) or str(uuid.UUID(principal)) != principal or not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_]{1,16}', name):
+        source = payload.get('source', 'minecraft')
+        valid_name = isinstance(name, str) and (bool(re.fullmatch(r'[A-Za-z0-9_]{1,16}', name)) if source == 'minecraft'
+            else bool(1 <= len(name) <= 32 and name == name.strip() and all(c.isalnum() or c in ' _.-' for c in name)))
+        if source not in ('minecraft', 'discord') or not isinstance(principal, str) or str(uuid.UUID(principal)) != principal or not valid_name:
             raise ValueError('INVALID_IDENTITY')
+        block_items = payload.get('block_items', [])
+        if (not isinstance(block_items, list) or len(block_items) > 4096 or len(set(x for x in block_items if isinstance(x, str))) != len(block_items)
+                or any(not isinstance(x, str) or not re.fullmatch(r'[a-z0-9_.-]{1,64}:[a-z0-9_./-]{1,96}', x) for x in block_items)):
+            raise ValueError('INVALID_BLOCK_REGISTRY')
         if not isinstance(event, str) or not re.fullmatch(r'[a-f0-9-]{36}:[0-9]{1,12}', event):
             raise ValueError('INVALID_EVENT')
         addressed = addressed_question(message)
@@ -151,7 +159,7 @@ class Assistant:
         elif PRIVATE.search(question):
             answer = 'dazu gebe ich keine administrativen oder vertraulichen Auskünfte.'
         else:
-            answer = self.stat_answer(question)
+            answer = self.stat_answer(question, block_items)
             if answer is None and self.recipes is not None:
                 answer = self.recipes.answer(question)
             if answer is None:
@@ -179,24 +187,40 @@ class Assistant:
             raise ValueError('INVALID_MOD_INVENTORY')
         return sorted(set(value))
 
-    def stat_answer(self, question):
+    def stat_answer(self, question, block_items=()):
         q = question.casefold()
         selected = [key for key, pattern in METRIC_WORDS.items() if re.search(pattern, q)]
         is_record = re.search(r'rekord|record', q)
-        if not selected and not is_record and not re.search(r'statistik|statistic|\bstats\b|rangliste|leaderboard', q):
+        blocks = bool(re.search(r'\bblock\b|blöck|bloeck|\bblocks\b', q))
+        block_category = ('used' if re.search(r'platzier|gesetzt|placed', q) else 'mined' if re.search(r'abgebaut|abgebau|gebaut.*ab|mined', q) else None) if blocks else None
+        if not selected and not is_record and not block_category and not re.search(r'statistik|statistic|\bstats\b|rangliste|leaderboard', q):
             return None
         try:
-            data = stats.snapshot(self.stats_dir, self.usercache)
+            data = stats.snapshot(self.stats_dir, self.usercache, include_items=bool(block_category))
             stats.require_complete(data)
             people = [p for p in data['players'] if re.search(r'(?<![a-z0-9_])' + re.escape(p['name'].casefold()) + r'(?![a-z0-9_])', q)]
             # Never silently substitute the author for an unknown named player.
             if len(people) > 1:
                 return 'bitte frage nach einem Spieler oder einer einzelnen Rangliste.'
-            holder_words = set('wer sind hat hält welche zeig zeige mir gib nenn nenne kannst könntest du einfach nur alle die aktuellen rekordhalter rekorde geben zeigen nennen sagen bitte auf von meinem dem server fegcraft'.split())
-            holders = bool(re.search(r'\brekordhalter\b|\balle rekorde\b', q)) and set(re.findall(r'[\w-]+', q)) <= holder_words
-            if is_record and not people and holders:
+            holders = bool(re.search(r'\brekorde?halter\b|\brecord.?holders?\b|\balle\s+(?:aktuellen\s+)?rekorde\b|\b(?:wer|who)\b.*\b(?:rekord|record)', q))
+            unknown_target = re.search(r'\b(?:von|für|of|for)\s+(?!(?:dem|meinem|unserem|server|fegcraft)\b)[a-z0-9_]+', q)
+            if block_category:
+                if people or re.search(r'\b(?:hat|habe|hast|ich)\b', q) or not re.search(r'meist|häufigst|haeufigst|most', q):
+                    return 'frage bitte nach dem serverweit häufigsten Block.'
+                if block_category == 'used' and not block_items:
+                    return 'für Blocknutzungen fehlt gerade das aktuelle Block-Item-Verzeichnis. Ich rate keinen Spitzenreiter.'
+                top = stats.block_leaders(data, block_category, block_items)
+                if not top:
+                    return 'dafür ist kein positiver gespeicherter Blockzähler vorhanden.'
+                from recipes import label
+                text = ('Block-Item-Nutzungen' if block_category == 'used' else 'Abgebaute Blöcke') + ': ' + '; '.join(label(k) + ' ' + number(v, 'Mal') for k, v in top)
+                if block_category == 'used':
+                    text += ' (aktuelle Block-Items, keine exakte Gesamtzahl aller Platzierungen)'
+            elif is_record and not people and holders and not unknown_target:
                 details = []
                 for metric, (label, unit, *_) in stats.METRICS.items():
+                    if selected and metric not in selected:
+                        continue
                     top = stats.leaders(data, metric)
                     if top[0]['value'] > 0:
                         details.append(label + ': ' + '/'.join(p['name'] for p in top) + ' ' + number(top[0]['value'], unit))
@@ -214,6 +238,9 @@ class Assistant:
                 label, unit, *_ = stats.METRICS[metric]
                 if people:
                     text = people[0]['name'] + ': ' + label + ' ' + number(people[0]['values'][metric], unit)
+                    text += '; Rang ' + str(stats.rank(data, people[0], metric))
+                    if metric == 'deaths':
+                        text += ' nach Anzahl'
                 else:
                     if not re.search(r'\bwer\b|\bwho\b|meist|längst|höchst|top\s*10|rangliste|leaderboard', q):
                         return 'nenne bitte den vollständigen Spielernamen oder frage nach dem Spitzenreiter.'
@@ -231,4 +258,5 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 

@@ -10,6 +10,8 @@ import java.util.concurrent.Flow;
 
 public final class VectorAddonTest {
     public static void main(String[] args) throws Exception {
+        if (!VectorAddon.discordName("Example Discord").equals("Example Discord")) throw new AssertionError("Discord display name changed");
+        if (!VectorAddon.discordName("@<>\n").equals("DiscordUser")) throw new AssertionError("Unsafe Discord name accepted");
         var serializer = dcshadow.net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson();
         var marked = serializer.serializeToTree(VectorAddon.presentation("Synthetic answer", true));
         String rendered = marked.toString();
