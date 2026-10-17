@@ -47,6 +47,28 @@ class Repair(unittest.TestCase):
         with self.assertRaises(SyntaxError): m.install(self.directory,self.sources)
         self.assertEqual(self.shell.read_bytes(),self.original); self.assertFalse((self.base/'backup_minecraft.py').exists())
 
+    def test_engine_fsync_error_keeps_original_and_can_retry(self):
+        actual=m.atomic
+        def fail_after_publish(path,content,mode):
+            actual(path,content,mode)
+            if path.name=='backup_minecraft.py': raise OSError('synthetic directory fsync')
+        with patch.object(m,'atomic',side_effect=fail_after_publish):
+            with self.assertRaises(OSError): m.install(self.directory,self.sources)
+        self.assertEqual(self.shell.read_bytes(),self.original); self.assertFalse((self.base/'backup_minecraft.py').exists())
+        self.assertTrue(m.install(self.directory,self.sources))
+
+    def test_wrapper_fsync_error_keeps_complete_pair_and_rollback(self):
+        actual=m.atomic
+        def fail_after_publish(path,content,mode):
+            actual(path,content,mode)
+            if path.name=='backup_minecraft.sh': raise OSError('synthetic directory fsync')
+        with patch.object(m,'atomic',side_effect=fail_after_publish):
+            with self.assertRaises(OSError): m.install(self.directory,self.sources)
+        self.assertEqual(self.shell.read_bytes(),self.sources[self.shell.name])
+        self.assertEqual((self.base/'backup_minecraft.py').read_bytes(),self.sources['backup_minecraft.py'])
+        self.assertFalse(m.install(self.directory,self.sources)); m.rollback(self.directory)
+        self.assertEqual(self.shell.read_bytes(),self.original)
+
     def test_rollback_retains_later_edits(self):
         m.install(self.directory,self.sources); self.shell.write_text('later owner edit')
         with self.assertRaisesRegex(RuntimeError,'LATER_EDIT'): m.rollback(self.directory)

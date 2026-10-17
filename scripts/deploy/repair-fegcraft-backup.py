@@ -67,12 +67,17 @@ def install(directory, sources):
               'installed': {name: digest(value) for name, value in sources.items()}}
     atomic(directory / 'repair.json', (json.dumps(record, indent=2) + '\n').encode(), 0o600)
     # Shell remains broken if installation is interrupted before both replacements.
-    atomic(engine, sources[engine.name], 0o700)
     try:
+        atomic(engine, sources[engine.name], 0o700)
         if checked(shell) != previous: raise RuntimeError('BACKUP_REPAIR_SCRIPT_CHANGED')
         atomic(shell, sources[shell.name], 0o700)
     except BaseException:
-        if engine.is_file() and not engine.is_symlink() and digest(engine.read_bytes()) == record['installed'][engine.name]: engine.unlink()
+        # fsync may fail AFTER publication. Preserve a complete new pair; only
+        # remove our new engine if the original shell is still in place.
+        if (not shell.is_symlink() and shell.is_file() and shell.read_bytes() == previous
+                and engine.is_file() and not engine.is_symlink()
+                and digest(engine.read_bytes()) == record['installed'][engine.name]):
+            engine.unlink()
         raise
     print('Backup-Einstieg repariert. Original privat gesichert: ' + str(directory))
     return True
@@ -124,6 +129,7 @@ def main():
         for name, source in SOURCES.items():
             sources[name] = subprocess.check_output(['git', '-C', str(REPO), 'show', revision + ':' + source], timeout=20)
         directory = Path(tempfile.mkdtemp(prefix='vector-fegcraft-backup-repair-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-', dir=ROOT / 'releases'))
+        print('Reparaturbelege und Original: ' + str(directory), flush=True)
         changed = install(directory, sources)
         # Explain the existing gate without exposing arbitrary host filenames/content.
         audit = ROOT / 'releases/vector-fegcraft-safe-cutover-20261017T150617Z-3f2b4c/before-private-writable-paths.json'

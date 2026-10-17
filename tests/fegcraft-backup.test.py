@@ -42,11 +42,19 @@ class Backup(unittest.TestCase):
             if args[1] == 'inspect': return json.dumps([copy.deepcopy(self.game)]).encode()
             if args[1] == 'exec': return ''.join(f'{p.stat().st_dev}:{p.stat().st_ino}\n' for p in (self.data,self.data/'world')).encode()
             if args[1] == 'stop':
-                self.events.append('stop'); self.game['State']['Running'] = False
+                self.assertEqual(args[-1],'synthetic-original')
+                self.events.append('stop')
+                if self.fail in ('late-stop','unresolved-stop'): raise subprocess.TimeoutExpired(args,180)
+                self.game['State']['Running'] = False
                 if self.fail == 'cancel': m.request_cancel(None,None)
                 if self.fail == 'stop': raise subprocess.TimeoutExpired(args,180)
                 return b''
-            if args[1] == 'start': self.events.append('start'); self.game['State']['Running'] = True; return b''
+            if args[1] == 'wait':
+                self.assertEqual(args[-1],'synthetic-original'); self.events.append('wait')
+                if self.fail == 'unresolved-stop': raise subprocess.TimeoutExpired(args,180)
+                self.game['State']['Running']=False; return b'0\n'
+            if args[1] == 'start':
+                self.assertEqual(args[-1],'synthetic-original'); self.events.append('start'); self.game['State']['Running'] = True; return b''
             raise AssertionError(args)
         if '--create' in args:
             self.events.append('create'); self.assertFalse(self.game['State']['Running'])
@@ -85,6 +93,21 @@ class Backup(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'CANCELLED'): self.execute()
         self.assertEqual(self.events,['stop','start']); self.assertTrue(self.game['State']['Running'])
         self.assertFalse(list(self.backups.glob('fegcraft-updated_*.tar.gz')))
+
+    def test_ambiguous_stop_is_settled_before_recovery(self):
+        self.fail='late-stop'
+        with self.assertRaises(subprocess.TimeoutExpired): self.execute()
+        self.assertEqual(self.events,['stop','wait','start']); self.assertTrue(self.game['State']['Running'])
+
+    def test_unresolved_stop_fails_without_claiming_recovery(self):
+        self.fail='unresolved-stop'
+        with self.assertRaisesRegex(RuntimeError,'STOP_UNRESOLVED'): self.execute()
+        self.assertEqual(self.events,['stop','wait']); self.assertFalse(list(self.backups.glob('fegcraft-updated_*.tar.gz')))
+
+    def test_additional_mount_refused_before_stop(self):
+        self.game['Mounts'].append({'Type':'volume','Destination':'/data/world/region'})
+        with self.assertRaisesRegex(RuntimeError,'DATA_MOUNT_CHANGED'): self.execute()
+        self.assertEqual(self.events,[])
 
     def test_replacement_not_started(self):
         self.fail='replacement'

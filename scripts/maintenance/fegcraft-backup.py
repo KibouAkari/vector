@@ -61,12 +61,22 @@ def owned(expected):
     return value
 
 
-def restart(expected):
+def restart(expected, *, wait_for_stop=False):
     value = owned(expected)
+    if wait_for_stop and value['State']['Running']:
+        # A timed-out CLI does not cancel the daemon operation. Wait for its
+        # original target to stop before attempting recovery, never a replacement.
+        log('Kläre den ausstehenden Stop-Vorgang am ursprünglichen Container ...')
+        try: run(['docker', 'wait', expected['Id']], timeout=180)
+        except (RuntimeError, subprocess.TimeoutExpired):
+            if owned(expected)['State']['Running']:
+                raise RuntimeError('BACKUP_STOP_UNRESOLVED_OWNER_CHECK_REQUIRED')
+        value = owned(expected)
+        if value['State']['Running']: raise RuntimeError('BACKUP_STOP_UNRESOLVED_OWNER_CHECK_REQUIRED')
     if value['State'].get('Restarting'): raise RuntimeError('BACKUP_CONTAINER_RESTARTING')
     if not value['State']['Running']:
         log('Starte denselben Minecraft-Container ...')
-        try: run(['docker', 'start', GAME], timeout=90)
+        try: run(['docker', 'start', expected['Id']], timeout=90)
         except (RuntimeError, subprocess.TimeoutExpired):
             if not owned(expected)['State']['Running']: raise
     if not owned(expected)['State']['Running']: raise RuntimeError('BACKUP_SERVER_START_FAILED')
@@ -99,7 +109,7 @@ def required_space():
 
 def verify_bind(game):
     mounts = game.get('Mounts', [])
-    if not any(m.get('Type') == 'bind' and m.get('Source') == str(DATA)
+    if len(mounts) != 1 or not any(m.get('Type') == 'bind' and m.get('Source') == str(DATA)
                and m.get('Destination') == '/data' and m.get('RW') is True for m in mounts):
         raise RuntimeError('BACKUP_GAME_DATA_MOUNT_CHANGED')
     if game['State']['Running']:
@@ -107,7 +117,7 @@ def verify_bind(game):
         uid, gid = env.get('UID', '1000'), env.get('GID', '1000')
         if not uid.isdecimal() or not gid.isdecimal() or int(uid) == 0 or int(gid) == 0:
             raise RuntimeError('BACKUP_GAME_USER_INVALID')
-        raw = run(['docker', 'exec', '--user', uid + ':' + gid, GAME, 'stat', '-Lc', '%d:%i', '/data', '/data/world'])
+        raw = run(['docker', 'exec', '--user', uid + ':' + gid, game['Id'], 'stat', '-Lc', '%d:%i', '/data', '/data/world'])
         expected = ''.join(str(p.stat().st_dev) + ':' + str(p.stat().st_ino) + '\n' for p in (DATA, DATA / 'world'))
         if raw.decode() != expected: raise RuntimeError('BACKUP_LIVE_DATA_DIFFERS_FROM_HOST')
 
@@ -128,7 +138,7 @@ def backup():
     work = Path(tempfile.mkdtemp(prefix='.fegcraft-backup-', dir=BACKUPS))
     log('Privater Arbeitsordner: ' + str(work))
     plain, compressed = work / 'snapshot.tar', work / 'snapshot.tar.gz'
-    was_running = game['State']['Running']; restart_needed = False
+    was_running = game['State']['Running']; restart_needed = False; stop_confirmed = False
     try:
         if was_running:
             current = owned(game)
@@ -136,7 +146,8 @@ def backup():
             verify_bind(current)
             restart_needed = True  # Also recover after an ambiguous stop timeout.
             log('Stoppe Minecraft regulär für den Dateisnapshot ...')
-            run(['docker', 'stop', '--time', '120', GAME], timeout=180)
+            run(['docker', 'stop', '--time', '120', game['Id']], timeout=180)
+            stop_confirmed = True
         check_cancel()
         stopped = owned(game)
         if stopped['State']['Running'] or stopped['State'].get('OOMKilled') or stopped['State'].get('ExitCode', 0) not in (0, 143):
@@ -153,7 +164,7 @@ def backup():
     finally:
         if restart_needed:
             # Never start a same-named replacement or start an initially stopped game.
-            restart(game)
+            restart(game, wait_for_stop=not stop_confirmed)
     log('Komprimiere und prüfe das Archiv; Minecraft darf inzwischen wieder laufen ...')
     with compressed.open('xb') as output:
         run(['gzip', '-1', '--stdout', str(plain)], output=output, timeout=21600, diagnostic=work / 'gzip.stderr')
