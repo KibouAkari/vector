@@ -71,6 +71,9 @@ jobs:
           python3 tests/fegcraft-model-format.test.py
           python3 tests/fegcraft-minimal-prompts.test.py
           python3 tests/fegcraft-instruct4b.test.py
+          python3 tests/fegcraft-documentation.test.py
+          python3 tests/fegcraft-documentation-evaluation.test.py
+          python3 -m py_compile services/fegcraft-assistant/documentation.py scripts/deploy/evaluate-fegcraft-documentation.py
           python3 tests/fegcraft-public-mod-sources.test.py
           python3 -m py_compile scripts/diagnostics/fegcraft-public-mod-sources.py
           python3 -m py_compile scripts/deploy/evaluate-fegcraft-instruct4b.py

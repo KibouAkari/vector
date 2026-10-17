@@ -203,7 +203,7 @@ def evaluate(*,report_only=False):
     if json.loads(command('docker','image','inspect',PYTHON))[0]['Id']!=PYTHON:raise RuntimeError('Qualified Python image missing.')
     folder=ROOT/'releases'/(('vector-fegcraft-general-diagnostic-' if diagnostic else 'vector-fegcraft-general-')+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+secrets.token_hex(3));folder.mkdir(mode=0o700)
     work=folder/'input';work.mkdir(mode=0o755);work.chmod(0o755)
-    for name in ('runtime.py','stats.py','policy.py','knowledge.py','recipes.py'):
+    for name in ('runtime.py','stats.py','policy.py','knowledge.py','recipes.py','documentation.py','public-knowledge.json'):
         path=work/'services/fegcraft-assistant'/name;path.parent.mkdir(parents=True,exist_ok=True)
         for directory in (work/'services',path.parent):directory.chmod(0o755)
         path.write_bytes(command('git','-C',str(REPO),'show',revision+':services/fegcraft-assistant/'+name));path.chmod(0o644)
@@ -268,6 +268,7 @@ if __name__=='__main__':
     except Exception as exc:
         print('ERROR:',str(exc) if isinstance(exc,RuntimeError) else type(exc).__name__)
         raise SystemExit(1)
+
 
 
 
