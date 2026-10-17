@@ -189,7 +189,8 @@ class Assistant:
             # Never silently substitute the author for an unknown named player.
             if len(people) > 1:
                 return 'bitte frage nach einem Spieler oder einer einzelnen Rangliste.'
-            holders = re.fullmatch(r'(?:(?:wer sind|zeig(?:e)?(?: mir)?|gib(?: mir)?|nenn(?:e)?(?: mir)?)\s+)?(?:(?:bitte|einfach|nur|alle|die)\s+)*rekordhalter(?:\s+(?:bitte|auf fegcraft|auf meinem server))?[?!.]?', q.strip())
+            holder_words = set('wer sind hat hält welche zeig zeige mir gib nenn nenne kannst könntest du einfach nur alle die aktuellen rekordhalter rekorde geben zeigen nennen sagen bitte auf von meinem dem server fegcraft'.split())
+            holders = bool(re.search(r'\brekordhalter\b|\balle rekorde\b', q)) and set(re.findall(r'[\w-]+', q)) <= holder_words
             if is_record and not people and holders:
                 details = []
                 for metric, (label, unit, *_) in stats.METRICS.items():

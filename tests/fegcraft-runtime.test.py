@@ -48,7 +48,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn('gespeicherte', result['text'])
 
     def test_all_record_holders_are_fresh_and_cover_five_categories(self):
-        first=self.ai.handle(self.payload('hey Vector, alle Rekordhalter'))
+        first=self.ai.handle(self.payload('hey Vector, kannst du mir einfach nur alle Rekordhalter geben?'))
         for label in ('Spielzeit:','Strecke:','Mobkills:','Spielerkills:','Tode:'):
             self.assertIn(label,first['text'])
         path=self.stats/(self.uid+'.json')
