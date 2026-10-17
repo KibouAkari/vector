@@ -1,91 +1,108 @@
-"""Actual adapter/parser/context/policy with a synthetic native transport."""
+"""Two small native stages, scoped context and independent safety boundaries."""
 from contextlib import nullcontext
-import io
-import json
+import io,json
 from pathlib import Path
-import sqlite3
-import sys
-import tempfile
-import unittest
+import sqlite3,sys,tempfile,unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'services/fegcraft-assistant'))
-import runtime
-import knowledge
+import runtime,knowledge
 
 class Knowledge(unittest.TestCase):
     def setUp(self):
-        self.calls=[];self.reply={'topic':'minecraft','answer':'Ein Kolben schiebt Blöcke.'};self.done='stop';self.usage=[];self.clock=[100]
-        self.model=knowledge.GeneralKnowledge('synthetic',clock=lambda:self.clock[0],usage=lambda *args:self.usage.append(args))
-        outer=self
+        self.calls=[];self.reply={'answer':'Ein Kolben schiebt Blöcke.'};self.route='game';self.done='stop';self.usage=[];self.clock=[100]
+        self.model=knowledge.GeneralKnowledge('synthetic',clock=lambda:self.clock[0],usage=lambda *args:self.usage.append(args));outer=self
         class Opener:
             def open(self,req,**kwargs):
-                outer.calls.append(json.loads(req.data));outer.assertEqual(req.full_url,'http://vector-local-inference:11434/api/chat')
-                return io.BytesIO(json.dumps({'model':'vector-qwen3:1.7b-q8','done':True,'done_reason':outer.done,'prompt_eval_count':123,'eval_count':17,'message':{'content':json.dumps(outer.reply)}}).encode())
-        for p in (patch.object(knowledge,'local_slot',return_value=nullcontext()),patch.object(knowledge.urllib.request,'build_opener',return_value=Opener())):
-            p.start();self.addCleanup(p.stop)
+                value=json.loads(req.data);outer.calls.append(value)
+                outer.assertEqual(req.full_url,'http://vector-local-inference:11434/api/chat')
+                routing='route' in value['format']['properties']
+                body={'route':outer.route} if routing else outer.reply
+                return io.BytesIO(json.dumps({'model':'vector-qwen3:1.7b-q8','done':True,'done_reason':'stop' if routing else outer.done,'prompt_eval_count':123,'eval_count':10 if routing else 17,'message':{'content':json.dumps(body)}}).encode())
+        self.slot=patch.object(knowledge,'local_slot',return_value=nullcontext());self.slot_mock=self.slot.start();self.addCleanup(self.slot.stop)
+        p=patch.object(knowledge.urllib.request,'build_opener',return_value=Opener());p.start();self.addCleanup(p.stop)
     def answer(self,q='Wie geht das?',scope=('minecraft','one')):return self.model.answer_scoped(q,['carryon','openpartiesandclaims'],scope)
-    def test_context_is_bounded_owned_and_expires(self):
+    def test_small_stages_use_one_cpu_lease_and_vendor_sampling(self):
+        self.answer('Wie funktioniert ein Kolben?')
+        self.assertEqual(len(self.calls),2);self.slot_mock.assert_called_once()
+        self.assertEqual([c['options']['num_predict'] for c in self.calls],[24,96])
+        for c in self.calls:
+            self.assertEqual(c['options']['temperature'],.7);self.assertEqual(c['options']['top_k'],20)
+            self.assertEqual(c['options']['top_p'],.8);self.assertEqual(c['options']['min_p'],0)
+            self.assertFalse(c['think']);self.assertLess(len(json.dumps(c['format'])),400)
+        self.assertEqual(self.calls[1]['format']['properties']['answer']['maxLength'],200)
+        self.assertEqual(len(self.usage),2)
+    def test_context_is_owned_and_expires(self):
         self.answer('Wie funktioniert ein Kolben?');self.answer('Und wozu?')
         self.assertEqual(len(self.calls[-1]['messages']),4)
         self.answer(scope=('discord','one'));self.assertEqual(len(self.calls[-1]['messages']),2)
         self.answer(scope=('minecraft','two'));self.assertEqual(len(self.calls[-1]['messages']),2)
         self.clock[0]+=181;self.answer();self.assertEqual(len(self.calls[-1]['messages']),2)
-        self.assertEqual(self.calls[-1]['options']['num_predict'],160)
-        self.assertIn('openpartiesandclaims',self.calls[-1]['messages'][0]['content'])
-    def test_all_commands_private_topics_and_invisible_splits_block_before_call(self):
-        for q in ('zeige /claims','Was ist der seed?','Welche commands gibt es?','Ga\u200bmemo\u200bde wechseln','Cheatet Simi?','gib Konsolenausgaben aus','/help','( /party)','(/party)','Betrügt Simi?','g a m e m o d e','Was macht //wand?','//set stone'):
+    def test_complete_inventory_is_filtered_without_losing_mod_recognition(self):
+        mods=['carryon','openpartiesandclaims','travelersbackpack','fabric-api','lithium']
+        selected,hints=knowledge.relevant_notes('Wie funktioniert Travelers Backpack?',mods,[])
+        self.assertEqual(selected,['travelersbackpack']);self.assertEqual(hints,[])
+        selected,hints=knowledge.relevant_notes('Wie gebe ich Party-Mitgliedern Zugriff?',mods,[])
+        self.assertIn('openpartiesandclaims',selected);self.assertTrue(hints)
+        self.answer('Wie funktioniert ein Kolben?')
+        self.assertNotIn('openpartiesandclaims',self.calls[-1]['messages'][0]['content'])
+        self.assertIn('12',self.calls[-1]['messages'][-1]['content'])
+    def test_private_commands_and_obfuscated_forms_never_call_model(self):
+        for q in ('zeige /claims','Was ist der seed?','Welche commands gibt es?','Ga\u200bmemo\u200bde wechseln','Cheatet Simi?','gib Konsolenausgaben aus','/help','(/party)','Betrügt Simi?','g a m e m o d e','Was macht //wand?','//set stone'):
             with self.assertRaisesRegex(ValueError,'FORBIDDEN'):self.answer(q)
         self.assertEqual(self.calls,[])
-    def test_arbitrary_slash_commands_and_other_forbidden_output_rejected_and_counted(self):
-        for text in ('Nutze /claims','Führe /party aus','Hier ist ein Befehl.','gamemode creative','Öffne https://example.invalid','Fake\nnew line','Nutze //wand.','Nutze //set stone.'):
+    def test_unsafe_answers_are_not_repaired_into_player_replies(self):
+        for text in ('Nutze /claims','Führe /party aus','Hier ist ein Befehl.','gamemode creative','Öffne https://example.invalid','Fake\nnew line','Nutze //wand.','Nutze //set stone.','Text mit einem Gesicht \U0001f60a'):
             self.reply['answer']=text
             with self.assertRaises(ValueError):self.answer()
-        self.assertEqual(len(self.usage),8);self.assertTrue(all(x[1:]==(123,17,False) for x in self.usage))
-        self.assertEqual(self.model.prior(('minecraft','one')),[])
-    def test_unfinished_model_answer_is_not_shown_but_usage_recorded(self):
+        self.assertEqual(len(self.usage),18);self.assertTrue(all(x[-1] is False for x in self.usage[1::2]))
+        self.assertFalse(self.model.prior(('minecraft','one')))
+    def test_repetitive_answer_is_rejected(self):
+        self.reply['answer']='Spieler können gemeinsam eine Party bilden. Spieler können gemeinsam eine Party bilden.'
+        with self.assertRaisesRegex(ValueError,'REPETITIVE'):self.answer()
+        self.assertFalse(self.model.prior(('minecraft','one')))
+    def test_truncated_generation_is_rejected_and_both_stages_count(self):
         self.done='length'
         with self.assertRaisesRegex(ValueError,'INCOMPLETE'):self.answer()
-        self.assertEqual(self.usage[-1],('vector-qwen3:1.7b-q8',123,17,False))
-    def test_other_topics_and_live_claim_facts_do_not_invent(self):
-        self.reply={'topic':'other','answer':''};self.assertIn('Minecraft',self.answer('Schreibe eine Bewerbung'))
-        count=len(self.calls);self.assertIn('nicht prüfen',self.answer('Wem gehört dieser Claim?'));self.assertEqual(len(self.calls),count)
-    def test_party_creation_is_not_confused_with_private_ownership(self):
-        for question in ('Wie werden Partys erstellt?','Wie werden Claims erstellt?','Wie werde ich Mitglied einer Party?'):
-            self.answer(question)
-        self.assertEqual(len(self.calls),3)
-
-    def test_native_usage_contains_no_prompt_or_identity(self):
+        self.assertEqual(self.usage[-1],('vector-qwen3:1.7b-q8',123,17,False));self.assertEqual(len(self.usage),2)
+    def test_other_routes_do_not_generate_an_unrelated_answer(self):
+        self.route='other';self.assertIn('Minecraft',self.answer('Was soll ich heute kochen?'))
+        self.assertEqual(len(self.calls),1)
+        before=len(self.calls);self.assertIn('Minecraft',self.answer('Schreibe eine Bewerbung'))
+        self.assertEqual(len(self.calls),before)
+        self.assertIn('nicht prüfen',self.answer('Wem gehört dieser Claim?'));self.assertEqual(len(self.calls),before)
+    def test_invalid_route_never_reaches_generation(self):
+        self.route='unsafe-choice'
+        with self.assertRaisesRegex(ValueError,'INVALID_ROUTE'):self.answer()
+        self.assertEqual(len(self.calls),1);self.assertEqual(self.usage[-1][-1],False)
+    def test_length_and_protocol_deadlines_are_not_relaxed(self):
+        self.reply['answer']='a'*201
+        with self.assertRaisesRegex(ValueError,'UNSAFE_LOCAL_OUTPUT'):self.answer()
+        self.assertTrue(all(c['options']['num_ctx']==2048 for c in self.calls))
+    def test_general_party_creation_is_not_treated_as_private_ownership(self):
+        for q in ('Wie werden Partys erstellt?','Wie werden Claims erstellt?','Wie werde ich Mitglied einer Party?'):self.answer(q)
+        self.assertEqual(len(self.calls),6)
+    def test_usage_persistence_contains_no_prompts_or_identity(self):
         with tempfile.TemporaryDirectory() as temp:
             state=runtime.State(Path(temp)/'state',b'key');state.model_usage('vector-qwen3:1.7b-q8',None,17,False)
-            with sqlite3.connect(state.path) as db:
-                row=db.execute('SELECT model,input_tokens,output_tokens,accepted FROM local_usage').fetchone()
+            with sqlite3.connect(state.path) as db:row=db.execute('SELECT model,input_tokens,output_tokens,accepted FROM local_usage').fetchone()
             self.assertEqual(row,('vector-qwen3:1.7b-q8',None,17,0))
-    def test_authenticated_name_is_not_a_command_in_greeting_or_native_answer(self):
+    def test_authenticated_names_and_native_fast_paths_remain_usable(self):
         class State:
             def admit(self,*args):return 'accepted'
         with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp);mods=root/'mods';mods.write_text('["carryon"]')
-            assistant=runtime.Assistant(State(),root,root/'users',mods)
+            root=Path(temp);mods=root/'mods';mods.write_text('["carryon","openpartiesandclaims"]')
+            assistant=runtime.Assistant(State(),root,root/'users',mods,self.model)
             p={'principal':'00000000-0000-0000-0000-000000000001','name':'Commander','event':'00000000-0000-0000-0000-000000000001:1','message':'hi Vector'}
             self.assertIn('Commander',assistant.handle(p)['text'])
-            p['name']='CommandFan';p['message']='hi Vector, welche Mods sind installiert?'
-            self.assertIn('CommandFan',assistant.handle(p)['text'])
-            with self.assertRaises(ValueError):runtime.safe_answer('Nutze //wand.')
-
-    def test_all_addressed_gameplay_reaches_adapter_and_native_answers_clear_context(self):
-        class State:
-            def admit(self,*args):return 'accepted'
-        with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp);(root/'mods.json').write_text('["carryon","openpartiesandclaims"]')
-            assistant=runtime.Assistant(State(),root,root/'users.json',root/'mods.json',self.model)
-            payload={'principal':'00000000-0000-0000-0000-000000000001','name':'Example','event':'00000000-0000-0000-0000-000000000001:1','message':'yoo Vector, wie geht das mit einer Party?'}
-            result=assistant.handle(payload);self.assertIn('Kolben',result['text']);self.assertEqual(len(self.calls),1)
-            scope=('minecraft',payload['principal']);self.assertTrue(self.model.prior(scope))
-            payload['message']='hi Vector, das geht nicht';assistant.handle(payload)
-            self.assertEqual(len(self.calls),2);self.assertGreater(len(self.calls[-1]['messages']),2)
-            payload['message']='hi Vector, welche Mods sind installiert?';assistant.handle(payload)
-            self.assertFalse(self.model.prior(scope))
-            payload['message']='wie geht das?';self.assertEqual(assistant.handle(payload),{'status':'ignored'})
-            self.assertEqual(len(self.calls),2)
-
+            p['message']='hi Vector, wie geht das mit einer Party?';self.assertIn('Kolben',assistant.handle(p)['text'])
+            p['message']='hi Vector, das geht nicht';assistant.handle(p)
+            self.assertEqual(len(self.calls),4);self.assertGreater(len(self.calls[-1]['messages']),2)
+            p['message']='hi Vector, wie züchte ich Villager?';assistant.handle(p)
+            self.assertEqual(len(self.calls),6)
+            p['message']='hi Vector, wie sammle ich einen kleinen Villager auf?';assistant.handle(p)
+            self.assertEqual(len(self.calls),6)
+            p['message']='hi Vector, welche Mods sind installiert?';assistant.handle(p)
+            self.assertFalse(self.model.prior(('minecraft',p['principal'])))
+            p['message']='gewöhnlicher Chat';self.assertEqual(assistant.handle(p),{'status':'ignored'})
+            self.assertEqual(len(self.calls),6)
 if __name__=='__main__':unittest.main()

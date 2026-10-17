@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-17 — Compact grounded local Minecraft candidate (PR #63)
+
+- Actual focused diagnostic identified a 22s timeout, inaccurate comparator guidance, truncated/repetitive party hallucinations and wrong off-topic routing; raw synthetic evidence remains on the owner server. Broad model mode stays OFF. Known usage 2133/370 plus one unknown call is not an exact total.
+- Replace greedy decoding with Qwen3 author-recommended non-thinking sampling; separate a small game/other classifier from <=200-character grammar-constrained answers. Locally filter the complete public mod ID inventory to relevant IDs/hints. Keep one shared CPU lease, checked total budget, finite response sizes, per-stage accounting and independent forbidden-input/output checks; no retry or cloud fallback.
+- Add factual public piston/comparator hints and repetition rejection. Let a qualified broad adapter handle initial general gameplay questions rather than guide-only fallback clarifications. Native stats/recipes/Carry On, addressed-only routing and bounded own-author context remain.
+- Strengthen the full real-model gate with factual negative checks, cow/backpack questions, novel off-topic routing, expected stage counts and cold/warm/median latency thresholds. Focused diagnostic mode cannot activate anything. Local synthetic regression tests do not qualify real model performance.
+- Update handoff with actual diagnostic and next full-model check. No production activation, model download, Minecraft restart/message or backup modification. Dedicated DB role/driver and assistant-only rollback qualification remain later requirements.
+
+
 ## 2026-10-17 — Diagnose rejected local Minecraft answers (PR #62)
 
 - Owner confirms incremental backup installation at `vector-incremental-backup-20261017T172617Z-b84c20`: one old cron paused, new 03:00 server-local schedule, engine SHA-256 `5ad872cef09c7a7599b06c8c3ae9baf5ed540f215aa8a32873fb551ebfc9466f`, no backup/game change/legacy deletion. First complete backup is still unverified; do not repeat installation or the old offline tar job.

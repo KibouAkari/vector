@@ -216,7 +216,7 @@ class ModHelp:
         villager = bool(re.search(r'\bvill[ai]gers?\b|\bdorfbewohner\w*', q))
         entity = villager or bool(re.search(r'\b(?:mob|mobs|tier|tiere|kuh|huhn|schaf|baby)\b', q))
         block = bool(re.search(r'\b(?:kiste|truhe|ofen|block|spawner)\b', q))
-        pickup = bool(re.search(r'auf(?:sammeln|heben|nehmen)|hochheben|(?:auf|hoch)zuheben|\btragen\b|mitnehmen|\btransportier\w*|\buf(?:hebe|neh|näh|nä|samml)\w*|\bnim\w*\b.*\buf\b|\b(?:nehm|nimm|heb|sammel)\w*\b.{0,100}\b(?:auf|hoch)\b', q))
+        pickup = bool(re.search(r'auf(?:sammeln|heben|nehmen)|hochheben|(?:auf|hoch)zuheben|\btragen\b|mitnehmen|\btransportier\w*|\buf(?:hebe|neh|näh|nä|samml)\w*|\bnim\w*\b.*\buf\b|\b(?:nehm|nimm|heb|sammel|samml)\w*\b.{0,100}\b(?:auf|hoch)\b', q))
         put_down = bool(re.search(r'absetzen|abstellen|hinstellen|ablegen|wieder.*(?:runter|ab)|\babsetze\b|\babstelle\b', q))
         trouble = bool(re.fullmatch(r'(?:und\s+)?(?:das\s+)?(?:geht|klappt|funktioniert|gaht|goht|funzt)(?:\s+es)?\s+(?:leider\s+)?(?:nicht|nöd|ned|nit|net)[.!? ]*', q))
         hand = bool(re.fullmatch(r'(?:und\s+)?(?:welche|was für eine)\s+h(?:and|ände)[?! .]*|(?:auch\s+)?(?:die\s+)?nebenhand[?! .]*', q))
@@ -306,8 +306,7 @@ class Assistant:
             self.clear_knowledge(scope)
             answer = 'dazu gebe ich keine administrativen oder vertraulichen Auskünfte.'
         else:
-            has_general_context = bool(getattr(self.knowledge, 'broad_topics', False) and self.knowledge.prior(scope))
-            answer = self.mod_help.answer(question, self.mods, scope, fallback=not has_general_context)
+            answer = self.mod_help.answer(question, self.mods, scope, fallback=not getattr(self.knowledge, 'broad_topics', False))
             if answer is None:
                 answer = self.stat_answer(question, block_items)
             if answer is None and self.recipes is not None:
