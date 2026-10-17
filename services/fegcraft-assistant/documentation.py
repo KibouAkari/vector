@@ -22,6 +22,20 @@ def words(text):
     return {w for w in re.findall(r'[a-z0-9]+', text) if len(w) > 2 and w not in STOP}
 
 
+def answer_intent(question):
+    """Requested answer form, independent of any mod or fixture/player name."""
+    q = unicodedata.normalize('NFKC', question).casefold()
+    first = re.search(r'\b(?:wie|wozu|wofür|wofuer|warum|was|wo|womit)\b', q)
+    tail = q[first.start():] if first else ''
+    if re.search(r'^(?:wozu|wofür|wofuer|warum)\b|^was\s+(?:ist|sind|macht|bedeutet)\b|^wie\s+funktionier', tail):
+        return 'explanation'
+    if re.search(r'^wie\s+(?:viele?|viel|lange|schnell|gross|groß|hoch|weit|oft)\b', tail):
+        return 'any'
+    if re.search(r'^(?:wie|wo|womit)\b|^was\s+(?:muss|soll|kann)\s+ich\b', tail) or re.search(r'\b(?:zeig|erklär|erklaer)\w*\b.*\bschritt', q):
+        return 'procedure'
+    return 'any'
+
+
 class DocumentationIndex:
     """Bounded lexical index. Every catalog change needs a reviewed new checksum."""
     def __init__(self, path, expected_sha256):
@@ -36,7 +50,7 @@ class DocumentationIndex:
         if len(raw) > 131072 or hashlib.sha256(raw).hexdigest() != expected_sha256:
             raise ValueError('DOCUMENTATION_CHECKSUM_MISMATCH')
         value = json.loads(raw)
-        if not isinstance(value, dict) or set(value) != {'schema', 'reviewed_at', 'sources', 'passages'} or value['schema'] != 1:
+        if not isinstance(value, dict) or set(value) != {'schema', 'reviewed_at', 'sources', 'passages'} or value['schema'] != 2:
             raise ValueError('INVALID_DOCUMENTATION_SCHEMA')
         sources, passages = value['sources'], value['passages']
         if not isinstance(sources, dict) or not 1 <= len(sources) <= 64 or not isinstance(passages, list) or not 1 <= len(passages) <= 128:
@@ -44,8 +58,11 @@ class DocumentationIndex:
         self.rows = []
         ids = set()
         for row in passages:
-            if not isinstance(row, dict) or set(row) != {'id', 'topic', 'mod', 'source', 'terms', 'text'} or any(not isinstance(row[k], str) for k in row):
+            if not isinstance(row, dict) or set(row) != {'id', 'topic', 'mod', 'source', 'terms', 'text', 'kinds'} or any(not isinstance(row[k], str) for k in row if k != 'kinds'):
                 raise ValueError('INVALID_DOCUMENTATION_PASSAGE')
+            kinds = row['kinds']
+            if not isinstance(kinds, list) or not 1 <= len(kinds) <= 3 or any(not isinstance(k, str) or k not in ('procedure', 'explanation', 'limitation') for k in kinds) or len(set(kinds)) != len(kinds):
+                raise ValueError('INVALID_DOCUMENTATION_KIND')
             if not re.fullmatch(r'[a-z0-9_.-]{1,64}', row['id']) or row['id'] in ids or not re.fullmatch(r'[a-z0-9_.-]{1,64}', row['topic']):
                 raise ValueError('INVALID_DOCUMENTATION_ID')
             if row['mod'] and not re.fullmatch(r'[a-z0-9_.-]{1,64}', row['mod']):
@@ -59,11 +76,18 @@ class DocumentationIndex:
             self.rows.append((dict(row), words(row['terms']), words(row['text'])))
         self.sha256, self.sources = expected_sha256, sources
 
-    def search(self, question, mods, *, topic=None):
+    def search(self, question, mods, *, topic=None, intent=None):
+        intent = answer_intent(question) if intent is None else intent
+        if intent not in ('any', 'procedure', 'explanation'):
+            raise ValueError('INVALID_DOCUMENTATION_INTENT')
         query = words(question)
         eligible = [(r, tags, text) for r, tags, text in self.rows if (not r['mod'] or r['mod'] in mods) and (topic is None or r['topic'] == topic)]
         scored = []
         for row, tags, text in eligible:
+            # An overview cannot answer an action request merely by matching
+            # subject words. Reviewed limitations remain valid for either form.
+            if intent != 'any' and not set(row['kinds']) & {intent, 'limitation'}:
+                continue
             hits = query & tags
             # Generic verbs are deliberately absent from subject tags.
             if not hits and topic is None:
@@ -110,6 +134,7 @@ class DocumentationKnowledge(GeneralKnowledge):
             self.clear(scope)
             return OTHER_REPLY
         prior = self.prior(scope)
+        intent = answer_intent(question)
         passages = self.documentation.search(question, mods)
         inherited = False
         if not passages and prior and FOLLOWUP.search(question):
@@ -117,12 +142,14 @@ class DocumentationKnowledge(GeneralKnowledge):
             # Only a short dependent question inherits its own author's subject.
             raw_words = set(re.findall(r'[a-z]+', unicodedata.normalize('NFKD', question.casefold()).encode('ascii', 'ignore').decode()))
             if topic and raw_words <= REFERENCE_WORDS:
-                passages = self.documentation.search(question+' '+prior[-1]['content'], mods, topic=topic)
+                passages = self.documentation.search(question+' '+prior[-1]['content'], mods, topic=topic, intent=intent)
                 inherited = bool(passages)
         if not passages:
             self.clear(scope)
             return MISSING
         topic = passages[0]['topic']
+        if prior and prior[-1].get('topic') == topic and (FOLLOWUP.search(question) or re.match(r'\s*und\b', question, re.I)):
+            inherited = True
         if not inherited and (not prior or prior[-1].get('topic') != topic):
             self.clear(scope)
             prior = []

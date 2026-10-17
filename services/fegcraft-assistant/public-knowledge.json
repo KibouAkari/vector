@@ -1,6 +1,6 @@
 {
-  "schema": 1,
-  "reviewed_at": "2026-10-17",
+  "schema": 2,
+  "reviewed_at": "2026-10-18",
   "sources": {
     "cow": {
       "url": "https://www.minecraft.net/en-us/article/cow",
@@ -80,7 +80,10 @@
       "mod": "",
       "source": "cow",
       "terms": "kuh kühe kuhzucht kälber kalb cows cow breed breeding",
-      "text": "Füttere zwei erwachsene Kühe mit Weizen, um ein Kalb zu bekommen. Beide Tiere müssen nahe beieinander stehen."
+      "text": "Füttere zwei erwachsene Kühe mit Weizen, um ein Kalb zu bekommen. Beide Tiere müssen nahe beieinander stehen.",
+      "kinds": [
+        "procedure"
+      ]
     },
     {
       "id": "sheep-breeding",
@@ -88,7 +91,10 @@
       "mod": "",
       "source": "wheat",
       "terms": "schaf schafe schafzucht sheep",
-      "text": "Schafe lassen sich mit Weizen anlocken und züchten. Füttere dafür zwei erwachsene Schafe mit Weizen."
+      "text": "Schafe lassen sich mit Weizen anlocken und züchten. Füttere dafür zwei erwachsene Schafe mit Weizen.",
+      "kinds": [
+        "procedure"
+      ]
     },
     {
       "id": "glass-smelting",
@@ -96,7 +102,10 @@
       "mod": "",
       "source": "glass",
       "terms": "glas glass sand schmelzen glasherstellung",
-      "text": "Für normales Glas Sand mit Brennstoff im normalen Ofen schmelzen. Dies beschreibt die Vanilla-Grundmechanik, keine geprüfte Mod-Anpassung."
+      "text": "Für normales Glas Sand mit Brennstoff im normalen Ofen schmelzen. Dies beschreibt die Vanilla-Grundmechanik, keine geprüfte Mod-Anpassung.",
+      "kinds": [
+        "procedure"
+      ]
     },
     {
       "id": "piston-moving",
@@ -104,7 +113,10 @@
       "mod": "",
       "source": "piston",
       "terms": "kolben piston pistons klebekolben klebriger redstone",
-      "text": "Ein Kolben bewegt Blöcke mit einem Redstone-Signal. Ein klebriger Kolben zieht einen Block beim Einfahren zurück. Die normale Verschiebegrenze beträgt 12 Blöcke."
+      "text": "Ein Kolben bewegt Blöcke mit einem Redstone-Signal. Ein klebriger Kolben zieht einen Block beim Einfahren zurück. Die normale Verschiebegrenze beträgt 12 Blöcke.",
+      "kinds": [
+        "explanation"
+      ]
     },
     {
       "id": "claims-protection",
@@ -112,7 +124,10 @@
       "mod": "openpartiesandclaims",
       "source": "opac",
       "terms": "claims claim chunks chunk gebiet kisten kiste schützen schutz",
-      "text": "Claims in Open Parties and Claims schützen beanspruchte Chunks und damit auch Kisten im Gebiet. Besitzer können Ausnahmen für Spielergruppen festlegen. Tatsächliche Rechte sind hier unbekannt."
+      "text": "Claims in Open Parties and Claims schützen beanspruchte Chunks und damit auch Kisten im Gebiet. Besitzer können Ausnahmen für Spielergruppen festlegen. Tatsächliche Rechte sind hier unbekannt.",
+      "kinds": [
+        "explanation"
+      ]
     },
     {
       "id": "claims-menu",
@@ -120,7 +135,10 @@
       "mod": "openpartiesandclaims",
       "source": "opac",
       "terms": "claims claim chunks chunk gebiet kisten kiste schützen schutz zugriff zugriffsrechte mitglieder mitgliedern party parties partys opac menü menue",
-      "text": "Öffne die Claim-Einstellungen über die in der Steuerung belegte Mod-Taste. Mit Xaeros World Map geht dies auch per Rechtsklick auf die Karte. Welches Menü hast du geöffnet?"
+      "text": "Öffne die Claim-Einstellungen über deine Mod-Taste und prüfe dort Schutz und Zugriffsrechte. Mit Xaeros World Map erreichst du Claims auch per Rechtsklick auf die Karte.",
+      "kinds": [
+        "procedure"
+      ]
     },
     {
       "id": "backpack-purpose",
@@ -128,7 +146,10 @@
       "mod": "travelersbackpack",
       "source": "backpack",
       "terms": "travelersbackpack travelers backpack rucksack rucksäcke inventar stauraum",
-      "text": "Travelers Backpack bietet einen tragbaren, erweiterbaren Rucksack für zusätzliche Gegenstände. Kapazität und Bedienung hängen von der Version ab."
+      "text": "Travelers Backpack bietet einen tragbaren, erweiterbaren Rucksack für zusätzliche Gegenstände. Kapazität und Bedienung hängen von der Version ab.",
+      "kinds": [
+        "explanation"
+      ]
     },
     {
       "id": "voice-menu",
@@ -136,7 +157,11 @@
       "mod": "voicechat",
       "source": "voicechat",
       "terms": "voicechat voice sprachchat mikrofon mikro microphone ton audio hören hören v taste",
-      "text": "Simple Voice Chat bietet Nähe-Sprachchat. Öffne sein Menü normalerweise mit V, bei geänderter Belegung über die Steuerung. Dort findest du Einstellungen und einen Mikrofontest."
+      "text": "Simple Voice Chat bietet Nähe-Sprachchat. Öffne sein Menü normalerweise mit V, bei geänderter Belegung über die Steuerung. Dort findest du Einstellungen und einen Mikrofontest.",
+      "kinds": [
+        "procedure",
+        "explanation"
+      ]
     },
     {
       "id": "voice-groups",
@@ -144,7 +169,10 @@
       "mod": "voicechat",
       "source": "voicechat",
       "terms": "voicechat voice sprachchat gruppe gruppen gruppenchat gruppenmenü group",
-      "text": "Für ein Gespräch ausserhalb der Hörweite öffne im Voice-Chat-Menü die Gruppenansicht. Eine neue Gruppe erhält einen Namen und wird über die Schaltfläche unten erstellt."
+      "text": "Für ein Gespräch ausserhalb der Hörweite öffne im Voice-Chat-Menü die Gruppenansicht. Eine neue Gruppe erhält einen Namen und wird über die Schaltfläche unten erstellt.",
+      "kinds": [
+        "procedure"
+      ]
     },
     {
       "id": "comparator-signals",
@@ -152,7 +180,10 @@
       "mod": "",
       "source": "comparator",
       "terms": "komparator comparator signalstärke signalstärken füllstand füllstände",
-      "text": "Ein Redstone-Komparator vergleicht Signalstärken oder subtrahiert das stärkste Seitensignal vom hinteren Signal. Er kann den Füllstand einer Truhe als Signal ausgeben."
+      "text": "Ein Redstone-Komparator vergleicht Signalstärken oder subtrahiert das stärkste Seitensignal vom hinteren Signal. Er kann den Füllstand einer Truhe als Signal ausgeben.",
+      "kinds": [
+        "explanation"
+      ]
     },
     {
       "id": "bee-honey",
@@ -160,7 +191,10 @@
       "mod": "",
       "source": "bee",
       "terms": "biene bienen bienennest bienenstock honig honey bee bees nest",
-      "text": "Ein brennendes Lagerfeuer unter dem Nest beruhigt die Bienen, wenn du Honig sammelst. Zum sicheren Umsetzen des Nests nutze nachts ein Werkzeug mit Behutsamkeit."
+      "text": "Ein brennendes Lagerfeuer unter dem Nest beruhigt die Bienen, wenn du Honig sammelst. Zum sicheren Umsetzen des Nests nutze nachts ein Werkzeug mit Behutsamkeit.",
+      "kinds": [
+        "procedure"
+      ]
     },
     {
       "id": "parrot-taming",
@@ -168,7 +202,11 @@
       "mod": "",
       "source": "parrot",
       "terms": "papagei papageien parrots parrot",
-      "text": "Papageien lassen sich mit Samen zähmen. Anders als viele friedliche Tiere können sie nicht gezüchtet werden."
+      "text": "Papageien lassen sich mit Samen zähmen. Anders als viele friedliche Tiere können sie nicht gezüchtet werden.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
     },
     {
       "id": "party-rights",
@@ -176,7 +214,10 @@
       "mod": "openpartiesandclaims",
       "source": "opac",
       "terms": "party parties partys opac mitglieder mitgliedern zugriff zugriffsrechte",
-      "text": "Partys in Open Parties and Claims bündeln Spieler. Claim-Besitzer können ihrer Party oder Spielergruppen Zugriff erlauben. Aktuelle Rechte und Serverlimits sind hier unbekannt."
+      "text": "Partys in Open Parties and Claims bündeln Spieler. Claim-Besitzer können ihrer Party oder Spielergruppen Zugriff erlauben. Aktuelle Rechte und Serverlimits sind hier unbekannt.",
+      "kinds": [
+        "explanation"
+      ]
     }
   ]
 }
