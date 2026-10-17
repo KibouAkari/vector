@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-17 — Public mod source inventory after failed independent model probes (PR #69)
+
+- Owner4B import/integrity/preservation passed but full quality failed: two timeouts and fabricated cows/sheep/glass. Eleven calls, exact totals NULL after2 unknowns; known1522 input/284 output, warm median7.906s, no cloud/activation/messages, verified unload/cleanup and unchanged production. Preserve inactive candidate; no repeat model download or guard relaxation.
+- Run the same verified public GGUF with checksum-pinned official CPU llama.cpp light b11706 binaries in scratch. Two ungrounded questions also produced false mechanics; one supplied-source reading probe answered correctly. Different hardware/sampler means no owner latency claim or complete native-root-cause conclusion. Three actual scratch invocations, no production calls/data or deployment; one successful case does not qualify general QA.
+- Add owner-run read-only public Fabric source inventory: bounded fixed metadata entry, reviewed ID allowlist, safe version/license fields, canonical public publisher roots only, explicit duplicate/missing/unknown coverage and production fingerprints. No source fetch, model/DB call, config/player/world read, nested archive traversal, service action or backup change. Public source candidates require author/license/version review before generic offline retrieval; no hardcoded test-answer promotion.
+- Eight synthetic tests cover URL privacy/normalization, bounded root metadata, duplicate coverage, symlinks/non-regular files and operation scope. Add CI coverage and update project handoff with exact evidence and pending grounded-QA/least-privilege rollout work. General mode remains OFF; native welcome/recreation and nightly backup gates unchanged.
+
 ## 2026-10-17 — Test a pinned non-thinking 4B candidate after native/raw failures (PR #68)
 
 - Owner PR #67 minimal controls gave identical wrong text/token counts for every chat/raw pair in English/German. Eight calls, exact260 input/520 output, no unknowns/cloud/messages, cold4.712s/warm median5.700s; production unchanged, verified unload/cleanup. Do not present a template swap or speed-only success as a fix.
