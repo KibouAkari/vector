@@ -284,9 +284,11 @@ def nginx_site():
 def verify_assets():
     for name, expected in ASSETS.items():
         # Real host HTTPS route, exact bytes, no redirects or insecure TLS.
-        raw = run('curl', '--silent', '--show-error', '--fail', '--noproxy', '*', '--max-time', '20',
-                  '--resolve', DOMAIN + ':443:127.0.0.1', URL + name)
-        if sha(raw) != expected: raise RuntimeError('PUBLIC_ASSET_HTTPS_MISMATCH')
+        for origin in (True, False):
+            args = ['curl', '--silent', '--show-error', '--fail', '--noproxy', '*', '--max-time', '20']
+            if origin: args += ['--resolve', DOMAIN + ':443:127.0.0.1']
+            raw = run(*args, URL + name)
+            if sha(raw) != expected: raise RuntimeError('ORIGIN_ASSET_MISMATCH' if origin else 'PUBLIC_ASSET_HTTPS_MISMATCH')
     run('curl', '--silent', '--show-error', '--fail', '--noproxy', '*', '--max-time', '20',
         '--resolve', DOMAIN + ':443:127.0.0.1', 'https://' + DOMAIN + '/api/health')
 
