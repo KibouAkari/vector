@@ -17,7 +17,7 @@ REPO=ROOT/'github/vector'
 PYTHON='sha256:eca0b83a886fcc9952ef13755853ef63134e5c76733d40564460398776c92dd7'
 APP_IMAGES=('sha256:5a2ee0f4b1b169114da5608a8a33f0ca08ce00c4016873208fa1d5518901f87d',
     'sha256:8d4645d72630974981ceb9985332473d41f03563b9a8f52a2b808f63387ec9cd')
-NAMES=('vector-app','vector-worker','vector-runner','vector-postgres','vector-redis','vector-privacy-ner','vector-local-inference','fegcraft-updated')
+NAMES=('vector-app','vector-worker','vector-runner','vector-postgres','vector-redis','vector-privacy-ner','vector-local-inference','fegcraft-updated','vector-fegcraft-assistant')
 
 # The real shared production CPU lock stays on one read-only PostgreSQL session.
 # The isolated Python adapter must not receive production DB credentials.
@@ -112,7 +112,7 @@ def fingerprint():
     values=json.loads(command('docker','inspect',*NAMES))
     result={v['Name']:dict(id=v['Id'],image=v['Image'],running=v['State']['Running'],started=v['State']['StartedAt'],networks=sorted(v['NetworkSettings']['Networks'])) for v in values}
     if set(result)!={'/'+n for n in NAMES} or not all(v['running'] for v in result.values()):raise RuntimeError('Production is not ready.')
-    for path in ('/opt/vector/docker-compose.yml','/opt/fegcraft-updated/docker-compose.yml'):
+    for path in ('/opt/vector/docker-compose.yml','/opt/fegcraft-updated/docker-compose.yml','/root/vector-workspace/releases/vector-fegcraft-install-20261017T125904Z-4fdeaf/compose.json'):
         result[path]=hashlib.sha256(Path(path).read_bytes()).hexdigest()
     return result
 
