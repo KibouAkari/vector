@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-17 — Installed vanilla recipe answers and isolated HTTP qualification (PR #51)
+
+- Owner v3 inventory passed: 357 installed archives examined, 9,987 recipe documents, 153 identical archives skipped, 180,452 entries inspected, production unchanged, zero model/cloud calls/messages. It also found historical 1.21.4 cache assets; inventory success does not establish active recipe precedence.
+- Build a bounded supported crafting catalog only from the observed 26.2 game JAR, checking its full SHA-256 and embedded version. Reject duplicate resources, unsafe/oversized inputs and unknown conditions; retain unsupported counts. No game assets or owner report are committed.
+- Add deterministic shaped/shapeless quantities, alternatives and row formatting with an explicit Minecraft 26.2 base-recipe label and unverified mod-adjustment notice. Recipes are routed before the optional model in the configured assistant; the service entrypoint always supplies a recipe handler so missing catalogs cannot send recipes to Qwen. The existing Assistant constructor remains backwards compatible for old callers.
+- Add owner-run isolated catalog/private-HMAC-HTTP qualification, retaining a private candidate catalog. The pinned unprivileged container has no external network or credentials; it checks three recipes, signature/private-topic boundaries, ignored ordinary chat, missing catalog, replay/rate limits and fresh synthetic statistics with no model calls or real chat messages.
+- Replace the growing historical handoff with a compact current-state runbook, preserving an immutable Git history link, owner instructions, live baseline, open issues and qualification boundaries.
+- Local checks: nine parser/catalog/routing tests, two real HTTP harness tests, eleven existing runtime tests and four legacy model-evaluation tests pass. The three observed public base documents also format correctly locally. Actual server catalog/HTTP qualification and final Minecraft installation/relay delivery remain pending. No app rebuild/release or announcement is performed by this change.
+
+
 ## 2026-10-17 — Deduplicate recipe archives and retain partial evidence (PR #50)
 
 - Owner v2 preflight reached 11,430 recipe documents and 200,093 archive entries, then stopped at the global metadata cap while production remained unchanged. Candidate/effective recipe coverage was not established.

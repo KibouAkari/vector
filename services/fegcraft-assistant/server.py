@@ -10,6 +10,7 @@ import threading
 import time
 
 from runtime import Assistant, LocalKnowledge, State
+from recipes import RecipeBook
 
 
 class Service(ThreadingHTTPServer):
@@ -112,10 +113,14 @@ def main():
         if not dsn:
             raise RuntimeError('MISSING_LOCAL_SLOT')
         knowledge = LocalKnowledge(dsn)
-    assistant = Assistant(State('/state/events.sqlite', key), '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json', knowledge)
+    # Always intercept recipe questions, including when no qualified catalog is
+    # mounted. Missing/unsupported recipes must never go to the small model.
+    recipes = RecipeBook.load('/inputs/recipes.json') if os.environ.get('VECTOR_FEGCRAFT_RECIPES') == '1' else RecipeBook()
+    assistant = Assistant(State('/state/events.sqlite', key), '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json', knowledge, recipes)
     with Service(('0.0.0.0', 8090), assistant, key) as service:
         service.serve_forever(poll_interval=0.5)
 
 
 if __name__ == '__main__':
     main()
+

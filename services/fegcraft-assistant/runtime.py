@@ -124,9 +124,10 @@ def number(value, unit):
 
 
 class Assistant:
-    def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None):
+    def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None, recipes=None):
         self.state, self.stats_dir, self.usercache = state, stats_dir, usercache
         self.mod_file, self.knowledge = mod_file, knowledge
+        self.recipes = recipes
 
     def handle(self, payload):
         if not isinstance(payload, dict) or set(payload) != {'principal', 'name', 'event', 'message'}:
@@ -151,6 +152,8 @@ class Assistant:
             answer = 'dazu gebe ich keine administrativen oder vertraulichen Auskünfte.'
         else:
             answer = self.stat_answer(question)
+            if answer is None and self.recipes is not None:
+                answer = self.recipes.answer(question)
             if answer is None:
                 mods = self.mods()
                 if re.search(r'welche.*mods|mod.?liste|installierte.*mods', question, re.I):
@@ -228,3 +231,4 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
