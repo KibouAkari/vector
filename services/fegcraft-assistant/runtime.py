@@ -1,4 +1,5 @@
 """Local-only public Minecraft assistant. Never loads private Vector memory."""
+from collections import OrderedDict
 from contextlib import contextmanager
 import hashlib
 import hmac
@@ -7,6 +8,8 @@ from pathlib import Path
 import re
 import sqlite3
 import time
+import threading
+import unicodedata
 import urllib.request
 from urllib.parse import urlparse
 import uuid
@@ -148,11 +151,91 @@ def unknown_player_target(question, people):
     return any(match[1] not in known for frame in frames for match in re.finditer(frame, question))
 
 
+class ModHelp:
+    """Reviewed Carry On controls, with short per-author enum-only context.
+
+    Source: author's Carry On instructions, https://tschipp.ch/ (2026-10-17).
+    No public chat history, arbitrary prompts or player names are retained.
+    """
+    def __init__(self, clock=time.monotonic, ttl=180, capacity=256):
+        self.clock, self.ttl, self.capacity = clock, ttl, capacity
+        self.context = OrderedDict()
+        self.lock = threading.Lock()
+
+    def clear(self, scope):
+        with self.lock:
+            self.context.pop(scope, None)
+
+    def prior(self, scope):
+        with self.lock:
+            now = self.clock()
+            for key in list(self.context):
+                if self.context[key][1] <= now:
+                    del self.context[key]
+            value = self.context.get(scope)
+            return value[0] if value else None
+
+    def remember(self, scope, target):
+        with self.lock:
+            self.context.pop(scope, None)
+            self.context[scope] = (target, self.clock() + self.ttl)
+            while len(self.context) > self.capacity:
+                self.context.popitem(last=False)
+
+    def answer(self, question, mods, scope):
+        q = unicodedata.normalize('NFKC', question).casefold()
+        explicit = bool(re.search(r'\bcarry[ -]?on\b', q))
+        villager = bool(re.search(r'\bvill[ai]gers?\b|\bdorfbewohner\w*', q))
+        entity = villager or bool(re.search(r'\b(?:mob|mobs|tier|tiere|kuh|huhn|schaf|baby)\b', q))
+        block = bool(re.search(r'\b(?:kiste|truhe|ofen|block|spawner)\b', q))
+        pickup = bool(re.search(r'auf(?:sammeln|heben|nehmen)|hochheben|(?:auf|hoch)zuheben|\btragen\b|mitnehmen|\btransportier\w*|\buf(?:hebe|neh|näh|nä|samml)\w*|\bnim\w*\b.*\buf\b|\b(?:nehm|nimm|heb|sammel)\w*\b.{0,100}\b(?:auf|hoch)\b', q))
+        put_down = bool(re.search(r'absetzen|abstellen|hinstellen|ablegen|wieder.*(?:runter|ab)|\babsetze\b|\babstelle\b', q))
+        trouble = bool(re.fullmatch(r'(?:und\s+)?(?:das\s+)?(?:geht|klappt|funktioniert|gaht|goht|funzt)(?:\s+es)?\s+(?:leider\s+)?(?:nicht|nöd|ned|nit|net)[.!? ]*', q))
+        hand = bool(re.fullmatch(r'(?:und\s+)?(?:welche|was für eine)\s+h(?:and|ände)[?! .]*|(?:auch\s+)?(?:die\s+)?nebenhand[?! .]*', q))
+        success = bool(re.fullmatch(r'(?:ja\s+|jo\s+)?(?:danke|super|hat geklappt|klappt|geht jetzt|funktioniert jetzt)[.! ]*', q))
+        previous = self.prior(scope)
+        # Only short, recognised followups can inherit a previous topic.
+        inherited = previous is not None and (trouble or hand or success or put_down)
+        if not explicit and not (pickup and (entity or block)) and not inherited:
+            self.clear(scope)
+            if trouble:
+                return 'was genau klappt nicht? Nenne den Gegenstand oder die Mod und was beim Versuch passiert.'
+            if villager and re.search(r'wie|kann|hilfe|problem', q):
+                return 'möchtest du den Villager aufheben, transportieren oder mit ihm handeln?'
+            return None
+        installed = mods() if callable(mods) else mods
+        if 'carryon' not in installed:
+            self.clear(scope)
+            return 'Carry On ist hier nicht als installiert erfasst. Meinst du das Aufheben mit einer Mod oder den Transport mit Boot oder Lore?'
+        target = ('villager' if villager else 'entity' if entity else 'block' if block else previous or 'object')
+        if success:
+            self.clear(scope)
+            return 'gern! Schön, dass es geklappt hat.'
+        if re.search(r'claim|geschützt|geschuetzt|fremd|erlaubnis', q):
+            self.remember(scope, target)
+            return 'in fremden Claims kann das Aufheben gesperrt sein. Bitte den Besitzer um Erlaubnis; den Schutz solltest du nicht umgehen.'
+        if trouble or (explicit and re.search(r'nicht|nöd|ned|problem', q)):
+            self.remember(scope, target)
+            return 'prüfe auch die Nebenhand, etwa ein Schild. Stehst du direkt davor und nutzt du die in der Steuerung belegte Carry-On-Taste? Passiert nichts oder öffnet sich ein Menü?'
+        if hand:
+            self.remember(scope, target)
+            return 'beide Hände müssen leer sein: Haupt- und Nebenhand. Lege also auch ein Schild oder eine Fackel aus der Nebenhand weg.'
+        if put_down:
+            self.remember(scope, target)
+            return 'zum Absetzen mit Carry On rechtsklicken. Wähle eine freie Stelle direkt vor dir. Falls es nicht klappt: Was trägst du gerade und was passiert?'
+        self.remember(scope, target)
+        noun = {'villager': 'den kleinen Villager', 'entity': 'das kleine Tier oder den Mob',
+                'block': 'die Truhe oder den Block', 'object': 'das Objekt'}[target]
+        return ('mit Carry On normalerweise beide Hände leeren, die Schleichtaste halten (standardmässig Shift) '
+                'und ' + noun + ' rechts anklicken. Zum Absetzen rechtsklicken. Bei Problemen sag mir, was passiert.')
+
+
 class Assistant:
     def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None, recipes=None):
         self.state, self.stats_dir, self.usercache = state, stats_dir, usercache
         self.mod_file, self.knowledge = mod_file, knowledge
         self.recipes = recipes
+        self.mod_help = ModHelp()
 
     def handle(self, payload):
         base = {'principal', 'name', 'event', 'message'}
@@ -179,12 +262,17 @@ class Assistant:
             return {'status': admitted}
         greeting, question = addressed
         prefix = greeting.capitalize() + ' ' + name + ', '
+        scope = (source, principal)
         if not question:
+            self.mod_help.clear(scope)
             answer = 'ich helfe bei Minecraft-Fragen, Mods und gespeicherten Statistiken.'
         elif PRIVATE.search(question):
+            self.mod_help.clear(scope)
             answer = 'dazu gebe ich keine administrativen oder vertraulichen Auskünfte.'
         else:
-            answer = self.stat_answer(question, block_items)
+            answer = self.mod_help.answer(question, self.mods, scope)
+            if answer is None:
+                answer = self.stat_answer(question, block_items)
             if answer is None and self.recipes is not None:
                 answer = self.recipes.answer(question)
             if answer is None:
@@ -202,7 +290,7 @@ class Assistant:
                     except Exception:
                         answer = 'die lokale Antwort ist gerade nicht verfügbar. Bitte versuche es später erneut.'
                 else:
-                    answer = 'dafür habe ich hier noch keine geprüfte Antwort. Ich kann gespeicherte Statistiken, Mod-IDs und Grundrezepte nachschlagen.'
+                    answer = 'welche Aktion oder welcher Gegenstand macht dir Probleme? Nenne bitte die Mod oder beschreibe kurz, was du versucht hast.'
         # Deterministic responses use the same presentation/command boundary.
         return {'status': 'answered', 'text': safe_answer(prefix + answer)}
 
