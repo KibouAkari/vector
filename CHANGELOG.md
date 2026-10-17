@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-17 — Deduplicate recipe archives and retain partial evidence (PR #50)
+
+- Owner v2 preflight reached 11,430 recipe documents and 200,093 archive entries, then stopped at the global metadata cap while production remained unchanged. Candidate/effective recipe coverage was not established.
+- Hash installed archives before traversal and scan identical root/nested archive content only once, retaining SHA-256 provenance aliases for cached/copied dependencies. Conflicting content is still inspected separately; identical content does not establish active pack order.
+- Separate the unchanged 200,000-entry per-archive cap from a 1,000,000-entry global unique-traversal budget and a 50,000-recipe budget. Retain depth, live-payload, total-read/hash, time, file/path and duplicate-member guards.
+- Save already captured target variants, source hashes, schemas, versions and work counters after a later failure. Missing targets and incomplete traversal remain explicit and cannot pass candidate/effective qualification, even if all three target recipes were found.
+- Fifteen synthetic regressions pass, including content-cache aliases, independent metadata/recipe limits and a real private failure report that retains targets without promoting incomplete coverage. Installed v3 inventory, effective recipe precedence and actual channel integration remain pending; no app release, model call, restart or announcement.
+
+
 ## 2026-10-17 — Bounded deeper recipe archives and useful failure evidence (PR #49)
 
 - Owner recipe preflight stopped at NESTING_LIMIT, with production unchanged and no activation. The original two-level archive traversal was insufficient; installed recipe coverage is still unknown.
