@@ -44,7 +44,8 @@ class Qualification(unittest.TestCase):
                     capture = root / 'releases/vector-fegcraft-bridge-evaluation-synthetic'
                     capture.mkdir()
                     (capture / 'result.json').write_text(json.dumps({'passed': case != 'failed', 'revision': 'b' * 40 if case == 'revision' else 'a' * 40,
-                        'discord_channel_bot_replay_and_block_registry_passed': case != 'discord', 'statistics_dialogue_tests_passed': case != 'dialogue'}))
+                        'statistics_dialogue_tests_passed': case != 'dialogue',
+                        'discord_channel_bot_replay_and_block_registry_passed': case != 'discord'}))
                     activated[0] = True
                     if case == 'compose':
                         compose.write_text('changed')

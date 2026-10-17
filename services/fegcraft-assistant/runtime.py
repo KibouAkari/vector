@@ -177,7 +177,7 @@ class Assistant:
                     except Exception:
                         answer = 'die lokale Antwort ist gerade nicht verfügbar. Bitte versuche es später erneut.'
                 else:
-                    answer = 'ich beantworte hier Fragen zu Minecraft, Mods und gespeicherten Statistiken.'
+                    answer = 'dafür habe ich hier noch keine geprüfte Antwort. Ich kann gespeicherte Statistiken, Mod-IDs und Grundrezepte nachschlagen.'
         # Deterministic responses use the same presentation/command boundary.
         return {'status': 'answered', 'text': safe_answer(prefix + answer)}
 
