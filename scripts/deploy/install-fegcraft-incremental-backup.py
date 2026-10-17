@@ -101,7 +101,7 @@ def install():
         target=BASE/'backup_minecraft.py'
         if read(BASE/'backup_minecraft.sh')!=shell or read(target) not in (old,HOLD,engine):
             raise RuntimeError('INCREMENTAL_EXISTING_BACKUP_CHANGED')
-        if CRON.exists() and read(CRON)!=CRON_CONTENT:raise RuntimeError('INCREMENTAL_CRON_FILE_ALREADY_EXISTS')
+        if CRON.exists() and read(CRON) not in (CRON_CONTENT,b'# VECTOR_DISABLED '+CRON_CONTENT):raise RuntimeError('INCREMENTAL_CRON_FILE_ALREADY_EXISTS')
         directory=ROOT/'releases'/('vector-incremental-backup-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+secrets.token_hex(3))
         directory.mkdir(mode=0o700);print('Einrichtung und private Originalsicherung: '+str(directory),flush=True)
         atomic(directory/'backup.before.py',read(target));atomic(directory/'backup.before.sh',shell)
@@ -140,6 +140,10 @@ def install():
             if config.get('version')!=2 or not re.fullmatch('[a-f0-9]{64}',config.get('id','')):raise RuntimeError('INCREMENTAL_REPOSITORY_INVALID')
             atomic(owner,(json.dumps({'schema':1,'repository_id':config['id']})+'\n').encode())
         config=json.loads(read(owner));actual=json.loads(run(restic('cat','config')))
+        for path in (password,owner):
+            if path.stat().st_uid!=0 or path.stat().st_mode&0o077:raise RuntimeError('INCREMENTAL_PRIVATE_FILE_PERMISSIONS')
+        if set(config)!={'schema','repository_id'} or config['schema']!=1 or not re.fullmatch('[a-f0-9]{64}',config.get('repository_id','')):
+            raise RuntimeError('INCREMENTAL_OWNER_METADATA_INVALID')
         if actual.get('id')!=config.get('repository_id') or actual.get('version')!=2:raise RuntimeError('INCREMENTAL_REPOSITORY_ID_CHANGED')
         # New job becomes active only after dependencies and the owned repo work.
         atomic(target,engine,0o700);atomic(CRON,CRON_CONTENT,0o644)

@@ -123,6 +123,19 @@ def verify_bind(game):
         if raw.decode() != expected: raise RuntimeError('BACKUP_LIVE_DATA_DIFFERS_FROM_HOST')
 
 
+def verify_source_links():
+    # rsync/restic preserve links rather than following arbitrary host paths.
+    # Refuse an apparently complete backup when mod/player data points outside
+    # the owned server directory. The path stays private.
+    for directory, dirs, files in os.walk(BASE, followlinks=False):
+        parent=Path(directory)
+        dirs[:]=[name for name in dirs if parent/name != BACKUPS]
+        for name in [*dirs,*files]:
+            path=parent/name
+            if path.is_symlink() and not path.resolve().is_relative_to(BASE):
+                raise RuntimeError('INCREMENTAL_EXTERNAL_SOURCE_LINK_REQUIRES_REVIEW')
+
+
 STATE = BACKUPS / '.vector-incremental'
 STAGE = STATE / 'staging'
 REPOSITORY = STATE / 'repository'
@@ -212,6 +225,7 @@ def backup():
     for path in (BASE,DATA,DATA/'world',DATA/'world/level.dat',BASE/'docker-compose.yml'):safe(path)
     if not (DATA/'world/level.dat').is_file() or not (BASE/'docker-compose.yml').is_file(): raise RuntimeError('INCREMENTAL_SOURCE_MISSING')
     game=inspect(); verify_bind(game)
+    verify_source_links()
     if game.get('HostConfig',{}).get('AutoRemove') or game['State'].get('Restarting'): raise RuntimeError('INCREMENTAL_GAME_STATE_INVALID')
     needed=20*1024**3 if (STATE/'seeded').is_file() else max(20*1024**3,required_space())
     if shutil.disk_usage(BACKUPS).free < needed: raise RuntimeError('INCREMENTAL_LOW_SPACE_BEFORE_STOP')

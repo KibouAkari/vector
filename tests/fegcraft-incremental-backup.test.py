@@ -72,6 +72,10 @@ class Incremental(unittest.TestCase):
         self.game['Mounts'].append({'Destination':'/extra'})
         with self.assertRaisesRegex(RuntimeError,'MOUNT_CHANGED'):m.verify_bind(self.game)
         self.assertEqual(self.events,[])
+    def test_external_mod_data_links_refuse_before_stop(self):
+        (self.data/'external-mod').symlink_to('/outside-server-data')
+        with self.assertRaisesRegex(RuntimeError,'EXTERNAL_SOURCE_LINK'):m.verify_source_links()
+        self.assertEqual(self.events,[])
     @unittest.skipUnless(shutil.which('restic'),'Restic absent locally; CI installs it for real restore verification')
     def test_actual_restic_two_snapshots_deduplicate_and_restore_all_important_data(self):
         m.PASSWORD.write_text('synthetic-only\n');os.chmod(m.PASSWORD,0o600)
