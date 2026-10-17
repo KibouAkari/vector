@@ -9,7 +9,7 @@ import stat
 import zipfile
 
 ID = re.compile(r'minecraft:[a-z0-9_./-]{1,96}\Z')
-INTENT = re.compile(r'craft|rezept|recipe|herstell|wie (?:baue|baut|mache|macht|stelle|stellt)', re.I)
+INTENT = re.compile(r'\b(?:craft\w*|rezept\w*|recipe\w*|herstell\w*)|\bwie (?:baue|baut|mache|macht|stelle|stellt)', re.I)
 NAMES = {
     'minecraft:crafting_table': ('Werkbank', 'werkbank', 'crafting table'),
     'minecraft:furnace': ('Ofen', 'ofen', 'furnace'),

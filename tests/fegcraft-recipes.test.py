@@ -67,6 +67,7 @@ class RecipeTests(unittest.TestCase):
 
     def test_missing_or_ambiguous_recipe_is_explicit_and_non_recipe_is_untouched(self):
         self.assertIsNone(RecipeBook().answer('Wie funktioniert Redstone?'))
+        self.assertIsNone(RecipeBook().answer('Erkläre mir Minecraft und Redstone.'))
         self.assertIn('kein eindeutig', RecipeBook().answer('Rezept Trichter'))
         self.assertIn('kein eindeutig', RecipeBook(catalog()).answer('Rezept für ein unbekanntes Item'))
 
