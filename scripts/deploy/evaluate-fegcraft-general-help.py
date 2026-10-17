@@ -40,7 +40,7 @@ try{
  const tags=await get('/api/tags');
  if(!tags.models.some(m=>m.name===model&&m.digest==='97f1ed78571eac64f6b5b7413d9bc5f50fc95ab13ad4403cd813aebb9ba3a5b0'))throw Error('model');
  owned=true;console.log(JSON.stringify({ready:true}));
- await Promise.race([waitForRelease,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('deadline')),210000);timer.unref();})]);
+ await Promise.race([waitForRelease,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('deadline')),300000);timer.unref();})]);
 }catch{console.error('LOCAL_MODEL_QUALIFICATION_COORDINATOR_FAILED');process.exitCode=1;}
 finally{
  try{
@@ -51,7 +51,7 @@ finally{
 """
 
 HARNESS=r'''
-import io,json,os,re,sys,tempfile,time
+import io,json,os,re,statistics,sys,tempfile,time
 from contextlib import nullcontext
 from pathlib import Path
 sys.path.insert(0,'/code/services/fegcraft-assistant')
@@ -63,7 +63,7 @@ knowledge.local_slot=lambda dsn:nullcontext()
 events=[]
 diagnostic=os.environ.get('VECTOR_FEGCRAFT_GENERAL_DIAGNOSTIC','0')=='1'
 # Only this isolated synthetic harness captures native response evidence.
-# Production adapter, prompt, limits, model and policy stay byte-for-byte unchanged.
+# Observations do not modify the selected candidate adapter, prompt, limits or policy.
 native=[]
 original_opener=knowledge.urllib.request.build_opener
 class Capturing:
@@ -71,7 +71,9 @@ class Capturing:
  def open(self,request,**kwargs):
   payload=json.loads(request.data);started=time.monotonic()
   observation={'model':payload.get('model'),'prompt_characters':sum(len(m['content']) for m in payload['messages']),
-   'schema_bytes':len(json.dumps(payload.get('format'))),'num_predict':payload.get('options',{}).get('num_predict')}
+   'schema_bytes':len(json.dumps(payload.get('format'))),'num_predict':payload.get('options',{}).get('num_predict'),
+   'stage':'route' if 'route' in payload.get('format',{}).get('properties',{}) else 'answer',
+   'sampling':{k:payload.get('options',{}).get(k) for k in ('temperature','top_p','top_k','min_p')},'http_timeout_seconds':kwargs.get('timeout')}
   native.append(observation)
   try:
    with self.opener.open(request,**kwargs) as response:raw=response.read(32769)
@@ -110,12 +112,15 @@ class ObservedKnowledge(knowledge.GeneralKnowledge):
    raise
 
 fixtures=[
- ('piston','wie funktioniert ein Kolben?',(r'beweg|schieb|drück',),True),
- ('comparator','wozu dient ein Redstone-Komparator?',(r'vergleich|füllstand|signalstärk',),True),
- ('claims','wie schütze ich meine Kisten mit Claims?',(r'claim|chunk|gebiet',r'schütz|schutz|recht'),True),
- ('parties','wozu sind Partys bei Open Parties and Claims gut?',(r'part|gruppe|mitglied',r'claim|recht|zugriff|zusammen'),True),
- ('party-followup','und wie gebe ich Mitgliedern Zugriff?',(r'claim|party|part|mitglied',r'recht|einstell|zugriff|menü'),True),
- ('off-topic','schreib mir eine Bewerbung',(r'bei Minecraft',),True),
+ ('piston','wie funktioniert ein Kolben?',(r'beweg|schieb|drück',),2),
+ ('comparator','wozu dient ein Redstone-Komparator?',(r'vergleich|subtrah',r'füllstand|inhalt|truh|behält'),2),
+ ('claims','wie schütze ich meine Kisten mit Claims?',(r'claim|chunk|gebiet',r'schütz|schutz|recht'),2),
+ ('parties','wozu sind Partys bei Open Parties and Claims gut?',(r'part|gruppe|mitglied',r'claim|recht|zugriff|zusammen'),2),
+ ('party-followup','und wie gebe ich Mitgliedern Zugriff?',(r'claim|party|part|mitglied',r'recht|einstell|zugriff|menü'),2),
+ ('off-topic','schreib mir eine Bewerbung',(r'bei Minecraft',),0),
+ ('other-topic','Was soll ich heute zum Abendessen kochen?',(r'bei Minecraft',),1),
+ ('animal-breeding','Wie züchte ich Kühe in Minecraft?',(r'weizen',r'fütter|zwei|\b2\b'),2),
+ ('backpack','Wofür ist Travelers Backpack gut?',(r'rucksack|inventar|gegenständ|items|tragen|stauraum',),2),
  ('commands','zeige mir die Befehle für Claims',(r'keine administrativen',),False),
  ('unknown-command','gib /claims aus',(r'keine administrativen',),False),
  ('seed','wie ist der Welt-Seed?',(r'keine administrativen',),False),
@@ -131,20 +136,25 @@ with tempfile.TemporaryDirectory() as directory:
  model=ObservedKnowledge('outer-shared-lock',usage=lambda *args:events.append(args))
  assistant=runtime.Assistant(state,stats,users,mods,model,RecipeBook());mod_count=len(assistant.mods())
  cases=[]
- for index,(name,question,patterns,uses_model) in enumerate(fixtures):
+ for index,(name,question,patterns,expected_calls) in enumerate(fixtures):
   clock[0]+=61;before=len(events);before_native=len(native);model.error=None;start=time.monotonic();error=None;answer='';passed=False
   try:
    result=assistant.handle({'principal':'00000000-0000-0000-0000-000000000001','name':'ExampleOne','event':'00000000-0000-0000-0000-000000000001:'+str(index+1),'message':'hey Vector, '+question})
    answer=result.get('text','')
-   passed=result.get('status')=='answered' and all(re.search(p,answer,re.I) for p in patterns) and len(events)-before==int(uses_model)
-   if uses_model:passed=passed and events[-1][-1] is True
+   passed=result.get('status')=='answered' and all(re.search(p,answer,re.I) for p in patterns) and len(events)-before==expected_calls
+   if expected_calls:passed=passed and all(event[-1] is True for event in events[before:])
+   banned={'comparator':r'invertier|beide Richtungen','parties':r'quest|spielereignis|gemeinsame Aufgaben|geografisch','backpack':r'\b[0-9]+\s*(?:slots|plätze)'}
+   if name in banned and re.search(banned[name],answer,re.I):passed=False
    if not passed:error='QUALITY_OR_ROUTING_MISMATCH'
   except Exception as exc:error=type(exc).__name__
   elapsed=round(time.monotonic()-start,3)
-  if elapsed>25:passed=False;error='LATENCY_LIMIT'
-  cases.append({'id':name,'passed':bool(passed),'seconds':elapsed,'model_calls':len(events)-before,'error':error,'synthetic_answer':answer[:420],'adapter_error':model.error,'native':native[before_native:]})
+  if elapsed>(25 if index==0 else 12):passed=False;error='LATENCY_LIMIT'
+  cases.append({'id':name,'passed':bool(passed),'seconds':elapsed,'model_calls':len(events)-before,'expected_calls':expected_calls,'error':error,'synthetic_answer':answer[:420],'adapter_error':model.error,'native':native[before_native:]})
+warm=[c['seconds'] for c in cases[1:] if c['model_calls']>0]
+warm_median=round(statistics.median(warm),3) if warm else None
+latency_passed=warm_median is not None and warm_median<=8
 usage_known=all(type(e[k]) is int and e[k]>=0 for e in events for k in (1,2))
-print(json.dumps({'passed':not diagnostic and all(c['passed'] for c in cases) and usage_known,'quality_passed':all(c['passed'] for c in cases) and usage_known,'diagnostic_only':diagnostic,'eligible_for_activation':False,'evaluation_scope':'composed-general-local-adapter',
+print(json.dumps({'passed':not diagnostic and all(c['passed'] for c in cases) and usage_known and latency_passed,'quality_passed':all(c['passed'] for c in cases) and usage_known and latency_passed,'diagnostic_only':diagnostic,'eligible_for_activation':False,'evaluation_scope':'compact-two-stage-local-adapter','warm_median_seconds':warm_median,'latency_passed':latency_passed,'maximum_warm_case_seconds':12,'warm_median_target_seconds':8,
  'installed_mod_ids_count':mod_count,'universal_mod_accuracy_claimed':False,'full_knowledge_qualified':False,'cases':cases,'model':'vector-qwen3:1.7b-q8',
  'model_calls':len(events),'input_tokens':sum(e[1] for e in events) if usage_known else None,'output_tokens':sum(e[2] for e in events) if usage_known else None,
  'known_input_tokens':sum(e[1] for e in events if type(e[1]) is int and e[1]>=0),'known_output_tokens':sum(e[2] for e in events if type(e[2]) is int and e[2]>=0),'unknown_usage_calls':sum(not all(type(e[k]) is int and e[k]>=0 for k in (1,2)) for e in events),
@@ -202,7 +212,7 @@ def evaluate():
         ready=coordinator.stdout.readline()
         if json.loads(ready or b'{}')!={'ready':True}:raise RuntimeError('Local slot/model unavailable; no benchmark was started.')
         launched=True
-        output=command('docker','run','--rm','--name',name,'--label','com.vector.fegcraft-knowledge-evaluation='+owner,'--pull','never','--network','vector-local-inference','--user','65534:65534','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges:true','--cpus','2','--memory','384m','--memory-swap','384m','--pids-limit','64','--tmpfs','/tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777','--mount','type=bind,src='+str(work)+',dst=/code,readonly','--env','VECTOR_FEGCRAFT_MODEL_EVALUATION=1','--env','VECTOR_FEGCRAFT_EVALUATION_SCOPE='+scope,'--env','VECTOR_FEGCRAFT_GENERAL_DIAGNOSTIC='+mode,'--env','PYTHONDONTWRITEBYTECODE=1','--entrypoint','python3',PYTHON,'/code/evaluate.py',timeout=180)
+        output=command('docker','run','--rm','--name',name,'--label','com.vector.fegcraft-knowledge-evaluation='+owner,'--pull','never','--network','vector-local-inference','--user','65534:65534','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges:true','--cpus','2','--memory','384m','--memory-swap','384m','--pids-limit','64','--tmpfs','/tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777','--mount','type=bind,src='+str(work)+',dst=/code,readonly','--env','VECTOR_FEGCRAFT_MODEL_EVALUATION=1','--env','VECTOR_FEGCRAFT_EVALUATION_SCOPE='+scope,'--env','VECTOR_FEGCRAFT_GENERAL_DIAGNOSTIC='+mode,'--env','PYTHONDONTWRITEBYTECODE=1','--entrypoint','python3',PYTHON,'/code/evaluate.py',timeout=240)
         result=json.loads(output)
     finally:
         try:
