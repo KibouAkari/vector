@@ -139,7 +139,9 @@ def unknown_player_target(question, people):
         if candidate is None or candidate[1] not in known:
             return True
     record = r'(?:rekorde?halter|rekorde?|records?)'
-    player = article + r'(?:(?:spieler|spielerin|player)\s+)?([a-z0-9_]{1,16})\b'
+    if re.search(r'\b(?:wer|who)\s+(?:ist|hat|hält|haelt)\s+(?:(?:der|den|die|das|ein|einen)\s+)?' + record + r'\b', question):
+        return False
+    player = article + r'(?:(?:spieler|spielerin|player)\s+)?([a-z0-9_]+)\b'
     frames = (r'\b(?:ist|war|wird|kann|hat|hält|haelt)\s+' + player + r'\s+(?:(?:ein(?:e[nr]?)?|den|die|das)\s+)?' + record,
               r'\b' + player + r'\s+ist\s+(?:ein\s+)?' + record,
               r'\b' + record + r'\b.*?\b(?:hat|hält|haelt)\s+' + player)
