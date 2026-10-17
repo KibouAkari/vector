@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-17 — Audit actual local model artifacts before further inference (PR #66)
+
+- Actual PR #65 comparison completed with0/16 combined passing cases across both existing models and both formats. Qwen/Hermes fabricated basic Minecraft mechanics; Hermes also timed out/was slow. Known usage2189 input/557 output plus3 unknown attempts means exact totals NULL. No cloud fee, activation/messages or production change; cleanup/unload verified.
+- Record that positive keyword matches are not factual verification: the wrong Hermes glass text matched terms but failed overall. No model is selected or qualified; keep broad mode OFF and preserve existing quality gates.
+- Add a zero-inference read-only artifact audit: native version, fixed registration/source identities, bounded previously observed public templates with empty system fields, selected architecture/tokenizer metadata and actual registered GGUF SHA-256/size. Only two fixed blob paths are read, with symlink/size checks, internal90s reader timeout/110s outer cap and visible progress. No recursive scan, raw system text/config/credential dump, download/import/repair, DB call or model load/unload.
+- Synthetic tests cover digest/size/source mismatch, timeouts, template/system withholding, bounded metadata, fixed command scope and production drift. Add CI test/syntax coverage and update handoff with observed comparison and next immutable audit.
+- No app/game/assistant image/config changes, restart/recreation, backup action or native welcome. File-integrity success is not model-quality qualification; actual audit/template review remains pending.
+
+
 ## 2026-10-17 — Separate local model knowledge from output-format failures (PR #65)
 
 - Owner PR #64 run passed routing and latency (warm median4.79s) and all private/native cases, but still hallucinated cow/sheep breeding and gave a vague party followup. Exact native usage1872 input/334 output across10 calls, no unknowns/cloud fees; production unchanged, cleanup/unload verified, broad mode OFF.
