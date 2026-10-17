@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -76,6 +77,11 @@ class Incremental(unittest.TestCase):
         (self.data/'external-mod').symlink_to('/outside-server-data')
         with self.assertRaisesRegex(RuntimeError,'EXTERNAL_SOURCE_LINK'):m.verify_source_links()
         self.assertEqual(self.events,[])
+    def test_background_copy_stops_before_disk_reserve_is_exhausted(self):
+        with patch.object(m.shutil,'disk_usage',return_value=SimpleNamespace(free=1024)):
+            with self.assertRaisesRegex(RuntimeError,'LOW_SPACE_DURING_COPY'):
+                m.long_run(['python3','-c','import time; time.sleep(30)'],deadline=time.monotonic()+5,diagnostic=self.state/'reserve.log')
+        self.assertTrue(self.game['State']['Running']);self.assertEqual(self.events,[])
     @unittest.skipUnless(shutil.which('restic'),'Restic absent locally; CI installs it for real restore verification')
     def test_actual_restic_two_snapshots_deduplicate_and_restore_all_important_data(self):
         m.PASSWORD.write_text('synthetic-only\n');os.chmod(m.PASSWORD,0o600)

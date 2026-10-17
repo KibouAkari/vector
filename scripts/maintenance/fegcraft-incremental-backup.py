@@ -153,6 +153,8 @@ def long_run(args, *, deadline, diagnostic, background=False, accepted=(0,)):
         process = subprocess.Popen(args,stdout=output,stderr=subprocess.STDOUT,start_new_session=True)
         try:
             while process.poll() is None:
+                if shutil.disk_usage(BACKUPS).free < 10*1024**3:
+                    raise RuntimeError('INCREMENTAL_LOW_SPACE_DURING_COPY')
                 if CANCELLED or time.monotonic() >= deadline:
                     raise RuntimeError('INCREMENTAL_CANCELLED' if CANCELLED else 'INCREMENTAL_PHASE_TIMEOUT')
                 if time.monotonic() - last >= 30:
