@@ -1,5 +1,18 @@
 # Vector project handoff
 
+## Current owner step: deduplicated recipe inventory (PR #50, 2026-10-17)
+
+This supersedes the v1/v2 retry instructions below. Owner v2 execution at cd0fb872c8acd2e62402489fe4ed9c78d13d86ba reached 11,430 recipe documents and 200,093 archive entries, then failed ENTRY_COUNT_LIMIT. It had read 92,321,866 member bytes and hashed 236,924,969 archive bytes; the reported location was a Fabric API nested dependency. Evidence: /root/vector-workspace/releases/vector-fegcraft-recipes-20261017T105029Z-9b109c/result.json. Production remained unchanged; candidate/effective coverage and activation were false. The report did not preserve actual target documents. Do not infer ingredients or a verified source version from these counters.
+
+PR #50 fixes archive accounting rather than just ignoring the failure. Installed top-level archives are hashed before metadata traversal, and identical root/nested JAR content is scanned once, with separate SHA-256 aliases recording every skipped copy's source. Nonidentical archives and conflicting recipes still get inspected. Alias provenance does not prove that a cached or bundled copy is active on the live server. The global entry budget is now 1,000,000 for unique traversals, each archive is independently capped at 200,000 entries, and recipes at 50,000. The 8-level/256 MiB live-payload and total read/hash/time/file/member guards remain. Total Python memory includes buffers and metadata beyond the logical live-payload budget.
+
+A failure now writes already captured target documents, schemas, version/source hashes and aliases into the private result.json, alongside the error and diagnostic_progress. archive_traversal_complete and candidate_inventory_complete stay false on any failure even when missing_targets is empty. effective_recipes_qualified remains false on successful inventories too. This lets a later bounded failure provide useful recipe evidence without claiming complete or active coverage.
+
+Next owner entrypoint: current/vector-fegcraft-recipe-preflight-v3.py from the final reviewed PR #50 pin, using VECTOR_FEGCRAFT_REV and the existing runner after origin/main ancestry and exact content/syntax checks. Preserve both old failed scripts/reports. The diagnostic performs no model call, restart, configuration edit, install or message; it writes only private evidence. Fifteen offline tests pass; actual v3 server execution remains pending.
+
+After the installed asset report, implement deterministic supported recipe answers with verified effective source precedence, then finish service/addon packaging and real Minecraft callback/linked Discord delivery qualification. The owner-authorized one-time introduction remains pending. Do not repeat app staging/release or ungrounded model recipe tests. Live app fe12d19 / image 8d4645d / fresh-statistics release and HOSTNAME=0.0.0.0 remain the qualified baseline recorded below.
+
+
 ## Current owner step: recipe inventory retry (PR #49, 2026-10-17)
 
 The owner executed the PR #48 recipe preflight at dd7b5fddd141714977725e17ca27ec31fc89c738. It failed with NESTING_LIMIT, not a model or production fault. Evidence: /root/vector-workspace/releases/vector-fegcraft-recipes-20261017T102149Z-600e76/result.json; production_unchanged true, candidate_inventory_complete false, effective_recipes_qualified false, production_activated false. No installed recipe documents were reported by that failed run. Preserve it and the failed current/vector-fegcraft-recipe-preflight.py.

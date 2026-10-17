@@ -23,7 +23,9 @@ RESOURCE = re.compile(r'data/([a-z0-9_.-]+)/recipes?/([a-z0-9_./-]+)\.json\Z')
 NESTED = re.compile(r'META-INF/(?:versions/[^/]+|jars)/[^/]+\.jar\Z')
 MAX_ARCHIVE = 512 * 1024 * 1024
 MAX_JSON = 128 * 1024
-MAX_ENTRIES = 200_000
+MAX_ENTRIES_PER_ARCHIVE = 200_000
+MAX_ENTRIES = 1_000_000
+MAX_RECIPES = 50_000
 MAX_FILES = 512
 MAX_VISITED = 20_000
 MAX_READ = 1024 * 1024 * 1024
@@ -93,12 +95,31 @@ class Inventory:
         self.sources = []
         self.live_nested = 0
         self.location = None
+        self.scanned = {}
+        self.aliases = []
+        self.archive_count = 0
 
     def progress(self):
         return {'recipe_documents_seen': self.recipe_count,
                 'entries_seen': self.entries, 'member_bytes_read': self.bytes_read,
                 'archive_bytes_hashed': self.bytes_hashed,
+                'unique_archives_scanned': len(self.scanned),
+                'identical_archives_skipped': len(self.aliases),
                 'location': self.location}
+
+    def scan_unique(self, stream, source, digest, depth=0):
+        self.check()
+        previous = self.scanned.get(digest)
+        if previous is not None:
+            if len(self.aliases) >= 8192:
+                raise Refused('ARCHIVE_ALIAS_LIMIT')
+            self.aliases.append({'archive': source, 'sha256': digest,
+                                 'same_content_as': previous['source']})
+            return previous['has_recipes']
+        with zipfile.ZipFile(stream) as archive:
+            found = self.scan(archive, source, depth)
+        self.scanned[digest] = {'source': source, 'has_recipes': found}
+        return found
 
     def check(self):
         if time.monotonic() > self.deadline:
@@ -120,6 +141,9 @@ class Inventory:
 
     def scan(self, archive, source, depth=0):
         entries = archive.infolist()
+        self.location = {'archive': source, 'member': None, 'depth': depth}
+        if len(entries) > MAX_ENTRIES_PER_ARCHIVE:
+            raise Refused('ARCHIVE_ENTRY_COUNT_LIMIT')
         self.entries += len(entries)
         if self.entries > MAX_ENTRIES:
             raise Refused('ENTRY_COUNT_LIMIT')
@@ -145,8 +169,8 @@ class Inventory:
                 self.live_nested += len(content)
                 try:
                     with io.BytesIO(content) as buffer:
-                        with zipfile.ZipFile(buffer) as child:
-                            found = self.scan(child, source + '!' + name, depth + 1) or found
+                        found = self.scan_unique(buffer, source + '!' + name,
+                                                 hashlib.sha256(content).hexdigest(), depth + 1) or found
                 finally:
                     self.live_nested -= len(content)
                     del content
@@ -162,6 +186,8 @@ class Inventory:
                 continue
             found = True
             self.recipe_count += 1
+            if self.recipe_count > MAX_RECIPES:
+                raise Refused('RECIPE_COUNT_LIMIT')
             recipe_type = value.get('type', 'missing')
             if not isinstance(recipe_type, str) or not re.fullmatch(r'[a-z0-9_.:-]{1,128}', recipe_type):
                 raise Refused('RECIPE_TYPE_INVALID')
@@ -185,28 +211,26 @@ class Inventory:
         return found
 
     def run(self, base):
-        count = 0
         for path in files(base):
-            count += 1
+            self.archive_count += 1
             self.check()
             before = path.stat()
             fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
             with os.fdopen(fd, 'rb') as stream:
                 if signature(os.fstat(stream.fileno())) != signature(before):
                     raise Refused('ARCHIVE_CHANGED')
-                with zipfile.ZipFile(stream) as archive:
-                    found = self.scan(archive, path.relative_to(base).as_posix())
-                if found:
-                    self.bytes_hashed += before.st_size
-                    if self.bytes_hashed > MAX_HASH:
-                        raise Refused('HASH_LIMIT')
-                    stream.seek(0)
-                    digest = hashlib.sha256()
-                    while block := stream.read(1024 * 1024):
-                        self.check()
-                        digest.update(block)
-                    self.sources.append({'archive': path.relative_to(base).as_posix(),
-                                         'sha256': digest.hexdigest(), 'bytes': before.st_size})
+                self.bytes_hashed += before.st_size
+                if self.bytes_hashed > MAX_HASH:
+                    raise Refused('HASH_LIMIT')
+                digest = hashlib.sha256()
+                while block := stream.read(1024 * 1024):
+                    self.check()
+                    digest.update(block)
+                source = path.relative_to(base).as_posix()
+                self.sources.append({'archive': source, 'sha256': digest.hexdigest(),
+                                     'bytes': before.st_size})
+                stream.seek(0)
+                self.scan_unique(stream, source, digest.hexdigest())
                 if signature(os.fstat(stream.fileno())) != signature(before):
                     raise Refused('ARCHIVE_CHANGED')
             if signature(path.stat()) != signature(before):
@@ -221,11 +245,16 @@ class Inventory:
                     pack_count += 1
                     if pack_count > MAX_VISITED:
                         raise Refused('DATAPACK_COUNT_LIMIT')
+        return self.result(complete=True, pack_count=pack_count)
+
+    def result(self, complete=False, pack_count=None):
         targets = sorted(self.targets.values(), key=lambda x: (x['id'], x['sha256']))
         missing = sorted(TARGETS - {item['id'] for item in targets})
-        return {'candidate_inventory_complete': not missing, 'missing_targets': missing,
-                'archives_examined': count, 'recipe_documents': self.recipe_count,
+        return {'candidate_inventory_complete': complete and not missing,
+                'archive_traversal_complete': complete, 'missing_targets': missing,
+                'archives_examined': self.archive_count, 'recipe_documents': self.recipe_count,
                 'source_archives': self.sources, 'versions': self.versions,
+                'identical_archive_aliases': self.aliases,
                 'recipe_types': dict(sorted(self.types.items())), 'schemas': self.schemas,
                 'target_variants': targets, 'datapack_entries': pack_count,
                 'active_pack_order_verified': False, 'effective_recipes_qualified': False,
@@ -271,6 +300,7 @@ def main():
         try:
             report.update(inventory.run(BASE))
         except Exception as exc:
+            report.update(inventory.result())
             error = str(exc) if isinstance(exc, Refused) else type(exc).__name__
         finally:
             report['diagnostic_progress'] = inventory.progress()

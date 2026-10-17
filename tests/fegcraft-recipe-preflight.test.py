@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
+from contextlib import redirect_stdout
 import warnings
 import zipfile
 
@@ -163,6 +165,78 @@ class RecipePreflightTests(unittest.TestCase):
             with self.assertRaises(zipfile.BadZipFile):
                 inventory.scan(archive, 'synthetic.jar')
         self.assertEqual(inventory.live_nested, 0)
+
+    def test_identical_cached_and_nested_archives_are_scanned_once_with_aliases(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            leaf = base / 'mods/leaf.jar'
+            jar(leaf, recipes())
+            jar(base / 'server.jar', [('META-INF/jars/leaf.jar', leaf.read_bytes())])
+            cache = base / '.fabric/cached/server.jar'
+            cache.parent.mkdir(parents=True)
+            cache.write_bytes((base / 'server.jar').read_bytes())
+            inventory = m.Inventory()
+            result = inventory.run(base)
+            self.assertTrue(result['candidate_inventory_complete'])
+            self.assertEqual(result['archives_examined'], 3)
+            self.assertEqual(result['recipe_documents'], 3)
+            self.assertEqual(inventory.entries, 4)
+            self.assertEqual(len(result['identical_archive_aliases']), 2)
+            self.assertEqual(inventory.progress()['unique_archives_scanned'], 2)
+            self.assertEqual(inventory.progress()['identical_archives_skipped'], 2)
+            self.assertTrue(all(x['sha256'] and x['same_content_as'] for x in result['identical_archive_aliases']))
+
+    def test_per_archive_metadata_limit_remains_independent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            jar(base / 'server.jar', recipes())
+            inventory = m.Inventory()
+            with mock.patch.object(m, 'MAX_ENTRIES_PER_ARCHIVE', 2):
+                with self.assertRaisesRegex(m.Refused, 'ARCHIVE_ENTRY_COUNT_LIMIT'):
+                    inventory.run(base)
+            self.assertEqual(inventory.progress()['location']['archive'], 'server.jar')
+            self.assertFalse(inventory.result()['candidate_inventory_complete'])
+
+    def test_recipe_limit_remains_independent_of_archive_metadata_limit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            jar(base / 'server.jar', recipes())
+            inventory = m.Inventory()
+            with mock.patch.object(m, 'MAX_RECIPES', 2):
+                with self.assertRaisesRegex(m.Refused, 'RECIPE_COUNT_LIMIT'):
+                    inventory.run(base)
+            self.assertFalse(inventory.result()['archive_traversal_complete'])
+            self.assertEqual(len(inventory.result()['target_variants']), 2)
+
+    def test_late_global_limit_saves_found_targets_without_claiming_complete_coverage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = root / 'data'
+            jar(base / 'server.jar', recipes())
+            different = recipes()
+            different[0][1]['result']['count'] = 9
+            jar(base / 'mods/different.jar', different)
+            (root / 'releases').mkdir()
+            (root / '.chat-release.lock').touch()
+            with mock.patch.object(m, 'ROOT', root), mock.patch.object(m, 'BASE', base), \
+                    mock.patch.object(m, 'MAX_ENTRIES', 5), \
+                    mock.patch.object(m, 'production_state', return_value='unchanged'), \
+                    mock.patch.dict(m.os.environ, {'VECTOR_FEGCRAFT_REV': '0' * 40}), \
+                    redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(m.Refused, 'CANDIDATE_INVENTORY_INCOMPLETE'):
+                    m.main()
+            output = next((root / 'releases').glob('*/result.json'))
+            result = json.loads(output.read_text())
+            self.assertEqual(result['error'], 'ENTRY_COUNT_LIMIT')
+            self.assertTrue(result['production_unchanged'])
+            self.assertFalse(result['passed'])
+            self.assertFalse(result['archive_traversal_complete'])
+            self.assertFalse(result['candidate_inventory_complete'])
+            self.assertFalse(result['effective_recipes_qualified'])
+            self.assertEqual(len(result['target_variants']), 3)
+            self.assertEqual(result['missing_targets'], [])
+            self.assertEqual(result['diagnostic_progress']['location']['archive'], 'mods/different.jar')
+            self.assertEqual(output.stat().st_mode & 0o777, 0o600)
 
     def test_archive_modified_during_scan_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
