@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 — Qualified fresh-statistics release and recipe diagnostics
+
+- Owner app staging passed at b9d34da3f07b91f27de1800aba214d507922b760, including new completed-versus-in-flight statistics dedup and native record-holder/refresh followups. Exact qualified image: sha256:8d4645d72630974981ceb9985332473d41f03563b9a8f52a2b808f63387ec9cd. Production remained unchanged; no new app build is requested for release.
+- The real local Qwen knowledge test failed the three crafting fixtures while piston/comparator/repeater and all five deterministic policy/mod cases passed. Six local calls used 1017 input and 425 output tokens; API fees/cloud calls were zero, cleanup/unload passed and production remained unchanged. The old report did not capture the answers, so factual errors versus wording/parser/output-filter rejection remain unresolved. Knowledge remains disabled.
+- Prepare a guarded reuse-image native privacy qualification and app-only release against the repaired HOSTNAME/Compose baseline, with fresh backups and rollback. Strengthen health for every app IPv4/loopback interface and the actual host Nginx HTTPS response, validating/reloading Nginx only if ingress requires it. Retain the seven other production container identities and preserve the repaired listener setting.
+- Add a bounded three-recipe diagnostic mode with actual synthetic model/adapter responses, termination and rejection metadata. Passing this subset cannot qualify full Minecraft knowledge or production DB privileges. No game install, introduction or cloud call is performed by that diagnostic.
+- Local verification: nine release/fingerprint/ingress/pipeline regressions and four evaluation-harness regressions pass, plus syntax checks. Owner native privacy requalification, app release and recipe diagnostic remain pending.
+
 ## 2026-10-17 — Fresh complete statistics and Minecraft qualification (PR #46)
 
 - Recognize uninterrupted native statistics followups including all record holders and explicit refresh. Resolve intent from user requests rather than assistant facts; topic switches and mixed/export/admin tasks retain their normal routes. Every completed native statistics request now rereads the fixed sources; completed native jobs are excluded from the short completion replay while queued/running retries still share their job. Ordinary completion dedup remains intact.

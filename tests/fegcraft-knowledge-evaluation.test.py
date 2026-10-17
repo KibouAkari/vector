@@ -10,7 +10,8 @@ spec=importlib.util.spec_from_file_location('knowledge_evaluation',ROOT/'scripts
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 
 class KnowledgeEvaluationTests(unittest.TestCase):
-    def harness(self,wrong=False):
+    def harness(self,wrong=False,scope="full"):
+        self.scope=scope
         # An offline transport fixture exercises the real adapter/parser/policy.
         setup='''import io,json,os,urllib.request
 os.environ['VECTOR_FEGCRAFT_MODEL_EVALUATION']='1'
@@ -28,6 +29,7 @@ class Opener:
   return io.BytesIO(json.dumps({'done':True,'done_reason':'stop','model':payload['model'],'message':{'content':json.dumps({'answer':answer})},'prompt_eval_count':100,'eval_count':10}).encode())
 urllib.request.build_opener=lambda *args:Opener()
 '''.replace('WRONG',str(wrong))
+        setup+='\nos.environ["VECTOR_FEGCRAFT_EVALUATION_SCOPE"]='+repr(scope)+'\n'
         source=m.HARNESS.replace("sys.path.insert(0,'/code/services/fegcraft-assistant')",'sys.path.insert(0,'+repr(str(ROOT/'services/fegcraft-assistant'))+')')
         result=subprocess.run([sys.executable,'-c',setup+source],capture_output=True,text=True,timeout=10)
         self.assertEqual(result.returncode,0,result.stderr)
@@ -43,6 +45,14 @@ urllib.request.build_opener=lambda *args:Opener()
         result=self.harness(True);self.assertFalse(result['passed'])
         self.assertTrue(all(not case['passed'] for case in result['cases'][:6]))
         self.assertTrue(all(case['passed'] for case in result['cases'][6:]))
+    def test_recipe_diagnostic_is_bounded_and_cannot_qualify_full_knowledge(self):
+        result=self.harness(scope='recipe-diagnostic')
+        self.assertEqual(result['evaluation_scope'],'recipe-diagnostic');self.assertEqual(result['model_calls'],3)
+        self.assertTrue(result['passed']);self.assertFalse(result['full_knowledge_qualified'])
+        self.assertEqual([case['id'] for case in result['cases']],['crafting-table','furnace','hopper'])
+        self.assertTrue(all(case['synthetic_model_text'] and case['synthetic_answer'] for case in result['cases']))
+        self.assertTrue(all(len(case['synthetic_model_text'][0])<=2048 for case in result['cases']))
+
     def test_coordinator_is_syntax_valid_and_releases_the_real_shared_slot(self):
         result=subprocess.run(['node','--check','--input-type=module'],input=m.COORDINATOR,capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
@@ -51,3 +61,4 @@ urllib.request.build_opener=lambda *args:Opener()
         self.assertNotIn('OPENAI',m.COORDINATOR)
 
 if __name__=='__main__':unittest.main()
+

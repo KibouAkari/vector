@@ -117,6 +117,9 @@ jobs:
           python3 tests/privacy-ner-service-evaluation.test.py
           python3 tests/privacy-api-evaluation.test.py
           python3 tests/chat-controls-release.test.py
+          python3 tests/fresh-statistics-release.test.py
+          bash -n scripts/deploy/release-fresh-statistics.sh
+          python3 -m py_compile scripts/deploy/qualify-and-release-fresh-statistics.py
           bash -n scripts/deploy/release-chat-controls.sh
           python3 -m py_compile scripts/deploy/qualify-and-release-chat-controls.py
           python3 tests/privacy-release-preflight.test.py
