@@ -535,6 +535,7 @@ def release():
     script = '#!/bin/sh\nset -eu\nexec python3 ' + shlex.quote(str(release_dir / 'release.py')) + ' --rollback ' + shlex.quote(str(release_dir)) + '\n'
     atomic(release_dir / 'rollback.sh', script.encode(), 0, 0, 0o700)
     save(release_dir, plan)
+    print('Rollback: ' + str(release_dir / 'rollback.sh'), flush=True)
     try:
         protected(plan)
         # Publish/validate HTTPS before any game downtime or enabling the head.
@@ -574,7 +575,9 @@ def release():
     except Exception:
         print('Update failed. Attempt guarded restoration; evidence retained.', flush=True)
         try: rollback(release_dir)
-        except Exception: print('Automatic rollback could not complete. Use the recorded rollback after diagnosing its guard.', file=sys.stderr)
+        except Exception as recovery:
+            reason = str(recovery) if isinstance(recovery, RuntimeError) else type(recovery).__name__
+            print('Automatic rollback stopped: ' + reason + '. Rollback: ' + str(release_dir / 'rollback.sh'), file=sys.stderr)
         raise
 
 
