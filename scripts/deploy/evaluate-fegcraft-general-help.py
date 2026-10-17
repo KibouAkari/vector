@@ -243,7 +243,7 @@ def evaluate():
                 (folder/'coordinator-stderr.log').write_bytes(stderr[-8192:])
                 if coordinator.returncode:raise RuntimeError('Shared slot release or native unload was not verified.')
     if result is None:raise RuntimeError('Missing model evaluation result.')
-    result.update(revision=revision,production_unchanged=fingerprint()==before,cleanup_verified=True,weights_unloaded=True)
+    result.update(revision=revision,production_unchanged=fingerprint()==before,cleanup_verified=True,weights_unloaded=True,report_path=str(folder/'result.json'))
     result['passed']=result['passed'] and result['production_unchanged']
     result['diagnostic_completed']=diagnostic and result['production_unchanged']
     (folder/'result.json').write_text(json.dumps(result,indent=2)+'\n')
@@ -251,7 +251,7 @@ def evaluate():
     if not result['production_unchanged']:raise RuntimeError('Production changed during the isolated diagnostic.')
     if diagnostic:
         print('Diagnostic evidence collected. Failed model quality remains failed; no activation or gate relaxation.')
-        return
+        return result
     if not result['passed']:raise RuntimeError('Local knowledge quality gate failed; General local help remains disabled; no production activation.')
 
 def main():
@@ -266,5 +266,6 @@ if __name__=='__main__':
     except Exception as exc:
         print('ERROR:',str(exc) if isinstance(exc,RuntimeError) else type(exc).__name__)
         raise SystemExit(1)
+
 
 

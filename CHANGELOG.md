@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-17 — Separate local model knowledge from output-format failures (PR #65)
+
+- Owner PR #64 run passed routing and latency (warm median4.79s) and all private/native cases, but still hallucinated cow/sheep breeding and gave a vague party followup. Exact native usage1872 input/334 output across10 calls, no unknowns/cloud fees; production unchanged, cleanup/unload verified, broad mode OFF.
+- Add a diagnostic-only comparison of already installed digest-pinned Qwen1.7B/Hermes3 8B, each with the current schema or plain output. Same questions, prompt, sampling, public hints and independent display guards; include held-out glass knowledge. Collect template marker/hash summaries without exposing model system text. Optional missing model skips explicitly, digest drift aborts, no download/import or implicit model change.
+- Reuse the current isolated evaluator and actual read-only shared CPU coordinator per phase, preserving private-network read-only clients, exact/unknown metrics, cleanup/unload checks and unchanged-production evidence. Return diagnostic result/report path from the support evaluator without changing its full quality gate.
+- Test all four model/format combinations, hallucination/unsafe/truncation distinctions, timeout usage, missing/different manifests, CPU-coordinator syntax and cleanup failure. Add CI coverage. Changelog/handoff distinguish diagnosis from deployment or universal mod knowledge.
+- No production adapter, timeout, model, backup, Minecraft/container recreation, chat/welcome, privileged role or cloud change. Even a completed diagnostic cannot activate gameplay; actual comparison and later full adapter/role/driver qualification remain pending.
+
+
 ## 2026-10-17 — Current-subject local help and exact late usage (PR #64)
 
 - Owner's actual PR #63 full-model run removed timeouts/truncation but still failed vague party followup, dinner/game and cow/other routing, plus warm median 8.202s against an unchanged 8s target. Exact native usage 3079 input/258 output for 15 attempts; cloud fee zero, no activation, production unchanged, cleanup/unload verified.
