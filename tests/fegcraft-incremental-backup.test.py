@@ -109,6 +109,23 @@ class Installation(unittest.TestCase):
             link=folder/'link';link.symlink_to(target)
             with self.assertRaisesRegex(RuntimeError,'SYMLINK'):i.atomic(link,b'bad')
             self.assertEqual(target.read_bytes(),b'private')
+    @unittest.skipUnless(os.geteuid()==0,'Root ownership fixture is exercised locally')
+    def test_dependency_setup_failure_holds_old_entrypoint_without_game_operation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);base=root/'game';base.mkdir();backups=base/'backups';backups.mkdir();(root/'releases').mkdir()
+            target=base/'backup_minecraft.py';old=b'print("old offline job")\n';target.write_bytes(old)
+            shell=b'#!/bin/sh\nexec python3 backup_minecraft.py\n';(base/'backup_minecraft.sh').write_bytes(shell)
+            def command(args,**kwargs):
+                self.assertEqual(args[0],'git')
+                if args[-1].endswith('fegcraft-incremental-backup.py'):return b'print("new job")\n'
+                return shell if args[-1].endswith('.sh') else old
+            with patch.multiple(i,ROOT=root,BASE=base,BACKUPS=backups,STATE=backups/'.vector-incremental',CRON=root/'cron'),patch.object(i,'run',side_effect=command),patch.object(i,'pause_cron',return_value=1),patch.object(i.shutil,'which',return_value=None),patch.dict(os.environ,{'VECTOR_BACKUP_REV':'a'*40,'VECTOR_INSTALL_BACKUP_PACKAGES':'0'}):
+                with self.assertRaisesRegex(RuntimeError,'DEPENDENCIES_REQUIRE_SETUP_FLAG'):i.install()
+            self.assertEqual(target.read_bytes(),i.HOLD)
+            self.assertFalse((root/'cron').exists())
+            release=next((root/'releases').iterdir());self.assertEqual((release/'backup.before.py').read_bytes(),old)
+            self.assertTrue((release/'disable.sh').is_file())
+
     def test_disable_holds_job_and_keeps_archives(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);base=root/'game';base.mkdir();backups=base/'backups';backups.mkdir()
