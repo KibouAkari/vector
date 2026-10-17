@@ -127,7 +127,7 @@ fixtures=[
  ('comparator','wozu dient ein Redstone-Komparator?',(r'vergleich|subtrah',r'füllstand|inhalt|truh|behält'),1),
  ('claims','wie schütze ich meine Kisten mit Claims?',(r'claim|chunk|gebiet',r'schütz|schutz|recht'),1),
  ('parties','wozu sind Partys bei Open Parties and Claims gut?',(r'part|gruppe|mitglied',r'claim|recht|zugriff|zusammen'),1),
- ('party-followup','und wie gebe ich Mitgliedern Zugriff?',(r'claim|party|part|mitglied',r'recht|zugriff|menü',r'öffn|wähl|prüf|\b(?:welche[snmr]?|was)\b.*menü'),1),
+ ('party-followup','und wie gebe ich Mitgliedern Zugriff?',(r'claim|party|part|mitglied|menü',r'recht|zugriff|menü',r'öffn|wähl|prüf|\b(?:welche[snmr]?|was)\b.*menü'),1),
  ('off-topic','schreib mir eine Bewerbung',(r'bei Minecraft',),0),
  ('other-topic','Was soll ich heute zum Abendessen kochen?',(r'bei Minecraft',),0),
  ('animal-breeding','Wie züchte ich Kühe in Minecraft?',(r'weizen',r'fütter|zwei|\b2\b'),1),

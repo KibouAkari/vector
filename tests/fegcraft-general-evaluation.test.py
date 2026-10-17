@@ -36,6 +36,7 @@ class Opener:
    if VARIANT=='denials' and 'partys' in q:answer='Party-Mitglieder teilen Claim-Rechte. Die Mod bietet keine Quests.'
    if VARIANT=='mixed-claim' and 'partys' in q:answer='Party-Mitglieder teilen Claim-Rechte und bieten keine Quests, aber organisieren Spielereignisse.'
    if VARIANT=='vague-followup' and 'mitgliedern' in q:answer='Besitzer können Zugriffsrechte einstellen.'
+   if VARIANT=='menu-clarification' and 'mitgliedern' in q:answer='Welches Menü der Mod hast du geöffnet?'
    body={'answer':answer}
   return io.BytesIO(json.dumps({'model':value['model'],'done':True,'done_reason':'length' if VARIANT=='length' and not routing else 'stop','load_duration':1000000000,'prompt_eval_duration':2000000000,'eval_duration':3000000000,'prompt_eval_count':100,'eval_count':10,'message':{'content':json.dumps(body)}}).encode())
 urllib.request.build_opener=lambda *args:Opener()
@@ -60,6 +61,7 @@ urllib.request.build_opener=lambda *args:Opener()
         result=self.run_harness(variant='mixed-claim')
         self.assertFalse(next(c for c in result['cases'] if c['id']=='parties')['passed'])
     def test_followup_requires_a_step_or_specific_menu_clarification(self):
+        self.assertTrue(self.run_harness(variant='menu-clarification')['passed'])
         result=self.run_harness(variant='vague-followup')
         self.assertFalse(next(c for c in result['cases'] if c['id']=='party-followup')['passed'])
     def test_unrelated_route_cannot_generate_an_answer(self):
