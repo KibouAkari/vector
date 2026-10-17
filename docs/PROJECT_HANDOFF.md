@@ -184,7 +184,7 @@ Welcome behavior remains authorized once after final qualification/activation, n
 All new changes are source-only until the corresponding owner release/activation succeeds. Current production source remains 2f5b8e8 / image 5a2ee0f with persistent HOSTNAME=0.0.0.0 and the repaired Compose baseline.
 
 
-## Owner results for PR #46 and immediate next phase
+## Owner results for PR #46 and PR #47 release preparation
 
 Owner output 2026-10-17 02:16 Europe/Zurich confirms:
 - Fresh statistics staging PASSED at b9d34da3f07b91f27de1800aba214d507922b760, same tree as merged fe12d19bbc079074c51de8654e8c830b187923aa. Report /root/vector-workspace/releases/vector-fresh-statistics-staging-20261017T001416Z-b7e4cf/staging-result.json.

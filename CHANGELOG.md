@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-17 — Qualified fresh-statistics release and recipe diagnostics
+## 2026-10-17 — Qualified fresh-statistics release and recipe diagnostics (PR #47)
 
 - Owner app staging passed at b9d34da3f07b91f27de1800aba214d507922b760, including new completed-versus-in-flight statistics dedup and native record-holder/refresh followups. Exact qualified image: sha256:8d4645d72630974981ceb9985332473d41f03563b9a8f52a2b808f63387ec9cd. Production remained unchanged; no new app build is requested for release.
 - The real local Qwen knowledge test failed the three crafting fixtures while piston/comparator/repeater and all five deterministic policy/mod cases passed. Six local calls used 1017 input and 425 output tokens; API fees/cloud calls were zero, cleanup/unload passed and production remained unchanged. The old report did not capture the answers, so factual errors versus wording/parser/output-filter rejection remain unresolved. Knowledge remains disabled.
