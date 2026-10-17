@@ -25,20 +25,37 @@ METRIC_WORDS = {
     'distance': r'strecke|distanz|kilometer|gelaufen|gereist',
     'deaths': r'\btod(?:e|esfälle)?\b|gestorben|\bstarb\b|\bstarben\b|\bsterben\b|\bstirbt\b|\bdied\b|\bdeaths?\b',
 }
-PRIVATE = re.compile(r'seed|welt.?schlüssel|passw[oö]rt|password|api.?key|token|credential|/opt/|/etc/|rcon|docker|system.?prompt|ignore.*(?:instructions|regeln)|ignoriere.*(?:anweisung|regel)|gamemode|creative|kreativmodus|cheat|hack|operator|admin.?recht', re.I)
+PRIVATE = re.compile(r'seed|welt.?schlüssel|passw[oö]rt|password|api.?key|token|credential|/opt/|/etc/|rcon|docker|system.?prompt|ignore.*(?:instructions|regeln)|ignoriere.*(?:anweisung|regel)|gamemode|creative|kreativmodus|cheat|hack|operator|admin.?recht|betr[üu]g|betrueg|schummel|kreativ|spectator', re.I)
 MOD_INVENTORY = re.compile(r'welche.*mods|mod.?liste|installierte.*mods', re.I)
 TOPIC = re.compile(r'minecraft|redstone|craft|rezept|recipe|item|block|blöck|erz|verzauber|enchant|villager|dorfbewohner|creeper|zombie|skelett|enderman|nether|ender|farm|kolben|piston|trichter|hopper|komparator|comparator|repeater|verstärker|biom|elytra|rüstung|werkbank|schmelz|ofen|diamant|eisen|mod\b|mods\b|rucksack|backpack|claim|grab|graves|lag\b|fps\b|chunk|server.*(?:ruckel|problem|fehler)', re.I)
 UNSAFE_OUTPUT = re.compile(r'[/\\](?:give|op|deop|execute|gamemode|tp|teleport|seed|summon|kill|setblock|fill|sudo|bin|etc|opt)\b|\b(?:seed|passwort|password|api.?key|token|rcon|docker|curl|wget|bash|powershell|cheat|gamemode)\b|https?://|www\.|@|`|[<>\x00-\x1f\x7f]|\u00a7', re.I)
 
 
-def safe_answer(value):
+COMMAND_BOUNDARY = re.compile(r'\b(?:befehl\w*|kommando\w*|command\w*|konsole\w*|console\w*|spielmodus|kreativ\w*|creative|godmode|logausgabe\w*)\b|(?<![\w/])/+[a-z][\w:-]*', re.I)
+
+
+def request_forbidden(question):
+    text = unicodedata.normalize('NFKC', question)
+    text = ''.join(c for c in text if unicodedata.category(c) != 'Cf')
+    return bool(PRIVATE.search(text) or COMMAND_BOUNDARY.search(text) or
+                re.search(r'(?<!\w)(?:g\W*a\W*m\W*e\W*m\W*o\W*d\W*e|s\W*e\W*e\W*d|c\W*h\W*e\W*a\W*t)(?!\w)', text, re.I))
+
+
+def safe_display(value):
     if not isinstance(value, str) or not 1 <= len(value) <= 420:
         raise ValueError('INVALID_ANSWER')
-    if UNSAFE_OUTPUT.search(value) or any(ord(c) > 0xffff for c in value):
+    if re.search(r'https?://|www\.|@|`|[<>\x00-\x1f\x7f]|\u00a7', value, re.I) or any(ord(c) > 0xffff for c in value):
         raise ValueError('UNSAFE_ANSWER')
     if any(0x200b <= ord(c) <= 0x200f or 0x2028 <= ord(c) <= 0x202f or 0x2600 <= ord(c) <= 0x27ff for c in value):
         raise ValueError('UNSAFE_ANSWER')
     return value.strip()
+
+
+def safe_answer(value):
+    value = safe_display(value)
+    if UNSAFE_OUTPUT.search(value) or COMMAND_BOUNDARY.search(value):
+        raise ValueError('UNSAFE_ANSWER')
+    return value
 
 
 class State:
@@ -48,6 +65,13 @@ class State:
         with sqlite3.connect(self.path) as db:
             db.execute('CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, principal TEXT NOT NULL, stamp REAL NOT NULL, accepted INTEGER NOT NULL)')
             db.execute('CREATE INDEX IF NOT EXISTS events_stamp ON events(stamp)')
+
+    def model_usage(self, model, input_tokens, output_tokens, accepted):
+        # No prompts, responses, names or principal IDs; native tokens are not API fees.
+        with sqlite3.connect(self.path, timeout=1) as db:
+            db.execute('CREATE TABLE IF NOT EXISTS local_usage (stamp REAL, model TEXT, input_tokens INTEGER, output_tokens INTEGER, accepted INTEGER)')
+            db.execute('DELETE FROM local_usage WHERE stamp < ?', (self.clock() - 7 * 86400,))
+            db.execute('INSERT INTO local_usage VALUES (?, ?, ?, ?, ?)', (self.clock(), model, input_tokens, output_tokens, int(accepted)))
 
     def admit(self, principal, event):
         def hashed(value):
@@ -183,7 +207,7 @@ class ModHelp:
             while len(self.context) > self.capacity:
                 self.context.popitem(last=False)
 
-    def answer(self, question, mods, scope):
+    def answer(self, question, mods, scope, *, fallback=True):
         q = unicodedata.normalize('NFKC', question).casefold()
         if MOD_INVENTORY.search(q) or re.search(r'\b(?:craft\w*|rezept\w*|recipe\w*|herstell\w*)', q):
             self.clear(scope)
@@ -202,11 +226,11 @@ class ModHelp:
         inherited = previous is not None and (trouble or hand or success or put_down)
         if not explicit and not (pickup and (entity or block)) and not inherited:
             self.clear(scope)
-            if trouble:
+            if trouble and fallback:
                 return 'was genau klappt nicht? Nenne den Gegenstand oder die Mod und was beim Versuch passiert.'
             data_or_recipe = (any(re.search(pattern, q) for pattern in METRIC_WORDS.values())
                               or re.search(r'rekord|record|statistik|statistic|rangliste|\bstats\b|craft|rezept|recipe', q))
-            if villager and not data_or_recipe and re.search(r'\b(?:wie|kann|hilfe|problem)\b', q):
+            if fallback and villager and not data_or_recipe and re.search(r'\b(?:wie|kann|hilfe|problem)\b', q):
                 return 'möchtest du den Villager aufheben, transportieren oder mit ihm handeln?'
             return None
         installed = mods() if callable(mods) else mods
@@ -243,6 +267,10 @@ class Assistant:
         self.recipes = recipes
         self.mod_help = ModHelp()
 
+    def clear_knowledge(self, scope):
+        if getattr(self.knowledge, 'broad_topics', False):
+            self.knowledge.clear(scope)
+
     def handle(self, payload):
         base = {'principal', 'name', 'event', 'message'}
         if not isinstance(payload, dict) or not base <= set(payload) or set(payload) - base - {'source', 'block_items'}:
@@ -271,16 +299,21 @@ class Assistant:
         scope = (source, principal)
         if not question:
             self.mod_help.clear(scope)
+            self.clear_knowledge(scope)
             answer = 'ich helfe bei Minecraft-Fragen, Mods und gespeicherten Statistiken.'
-        elif PRIVATE.search(question):
+        elif request_forbidden(question):
             self.mod_help.clear(scope)
+            self.clear_knowledge(scope)
             answer = 'dazu gebe ich keine administrativen oder vertraulichen Auskünfte.'
         else:
-            answer = self.mod_help.answer(question, self.mods, scope)
+            has_general_context = bool(getattr(self.knowledge, 'broad_topics', False) and self.knowledge.prior(scope))
+            answer = self.mod_help.answer(question, self.mods, scope, fallback=not has_general_context)
             if answer is None:
                 answer = self.stat_answer(question, block_items)
             if answer is None and self.recipes is not None:
                 answer = self.recipes.answer(question)
+            if answer is not None:
+                self.clear_knowledge(scope)
             if answer is None:
                 mods = self.mods()
                 if MOD_INVENTORY.search(question):
@@ -289,10 +322,12 @@ class Assistant:
                         if len(', '.join(listed + [mod])) > 240:
                             break
                         listed.append(mod)
+                    self.clear_knowledge(scope)
                     answer = 'installierte Mod-IDs: ' + ', '.join(listed) + ('. Die Liste ist gekürzt.' if len(listed) < len(mods) else '.')
-                elif TOPIC.search(question) and self.knowledge is not None:
+                elif self.knowledge is not None and (TOPIC.search(question) or getattr(self.knowledge, 'broad_topics', False)):
                     try:
-                        answer = self.knowledge.answer(question, mods)
+                        answer = (self.knowledge.answer_scoped(question, mods, scope) if getattr(self.knowledge, 'broad_topics', False)
+                                  else self.knowledge.answer(question, mods))
                     except Exception:
                         answer = 'die lokale Antwort ist gerade nicht verfügbar. Bitte versuche es später erneut.'
                 elif TOPIC.search(question):
@@ -300,7 +335,8 @@ class Assistant:
                 else:
                     answer = 'bleiben wir bitte bei Minecraft. Welche Frage zum Spiel oder zu einer Mod hast du?'
         # Deterministic responses use the same presentation/command boundary.
-        return {'status': 'answered', 'text': safe_answer(prefix + answer)}
+        safe_answer(answer)
+        return {'status': 'answered', 'text': safe_display(prefix + answer)}
 
     def mods(self):
         value, _ = stats.read_json(self.mod_file, 32768)
