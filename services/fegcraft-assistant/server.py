@@ -109,16 +109,24 @@ def main():
     key = bytes.fromhex(token)
     # Knowledge remains disabled until a restricted DB role and actual-model
     # qualification are provided. Deterministic stats require no DB/model call.
+    state = State('/state/events.sqlite', key)
     knowledge = None
-    if os.environ.get('VECTOR_FEGCRAFT_KNOWLEDGE') == '1':
+    mode = os.environ.get('VECTOR_FEGCRAFT_KNOWLEDGE', '0')
+    if mode not in ('0', '1', '2'):
+        raise RuntimeError('INVALID_KNOWLEDGE_MODE')
+    if mode in ('1', '2'):
         dsn = Path('/run/secrets/vector_fegcraft_slot_dsn').read_text().strip()
         if not dsn:
             raise RuntimeError('MISSING_LOCAL_SLOT')
-        knowledge = LocalKnowledge(dsn)
+        if mode == '2':
+            from knowledge import GeneralKnowledge
+            knowledge = GeneralKnowledge(dsn, usage=state.model_usage)
+        else:
+            knowledge = LocalKnowledge(dsn)
     # Always intercept recipe questions, including when no qualified catalog is
     # mounted. Missing/unsupported recipes must never go to the small model.
     recipes = RecipeBook.load('/inputs/recipes.json') if os.environ.get('VECTOR_FEGCRAFT_RECIPES') == '1' else RecipeBook()
-    assistant = Assistant(State('/state/events.sqlite', key), '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json', knowledge, recipes)
+    assistant = Assistant(state, '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json', knowledge, recipes)
     with Service(('0.0.0.0', 8090), assistant, key) as service:
         service.serve_forever(poll_interval=0.5)
 
