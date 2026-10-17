@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 — Guarded combined FEGCraft dialogue and identity update (PR #56)
+
+- Owner's combined source qualification passed: both restart captures, extended statistics and linked-channel Discord boundaries, exact prepared logo assets, no production changes/model requests/messages. Reuse this evidence and captured JAR without another build.
+- Add an owner-run updater for the existing pilot: scope-checked persistent game pack environment and immutable image pin, exact public PNG/ZIP HTTPS routes, matching backend/addon/config, coherent original ownership manifest and preserved token/SQLite/welcome marker. Owner explicitly chose mandatory logo-pack acceptance; game recreation is required.
+- Check Nginx syntax and both origin/public-DNS HTTPS assets and app health before game downtime; retain seven other containers and app Compose. Validate fresh saved-data reads, private service/game health, new addon registration and applied pack settings after cutover. No app redeploy, separate Discord bot, inference, cloud request, console command or announcement.
+- Add durable private before/after backups and guarded automatic/manual feature rollback, including failed recreation recovery. Record/recheck assistant container ID, image, user, installation/Compose labels and read-only code mount before either container is stopped; refuse an unrelated replacement without downtime. Reject unknown changes and unsupported configuration layouts; completed repeats verify without restarting. Restore the feature before optional original pilot removal.
+- Test successful/repeated update and rollback, stopped/restarting/unhealthy repeat rejection, replaced-assistant rollback refusal, early/late failures, evidence/source drift, scope/backup guards, quoted Nginx structure, canonical Compose restrictions and resource-key restoration. Update CI, handoff and owner pack preference. Actual deployment, Discord gateway input and client logo/avatar remain pending owner execution/observation.
+
 ## 2026-10-17 — Natural statistics and existing-channel Discord questions (PR #55)
 
 - Owner confirms real addressed Minecraft statistics/recipe replies and Discord relay delivery. The new logo qualification passed without activation; retain its assets/evidence and delivered welcome marker.
