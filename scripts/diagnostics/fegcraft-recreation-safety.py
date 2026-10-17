@@ -48,6 +48,8 @@ def validate(game, profile, data):
     if len(volumes) != 1 or any(v.get('type') != 'bind' or v.get('source') != str(data)
             or v.get('target') != '/data' or v.get('read_only', False) is not False for v in volumes):
         raise RuntimeError('PERSISTENT_COMPOSE_DATA_MOUNT_DIFFERS')
+    if any(config.get(key) is not None for key in ('command', 'entrypoint', 'pre_start', 'post_start', 'pre_stop')):
+        raise RuntimeError('CUSTOM_STARTUP_REQUIRES_REVIEW')
     env = config.get('environment', {})
     running = dict(value.split('=', 1) for value in game['Config'].get('Env', []) if '=' in value)
     if env.get('VERSION') != '26.2' or running.get('VERSION') != '26.2':
@@ -58,7 +60,8 @@ def validate(game, profile, data):
     for key in ('REMOVE_OLD_MODS', 'REMOVE_OLD_CONFIGS', 'FORCE_WORLD_COPY', 'FORCE_REDOWNLOAD'):
         if any(str(source.get(key, '')).lower() not in ('', 'false', '0', 'none') for source in (env, running)):
             raise RuntimeError('DESTRUCTIVE_STARTUP_OPTION_REQUIRES_REVIEW')
-    for key in ('WORLD', 'MODPACK', 'GENERIC_PACK', 'PACKWIZ_URL', 'MODRINTH_MODPACK', 'FTB_MODPACK_ID'):
+    for key in ('WORLD', 'MODPACK', 'GENERIC_PACK', 'PACKWIZ_URL', 'MODRINTH_MODPACK', 'FTB_MODPACK_ID',
+                'PRE_START_SCRIPT', 'POST_START_SCRIPT', 'RCON_CMDS_STARTUP'):
         if env.get(key) or running.get(key): raise RuntimeError('STARTUP_DOWNLOAD_REQUIRES_REVIEW')
     for key in ('UID', 'GID'):
         if str(env.get(key, '1000')) != str(running.get(key, '1000')):

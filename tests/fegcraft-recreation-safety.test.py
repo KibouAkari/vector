@@ -25,7 +25,7 @@ class Persistence(unittest.TestCase):
             'volumes': [{'type': 'bind', 'source': str(data), 'target': '/data'}]}}}
         self.assertEqual(m.validate(game, profile, data), 'mc')
         cases = []
-        for key, value in (('VERSION', 'LATEST'), ('REMOVE_OLD_CONFIGS', 'true'), ('WORLD', 'remote.zip')):
+        for key, value in (('VERSION', 'LATEST'), ('REMOVE_OLD_CONFIGS', 'true'), ('WORLD', 'remote.zip'), ('PRE_START_SCRIPT', '/data/custom-start.sh')):
             config = copy.deepcopy(profile); config['services']['mc']['environment'][key] = value; cases.append((game, config))
         for change in ('anonymous', 'source', 'readonly', 'extra', 'stopped'):
             current = copy.deepcopy(game)
@@ -36,6 +36,7 @@ class Persistence(unittest.TestCase):
             if change == 'stopped': current['State']['Running'] = False
             cases.append((current, profile))
         config = copy.deepcopy(profile); config['services']['mc']['volumes'][0]['source'] = '/different/data'; cases.append((game, config))
+        config = copy.deepcopy(profile); config['services']['mc']['command'] = ['custom-start']; cases.append((game, config))
         for current, config in cases:
             with self.subTest(current=current, config=config), self.assertRaises(RuntimeError): m.validate(current, config, data)
 
@@ -55,6 +56,10 @@ class Persistence(unittest.TestCase):
             (directory / 'owner-welcome-v2.ready').unlink(); (directory / 'owner-welcome-v2.attempted').write_text('uncertain')
             self.assertFalse(w.arm(directory, 1000, 1000, boot))
             with self.assertRaises(RuntimeError): w.arm(directory, 1000, 1000, '../invalid')
+            (directory / 'owner-welcome-v2.attempted').unlink()
+            (directory / 'owner-welcome-v2.ready').symlink_to(legacy)
+            with self.assertRaises(RuntimeError): w.arm(directory, 1000, 1000, boot)
+            self.assertEqual(legacy.read_text(), 'old delivery')
 
 
 if __name__ == '__main__': unittest.main()

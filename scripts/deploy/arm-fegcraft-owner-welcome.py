@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Arm the explicitly owner-authorized second welcome; addon delivers after 15s."""
+"""Arm the explicitly owner-authorized second welcome; addon schedules delivery after 15s."""
 import fcntl
 import hashlib
 import json
@@ -84,7 +84,7 @@ def main():
     created = arm(directory, uid, gid, boot)
     if hashlib.sha256(legacy.read_bytes()).hexdigest() != before: raise RuntimeError('LEGACY_WELCOME_MARKER_CHANGED')
     print(json.dumps({'owner_welcome_armed': created, 'duplicate_request_ignored': not created,
-                      'native_vector_delivery': True, 'minimum_delay_after_ready_signal_seconds': 15,
+                      'delivery_route': 'native-vector-bridge', 'minimum_delay_after_ready_signal_seconds': 15,
                       'delivery_acknowledged': False, 'legacy_marker_retained': True,
                       'console_commands': 0, 'model_calls': 0, 'cloud_calls': 0}, indent=2))
 
