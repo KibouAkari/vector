@@ -144,6 +144,12 @@ jobs:
           python3 -m py_compile scripts/deploy/evaluate-privacy-review.py
           bash -n scripts/deploy/stage-privacy-review.sh
 
+      - name: Test Vector Minecraft identity assets and guarded qualification
+        run: |
+          python3 tests/fegcraft-identity.test.py
+          python3 tests/fegcraft-identity-qualification.test.py
+          python3 -m py_compile scripts/build-fegcraft-identity.py scripts/deploy/qualify-fegcraft-identity.py
+
       - name: Test local JSON ranking aggregation and cost metadata
         run: |
           node --test tests/server-json-rankings.test.mjs
@@ -230,5 +236,6 @@ jobs:
         run: |
           python3 scripts/build-fegcraft-addon.py
           python3 tests/fegcraft-flow.test.py
+
 
 

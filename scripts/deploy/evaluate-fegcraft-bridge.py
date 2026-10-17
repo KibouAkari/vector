@@ -25,7 +25,7 @@ COMMON_DIGEST = '4b0dee9f505d30129b003eae08866be543cddc7b5bc11b7b42bae6b1fb77d0a
 LABEL = 'com.vector.fegcraft-evaluation'
 PRODUCTION = ('fegcraft-updated', 'vector-app', 'vector-privacy-ner', 'vector-local-inference', 'vector-worker', 'vector-runner', 'vector-postgres', 'vector-redis')
 COMPOSE = (Path('/opt/fegcraft-updated/docker-compose.yml'), Path('/opt/vector/docker-compose.yml'))
-EXPORT = ('services/fegcraft-assistant', 'integrations/fegcraft-addon/src', 'tests/VectorAddonTest.java', 'tests/VectorAddonFlowTest.java', 'tests/fegcraft-flow.test.py', 'scripts/build-fegcraft-addon.py')
+EXPORT = ('services/fegcraft-assistant', 'integrations/fegcraft-addon/src', 'tests/VectorAddonTest.java', 'tests/VectorAddonFlowTest.java', 'tests/fegcraft-flow.test.py', 'scripts/build-fegcraft-addon.py', 'scripts/build-fegcraft-identity.py', 'public/vector-assets/brand/vector-mark.svg')
 
 
 LOG_LIMIT = 128 * 1024
@@ -322,3 +322,4 @@ if __name__ == '__main__':
     except Exception as failure:
         print('ERROR:', str(failure) if isinstance(failure, RuntimeError) else type(failure).__name__, file=sys.stderr)
         raise SystemExit(1)
+
