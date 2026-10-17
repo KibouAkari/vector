@@ -44,14 +44,18 @@ def validate(game, profile, data):
             or m.get('Destination') != '/data' or m.get('RW') is not True for m in mounts):
         raise RuntimeError('GAME_MOUNTS_REQUIRE_PERSISTENCE_REVIEW')
     config = profile.get('services', {}).get(service, {})
+    if any(config.get(key) for key in ('tmpfs', 'volumes_from', 'configs', 'secrets', 'devices', 'use_api_socket')):
+        raise RuntimeError('ADDITIONAL_COMPOSE_MOUNTS_REQUIRE_REVIEW')
     volumes = config.get('volumes', [])
     if len(volumes) != 1 or any(v.get('type') != 'bind' or v.get('source') != str(data)
             or v.get('target') != '/data' or v.get('read_only', False) is not False for v in volumes):
         raise RuntimeError('PERSISTENT_COMPOSE_DATA_MOUNT_DIFFERS')
-    if any(config.get(key) is not None for key in ('command', 'entrypoint', 'pre_start', 'post_start', 'pre_stop')):
+    if any(config.get(key) is not None for key in ('command', 'entrypoint', 'pre_start', 'post_start', 'pre_stop', 'build')):
         raise RuntimeError('CUSTOM_STARTUP_REQUIRES_REVIEW')
     env = config.get('environment', {})
     running = dict(value.split('=', 1) for value in game['Config'].get('Env', []) if '=' in value)
+    if any(running.get(key) != value for key, value in env.items()):
+        raise RuntimeError('PENDING_GAME_ENVIRONMENT_CHANGES_REQUIRE_REVIEW')
     if env.get('VERSION') != '26.2' or running.get('VERSION') != '26.2':
         raise RuntimeError('PERSISTENT_GAME_VERSION_NOT_QUALIFIED')
     if str(env.get('TYPE', '')).lower() != 'fabric' or str(running.get('TYPE', '')).lower() != 'fabric':
@@ -88,6 +92,15 @@ def unpersisted(diff):
     return unknown
 
 
+def live_identity(raw, root_meta, world_meta):
+    lines = raw.decode().splitlines()
+    if len(lines) != 2 or any(not re.fullmatch(r'[0-9]+:[0-9]+', line) for line in lines):
+        raise RuntimeError('LIVE_DIRECTORY_IDENTITY_INVALID')
+    values = [tuple(map(int, line.split(':'))) for line in lines]
+    if values != [(root_meta.st_dev, root_meta.st_ino), (world_meta.st_dev, world_meta.st_ino)]:
+        raise RuntimeError('LIVE_BIND_DIFFERS_FROM_HOST_DIRECTORY')
+
+
 def audit():
     game = json.loads(run('docker', 'inspect', GAME))[0]
     project = (game['Config'].get('Labels') or {}).get('com.docker.compose.project', '')
@@ -113,14 +126,23 @@ def audit():
     if not image or json.loads(run('docker', 'image', 'inspect', image))[0]['Id'] != game['Image']:
         raise RuntimeError('LOCAL_IMAGE_TAG_DIFFERS_FROM_RUNNING_GAME')
     root_meta = DATA.stat(); world_meta = (DATA / 'world').stat()
+    env = dict(value.split('=', 1) for value in game['Config'].get('Env', []) if '=' in value)
+    uid, gid = env.get('UID', '1000'), env.get('GID', '1000')
+    if not all(re.fullmatch(r'[1-9][0-9]{0,5}', value) for value in (uid, gid)):
+        raise RuntimeError('GAME_STAT_USER_INVALID')
+    def check_live():
+        live_identity(run('docker', 'exec', '--user', uid + ':' + gid, GAME, 'stat', '-Lc', '%d:%i', '/data', '/data/world'), root_meta, world_meta)
+    check_live()
     unknown = unpersisted(run('docker', 'diff', GAME))
     after = json.loads(run('docker', 'inspect', GAME))[0]
     if (after['Id'], after['Image'], after['State']['StartedAt']) != (game['Id'], game['Image'], game['State']['StartedAt']):
         raise RuntimeError('GAME_CHANGED_DURING_AUDIT')
+    validate(after, profile, DATA)
+    check_live()
     if hashlib.sha256(COMPOSE.read_bytes()).hexdigest() != before: raise RuntimeError('COMPOSE_CHANGED_DURING_AUDIT')
     if (DATA.stat().st_dev, DATA.stat().st_ino, (DATA / 'world').stat().st_dev, (DATA / 'world').stat().st_ino) != (root_meta.st_dev, root_meta.st_ino, world_meta.st_dev, world_meta.st_ino):
         raise RuntimeError('PERSISTENT_DIRECTORIES_CHANGED')
-    return {'persistence_checks_passed': not unknown, 'same_host_data_bind': True, 'same_world_directory': True,
+    return {'persistence_checks_passed': not unknown, 'same_host_data_bind': True, 'same_world_directory': True, 'live_container_directories_match_host': True,
             'persistent_version': '26.2', 'extra_writable_layer_paths': len(unknown),
             'fabric_loader_pinned_to_0_19_5': profile['services'][service].get('environment', {}).get('FABRIC_LOADER_VERSION') == '0.19.5',
             'data_directory_identity': [root_meta.st_dev, root_meta.st_ino],

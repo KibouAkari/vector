@@ -33,7 +33,7 @@ def checked_audit(auditor, directory, phase):
     (directory / (phase + '-persistence.json')).write_text(json.dumps(report, indent=2) + '\n')
     (directory / (phase + '-private-writable-paths.json')).write_text(json.dumps(paths, indent=2) + '\n')
     print(json.dumps({key: report[key] for key in ('persistence_checks_passed', 'same_host_data_bind',
-          'same_world_directory', 'persistent_version', 'extra_writable_layer_paths', 'fabric_loader_pinned_to_0_19_5', 'production_unchanged')}, indent=2))
+          'same_world_directory', 'live_container_directories_match_host', 'persistent_version', 'extra_writable_layer_paths', 'fabric_loader_pinned_to_0_19_5', 'production_unchanged')}, indent=2))
     if paths or report.get('persistence_checks_passed') is not True:
         raise RuntimeError('WRITABLE_LAYER_REQUIRES_REVIEW_NO_RESTART')
     return report
@@ -63,7 +63,7 @@ def main():
             or captured.get('owner_welcome_tests_passed') is not True):
         raise RuntimeError('NATIVE_OWNER_WELCOME_NOT_QUALIFIED')
     result = {'passed': True, 'revision': revision, 'persistence_checks_passed': True,
-              'owner_welcome_tests_passed': True, 'identity_qualification': str(identity),
+              'owner_welcome_tests_passed': True, 'live_container_directories_match_host': True, 'identity_qualification': str(identity),
               'capture': str(capture), 'addon_sha256': captured['addon_sha256'],
               'production_activated': False, 'restart_performed': False, 'messages_sent': 0,
               'model_calls': 0, 'cloud_calls': 0, 'backup_verified': False,

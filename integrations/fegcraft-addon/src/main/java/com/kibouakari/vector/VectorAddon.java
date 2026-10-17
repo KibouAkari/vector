@@ -450,17 +450,25 @@ public final class VectorAddon implements DiscordIntegrationAddon {
         }
     }
 
+    BooleanSupplier currentLoad() {
+        ThreadPoolExecutor loadWorker = worker;
+        Bridge loadBridge = bridge;
+        return () -> active && worker == loadWorker && bridge == loadBridge;
+    }
+
     private void startOwnerWelcome(Path directory) throws IOException {
-        OwnerWelcome welcome = new OwnerWelcome(directory, UUID.randomUUID().toString(), () -> active);
-        ownerWelcomeTimer = Executors.newSingleThreadScheduledExecutor(task -> {
+        Bridge loadBridge = bridge;
+        OwnerWelcome welcome = new OwnerWelcome(directory, UUID.randomUUID().toString(), currentLoad());
+        ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor(task -> {
             Thread thread = new Thread(task, "Vector-owner-welcome"); thread.setDaemon(true); return thread;
         });
-        ownerWelcomeTimer.scheduleWithFixedDelay(() -> {
+        ownerWelcomeTimer = timer;
+        timer.scheduleWithFixedDelay(() -> {
             try {
-                if (welcome.poll(bridge, System.nanoTime())) ownerWelcomeTimer.shutdown();
+                if (welcome.poll(loadBridge, System.nanoTime())) timer.shutdown();
             } catch (Exception invalid) {
                 LOG.warning("Vector owner welcome disabled; control file requires review.");
-                ownerWelcomeTimer.shutdown();
+                timer.shutdown();
             }
         }, 0, 1, TimeUnit.SECONDS);
     }

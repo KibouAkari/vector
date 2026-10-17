@@ -20,7 +20,7 @@ class Qualification(unittest.TestCase):
                 root = Path(temp); (root / 'releases').mkdir()
                 calls = []
                 report = {'persistence_checks_passed': True, 'same_host_data_bind': True,
-                    'same_world_directory': True, 'persistent_version': '26.2', 'extra_writable_layer_paths': 0,
+                    'same_world_directory': True, 'live_container_directories_match_host': True, 'persistent_version': '26.2', 'extra_writable_layer_paths': 0,
                     'fabric_loader_pinned_to_0_19_5': False, 'production_unchanged': True,
                     'game_container': 'same-container', 'game_image': 'same-image', 'compose_sha256': 'same-profile',
                     'data_directory_identity': [1, 2], 'world_directory_identity': [1, 3]}

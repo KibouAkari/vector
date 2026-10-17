@@ -46,6 +46,14 @@ public final class VectorAddonTest {
             stopped.poll(bridge, zero); stopped.poll(bridge, zero + java.util.concurrent.TimeUnit.SECONDS.toNanos(15));
             alive[0] = false; scheduled.remove(0).run();
             if (Files.exists(welcome.marker) || messages.size() != 1) throw new AssertionError("Welcome after unload");
+            VectorAddon generation = new VectorAddon();
+            generation.start(bridge, new byte[32], legacy, false);
+            VectorAddon.OwnerWelcome oldLoad = new VectorAddon.OwnerWelcome(directory, boot, generation.currentLoad());
+            oldLoad.poll(bridge, zero); oldLoad.poll(bridge, zero + java.util.concurrent.TimeUnit.SECONDS.toNanos(15));
+            generation.stop(); generation.start(bridge, new byte[32], legacy, false);
+            scheduled.remove(0).run();
+            if (Files.exists(welcome.marker) || messages.size() != 1) throw new AssertionError("Old welcome survived addon reload");
+            generation.stop();
             Files.delete(welcome.request); Files.createSymbolicLink(welcome.request, legacy);
             VectorAddon.OwnerWelcome symlink = new VectorAddon.OwnerWelcome(directory, boot, () -> true);
             try { symlink.poll(bridge, zero); throw new AssertionError("Symlink request accepted"); }

@@ -47,6 +47,18 @@ def arm(directory, uid, gid, boot):
     return True
 
 
+def ready(value):
+    state = value['State']
+    if not state.get('Running') or state.get('Restarting') or state.get('Health', {}).get('Status') != 'healthy':
+        raise RuntimeError('OWNER_WELCOME_SERVICES_NOT_READY')
+
+
+def same_ready(before, after):
+    ready(after)
+    if (after['Id'], after['Image'], after['State']['StartedAt']) != (before['Id'], before['Image'], before['State']['StartedAt']):
+        raise RuntimeError('WELCOME_CONTAINER_CHANGED')
+
+
 def main():
     if os.geteuid() != 0 or os.environ.get('VECTOR_OWNER_WELCOME_V2') != '1':
         raise RuntimeError('EXPLICIT_OWNER_WELCOME_V2_REQUIRED')
@@ -57,10 +69,7 @@ def main():
     service = json.loads(run('docker', 'inspect', 'vector-fegcraft-assistant'))[0]
     game = json.loads(run('docker', 'inspect', 'fegcraft-updated'))[0]
     _, manifest = namespace['installation'](service)
-    for value in (service, game):
-        state = value['State']
-        if not state.get('Running') or state.get('Restarting') or state.get('Health', {}).get('Status') != 'healthy':
-            raise RuntimeError('OWNER_WELCOME_SERVICES_NOT_READY')
+    for value in (service, game): ready(value)
     if game['Image'] != manifest['minecraft_image']: raise RuntimeError('WELCOME_GAME_IMAGE_CHANGED')
     directory = DATA / 'DiscordIntegration-Data/vector'; safe(directory)
     legacy = directory / 'introduction-v1.attempted'; safe(legacy)
@@ -79,8 +88,8 @@ def main():
     uid, gid = map(int, user.split(':'))
     # Confirm the same game still runs before creating its session-bound signal.
     after = json.loads(run('docker', 'inspect', 'fegcraft-updated'))[0]
-    if (after['Id'], after['State']['StartedAt']) != (game['Id'], game['State']['StartedAt']):
-        raise RuntimeError('WELCOME_GAME_CHANGED')
+    same_ready(game, after)
+    same_ready(service, json.loads(run('docker', 'inspect', 'vector-fegcraft-assistant'))[0])
     created = arm(directory, uid, gid, boot)
     if hashlib.sha256(legacy.read_bytes()).hexdigest() != before: raise RuntimeError('LEGACY_WELCOME_MARKER_CHANGED')
     print(json.dumps({'owner_welcome_armed': created, 'duplicate_request_ignored': not created,
