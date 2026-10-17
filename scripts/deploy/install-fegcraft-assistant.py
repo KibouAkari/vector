@@ -260,7 +260,15 @@ def install():
             if not item['State']['Running']:raise RuntimeError('SERVICE_START_FAILED')
             time.sleep(1)
         else:raise RuntimeError('SERVICE_HEALTH_TIMEOUT')
-        coverage=json.loads(run('docker','exec',SERVICE,'python3','/code/read-probe.py'))
+        # A normal game save may briefly replace a stats/cache file. Retry the
+        # read-only probe twice; persistent errors still stop before cutover.
+        for attempt in range(3):
+            try:
+                coverage=json.loads(run('docker','exec',SERVICE,'python3','/code/read-probe.py'))
+                break
+            except RuntimeError:
+                if attempt==2:raise
+                time.sleep(1)
         manifest['live_input_coverage']=coverage;manifest['status']='service_ready';save(directory,manifest)
         # Only now perform the owner-authorized Minecraft cutover. Docker stop
         # uses the image's normal graceful shutdown, never a chat/console command.
