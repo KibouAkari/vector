@@ -10,3 +10,6 @@ avatarUrl=
 # Empty retains the readable <Vector> name without a missing texture.
 logoTexture=
 
+
+# Owner-only second welcome: stays unarmed until post-readiness session signal.
+ownerWelcomeEnabled=false

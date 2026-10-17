@@ -150,6 +150,9 @@ jobs:
           python3 tests/fegcraft-identity-qualification.test.py
           python3 tests/fegcraft-dialogue.test.py
           python3 tests/fegcraft-dialogue-release.test.py
+          python3 tests/fegcraft-recreation-safety.test.py
+          python3 tests/fegcraft-safe-cutover-qualification.test.py
+          python3 -m py_compile scripts/diagnostics/fegcraft-recreation-safety.py scripts/deploy/qualify-fegcraft-safe-cutover.py scripts/deploy/arm-fegcraft-owner-welcome.py
           python3 -m py_compile scripts/deploy/release-fegcraft-dialogue.py
           python3 -m py_compile scripts/build-fegcraft-identity.py scripts/deploy/qualify-fegcraft-identity.py
 

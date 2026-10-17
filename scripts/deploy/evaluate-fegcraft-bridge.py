@@ -29,7 +29,7 @@ EXPORT = ('services/fegcraft-assistant', 'integrations/fegcraft-addon/src', 'tes
 
 
 LOG_LIMIT = 128 * 1024
-COMPLETION_FLAGS = ('signed_transport_passed', 'service_restart_limits_passed', 'captured_introduction_replay_passed', 'discord_channel_bot_replay_and_block_registry_passed', 'statistics_dialogue_tests_passed')
+COMPLETION_FLAGS = ('signed_transport_passed', 'service_restart_limits_passed', 'captured_introduction_replay_passed', 'discord_channel_bot_replay_and_block_registry_passed', 'statistics_dialogue_tests_passed', 'owner_welcome_tests_passed')
 
 
 def qualified(result, error, cleanup_errors, checks):
@@ -228,6 +228,7 @@ def main():
             expected = hmac.new(bytes.fromhex('ab' * 32), b'1000000000\n{}', hashlib.sha256).hexdigest()
             args += ['--entrypoint', 'java', JDK, '-Xmx192m', '-XX:ActiveProcessorCount=2', '-classpath', '/build/classes:/inputs/common.jar', 'com.kibouakari.vector.VectorAddonTest', expected]
             run(args, timeout=45, log=release / 'unit.log')
+            result['owner_welcome_tests_passed'] = True
             builder = load_module(code / 'scripts/build-fegcraft-addon.py', 'qualified_fegcraft_builder')
             artifact = release / 'vector-minecraft-0.1.0.jar'
             builder.package_addon(build / 'classes', artifact)
