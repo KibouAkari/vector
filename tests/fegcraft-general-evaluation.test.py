@@ -27,6 +27,7 @@ class Opener:
     answer='Prüfe im Claim-Menü die Rechte für Party-Mitglieder.'
    if 'kühe' in q:answer='Füttere zwei Kühe mit Weizen.'
    if 'schafe' in q:answer='Füttere zwei Schafe mit Weizen.'
+   if 'glas' in q:answer='Schmelze Sand im Ofen.'
    if 'backpack' in q:answer='Ein tragbarer Rucksack erweitert dein Inventar.'
    if WRONG:answer='Unpassender Text.'
    if VARIANT=='unsafe':answer='Nutze /claims.'
@@ -46,9 +47,9 @@ urllib.request.build_opener=lambda *args:Opener()
         result=subprocess.run([sys.executable,'-c',setup+source],capture_output=True,text=True,timeout=10)
         self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
     def test_full_semantic_and_security_gate_counts_every_native_stage(self):
-        r=self.run_harness();self.assertTrue(r['passed'],r['cases']);self.assertEqual(r['model_calls'],10)
-        self.assertEqual(r['input_tokens'],1000);self.assertEqual(r['output_tokens'],100)
-        self.assertTrue(all(c['model_calls']==0 for c in r['cases'][11:]));self.assertTrue(r['latency_passed'])
+        r=self.run_harness();self.assertTrue(r['passed'],r['cases']);self.assertEqual(r['model_calls'],11)
+        self.assertEqual(r['input_tokens'],1100);self.assertEqual(r['output_tokens'],110)
+        self.assertTrue(all(c['model_calls']==0 for c in r['cases'][12:]));self.assertTrue(r['latency_passed'])
         self.assertFalse(r['production_activated']);self.assertFalse(r['dedicated_db_role_qualified'])
         self.assertFalse(r['universal_mod_accuracy_claimed']);self.assertFalse(r['eligible_for_activation'])
         self.assertTrue(all(c['model_calls']==c['expected_calls'] for c in r['cases']))
@@ -98,3 +99,4 @@ urllib.request.build_opener=lambda *args:Opener()
         self.assertEqual(r.returncode,0,r.stderr);self.assertIn('6194261933202610',m.COORDINATOR)
         self.assertIn('300000',m.COORDINATOR);self.assertIn('keep_alive:0',m.COORDINATOR)
 if __name__=='__main__':unittest.main()
+

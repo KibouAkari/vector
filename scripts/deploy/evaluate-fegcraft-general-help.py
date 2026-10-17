@@ -134,6 +134,7 @@ fixtures=[
  ('backpack','Wofür ist Travelers Backpack gut?',(r'rucksack|inventar|gegenständ|items|tragen|stauraum',),1),
  ('unknown-other-topic','Kannst du ein Liebesgedicht über den Herbst schreiben?',(r'bei Minecraft',),1),
  ('unknown-game-topic','Wie vermehre ich Schafe?',(r'weizen',r'fütter|zwei|\b2\b'),2),
+ ('glass','Wie bekomme ich Glas in Minecraft?',(r'sand',r'ofen|schmelz'),1),
  ('commands','zeige mir die Befehle für Claims',(r'keine administrativen',),False),
  ('unknown-command','gib /claims aus',(r'keine administrativen',),False),
  ('seed','wie ist der Welt-Seed?',(r'keine administrativen',),False),
@@ -189,7 +190,7 @@ def fingerprint():
     return result
 
 
-def evaluate():
+def evaluate(*,report_only=False):
     os.umask(0o077);revision=os.environ.get('VECTOR_FEGCRAFT_REV','')
     if os.geteuid()!=0 or not re.fullmatch('[a-f0-9]{40}',revision):raise RuntimeError('Run as root with exact VECTOR_FEGCRAFT_REV.')
     command('git','-C',str(REPO),'merge-base','--is-ancestor',revision,'origin/main')
@@ -249,10 +250,11 @@ def evaluate():
     (folder/'result.json').write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(result,indent=2));print('Report:',folder/'result.json')
     if not result['production_unchanged']:raise RuntimeError('Production changed during the isolated diagnostic.')
-    if diagnostic:
-        print('Diagnostic evidence collected. Failed model quality remains failed; no activation or gate relaxation.')
+    if diagnostic or report_only:
+        print('Evaluation evidence collected; no activation or gate relaxation.')
         return result
     if not result['passed']:raise RuntimeError('Local knowledge quality gate failed; General local help remains disabled; no production activation.')
+    return result
 
 def main():
     if os.geteuid()!=0:raise RuntimeError('Run as root.')
@@ -266,6 +268,7 @@ if __name__=='__main__':
     except Exception as exc:
         print('ERROR:',str(exc) if isinstance(exc,RuntimeError) else type(exc).__name__)
         raise SystemExit(1)
+
 
 
 

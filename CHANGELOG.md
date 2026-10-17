@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-17 — Test a pinned non-thinking 4B candidate after native/raw failures (PR #68)
+
+- Owner PR #67 minimal controls gave identical wrong text/token counts for every chat/raw pair in English/German. Eight calls, exact260 input/520 output, no unknowns/cloud/messages, cold4.712s/warm median5.700s; production unchanged, verified unload/cleanup. Do not present a template swap or speed-only success as a fix.
+- Add checksum-pinned Unsloth Qwen3-4B-Instruct-2507 Q4_K_M as a separate inactive namespace, with reviewed source/license, exact revision/size/SHA, resource/private-runtime preflight, bounded no-clobber download, actual imported-blob verification and marker-bound reuse. Keep original models, failed partials, production settings and game online. Import and inference both use actual shared admission; no runtime/image/package update or automatic activation.
+- Add an explicit candidate constructor name while preserving old default; omit thinking option only for the non-thinking candidate. Existing answer/context/security/deadline guards unchanged. Full composed gate adds held-out glass and returns evidence on request without shrinking scope or weakening normal CLI failure. Normally11 native calls across20 fixtures; raw synthetic answers still need manual factual review, not keyword trust.
+- Eleven new synthetic import/transport/preservation tests and existing affected regression suites passed locally. Extend CI and update project handoff/local-help docs with measured failures, candidate pins, resource/storage costs, pending quality/least-privilege/deployment gates and independent-backend next step if basic facts still fail. No game/assistant/app activation, restart, backup job or welcome.
+
 ## 2026-10-17 — Minimal local prompt and rendering controls after verified artifacts (PR #67)
 
 - Owner PR #66 audit verified both actual registered weight sizes/SHA256, registry identities and known templates, with empty system fields and native0.40.4. Zero inference/cloud/DB/messages and unchanged production. Integrity success does not qualify factual knowledge; no corrupt weight file observed.
