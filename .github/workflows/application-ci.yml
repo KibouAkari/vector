@@ -66,6 +66,9 @@ jobs:
           python3 tests/fegcraft-policy.test.py
           python3 tests/fegcraft-runtime.test.py
           python3 tests/fegcraft-knowledge-evaluation.test.py
+          python3 tests/fegcraft-recipes.test.py
+          python3 tests/fegcraft-recipe-evaluation.test.py
+          python3 -m py_compile services/fegcraft-assistant/recipes.py scripts/deploy/evaluate-fegcraft-recipes.py
           python3 tests/fegcraft-recipe-preflight.test.py
           python3 -m py_compile scripts/diagnostics/fegcraft-recipe-preflight.py
           python3 -m py_compile scripts/deploy/evaluate-fegcraft-knowledge.py
