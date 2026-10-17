@@ -44,8 +44,15 @@ class Dialogue(unittest.TestCase):
         self.assertNotIn('vollständigen Spielernamen', value)
 
     def test_unknown_explicit_player_is_not_replaced_by_global_winner(self):
-        for question in ('alle Rekordhalter von UnknownPlayer', 'Rekorde von ExampleOneSuffix'):
+        for question in ('alle Rekordhalter von UnknownPlayer', 'Rekorde von ExampleOneSuffix',
+                         'Ist UnknownPlayer Rekordhalter?', 'Ist ExampleOneSuffix Rekordhalter?',
+                         'alle Rekorde von dem Spieler UnknownPlayer'):
             self.assertIn('vollständigen Spielernamen', self.ai.stat_answer(question))
+        for question in ('Wer hält den Rekord für Mobkills?', 'Wer hält den Rekord für die meisten Mobkills?'):
+            value = self.ai.stat_answer(question)
+            self.assertIn('Mobkills:', value)
+            self.assertNotIn('vollständigen Spielernamen', value)
+        self.assertIn('Spielzeit:', self.ai.stat_answer('alle Rekorde von dem Server'))
 
     def test_blocks_use_live_item_types_and_fresh_saved_counters(self):
         question = 'welcher block wurde am meisten platziert?'
@@ -57,6 +64,7 @@ class Dialogue(unittest.TestCase):
         self.write(self.ids[0], 10, stone=100)
         self.assertIn('Stein 160 Mal', self.ai.stat_answer(question, ids))
         self.assertIn('Block-Item-Verzeichnis', self.ai.stat_answer(question))
+        self.assertIn('serverweit', self.ai.stat_answer('welcher Block wurde von UnknownPlayer am meisten platziert?', ids))
         self.assertIn('Erde 600 Mal', self.ai.stat_answer('welcher Block wurde am häufigsten abgebaut?'))
 
     def test_discord_display_name_and_input_validation(self):

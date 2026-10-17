@@ -123,6 +123,29 @@ def number(value, unit):
     return f'{int(value):,}'.replace(',', "'") + ' ' + unit
 
 
+def unknown_player_target(question, people):
+    """Separate named subjects from complete server and metric qualifiers."""
+    known = {p['name'].casefold() for p in people}
+    article = r'(?:(?:dem|der|den|die|das|meinem|unserem|einem|einer|the)\s+)?'
+    for match in re.finditer(r'\b(?:von|für|of|for)\s+', question):
+        tail = question[match.end():]
+        # An article alone never exempts an unknown target.
+        if re.match(article + r'(?:server|fegcraft)(?:\b|$)', tail):
+            continue
+        metric_prefix = article + r'(?:(?:meisten?|höchsten?|laengsten?|längsten?|most)\s+)?'
+        if any(re.match(metric_prefix + r'(?:' + pattern + r')(?:\b|$)', tail) for pattern in METRIC_WORDS.values()):
+            continue
+        candidate = re.match(article + r'(?:(?:spieler|spielerin|player)\s+)?([a-z0-9_]{1,16})\b', tail)
+        if candidate is None or candidate[1] not in known:
+            return True
+    record = r'(?:rekorde?halter|rekorde?|records?)'
+    player = article + r'(?:(?:spieler|spielerin|player)\s+)?([a-z0-9_]{1,16})\b'
+    frames = (r'\b(?:ist|war|wird|kann|hat|hält|haelt)\s+' + player + r'\s+(?:(?:ein(?:e[nr]?)?|den|die|das)\s+)?' + record,
+              r'\b' + player + r'\s+ist\s+(?:ein\s+)?' + record,
+              r'\b' + record + r'\b.*?\b(?:hat|hält|haelt)\s+' + player)
+    return any(match[1] not in known for frame in frames for match in re.finditer(frame, question))
+
+
 class Assistant:
     def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None, recipes=None):
         self.state, self.stats_dir, self.usercache = state, stats_dir, usercache
@@ -203,9 +226,11 @@ class Assistant:
             if len(people) > 1:
                 return 'bitte frage nach einem Spieler oder einer einzelnen Rangliste.'
             holders = bool(re.search(r'\brekorde?halter\b|\brecord.?holders?\b|\balle\s+(?:aktuellen\s+)?rekorde\b|\b(?:wer|who)\b.*\b(?:rekord|record)', q))
-            unknown_target = re.search(r'\b(?:von|für|of|for)\s+(?!(?:dem|meinem|unserem|server|fegcraft)\b)[a-z0-9_]+', q)
+            unknown_target = unknown_player_target(q, people)
+            if unknown_target and not block_category:
+                return 'nenne bitte den vollständigen Spielernamen für die Statistikabfrage.'
             if block_category:
-                if people or re.search(r'\b(?:hat|habe|hast|ich)\b', q) or not re.search(r'meist|häufigst|haeufigst|most', q):
+                if people or unknown_target or re.search(r'\b(?:hat|habe|hast|ich)\b', q) or not re.search(r'meist|häufigst|haeufigst|most', q):
                     return 'frage bitte nach dem serverweit häufigsten Block.'
                 if block_category == 'used' and not block_items:
                     return 'für Blocknutzungen fehlt gerade das aktuelle Block-Item-Verzeichnis. Ich rate keinen Spitzenreiter.'
