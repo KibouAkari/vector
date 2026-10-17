@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 — Observed fresh-statistics deployment and installed recipe preflight (PR #48)
+
+- Record owner-confirmed native privacy qualification and successful fe12d19 / image 8d4645d production release, including all-interface and actual Nginx HTTPS health. Preserve the new release/rollback/profile baseline and HOSTNAME=0.0.0.0; no repeated build/release is requested.
+- Actual synthetic recipe diagnostics confirm factual hallucinations from Qwen 1.7B in all three failed crafting cases. Keep knowledge disabled; do not relax the gate. Three local calls, zero cloud/API fees, cleanup/unload verified; no Minecraft activation or announcement.
+- Add a bounded owner-run inventory of installed public game/mod recipe assets, including nested JARs, version evidence, exact target documents, hashes, variants and schemas. Ignore config/player/log files, reject unsafe or oversized members, and never treat candidate assets as verified effective recipes. No inference, game restart, messages or production configuration changes.
+- Seven offline archive/precedence-boundary tests pass with synthetic assets; actual installed-resource inventory and final recipe/runtime/channel qualification remain pending.
+
+
 ## 2026-10-17 — Qualified fresh-statistics release and recipe diagnostics (PR #47)
 
 - Owner app staging passed at b9d34da3f07b91f27de1800aba214d507922b760, including new completed-versus-in-flight statistics dedup and native record-holder/refresh followups. Exact qualified image: sha256:8d4645d72630974981ceb9985332473d41f03563b9a8f52a2b808f63387ec9cd. Production remained unchanged; no new app build is requested for release.

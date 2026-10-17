@@ -1,5 +1,31 @@
 # Vector project handoff
 
+## Current continuation: observed release and recipe evidence (PR #48, 2026-10-17)
+
+This section supersedes older "current production" and "next owner release" instructions below. Do not repeat the app staging, native API qualification or release already completed.
+
+Owner-confirmed production:
+- scripts/deploy/qualify-and-release-fresh-statistics.py at ops pin 75f2a89a9d5a41b8b4aeae1633f151af62cbc23e succeeded.
+- Native privacy normal/outage report: /root/vector-workspace/releases/vector-privacy-api-evaluation-20261017T002322Z-39dc71/result.json. All native checks passed, cleanup verified, no executed jobs/cloud calls/API fee. Single-run cold/followup/cache timings: 8922/211/11 ms.
+- Live source commit fe12d19bbc079074c51de8654e8c830b187923aa; image sha256:8d4645d72630974981ceb9985332473d41f03563b9a8f52a2b808f63387ec9cd; tag vector-app:staging-b9d34da-20261017T001416Z-b7e4cf.
+- Release /root/vector-workspace/releases/vector-fresh-statistics-release-20261017T002400Z-75c2c0. Current persistent Compose baseline is its compose.candidate.yml. Preserve HOSTNAME=0.0.0.0. All app interfaces and real host Nginx HTTPS health passed; seven other service identities retained.
+- Guarded rollback: /root/vector-workspace/releases/vector-fresh-statistics-release-20261017T002400Z-75c2c0/rollback.sh. Do not use older composer/runtime/chat-controls releases against this baseline.
+
+Actual local recipe diagnosis:
+- /root/vector-workspace/releases/vector-fegcraft-recipe-diagnostic-20261017T002415Z-b0a64a/result.json completed with failed quality, no adapter error, done/stop for each answer.
+- The three synthetic crafting questions produced invented ingredients/items/mechanics, not just synonym or output-format mismatches. Do not weaken the quality gate or repeat the same ungrounded Qwen test.
+- Three local calls, 508 input / 209 output tokens, zero cloud/API CHF, no messages or production ledger writes, cleanup/unload and unchanged production verified. Knowledge remains disabled; no addon installed or welcome sent.
+
+Next owner step:
+- Run scripts/diagnostics/fegcraft-recipe-preflight.py at the final reviewed PR #48 commit using VECTOR_FEGCRAFT_REV. Prepare a new current/vector-fegcraft-recipe-preflight.py file, validate syntax/content and ancestry of origin/main, then use the existing workspace runner.
+- This bounded read-only diagnostic scans root-level server JARs and versions, libraries/net/minecraft, .fabric and mods archive trees. It handles nested bundled game/mod JARs and old/new resource directory names, records exact three target recipe documents, archive/member digests, version IDs and recipe schema/types. It reads no configuration, log, player files or level.dat; world/datapacks is counted only, not opened.
+- It writes only a private result.json under a new releases/vector-fegcraft-recipes-* directory, compares Compose/container state and makes no model/cloud requests, game restart or chat send. On limits/missing recipes it fails instead of asserting coverage. Retain the diagnostic evidence locally; do not commit installed assets or private owner output.
+- candidate_inventory_complete only means the three target assets were found. active_pack_order_verified and effective_recipes_qualified stay false even on a successful candidate inventory. Installed mod assets, enabled datapacks and dynamic recipe alterations still need correct precedence/validation before answering as effective server recipes.
+- After that evidence, implement deterministic supported-recipe lookup/formatting using actual installed schemas and verified source precedence; do not let Qwen invent missing recipes. Keep unknown/unsupported recipes explicit. Then qualify the real service, finish restricted model-role/driver/usage accounting if freeform model knowledge is enabled, package/install the unchanged qualified addon and test actual game callback plus linked Discord delivery.
+- Existing captured addon qualification is reusable for its unchanged source; it did not prove real channel delivery. Owner authorization includes the once-only introduction after final qualification. Preserve the durable attempted-delivery marker and never resend on restart/uncertain delivery. Minecraft logo/head still has no supported implementation; do not claim otherwise.
+- Repository ops-only progress must not force another web app rebuild or overwrite the current qualified /opt/vector/app source/image pin.
+
+
 Updated 2026-10-17 after owner-confirmed chat-controls deployment and successful persistent listener/Nginx repair. Read OWNER_PREFERENCES.md, AGENTS.md and current repository status first. This document preserves decisions and evidence, not secret values or a substitute for a live-state check.
 
 ## First steps in a new chat
