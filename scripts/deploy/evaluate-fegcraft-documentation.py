@@ -15,7 +15,7 @@ ROOT = Path('/root/vector-workspace')
 REPO = ROOT/'github/vector'
 MODEL = 'vector-qwen3-instruct2507:4b-q4km'
 DIGEST = 'b7613a8eda1dbb8ce133679f38f5791e4fd70017c2f37fe8eaa0d5a0d7a9e9c1'
-CATALOG_SHA256 = '87728b36f9a97313428a7c18a74259873c5cf5c7fef8ced6ffc9166250f2130c'
+CATALOG_SHA256 = '214261e4c9184837e4f532dcb6482cc1be8e0b8db0089a130a3e20e7a18df7b8'
 
 
 def replace_once(text, old, new):
@@ -41,6 +41,8 @@ def sources(base):
     harness = replace_once(harness, "'evaluation_scope':'current-subject-local-adapter'", "'evaluation_scope':'offline-reviewed-passage-selection'")
     harness = replace_once(harness, "'stage':'route' if 'route' in payload.get('format',{}).get('properties',{}) else 'answer'", "'stage':'selection' if 'passage' in payload.get('format',{}).get('properties',{}) else 'answer'")
     harness = replace_once(harness, "'installed_mod_ids_count':mod_count", "'answer_mode':'reviewed-extractive','catalog_sha256':"+repr(CATALOG_SHA256)+",'reviewed_mod_ids':['openpartiesandclaims','voicechat','travelersbackpack'],'exact_installed_mod_versions_qualified':False,'installed_mod_ids_count':mod_count")
+    harness = replace_once(harness, "('claims','wie schütze ich meine Kisten mit Claims?',(r'claim|chunk|gebiet',r'schütz|schutz|recht'),1)", "('claims','wie schütze ich meine Kisten mit Claims?',(r'claim|chunk|gebiet',r'schütz|schutz|recht',r'beanspruch'),1)")
+    harness = replace_once(harness, 'if diagnostic:fixtures=', "fixtures += [\n ('claim-chest-paraphrase','Wie sichere ich meine Truhe gegen andere Spieler?',(r'beanspruch',r'chunk',r'schutz'),1),\n ('claim-area-paraphrase','Kannst du erklären, wie ich einen Bereich beanspruche?',(r'beanspruch',r'chunk',r'oberfläche|karte'),1),\n ('claim-container-paraphrase','Wie schütze ich meinen Ofen mit Claims?',(r'beanspruch',r'chunk',r'schutz'),1),\n ('claim-live-limit','Wie viele Claims darf ich hier haben?',(r'nicht prüfen',),0),\n ('backpack-missing-procedure','Wie erweitere ich Travelers Backpack?',(r'fehlt.*geprüfter Eintrag',),0)]\nif diagnostic:fixtures=")
     return coordinator, harness
 
 
@@ -63,7 +65,7 @@ def main():
         coordinator, harness = sources(SimpleNamespace(**namespace))
         # evaluate() retains its module globals, so update that exact namespace.
         namespace['COORDINATOR'], namespace['HARNESS'] = coordinator, harness
-        print('Prüfe lokale Quellenauswahl mit 26 Fällen. Keine erneuten Modell-Downloads; Minecraft bleibt unverändert.', flush=True)
+        print('Prüfe lokale Quellenauswahl mit 31 Fällen. Keine erneuten Modell-Downloads; Minecraft bleibt unverändert.', flush=True)
         result = namespace['evaluate'](report_only=True)
         if not result['passed']:
             raise RuntimeError('Documentation selection quality/latency failed. General help stays OFF; no activation.')

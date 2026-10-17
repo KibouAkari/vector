@@ -16,7 +16,7 @@ import documentation as d
 import knowledge
 
 CATALOG = ROOT/'services/fegcraft-assistant/public-knowledge.json'
-PIN = '87728b36f9a97313428a7c18a74259873c5cf5c7fef8ced6ffc9166250f2130c'
+PIN = '214261e4c9184837e4f532dcb6482cc1be8e0b8db0089a130a3e20e7a18df7b8'
 MODS = ['carryon', 'openpartiesandclaims', 'voicechat', 'travelersbackpack']
 
 
@@ -43,7 +43,7 @@ class Documentation(unittest.TestCase):
 
     def test_real_catalog_has_provenance_and_no_full_document_redistribution(self):
         self.assertEqual(hashlib.sha256(CATALOG.read_bytes()).hexdigest(), PIN)
-        self.assertEqual(len(self.index.rows), 13)
+        self.assertEqual(len(self.index.rows), 14)
         for row, _, _ in self.index.rows:
             source = self.index.sources[row['source']]
             self.assertTrue(source['url'].startswith('https://'))
@@ -107,8 +107,8 @@ class Documentation(unittest.TestCase):
         pairs = [('Wozu sind Partys gut?', 'explanation'), ('Und wie gebe ich Mitgliedern Zugriff?', 'procedure'), ('Wie funktioniert ein Kolben?', 'explanation'), ('Wie öffne ich den Sprachchat?', 'procedure'), ('Was ist ein Backpack?', 'explanation'), ('Was muss ich für Glas tun?', 'procedure'), ('Wie viele Lebenspunkte hat eine Kuh?', 'any'), ('Kannst du erklären, wie ich eine Gruppe erstelle und warum das hilft?', 'procedure')]
         for question, intent in pairs:
             self.assertEqual(d.answer_intent(question), intent, question)
-        for question in ('Und wie gebe ich Mitgliedern Zugriff?', 'Wie schütze ich meine Kisten mit Claims?'):
-            self.assertEqual([r['id'] for r in self.index.search(question, MODS)], ['claims-menu'])
+        self.assertEqual([r['id'] for r in self.index.search('Und wie gebe ich Mitgliedern Zugriff?', MODS)], ['claims-menu'])
+        self.assertEqual(self.index.search('Wie schütze ich meine Kisten mit Claims?', MODS)[0]['id'], 'claims-claim')
         self.assertNotIn('claims-menu', [r['id'] for r in self.index.search('Wozu sind Partys gut?', MODS)])
 
     def test_followup_with_its_own_subject_words_retains_author_context(self):
@@ -138,7 +138,9 @@ class Documentation(unittest.TestCase):
         self.answer('Wozu sind Partys gut?')
         self.answer('Und wie genau?')
         payload = json.loads(self.calls[-1][0]['messages'][-1]['content'])
-        self.assertEqual([p['id'] for p in payload['passages']], ['claims-menu'])
+        ids = {p['id'] for p in payload['passages']}
+        self.assertIn('claims-menu', ids)
+        self.assertFalse(ids & {'party-rights', 'claims-protection'})
 
     def test_new_author_platform_expiry_and_native_clear_have_no_context(self):
         for scope in (('minecraft', 'two'), ('discord', 'one')):
@@ -226,6 +228,13 @@ class Documentation(unittest.TestCase):
                     d.DocumentationIndex(path, hashlib.sha256(raw).hexdigest())
         with self.assertRaisesRegex(ValueError, 'INVALID_DOCUMENTATION_INTENT'):
             self.index.search('Glas', MODS, intent='unbounded')
+
+    def test_claiming_and_permissions_have_distinct_action_evidence(self):
+        for q in ('Wie schütze ich meine Kisten mit Claims?', 'Wie sichere ich meine Truhe gegen andere Spieler?', 'Kannst du erklären, wie ich einen Bereich beanspruche?', 'Wie schütze ich meinen Ofen mit Claims?'):
+            rows = self.index.search(q, MODS)
+            self.assertEqual(rows[0]['id'], 'claims-claim', q)
+            self.assertIn('beanspruche den freien Chunk', rows[0]['text'])
+        self.assertEqual(self.index.search('Und wie gebe ich Mitgliedern Zugriff?', MODS)[0]['id'], 'claims-menu')
 
 
 if __name__ == '__main__':

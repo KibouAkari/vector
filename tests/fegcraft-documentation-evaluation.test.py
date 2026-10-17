@@ -31,11 +31,13 @@ class Opener:
   choices=payload['format']['properties']['passage']['enum']
   selected=choices[0]
   if 'partys' in q:selected='party-rights'
+  if any(word in q for word in ('kisten','truhe','bereich','ofen')) and 'claims-claim' in choices:selected='claims-claim'
   if 'mitgliedern' in q:selected='claims-menu'
   if 'gruppe' in q:selected='voice-groups'
   if 'lebenspunkte' in q:selected='none'
   if VARIANT=='wrong-relevance' and 'gruppe' in q:selected='voice-menu'
   if VARIANT=='wrong-kind' and 'mitgliedern' in q:selected='party-rights'
+  if VARIANT=='missing-claim-step' and 'kisten' in q:selected='claims-menu'
   if VARIANT=='unknown-id':selected='not-in-evidence'
   body={'passage':selected}
   if VARIANT=='freeform':body={'answer':'Schmelze Glas aus Stein.'}
@@ -53,10 +55,10 @@ urllib.request.build_opener=lambda *args:Opener()
     def test_full_original_questions_plus_heldout_topics_and_missing_evidence(self):
         result = self.run_harness()
         self.assertTrue(result['passed'], result['cases'])
-        self.assertEqual(len(result['cases']), 26)
-        self.assertEqual(result['model_calls'], 14)
-        self.assertEqual(result['input_tokens'], 1400)
-        self.assertEqual(result['output_tokens'], 140)
+        self.assertEqual(len(result['cases']), 31)
+        self.assertEqual(result['model_calls'], 17)
+        self.assertEqual(result['input_tokens'], 1700)
+        self.assertEqual(result['output_tokens'], 170)
         self.assertEqual(result['answer_mode'], 'reviewed-extractive')
         self.assertFalse(result['production_activated'])
         self.assertFalse(result['eligible_for_activation'])
@@ -79,6 +81,12 @@ urllib.request.build_opener=lambda *args:Opener()
         self.assertFalse(case['passed'])
         self.assertEqual(case['adapter_error'], 'INVALID_SOURCE_SELECTION')
 
+    def test_opening_settings_does_not_substitute_for_claiming_the_chunk(self):
+        result = self.run_harness('missing-claim-step')
+        case = next(c for c in result['cases'] if c['id']=='claims')
+        self.assertFalse(case['passed'])
+        self.assertFalse(result['passed'])
+
     def test_model_cannot_smuggle_freeform_or_unknown_source_into_chat(self):
         for variant in ('freeform', 'unknown-id', 'length'):
             result = self.run_harness(variant)
@@ -91,8 +99,8 @@ urllib.request.build_opener=lambda *args:Opener()
         self.assertFalse(result['passed'])
         self.assertIsNone(result['input_tokens'])
         self.assertEqual(result['unknown_usage_calls'], 1)
-        self.assertEqual(result['known_input_tokens'], 1300)
-        self.assertEqual(result['known_output_tokens'], 130)
+        self.assertEqual(result['known_input_tokens'], 1600)
+        self.assertEqual(result['known_output_tokens'], 160)
 
     def test_coordinator_keeps_pinned_candidate_shared_lock_lease_and_unload(self):
         coordinator, source = wrapper.sources(base)
