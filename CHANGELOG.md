@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-18 — Verify inspected private PostgreSQL aliases for slot-role preparation (PR #77)
+
+- Owner PR #76 preparation stopped at ROLE_PRIVATE_DATABASE_REQUIRED before any database connection/role mutation, release vector-fegcraft-slot-role-20261018T085733Z-e83daa. A subsequent redacted read-only owner diagnostic confirmed the DSN host is the Compose service and inspected alias, uses the standard port/no URL options, and resolves only to the current private PostgreSQL container. The former container-name-only assumption was too narrow.
+- Inspect only the fixed running app/PostgreSQL containers on vector-internal. Pass bounded alias/IP/container-identity metadata privately to the existing app-side actor; before any SQL, require an inspected hostname and every DNS result to equal an inspected private address. Bound lookup to5s. Reject missing/foreign/public/mixed/changed destinations, unsupported ports and query overrides in both production and disposable-fixture routes. Do not output addresses or DSNs.
+- Sixteen local guards pass, including Compose alias acceptance, DNS mismatch/error, wrong network/container, private-IP scope, no SQL before proof, query overrides and fixed-container provenance. Preserve all real PG17 privilege/slot CI gates. No runtime/model change, rebuild, production activation, service/game restart or message. Retain the failed script/report and existing private intent; provide a separately named v2 retry and update handoff.
+
 ## 2026-10-18 — Prepare and qualify an owned production CPU-slot role without service rollout (PR #76)
 
 - Owner PR #75 actual driver/PG17.11 fixture passed, including denied app/permanent-create access, inherited PUBLIC TEMP, both slot directions, release and cleanup. Record exact prepared db331 image, wheel fingerprint and report; reuse them without downloads, rebuilds, readiness or native31-case reruns.

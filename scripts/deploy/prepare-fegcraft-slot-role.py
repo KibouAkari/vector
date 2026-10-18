@@ -72,21 +72,42 @@ def read_intent(h):
     return value
 
 
+def private_endpoint():
+    app,db=json.loads(run('docker','inspect','vector-app','vector-postgres'))
+    network='vector-internal'
+    if (app.get('Name')!='/vector-app' or db.get('Name')!='/vector-postgres'
+        or not app['State'].get('Running') or not db['State'].get('Running')
+        or network not in app['NetworkSettings']['Networks'] or network not in db['NetworkSettings']['Networks']):
+        raise RuntimeError('SLOT_ROLE_PRIVATE_NETWORK_CHANGED')
+    value=db['NetworkSettings']['Networks'][network]
+    aliases=['vector-postgres',*(value.get('Aliases') or []),*(value.get('DNSNames') or [])]
+    service=(db.get('Config',{}).get('Labels') or {}).get('com.docker.compose.service')
+    if service:aliases.append(service)
+    return {'container':'vector-postgres','container_id':db['Id'],'network':network,
+      'aliases':sorted(set(aliases)),
+      'addresses':[v for v in (value.get('IPAddress'),value.get('GlobalIPv6Address')) if v]}
+
+
 def actor(module,action,intent):
     encoded=base64.b64encode(module).decode()
-    code="""import pg from 'pg';
+    code="""import pg from 'pg';import dns from 'node:dns/promises';
 let data='';for await(const chunk of process.stdin)data+=chunk;
 const input=JSON.parse(data);
 try{
  const m=await import('data:text/javascript;base64,ENCODED');
  const connect=dsn=>new pg.Client({connectionString:dsn,connectionTimeoutMillis:3000,query_timeout:6000});
- const args={dsn:process.env.DATABASE_URL,owner:input.owner,password:input.password,connect};
+ const lookup=async(host,options)=>{
+   let timer;try{return await Promise.race([dns.lookup(host,options),new Promise((_,reject)=>{
+     timer=setTimeout(()=>reject(Error('DNS_TIMEOUT')),5000);
+   })]);}finally{clearTimeout(timer);}
+ };
+ const args={dsn:process.env.DATABASE_URL,owner:input.owner,password:input.password,connect,endpoint:input.endpoint,lookup};
  const result=input.action==='prepare'?await m.prepareRole(args):input.action==='rollback'?await m.rollbackRole(args):null;
  if(!result)throw Error('INVALID_ACTION');console.log(JSON.stringify(result));
 }catch(e){console.error('SLOT_ROLE_DATABASE_OPERATION_FAILED '+(e.name==='RoleGuardError'?e.code:/^[A-Z0-9]{5}$/.test(e.code??'')?e.code:'UNAVAILABLE'));process.exitCode=1;}
 """.replace('ENCODED',encoded)
     value=subprocess.run(['docker','exec','-i','vector-app','node','--input-type=module','-e',code],
-      input=json.dumps(dict(action=action,owner=intent['owner'],password=intent['password'])).encode(),capture_output=True,timeout=120)
+      input=json.dumps(dict(action=action,owner=intent['owner'],password=intent['password'],endpoint=private_endpoint())).encode(),capture_output=True,timeout=120)
     if value.returncode:
         # Only a fixed guard/SQLSTATE code may leave the privileged actor.
         text=value.stderr.decode(errors='replace').strip()
@@ -214,7 +235,7 @@ def main():
           'model_calls':0,'cloud_calls':0,'messages_sent':0,'driver_image':IMAGE,'database_role_writes_authorized':True}
         try:
             prepared=actor(module,'prepare',intent)
-            record.update(role_owned=True,role_created=prepared['created'],privileges=prepared['privileges'])
+            record.update(database_destination_verified=True,role_owned=True,role_created=prepared['created'],privileges=prepared['privileges'])
             profile=json.loads(h.read(h.INSTALL/'compose.json'))['services']['assistant']
             uid,gid=map(int,profile['user'].split(':'))
             if secret.exists() or secret.is_symlink():
