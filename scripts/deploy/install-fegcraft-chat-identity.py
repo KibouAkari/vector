@@ -31,6 +31,19 @@ BRIDGE = DATA / 'DiscordIntegration-Data/vector/bridge.properties'
 CONTROL = BRIDGE.parent
 FAILED_RELEASE = ROOT / 'releases/vector-fegcraft-chat-identity-20261018T154321Z-403dfd'
 FAILED_REVISION = '4fc136eb67f20c7b0beccc38b00dfa46bf73e151'
+BACKEND_REVISION = '9368db9d557246a45bdc590e78dd16bfd6762671'
+BACKEND_RELEASE = ROOT / 'releases/vector-fegcraft-reviewed-help-20261018T175556Z-3ec4f6'
+
+
+def verify_active_backend(p, h, support, revision):
+    # The owner has already deployed PR #84. Its immutable verifier binds the
+    # current pointer, source, catalog, recipe digest, profile, manifest and
+    # successful zero-model HTTP stage. The old conversation pointer is history.
+    p.run('git', '-C', str(REPO), 'diff', '--exit-code', BACKEND_REVISION, revision,
+          '--', 'services/fegcraft-assistant')
+    current = p.load(BACKEND_REVISION, 'scripts/deploy/update-fegcraft-mod-context.py')
+    if current.verify_current(p, h, support, BACKEND_REVISION) != BACKEND_RELEASE:
+        raise RuntimeError('CHAT_IDENTITY_CURRENT_BACKEND_CHANGED')
 
 
 def safe_error(exc):
@@ -421,12 +434,7 @@ def install(p, h, support, old, layer, revision):
     # Reuse qualified addon/backend/assets. No build, native model calls or repeated bootstrap gates.
     for path in ('integrations/fegcraft-addon/src', 'scripts/build-fegcraft-identity.py'):
         p.run('git', '-C', str(REPO), 'diff', '--exit-code', BASE, revision, '--', path)
-    conversation = p.load(revision, 'scripts/deploy/update-fegcraft-conversation.py')
-    if conversation.POINTER.exists():
-        conversation.verify_current(p, h, support, revision)
-    else:
-        p.run('git', '-C', str(REPO), 'diff', '--exit-code', BASE, revision, '--', 'services/fegcraft-assistant')
-        p.current_assistant(h, support)
+    verify_active_backend(p, h, support, revision)
     h.addon()
     auditor = p.load(BASE, 'scripts/diagnostics/fegcraft-recreation-safety.py')
     persistence, paths = auditor.audit()

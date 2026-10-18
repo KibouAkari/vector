@@ -29,6 +29,22 @@ old = load('scripts/deploy/release-fegcraft-dialogue.py', 'identity_pure_helpers
 
 
 class Guards(unittest.TestCase):
+    def test_current_backend_is_verified_at_observed_immutable_revision(self):
+        verifier = SimpleNamespace(verify_current=Mock(return_value=installer.BACKEND_RELEASE))
+        p = SimpleNamespace(run=Mock(), load=Mock(return_value=verifier))
+        h, support = object(), object()
+        installer.verify_active_backend(p, h, support, 'candidate')
+        p.run.assert_called_once_with('git', '-C', str(installer.REPO), 'diff', '--exit-code',
+                                     installer.BACKEND_REVISION, 'candidate', '--', 'services/fegcraft-assistant')
+        p.load.assert_called_once_with(installer.BACKEND_REVISION, 'scripts/deploy/update-fegcraft-mod-context.py')
+        verifier.verify_current.assert_called_once_with(p, h, support, installer.BACKEND_REVISION)
+        verifier.verify_current.return_value = Path('/unexpected-release')
+        with self.assertRaisesRegex(RuntimeError, 'CURRENT_BACKEND_CHANGED'):
+            installer.verify_active_backend(p, h, support, 'candidate')
+        verifier.verify_current.side_effect = RuntimeError('SOURCE_DRIFT')
+        with self.assertRaisesRegex(RuntimeError, 'SOURCE_DRIFT'):
+            installer.verify_active_backend(p, h, support, 'candidate')
+
     def test_unhealthy_or_absent_game_does_not_prevent_other_service_protection(self):
         records = [{'Name': '/vector-app', 'Id': 'app', 'Image': 'fixture-image', 'Config': {'Env': ['SYNTHETIC=one']},
                     'HostConfig': {}, 'Mounts': [], 'NetworkSettings': {'Networks': {'private': {}}},
@@ -112,6 +128,22 @@ class Guards(unittest.TestCase):
         image.update(Config=copy.deepcopy(config), RootFS={'Layers': ['parent', 'private']}, Size=100)
         image['Config']['Labels'][layer.LABEL] = 'owner'
         layer.validate_image(game, parent, image, 'owner')
+        for expected in (None, '', 'root', '0', '0:0', '1000', '1000:1000'):
+            for actual in (None, '', 'root', '0', '0:0', '1000', '1000:1000'):
+                game['Config']['User'] = expected; image['Config']['User'] = actual
+                if expected == actual or (expected in (None, '') and actual in (None, '')):
+                    layer.validate_image(game, parent, image, 'owner')
+                else:
+                    with self.assertRaisesRegex(RuntimeError, 'IMAGE_CONFIG_CHANGED'):
+                        layer.validate_image(game, parent, image, 'owner')
+        game['Config']['User'] = ''; image['Config']['User'] = None
+        # Only User has this equivalence: Env order/empty representations and
+        # all other launch/security fields remain strict.
+        for field, value in (('Env', []), ('Env', None), ('WorkingDir', ''),
+                             ('Cmd', []), ('Entrypoint', ['/different']), ('StopSignal', 'SIGKILL')):
+            changed = copy.deepcopy(image); changed['Config'][field] = value
+            with self.assertRaisesRegex(RuntimeError, 'IMAGE_CONFIG_CHANGED'):
+                layer.validate_image(game, parent, changed, 'owner')
         image['Config']['Env'] = ['DIFFERENT=fixture']
         with self.assertRaises(RuntimeError): layer.validate_image(game, parent, image, 'owner')
         image['Config']['Env'] = config['Env']; image['RootFS']['Layers'] = ['other-parent', 'private']
@@ -135,10 +167,12 @@ class DockerProof(unittest.TestCase):
                 layer.run('docker', 'build', '--network=none', '--label', layer.LABEL + '=' + owner,
                           '-t', tag, str(context), timeout=90)
                 created = layer.run('docker', 'create', '--network', 'none', '--label', layer.LABEL + '=' + owner,
-                                    '--mount', 'type=bind,src=' + str(world) + ',dst=/data', tag).decode().strip()
+                                    '--user', '', '--mount', 'type=bind,src=' + str(world) + ',dst=/data', tag).decode().strip()
+                self.assertEqual(layer.inspect('container', created)['Config']['User'], '')
                 layer.run('docker', 'cp', str(root / 'changed'), created + ':/private-fixture')
                 proof = root / 'proof'; proof.mkdir()
                 preserved = layer.preserve(created, [{'change': 'C', 'path': '/private-fixture'}], proof, owner)
+                self.assertIn(layer.inspect('image', preserved['image'])['Config'].get('User'), (None, ''))
                 self.assertTrue(preserved['archived_metadata_and_content_verified'])
                 self.assertFalse(preserved['mounted_world_included'])
                 self.assertEqual((world / 'synthetic-world').read_text(), 'not in image')
@@ -146,6 +180,7 @@ class DockerProof(unittest.TestCase):
                 probe = layer.run('docker', 'create', '--network', 'none', '--mount', 'type=tmpfs,destination=/data',
                                   '--entrypoint', '/never-executed', preserved['image']).decode().strip()
                 try:
+                    self.assertEqual(layer.inspect('container', probe)['Config']['User'], '')
                     copied = subprocess.run(['docker', 'cp', probe + ':/data/synthetic-world', '-'], capture_output=True)
                     self.assertNotEqual(copied.returncode, 0)
                 finally:
@@ -164,3 +199,4 @@ class DockerProof(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
