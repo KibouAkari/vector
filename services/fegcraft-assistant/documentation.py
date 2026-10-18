@@ -53,7 +53,7 @@ class DocumentationIndex:
         if not isinstance(value, dict) or set(value) != {'schema', 'reviewed_at', 'sources', 'passages'} or value['schema'] != 2:
             raise ValueError('INVALID_DOCUMENTATION_SCHEMA')
         sources, passages = value['sources'], value['passages']
-        if not isinstance(sources, dict) or not 1 <= len(sources) <= 64 or not isinstance(passages, list) or not 1 <= len(passages) <= 128:
+        if not isinstance(sources, dict) or not 1 <= len(sources) <= 128 or not isinstance(passages, list) or not 1 <= len(passages) <= 128:
             raise ValueError('DOCUMENTATION_CATALOG_LIMIT')
         self.rows = []
         ids = set()
@@ -94,6 +94,8 @@ class DocumentationIndex:
                 continue
             score = sum(1 + math.log((len(eligible) + 1) / (1 + sum(w in t for _, t, _ in eligible))) for w in hits)
             score += .15 * len(query & text)
+            if intent != 'any' and intent in row['kinds']:
+                score += 2
             scored.append((score, row['id'], row))
         if not scored:
             return []
@@ -193,6 +195,8 @@ class ConversationKnowledge(DocumentationKnowledge):
     Social generation cannot invent records, permissions or mod instructions.
     Direct reviewed facts remain available during a model outage or CPU contention.
     """
+    friendly_statistics = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.native_timeout = 20
@@ -212,11 +216,16 @@ class ConversationKnowledge(DocumentationKnowledge):
         if ('openpartiesandclaims' in mods and re.search(r'\bpart(?:y|ys|ies)\b', q)
                 and re.search(r'erstell|anleg|gründ|gruend', q)):
             self.remember(scope, [{'role': 'user', 'content': question[:200], 'topic': 'claims'}])
-            return 'öffne die Party-Verwaltung von Open Parties and Claims. Welches Menü siehst du dort? Die genaue Schaltfläche deiner Version kann ich hier nicht prüfen.'
+            return 'für gemeinsames Bauen kannst du eine eigene Spielergruppe in deinen Claim-Einstellungen nutzen. Soll ich dir zeigen, wie du einen Spieler aufnimmst?'
+        if 'openpartiesandclaims' in mods and (re.search(r'claim', q) and re.search(r'ander|freund|spieler|mitglied', q) and re.search(r'bau|abba|zugriff|erlaub', q)):
+            chosen = next((row for row, _, _ in self.documentation.rows if row['id'] == 'claims-build-access'), None)
+            if chosen:
+                self.remember(scope, [{'role': 'user', 'content': question[:200], 'topic': 'claims'}])
+                return safe_answer(chosen['text'])
         # Reuse source-backed search. A unique passage needs no selector call.
         passages = self.documentation.search(question, mods)
         chosen = None
-        if len(passages) == 1:
+        if len(passages) == 1 or (passages and answer_intent(question) == 'explanation'):
             chosen = passages[0]
         elif passages and all(p['topic'] == 'claims' for p in passages):
             q = question.casefold()

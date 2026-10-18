@@ -1,0 +1,702 @@
+{
+  "reviewed_at": "2026-10-18",
+  "inventory_source": "docs/fegcraft-public-source-review.json",
+  "mod_count": 63,
+  "passage_count": 84,
+  "scope": "public general-purpose guidance; not all features, exact live settings or effective recipes",
+  "mods": [
+    {
+      "id": "antixray",
+      "source": {
+        "url": "https://api.github.com/repos/DrexHD/AntiXray/git/blobs/23fdfb2c48db2ee4337cca2762e91893b167818e",
+        "author": "DrexHD",
+        "revision": "23fdfb2c48db2ee4337cca2762e91893b167818e",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "balm",
+      "source": {
+        "url": "https://api.github.com/repos/TwelveIterations/Balm/git/blobs/cc3d9c0a19e0aec70c37c63b2417ec3f542a73e7",
+        "author": "TwelveIterations",
+        "revision": "cc3d9c0a19e0aec70c37c63b2417ec3f542a73e7",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "betterdays",
+      "source": {
+        "url": "https://api.github.com/repos/wendall911/BetterDays/git/blobs/961b1b0f4b3132a6d69b94d53091f1062273f6de",
+        "author": "wendall911",
+        "revision": "961b1b0f4b3132a6d69b94d53091f1062273f6de",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "c2me",
+      "source": {
+        "url": "https://api.github.com/repos/RelativityMC/C2ME-fabric/git/blobs/fedbfea8efcafd69724e87a0fb6821f49f62517b",
+        "author": "RelativityMC",
+        "revision": "fedbfea8efcafd69724e87a0fb6821f49f62517b",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "carryon",
+      "source": {
+        "url": "https://api.github.com/repos/Tschipp/CarryOn/git/blobs/42f92501cb3e5d790ac3355a1d96dfda05b821fd",
+        "author": "Tschipp",
+        "revision": "42f92501cb3e5d790ac3355a1d96dfda05b821fd",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "chopt",
+      "source": {
+        "url": "https://api.github.com/repos/ItsJustMeChris/chopt/git/blobs/6c95f5ca2b32dfa8a74bf880c2b9bebdbbf4f7c5",
+        "author": "ItsJustMeChris",
+        "revision": "6c95f5ca2b32dfa8a74bf880c2b9bebdbbf4f7c5",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "chunky",
+      "source": {
+        "url": "https://api.github.com/repos/pop4959/Chunky/git/blobs/efbe4fe978c60314665d4eb32757f041b1303d71",
+        "author": "pop4959",
+        "revision": "efbe4fe978c60314665d4eb32757f041b1303d71",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "cloth-config",
+      "source": {
+        "url": "https://modrinth.com/mod/cloth-config",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "clumps",
+      "source": {
+        "url": "https://api.github.com/repos/jaredlll08/Clumps/git/blobs/3baaed57a4198a478ee63eb28854fd67c87eaf87",
+        "author": "jaredlll08",
+        "revision": "3baaed57a4198a478ee63eb28854fd67c87eaf87",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "collective",
+      "source": {
+        "url": "https://modrinth.com/mod/collective",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "cristellib",
+      "source": {
+        "url": "https://modrinth.com/mod/cristel-lib",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "crossstitch",
+      "source": {
+        "url": "https://modrinth.com/mod/crossstitch",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "cushionbackport",
+      "source": {
+        "url": "https://modrinth.com/mod/cushions-backport",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "dcintegration-fabric",
+      "source": {
+        "url": "https://modrinth.com/mod/dcintegration",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "droppablevillagertrades",
+      "source": {
+        "url": "https://modrinth.com/mod/droppable-villager-trades",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "elytraslot",
+      "source": {
+        "url": "https://modrinth.com/mod/elytra-slot",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "elytratrims",
+      "source": {
+        "url": "https://modrinth.com/mod/elytra-trims",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "emotecraft",
+      "source": {
+        "url": "https://api.github.com/repos/KosmX/emotes/git/blobs/e06014ec18c7ac91b2afe2ae84a06708ff5301f7",
+        "author": "KosmX",
+        "revision": "e06014ec18c7ac91b2afe2ae84a06708ff5301f7",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "entityculling",
+      "source": {
+        "url": "https://api.github.com/repos/tr7zw/EntityCulling/git/blobs/6b0758bbe59f679e9840edb2449e96df23b2b12d",
+        "author": "tr7zw",
+        "revision": "6b0758bbe59f679e9840edb2449e96df23b2b12d",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "fabric-api",
+      "source": {
+        "url": "https://modrinth.com/mod/fabric-api",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "fabric-language-kotlin",
+      "source": {
+        "url": "https://api.github.com/repos/FabricMC/fabric-language-kotlin/git/blobs/7a086abd25e1918067de525a28e4e852500304de",
+        "author": "FabricMC",
+        "revision": "7a086abd25e1918067de525a28e4e852500304de",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "fabricproxy-lite",
+      "source": {
+        "url": "https://api.github.com/repos/OKTW-Network/FabricProxy-Lite/git/blobs/9f9522cba7ebceb6996b1b791ce0516b2b80f871",
+        "author": "OKTW-Network",
+        "revision": "9f9522cba7ebceb6996b1b791ce0516b2b80f871",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "ferritecore",
+      "source": {
+        "url": "https://modrinth.com/mod/ferrite-core",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "forgeconfigapiport",
+      "source": {
+        "url": "https://modrinth.com/mod/forge-config-api-port",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "getittogetherdrops",
+      "source": {
+        "url": "https://modrinth.com/mod/get-it-together-drops",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "invview",
+      "source": {
+        "url": "https://api.github.com/repos/PotatoPresident/InvView/git/blobs/94679c1c60f51485d44179d5a69d0db2ca526dc7",
+        "author": "PotatoPresident",
+        "revision": "94679c1c60f51485d44179d5a69d0db2ca526dc7",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "jamlib",
+      "source": {
+        "url": "https://api.github.com/repos/JamCoreModding/jamlib/git/blobs/88dc938cfd6aeba1285bdcdee378a7fd090f11c4",
+        "author": "JamCoreModding",
+        "revision": "88dc938cfd6aeba1285bdcdee378a7fd090f11c4",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "lithium",
+      "source": {
+        "url": "https://modrinth.com/mod/lithium",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "lithostitched",
+      "source": {
+        "url": "https://api.github.com/repos/Apollounknowndev/lithostitched/git/blobs/91d2d7597d10170100f9829f4bcce1fbd41c3ffc",
+        "author": "Apollounknowndev",
+        "revision": "91d2d7597d10170100f9829f4bcce1fbd41c3ffc",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "mineable_spawner",
+      "source": {
+        "url": "https://modrinth.com/datapack/mineable-spawner",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "modernfix",
+      "source": {
+        "url": "https://api.github.com/repos/coredex-source/ModernFix---mVUS/git/blobs/eb2f9c07cad82ee70e9dc77a8c7d9d4973e2b703",
+        "author": "coredex-source",
+        "revision": "eb2f9c07cad82ee70e9dc77a8c7d9d4973e2b703",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "modmenu",
+      "source": {
+        "url": "https://api.github.com/repos/TerraformersMC/ModMenu/git/blobs/92217a451f001ae6ecc337e91dc501da29ab369e",
+        "author": "TerraformersMC",
+        "revision": "92217a451f001ae6ecc337e91dc501da29ab369e",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "moogs_structures",
+      "source": {
+        "url": "https://api.github.com/repos/FinnSetchell/MoogsStructureLib/git/blobs/9bf1d108a7ea6539c534d5ba8dcd10d8e538587e",
+        "author": "FinnSetchell",
+        "revision": "9bf1d108a7ea6539c534d5ba8dcd10d8e538587e",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "mr_openable",
+      "source": {
+        "url": "https://modrinth.com/mod/openable",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "mr_players_dropheads",
+      "source": {
+        "url": "https://modrinth.com/datapack/players-drop-heads",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "mr_true_ending",
+      "source": {
+        "url": "https://modrinth.com/datapack/true-ending",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "netherportalfix",
+      "source": {
+        "url": "https://api.github.com/repos/TwelveIterations/NetherPortalFix/git/blobs/e23964884512a3100d7b418b7fb34e098ad41735",
+        "author": "TwelveIterations",
+        "revision": "e23964884512a3100d7b418b7fb34e098ad41735",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "noisium",
+      "source": {
+        "url": "https://api.github.com/repos/Steveplays28/noisium/git/blobs/4e3edaac4bb2481232a63586ff79170679977973",
+        "author": "Steveplays28",
+        "revision": "4e3edaac4bb2481232a63586ff79170679977973",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "openpartiesandclaims",
+      "source": {
+        "url": "https://api.github.com/repos/thexaero/open-parties-and-claims/git/blobs/ed11ffec79c867a09fe9cfe73d30594f8b305613",
+        "author": "thexaero",
+        "revision": "ed11ffec79c867a09fe9cfe73d30594f8b305613",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "packetfixer",
+      "source": {
+        "url": "https://api.github.com/repos/TonimatasDEV/PacketFixer/git/blobs/fc62aadd7787a5e798880ae608bc397a624781e1",
+        "author": "TonimatasDEV",
+        "revision": "fc62aadd7787a5e798880ae608bc397a624781e1",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "perplayerwanderingtraders",
+      "source": {
+        "url": "https://modrinth.com/mod/perplayerwanderingtraders",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "placeholder-api",
+      "source": {
+        "url": "https://api.github.com/repos/Patbox/TextPlaceholderAPI/git/blobs/60ef336bf4b9169c5a69f508af60b22f912b183e",
+        "author": "Patbox",
+        "revision": "60ef336bf4b9169c5a69f508af60b22f912b183e",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "player_animation_library",
+      "source": {
+        "url": "https://modrinth.com/mod/player-animation-library",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "polymer-bundled",
+      "source": {
+        "url": "https://api.github.com/repos/Patbox/polymer/git/blobs/1f1eef18d72e4834c36f79a06a9f0885d03fceeb",
+        "author": "Patbox",
+        "revision": "1f1eef18d72e4834c36f79a06a9f0885d03fceeb",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "puzzleslib",
+      "source": {
+        "url": "https://api.github.com/repos/Fuzss/puzzles-lib/git/blobs/7f91ce2d661fa6c1621b0190f1db93047bc2d232",
+        "author": "Fuzss",
+        "revision": "7f91ce2d661fa6c1621b0190f1db93047bc2d232",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "rightclickharvest",
+      "source": {
+        "url": "https://api.github.com/repos/JamCoreModding/right-click-harvest/git/blobs/5ce1faabe83fcabc007d5ea6e85121798da85845",
+        "author": "JamCoreModding",
+        "revision": "5ce1faabe83fcabc007d5ea6e85121798da85845",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "scalablelux",
+      "source": {
+        "url": "https://api.github.com/repos/RelativityMC/ScalableLux/git/blobs/5066ce5eab04f27749eae551e2a3e90ae8caae58",
+        "author": "RelativityMC",
+        "revision": "5066ce5eab04f27749eae551e2a3e90ae8caae58",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "seamlesssleep",
+      "source": {
+        "url": "https://api.github.com/repos/GabrielFl4/Seamless-Sleep-MultiLoader/git/blobs/a88abac759b153a499e1ad7c29fe46e20936f90b",
+        "author": "GabrielFl4",
+        "revision": "a88abac759b153a499e1ad7c29fe46e20936f90b",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "servercore",
+      "source": {
+        "url": "https://api.github.com/repos/Wesley1808/ServerCore/git/blobs/660006e77ff782e4b72cd53fe878bec6a828d629",
+        "author": "Wesley1808",
+        "revision": "660006e77ff782e4b72cd53fe878bec6a828d629",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "smallernetherportals",
+      "source": {
+        "url": "https://modrinth.com/mod/smaller-nether-portals",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "spark",
+      "source": {
+        "url": "https://api.github.com/repos/lucko/spark/git/blobs/4264d93435adb8ad8e4a9c8e2ae934c51d04dc84",
+        "author": "lucko",
+        "revision": "4264d93435adb8ad8e4a9c8e2ae934c51d04dc84",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "structory",
+      "source": {
+        "url": "https://modrinth.com/mod/structory",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "tectonic",
+      "source": {
+        "url": "https://modrinth.com/mod/tectonic",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "terralith",
+      "source": {
+        "url": "https://modrinth.com/mod/terralith",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "trade_cycling",
+      "source": {
+        "url": "https://modrinth.com/mod/trade-cycling",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "travelersbackpack",
+      "source": {
+        "url": "https://modrinth.com/mod/travelersbackpack",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "universal-graves",
+      "source": {
+        "url": "https://api.github.com/repos/Patbox/UniversalGraves/git/blobs/1a8d32f059dac9df61e521f1e8ee0bd65e39ea86",
+        "author": "Patbox",
+        "revision": "1a8d32f059dac9df61e521f1e8ee0bd65e39ea86",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "vcinteraction",
+      "source": {
+        "url": "https://modrinth.com/mod/voice-chat-interaction",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "voicechat",
+      "source": {
+        "url": "https://modrinth.com/mod/simple-voice-chat",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "wwoo",
+      "source": {
+        "url": "https://modrinth.com/mod/wwoo",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "xaerominimap",
+      "source": {
+        "url": "https://modrinth.com/mod/xaeros-minimap",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "xaeroworldmap",
+      "source": {
+        "url": "https://modrinth.com/mod/xaeros-world-map",
+        "author": "mod author project description",
+        "revision": null,
+        "scope": "public general purpose; installed settings not inspected",
+        "license": "original short factual paraphrase; no upstream code or assets redistributed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    },
+    {
+      "id": "yet_another_config_lib_v3",
+      "source": {
+        "url": "https://api.github.com/repos/isXander/YetAnotherConfigLib/git/blobs/6e1eda1600e59cf1474b4ce3cf24bf3ce6453ad6",
+        "author": "isXander",
+        "revision": "6e1eda1600e59cf1474b4ce3cf24bf3ce6453ad6",
+        "scope": "public-purpose-only; README blob, not installed configuration",
+        "license": "original short factual paraphrase; upstream license not relicensed"
+      },
+      "reviewed_scope": "short general-purpose paraphrase; no private configuration read"
+    }
+  ]
+}

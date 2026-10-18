@@ -65,7 +65,7 @@ class Conversation(TestCase):
             self.assertIn('beanspruche', answer)
             self.assertIn('Claim', answer)
             party = self.ask('wie erstelle ich eine Party für meinen Claim?')
-            self.assertIn('Party-Verwaltung', party)
+            self.assertIn('Spielergruppe', party)
             self.assertNotIn('beanspruche', party)
 
     def test_social_is_local_bounded_own_context_and_output_policy_independent(self):

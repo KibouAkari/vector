@@ -25,7 +25,7 @@ METRIC_WORDS = {
     'distance': r'strecke|distanz|kilometer|gelaufen|gereist',
     'deaths': r'\btod(?:e|esfälle)?\b|gestorben|\bstarb\b|\bstarben\b|\bsterben\b|\bstirbt\b|\bdied\b|\bdeaths?\b',
 }
-PRIVATE = re.compile(r'seed|welt.?schlüssel|passw[oö]rt|password|api.?key|token|credential|/opt/|/etc/|rcon|docker|system.?prompt|ignore.*(?:instructions|regeln)|ignoriere.*(?:anweisung|regel)|gamemode|creative|kreativmodus|cheat|hack|operator|admin.?recht|betr[üu]g|betrueg|schummel|kreativ|spectator', re.I)
+PRIVATE = re.compile(r'seed|welt.?schlüssel|passw[oö]rt|password|api.?key|token|credential|/opt/|/etc/|rcon|docker|system.?prompt|ignore.*(?:instructions|regeln)|ignoriere.*(?:anweisung|regel)|gamemode|creative|kreativmodus|cheat|\bhack(?:s|ing|er|en)?\b|operator|admin.?recht|betr[üu]g|betrueg|schummel|kreativ|spectator', re.I)
 MOD_INVENTORY = re.compile(r'welche.*mods|mod.?liste|installierte.*mods', re.I)
 TOPIC = re.compile(r'minecraft|redstone|craft|rezept|recipe|item|block|blöck|erz|verzauber|enchant|villager|dorfbewohner|creeper|zombie|skelett|enderman|nether|ender|farm|kolben|piston|trichter|hopper|komparator|comparator|repeater|verstärker|biom|elytra|rüstung|werkbank|schmelz|ofen|diamant|eisen|mod\b|mods\b|rucksack|backpack|claim|grab|graves|lag\b|fps\b|chunk|server.*(?:ruckel|problem|fehler)', re.I)
 UNSAFE_OUTPUT = re.compile(r'[/\\](?:give|op|deop|execute|gamemode|tp|teleport|seed|summon|kill|setblock|fill|sudo|bin|etc|opt)\b|\b(?:seed|passwort|password|api.?key|token|rcon|docker|curl|wget|bash|powershell|cheat|gamemode)\b|https?://|www\.|@|`|[<>\x00-\x1f\x7f]|\u00a7', re.I)
@@ -151,6 +151,33 @@ def number(value, unit):
     return f'{int(value):,}'.replace(',', "'") + ' ' + unit
 
 
+def friendly_statistics(answer, sender):
+    suffix = '. Stand: gespeicherte Spielerdateien.'
+    if not answer.endswith(suffix):
+        return answer
+    value = answer[:-len(suffix)]
+    match = re.fullmatch(r"([A-Za-z0-9_]{1,16}): (Spielerkills|Mobkills|Spielzeit|Strecke|Tode) (.+); Rang ([0-9]+)( nach Anzahl)?", value)
+    if match:
+        subject, metric, amount, rank, _ = match.groups()
+        own = subject.casefold() == sender.casefold()
+        who = 'du' if own else subject
+        count = amount.rsplit(' ', 1)[0]
+        if metric in ('Spielerkills', 'Mobkills'):
+            return (who + (' hast ' if own else ' hat ') + count + ' ' + metric + ' und ' + ('bist' if own else 'ist') + ' damit auf Rang ' + rank + '.')
+        if metric == 'deaths' or metric == 'Tode':
+            return who + (' bist ' if own else ' ist ') + count + ' Mal gestorben und ' + ('liegst' if own else 'liegt') + ' damit auf Rang ' + rank + ' nach Anzahl.'
+        return who + (' liegst' if own else ' liegt') + ' mit ' + amount + ' ' + metric + ' auf Rang ' + rank + '.'
+    if value.startswith(sender + ': '):
+        value = ('deine Ränge: ' if re.search(r'(?:Spielzeit|Strecke|Mobkills|Spielerkills|Tode) Rang', value) else 'deine Werte: ') + value[len(sender)+2:]
+    elif value.startswith(sender + ' führt bei '):
+        value = 'deine Rekorde: ' + value[len(sender+' führt bei '):]
+    match = re.fullmatch(r"(Mobkills|Spielerkills): ([A-Za-z0-9_]{1,16}) ([0-9'.,]+) Kills", value)
+    if match:
+        metric, player, count = match.groups()
+        return player + ' hat mit ' + count + ' Kills die meisten ' + metric + '.'
+    return value + '.'
+
+
 def unknown_player_target(question, people):
     """Separate named subjects from complete server and metric qualifiers."""
     known = {p['name'].casefold() for p in people}
@@ -261,10 +288,11 @@ class ModHelp:
 
 
 class Assistant:
-    def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None, recipes=None):
+    def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None, recipes=None, mod_recipes=None):
         self.state, self.stats_dir, self.usercache = state, stats_dir, usercache
         self.mod_file, self.knowledge = mod_file, knowledge
         self.recipes = recipes
+        self.mod_recipes = mod_recipes
         self.mod_help = ModHelp()
 
     def clear_knowledge(self, scope):
@@ -309,6 +337,8 @@ class Assistant:
             answer = self.mod_help.answer(question, self.mods, scope, fallback=not getattr(self.knowledge, 'broad_topics', False))
             if answer is None:
                 answer = self.stat_answer(question, block_items, principal=principal if source == 'minecraft' else None)
+            if answer is None and self.mod_recipes is not None:
+                answer = self.mod_recipes.answer(question)
             if answer is None and self.recipes is not None:
                 answer = self.recipes.answer(question)
             if answer is not None:
@@ -333,6 +363,8 @@ class Assistant:
                     answer = 'welche Aktion oder welcher Gegenstand macht dir Probleme? Nenne bitte die Mod oder beschreibe kurz, was du versucht hast.'
                 else:
                     answer = 'bleiben wir bitte bei Minecraft. Welche Frage zum Spiel oder zu einer Mod hast du?'
+        if getattr(self.knowledge, 'friendly_statistics', False):
+            answer = friendly_statistics(answer, name)
         # Deterministic responses use the same presentation/command boundary.
         safe_answer(answer)
         return {'status': 'answered', 'text': safe_display(prefix + answer)}

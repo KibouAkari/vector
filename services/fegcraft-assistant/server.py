@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 from runtime import Assistant, LocalKnowledge, State
 from recipes import RecipeBook
 
-DOCUMENTATION_SHA256 = '214261e4c9184837e4f532dcb6482cc1be8e0b8db0089a130a3e20e7a18df7b8'
+DOCUMENTATION_SHA256 = '074462abb97ae7a1a91c884e776fd6826ecf27c9f82288cd9c0fc8f370ade00d'
 
 
 def knowledge_for(mode, state, dsn_path='/run/secrets/vector_fegcraft_slot_dsn',
@@ -155,7 +155,11 @@ def main():
     # Always intercept recipe questions, including when no qualified catalog is
     # mounted. Missing/unsupported recipes must never go to the small model.
     recipes = RecipeBook.load('/inputs/recipes.json') if os.environ.get('VECTOR_FEGCRAFT_RECIPES') == '1' else RecipeBook()
-    assistant = Assistant(state, '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json', knowledge, recipes)
+    mod_recipes = None
+    if mode == '4' and os.environ.get('VECTOR_FEGCRAFT_MOD_RECIPES_SHA256'):
+        from modrecipes import ModRecipes
+        mod_recipes = ModRecipes('/inputs/mod-recipes.json', os.environ['VECTOR_FEGCRAFT_MOD_RECIPES_SHA256'])
+    assistant = Assistant(state, '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json', knowledge, recipes, mod_recipes)
     with Service(('0.0.0.0', 8090), assistant, key) as service:
         service.serve_forever(poll_interval=0.5)
 
