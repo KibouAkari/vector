@@ -94,6 +94,8 @@ jobs:
           python3 tests/fegcraft-reviewed-service.test.py
           python3 tests/fegcraft-reviewed-release.test.py
           python3 tests/fegcraft-chat-preparation.test.py
+          VECTOR_ROOT_PRESERVATION_DOCKER=1 python3 tests/fegcraft-chat-identity-install.test.py
+          python3 -m py_compile scripts/deploy/install-fegcraft-chat-identity.py scripts/lib/fegcraft-root-preservation.py
           python3 -m py_compile scripts/deploy/prepare-fegcraft-chat-cutover.py
           python3 -m py_compile scripts/deploy/release-fegcraft-reviewed-help.py tests/fegcraft-service-smoke.py
           python3 -m py_compile scripts/deploy/prepare-fegcraft-slot-role.py tests/fegcraft-slot-role-probe.py
