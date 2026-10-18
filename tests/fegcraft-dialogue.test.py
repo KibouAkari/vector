@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'services/fegcraft-assistant'))
@@ -79,6 +80,31 @@ class Dialogue(unittest.TestCase):
         self.assertEqual(label('minecraft:anvil'), 'Amboss')
         self.assertEqual(label('minecraft:iron_block'), 'Eisenblock')
 
+    def test_party_question_cannot_reuse_previous_record_answer(self):
+        previous = self.ai.stat_answer('welche Rekorde hat ExampleOne?')
+        self.assertIn('ExampleOne', previous)
+        with patch('runtime.stats.snapshot', side_effect=AssertionError('Party question read statistics')):
+            for question in ('wie erstelle ich eine party für meinen claim?',
+                             'wozu sind Partys gut?', 'und wie gebe ich Mitgliedern Zugriff?'):
+                self.assertIsNone(self.ai.stat_answer(question))
+
+    def test_discord_mobkill_rank_reads_current_values(self):
+        payload = {'principal': self.ids[0], 'name': 'Example Discord', 'source': 'discord',
+                   'event': self.ids[0] + ':1',
+                   'message': 'Hey Vector, welchen Rang hat ExampleOne bei der Mobkills Rangliste?'}
+        def kills(uid, count):
+            (self.stats / (uid + '.json')).write_text(json.dumps({'stats': {
+                'minecraft:custom': {'minecraft:mob_kills': count}}}))
+        kills(self.ids[0], 10)
+        kills(self.ids[1], 20)
+        answer = self.ai.handle(payload)['text']
+        self.assertTrue(answer.startswith('Hey Example Discord,'))
+        self.assertIn('Mobkills 10 Kills; Rang 2', answer)
+        kills(self.ids[0], 30)
+        answer = self.ai.handle(dict(payload, event=self.ids[0] + ':2'))['text']
+        self.assertIn('Mobkills 30 Kills; Rang 1', answer)
+
 
 if __name__ == '__main__':
     unittest.main()
+

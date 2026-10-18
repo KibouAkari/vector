@@ -93,6 +93,8 @@ jobs:
           python3 tests/fegcraft-slot-role.test.py
           python3 tests/fegcraft-reviewed-service.test.py
           python3 tests/fegcraft-reviewed-release.test.py
+          python3 tests/fegcraft-chat-preparation.test.py
+          python3 -m py_compile scripts/deploy/prepare-fegcraft-chat-cutover.py
           python3 -m py_compile scripts/deploy/release-fegcraft-reviewed-help.py tests/fegcraft-service-smoke.py
           python3 -m py_compile scripts/deploy/prepare-fegcraft-slot-role.py tests/fegcraft-slot-role-probe.py
           python3 -m py_compile scripts/deploy/qualify-fegcraft-admission-driver.py tests/fegcraft-admission-driver.integration.py tests/fegcraft-admission-driver-ci.py
@@ -312,3 +314,4 @@ jobs:
         run: |
           python3 scripts/build-fegcraft-addon.py
           python3 tests/fegcraft-flow.test.py
+

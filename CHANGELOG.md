@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-18 — Prepare Discord input and Vector identity against the deployed mode3 service (PR #80)
+
+- Owner confirms actual Minecraft party explanation and own claim-rights followup work and reach Discord. Discord-origin rank request remains unanswered; avatar/head absent. The new addon hook and logo pack were qualified earlier but never installed. An apparent record reply to a party question remains unexplained; do not claim a reproduced routing bug.
+- Add a current-mode3-aware preparation entrypoint. Verify PR #78 deployed manifest/profile/code/image, existing role-only mount/security, installed captured addon, full production snapshots and delivered introduction markers. Reuse the existing isolated addon/API evaluator with delayed-welcome/Discord/policy tests; prepare exact brand assets privately. No app/assistant replacement, Minecraft restart, model request, cloud request or actual message. Runtime code remains unchanged.
+- Collect current persistence/private writable-layer review and existing nightly backup evidence in the same run. Exact writable paths remain in root-private owner evidence. Read only owned Restic config/snapshot metadata with no cache/lock; no backup, restore tree, prune, old-archive removal or secret output. A recent successful consistent snapshot plus world-header restore probe does not prove a full restore or include the container root layer. Missing evidence remains a separate explicit gate, not an activation authorization.
+- Add regressions for a party question following records and Discord-origin mobkill rank freshness. Five preparation evidence tests and seven dialogue tests pass locally. Actual server preparation, Discord input/logo client rendering and guarded cutover remain unobserved; keep recreation/backup holds and v1/v2 welcome semantics. CI includes the new tests.
+
 ## 2026-10-18 — Record successful reviewed-help deployment and pending real-chat verification (PR #79)
 
 - Owner PR #78 release PASSED at14:59, source45f3400d472603e0e55d16c31fce32bb1a8283fb, evidence vector-fegcraft-reviewed-help-20261018T125908Z-f15216. Only assistant recreated; actual mode3 health/readonly inputs passed with50 player files/63 mod IDs/975 base recipes. Minecraft/other services and production state retained.
@@ -705,3 +712,4 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The owner observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at vector-privacy-composer-release-20261016T123251Z-4139a9. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
+
