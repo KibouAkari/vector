@@ -6,11 +6,50 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import threading
 import time
+from urllib.parse import urlsplit
 
 from runtime import Assistant, LocalKnowledge, State
 from recipes import RecipeBook
+
+DOCUMENTATION_SHA256 = '214261e4c9184837e4f532dcb6482cc1be8e0b8db0089a130a3e20e7a18df7b8'
+
+
+def knowledge_for(mode, state, dsn_path='/run/secrets/vector_fegcraft_slot_dsn',
+                  documentation_path='/inputs/documentation.json'):
+    if mode not in ('0', '1', '2', '3'):
+        raise RuntimeError('INVALID_KNOWLEDGE_MODE')
+    if mode == '0':
+        return None
+    if mode == '3':
+        fd = os.open(dsn_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, 'rb') as handle:
+            meta = os.fstat(handle.fileno())
+            if (not stat.S_ISREG(meta.st_mode) or meta.st_size > 4096
+                    or stat.S_IMODE(meta.st_mode) != 0o400 or meta.st_uid != os.getuid()):
+                raise RuntimeError('INVALID_LOCAL_SLOT_FILE')
+            raw = handle.read(4097)
+        if len(raw) > 4096:
+            raise RuntimeError('INVALID_LOCAL_SLOT_FILE')
+        dsn = raw.decode().strip()
+        value = urlsplit(dsn)
+        if (value.scheme not in ('postgres', 'postgresql') or value.username != 'vector_fegcraft_slot'
+                or not value.password or not value.hostname or value.port not in (None, 5432)
+                or value.path in ('', '/') or value.query or value.fragment):
+            raise RuntimeError('RESTRICTED_LOCAL_SLOT_REQUIRED')
+        from documentation import DocumentationIndex, DocumentationKnowledge
+        index = DocumentationIndex(documentation_path, DOCUMENTATION_SHA256)
+        return DocumentationKnowledge(dsn, documentation=index, usage=state.model_usage)
+    # Retain existing explicitly opted-in legacy modes; rollout only selects3.
+    dsn = Path(dsn_path).read_text().strip()
+    if not dsn:
+        raise RuntimeError('MISSING_LOCAL_SLOT')
+    if mode == '2':
+        from knowledge import GeneralKnowledge
+        return GeneralKnowledge(dsn, usage=state.model_usage)
+    return LocalKnowledge(dsn)
 
 
 class Service(ThreadingHTTPServer):
@@ -107,22 +146,11 @@ def main():
     if not re.fullmatch(r'[a-f0-9]{64}', token):
         raise RuntimeError('INVALID_TOKEN')
     key = bytes.fromhex(token)
-    # Knowledge remains disabled until a restricted DB role and actual-model
-    # qualification are provided. Deterministic stats require no DB/model call.
+    # Default remains OFF. The guarded deployment can opt into reviewed mode3
+    # only after native model, restricted role and construction qualification.
     state = State('/state/events.sqlite', key)
-    knowledge = None
     mode = os.environ.get('VECTOR_FEGCRAFT_KNOWLEDGE', '0')
-    if mode not in ('0', '1', '2'):
-        raise RuntimeError('INVALID_KNOWLEDGE_MODE')
-    if mode in ('1', '2'):
-        dsn = Path('/run/secrets/vector_fegcraft_slot_dsn').read_text().strip()
-        if not dsn:
-            raise RuntimeError('MISSING_LOCAL_SLOT')
-        if mode == '2':
-            from knowledge import GeneralKnowledge
-            knowledge = GeneralKnowledge(dsn, usage=state.model_usage)
-        else:
-            knowledge = LocalKnowledge(dsn)
+    knowledge = knowledge_for(mode, state)
     # Always intercept recipe questions, including when no qualified catalog is
     # mounted. Missing/unsupported recipes must never go to the small model.
     recipes = RecipeBook.load('/inputs/recipes.json') if os.environ.get('VECTOR_FEGCRAFT_RECIPES') == '1' else RecipeBook()
@@ -133,5 +161,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-

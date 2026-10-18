@@ -102,7 +102,7 @@ try{
    })]);}finally{clearTimeout(timer);}
  };
  const args={dsn:process.env.DATABASE_URL,owner:input.owner,password:input.password,connect,endpoint:input.endpoint,lookup};
- const result=input.action==='prepare'?await m.prepareRole(args):input.action==='rollback'?await m.rollbackRole(args):null;
+ const result=input.action==='prepare'?await m.prepareRole(args):input.action==='rollback'?await m.rollbackRole(args):input.action==='verify'?await m.verifyRole(args):null;
  if(!result)throw Error('INVALID_ACTION');console.log(JSON.stringify(result));
 }catch(e){console.error('SLOT_ROLE_DATABASE_OPERATION_FAILED '+(e.name==='RoleGuardError'?e.code:/^[A-Z0-9]{5}$/.test(e.code??'')?e.code:'UNAVAILABLE'));process.exitCode=1;}
 """.replace('ENCODED',encoded)

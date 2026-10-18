@@ -172,3 +172,11 @@ export async function rollbackRole({dsn,owner,password,fixture=false,connect,end
     return {removed:true,already_absent:false};
   });
 }
+
+export async function verifyRole({dsn,owner,password,fixture=false,connect,endpoint,lookup}){
+  inputCheck(owner,password);await checkedDestination({dsn,fixture,endpoint,lookup});
+  const row=await session(dsn,connect,true,db=>roleRecord(db));assertOwned(row,owner);
+  const privileges=await auditCluster(dsn,connect,row.oid);
+  const url=new URL(dsn);url.username=ROLE;url.password=password;url.search='';
+  return {owned:true,privileges,dsn:url.href};
+}
