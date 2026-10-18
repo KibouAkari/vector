@@ -89,5 +89,7 @@ class ModRecipes:
         q=question.casefold()
         if not re.search(r'backpack|rucksack|rucksäcke|rucksaecke|rucksacktank',q): return None
         if not re.search(r'craft|rezept|recipe|herstell|bekomm|kriege|erhalte|tank',q): return None
+        if re.search(r'eisen|iron|gold|diamant|diamond|netherit|creeper|drache|dragon|roten?|blauen?|grünen?|gruenen?',q):
+            return 'welche genaue Rucksack-Variante meinst du? Ihr Rezept kann vom Standardrucksack abweichen; ich möchte dir keine falschen Zutaten nennen.'
         identifier='travelersbackpack:backpack_tank' if re.search(r'tank',q) else 'travelersbackpack:standard'
         return self.render(identifier) or 'das genaue Mod-Grundrezept ist gerade nicht verfügbar. Welchen Rucksack meinst du genau?'

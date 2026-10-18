@@ -229,7 +229,7 @@ class ConversationKnowledge(DocumentationKnowledge):
             chosen = passages[0]
         elif passages and all(p['topic'] == 'claims' for p in passages):
             q = question.casefold()
-            desired = ('claims-claim' if re.search(r'claim|chunk|gebiet', q) and re.search(r'erstell|mach|anleg|beanspruch|schütz|schuetz', q)
+            desired = ('claims-claim' if re.search(r'claim|chunk|gebiet', q) and re.search(r'erstell|mach|anleg|beanspruch|schütz|schuetz|bau', q)
                        else 'claims-menu' if re.search(r'zugriff|recht|mitglied', q) and answer_intent(question) == 'procedure'
                        else 'party-rights' if re.search(r'part(?:y|ys|ies)', q) and answer_intent(question) == 'explanation'
                        else None)

@@ -12,7 +12,9 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'services/fegcraft-assistant'))
 from documentation import DocumentationIndex,ConversationKnowledge
 from modrecipes import ModRecipes,export_installed
-from runtime import friendly_statistics,request_forbidden,safe_answer
+from runtime import Assistant,friendly_statistics,request_forbidden,safe_answer
+from recipes import RecipeBook
+from types import SimpleNamespace
 from policy import addressed_question
 
 
@@ -48,6 +50,7 @@ class ModContext(TestCase):
             self.assertIn('Rucksacktank, Holztruhe, Rucksacktank',answer)
             self.assertIn('Grundrezept der installierten Mod',answer);safe_answer(answer)
         self.assertIsNone(self.book.answer('wie funktioniert ein Kolben?'))
+        self.assertNotIn('Leder, Faden, Leder',self.book.answer('wie crafte ich einen Diamant Backpack?'))
         self.book.value['recipes']['travelersbackpack:standard']['key']['X']='/op Synthetic'
         self.assertNotIn('/op',self.book.answer('wie bekomme ich einen Backpack?'))
 
@@ -66,6 +69,10 @@ class ModContext(TestCase):
         with patch.object(self.ai,'request',side_effect=AssertionError('direct help invoked model')):
             rights=self.ai.answer_scoped('wie kann ein anderer Spieler in meinem Claim bauen?',['openpartiesandclaims'],('mc','one'))
             self.assertIn('Player Groups',rights)
+            app=Assistant(SimpleNamespace(admit=lambda *args:'accepted'),'/unused','/unused','/unused',self.ai,RecipeBook())
+            app.mods=lambda:['openpartiesandclaims']
+            response=app.handle(dict(principal='00000000-0000-0000-0000-000000000001',name='Synthetic',event='00000000-0000-0000-0000-000000000001:1',message='hey vector wie baue ich einen Claim?'))
+            self.assertIn('beanspruche',response['text'])
             self.assertIn('Axt',self.ai.answer_scoped('wie funktioniert Chopt?',['chopt'],('mc','one')))
 
     def test_friendly_statistics_omit_provenance_and_repeated_name(self):

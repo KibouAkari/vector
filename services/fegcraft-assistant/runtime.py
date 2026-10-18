@@ -339,7 +339,7 @@ class Assistant:
                 answer = self.stat_answer(question, block_items, principal=principal if source == 'minecraft' else None)
             if answer is None and self.mod_recipes is not None:
                 answer = self.mod_recipes.answer(question)
-            if answer is None and self.recipes is not None:
+            if answer is None and self.recipes is not None and not re.search(r'\b(?:claims?|part(?:y|ys|ies))\b', question, re.I):
                 answer = self.recipes.answer(question)
             if answer is not None:
                 self.clear_knowledge(scope)
