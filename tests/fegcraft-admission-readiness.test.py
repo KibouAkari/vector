@@ -30,6 +30,16 @@ def report():
       warm_median_seconds=2)
 
 
+def inspect_values():
+    return [dict(Name='/' + name, Id='synthetic-' + name, Image=m.PYTHON,
+      Config={'Env': ['SYNTHETIC_PRIVATE=never-print-this-value'], 'Entrypoint': ['python3']},
+      HostConfig={'ReadonlyRootfs': True},
+      Mounts=[dict(Type='bind',Source='/synthetic/a',Destination='/a',RW=False,Propagation='rprivate'),
+              dict(Type='bind',Source='/synthetic/b',Destination='/b',RW=True,Propagation='rprivate')],
+      State={'Running':True,'StartedAt':'synthetic-start','Health':{'Status':'healthy'}},
+      NetworkSettings={'Networks':{'synthetic-network':{}}}) for name in m.NAMES]
+
+
 class Readiness(unittest.TestCase):
     def test_complete_report_and_native_usage(self):
         self.assertEqual(m.evidence(report()), dict(cases=31, native_calls=17, cold_seconds=2,
@@ -151,6 +161,81 @@ class Readiness(unittest.TestCase):
         with patch.object(m,'run',run),self.assertRaisesRegex(RuntimeError,'OWNERSHIP'):
             m.driver_probe('vector-admission-probe-synthetic','owner')
         self.assertFalse(any('rm' in args for args in calls))
+
+    def test_snapshot_ignores_only_mount_enumeration_order(self):
+        values=inspect_values(); shuffled=copy.deepcopy(values)
+        for value in shuffled:value['Mounts'].reverse()
+        def snapshot(items):
+            with patch.object(m,'run',return_value=json.dumps(items).encode()),patch.object(m,'read',return_value=b'synthetic-file'):
+                return m.snapshot()
+        before=snapshot(values); after=snapshot(shuffled)
+        self.assertEqual(before,after)
+        self.assertEqual(m.snapshot_differences(before,after),{'containers':[],'changed_file_count':0})
+        self.assertEqual(shuffled[0]['Mounts'][0]['Destination'],'/b','must not mutate inspector records')
+
+    def test_actual_mount_changes_and_duplicates_still_fail_comparison(self):
+        values=inspect_values()
+        def snapshot(items):
+            with patch.object(m,'run',return_value=json.dumps(items).encode()),patch.object(m,'read',return_value=b'synthetic-file'):
+                return m.snapshot()
+        before=snapshot(values)
+        for field, new in [('Source','/synthetic/other'),('Destination','/other'),('RW',True),
+                           ('Type','volume'),('Propagation','rshared'),('Name','unexpected-volume')]:
+            changed=copy.deepcopy(values); changed[0]['Mounts'][0][field]=new
+            with self.subTest(field=field):self.assertNotEqual(before,snapshot(changed))
+        changed=copy.deepcopy(values); changed[0]['Mounts'].append(copy.deepcopy(changed[0]['Mounts'][0]))
+        self.assertNotEqual(before,snapshot(changed))
+        changed=copy.deepcopy(values); changed[0]['Mounts'].pop()
+        self.assertNotEqual(before,snapshot(changed))
+
+    def test_non_mount_metadata_and_file_hashes_remain_strict_and_redacted(self):
+        values=inspect_values()
+        def snapshot(items,raw=b'synthetic-file'):
+            with patch.object(m,'run',return_value=json.dumps(items).encode()),patch.object(m,'read',return_value=raw):
+                return m.snapshot()
+        before=snapshot(values)
+        for field in ('Id','Image','Config','HostConfig','StartedAt','networks'):
+            after=copy.deepcopy(before)
+            after['/vector-app'][field]='SYNTHETIC_PRIVATE=changed-secret'
+            differences=m.snapshot_differences(before,after)
+            self.assertNotEqual(before,after)
+            self.assertEqual(differences['containers'],[{'container':'vector-app','changed_fields':[field]}])
+            self.assertNotIn('PRIVATE',json.dumps(differences))
+        after=snapshot(values,b'changed-file')
+        self.assertNotEqual(before,after)
+        self.assertEqual(m.snapshot_differences(before,after)['changed_file_count'],5)
+
+    def test_failure_preserves_completed_audit_and_first_failure_comparison(self):
+        values=inspect_values()
+        with patch.object(m,'run',return_value=json.dumps(values).encode()),patch.object(m,'read',return_value=b'synthetic-file'):
+            before=m.snapshot()
+        after=copy.deepcopy(before); after['/vector-app']['Mounts'][0]['RW']=True
+        calls=[]
+        def run(*args,**kwargs):
+            calls.append(args)
+            return b'{"read_only_catalog_audit":true,"public_grants":[]}' if args[0]=='docker' else b''
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder); (root/'releases').mkdir()
+            with patch.object(m,'ROOT',root),patch.dict(m.os.environ,{'VECTOR_FEGCRAFT_REV':'a'*40}),\
+              patch.object(m.os,'geteuid',return_value=0),patch.object(m,'run',run),\
+              patch.object(m,'read',return_value=json.dumps(report()).encode()),\
+              patch.object(m,'baseline',return_value={'owned_mode_zero_baseline':True}),\
+              patch.object(m,'addon',return_value={'http_wall_deadline_seconds':27}),\
+              patch.object(m,'driver_probe',return_value={'available':False,'version':None,'binary':False}),\
+              patch.object(m,'snapshot',side_effect=[before,after]) as snapshots,\
+              patch('builtins.print') as output,\
+              self.assertRaisesRegex(RuntimeError,'PRODUCTION_CHANGED'):
+                m.audit()
+            self.assertEqual(snapshots.call_count,2,'do not resnapshot and obscure the first failure')
+            saved=json.loads(next((root/'releases').glob('*/result.json')).read_text())
+            self.assertFalse(saved['audit_completed'])
+            self.assertFalse(saved['production_unchanged'])
+            self.assertFalse(saved['eligible_for_activation'])
+            self.assertFalse(saved['production_activated'])
+            self.assertTrue(saved['database_catalog']['read_only_catalog_audit'])
+            self.assertFalse(saved['driver_in_current_python_image']['available'])
+            self.assertEqual(saved['production_differences']['containers'],[{'container':'vector-app','changed_fields':['Mounts']}])
+            self.assertNotIn('never-print-this-value',json.dumps(saved)+str(output.call_args_list))
 
 
 if __name__=='__main__': unittest.main()
