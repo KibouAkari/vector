@@ -161,11 +161,15 @@ def probe(work,secret,uid,gid,owner):
         if json.loads(run('docker','exec','vector-app','node','--input-type=module','-e',CHECK,timeout=10))!={'available':True}:raise RuntimeError('SLOT_ROLE_RELEASE_NOT_OBSERVED')
         return {'role_login_verified':True,'same_database_shared_slot_verified':True,'both_contention_directions_verified':True,'release_verified':True}
     finally:
-        try:
-            for process in (client,coordinator):
-                if process is not None:release(process)
-        finally:
-            for name in (three,two,one):cleanup(name,owner)
+        failed=False
+        for process in (client,coordinator):
+            if process is not None:
+                try:release(process)
+                except Exception:failed=True
+        for name in (three,two,one):
+            try:cleanup(name,owner)
+            except Exception:failed=True
+        if failed:raise RuntimeError('SLOT_ROLE_PROBE_CLEANUP_FAILED')
 
 
 def main():

@@ -95,5 +95,14 @@ class RoleSetup(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'synthetic failure'):m.probe(Path('/code'),Path('/secret'),1001,1001,'owned')
         release.assert_called_once_with(process);self.assertEqual(len(removed),3)
 
+    def test_cleanup_attempts_all_owned_probes_even_after_one_failure(self):
+        removed=[]
+        def clean(name,owner):
+            removed.append(name)
+            if 'hold' in name:raise RuntimeError('synthetic cleanup failure')
+        with patch.object(m,'run',side_effect=RuntimeError('synthetic probe failure')),patch.object(m,'cleanup',clean):
+            with self.assertRaisesRegex(RuntimeError,'PROBE_CLEANUP_FAILED'):m.probe(Path('/code'),Path('/secret'),1001,1001,'owned')
+        self.assertEqual(len(removed),3)
+
 
 if __name__=='__main__':unittest.main()
