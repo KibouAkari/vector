@@ -16,7 +16,9 @@ def check(value, code):
 
 def main():
     key = bytes.fromhex(Path('/run/secrets/vector_fegcraft_token').read_text().strip())
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args): return None
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
     event = str(uuid.uuid4()); serial = 0
     def ask(question, principal=None, source='minecraft'):
         nonlocal serial
@@ -44,6 +46,12 @@ def main():
     ranks = ask('welche Ränge habe ich in den Rekorden?', subject['uuid'])[0]
     check('Spielzeit Rang' in ranks and 'Mobkills Rang' in ranks and 'Tode Rang' in ranks, 'CONVERSATION_SELF_RANKS')
     check('Minecraft-Spieler bist du' in ask('welche Ränge habe ich?', source='discord')[0], 'CONVERSATION_DISCORD_IDENTITY')
+    with opener.open('http://vector-local-inference:11434/api/tags', timeout=5) as response:
+        registry = response.read(1048577)
+    check(len(registry) <= 1048576, 'CONVERSATION_MODEL_REGISTRY_LIMIT')
+    qualified = [m for m in json.loads(registry)['models'] if m.get('name') == 'vector-qwen3-instruct2507:4b-q4km'
+                 and m.get('digest') == 'b7613a8eda1dbb8ce133679f38f5791e4fd70017c2f37fe8eaa0d5a0d7a9e9c1']
+    check(len(qualified) == 1, 'CONVERSATION_QUALIFIED_MODEL_REQUIRED')
     person = str(uuid.uuid4())
     first, first_seconds = ask('wie geht es dir?', person)
     second, followup_seconds = ask('mir ist gerade langweilig, wollen wir etwas plaudern?', person)
