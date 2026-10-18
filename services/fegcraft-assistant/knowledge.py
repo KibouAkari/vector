@@ -90,7 +90,7 @@ class GeneralKnowledge(LocalKnowledge):
         value=None;ok=False
         try:
             req=urllib.request.Request(self.endpoint+'/api/chat',json.dumps(payload).encode(),{'Content-Type':'application/json'})
-            with opener.open(req,timeout=min(16 if predict==24 else 12,remaining)) as response:raw=response.read(32769)
+            with opener.open(req,timeout=min(getattr(self, 'native_timeout', 16 if predict==24 else 12),remaining)) as response:raw=response.read(32769)
             if len(raw)>32768:raise ValueError('MODEL_RESPONSE_LIMIT')
             value=json.loads(raw)
             if time.monotonic()>deadline:raise TimeoutError('LOCAL_DEADLINE')
@@ -154,4 +154,5 @@ class GeneralKnowledge(LocalKnowledge):
                 return answer
         except Exception:
             self.clear(scope);raise
+
 

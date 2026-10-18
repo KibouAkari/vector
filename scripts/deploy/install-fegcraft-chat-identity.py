@@ -419,9 +419,15 @@ def install(p, h, support, old, layer, revision):
             or prepared.get('addon_sha256') != ADDON_SHA or p.sha(p.read(CAPTURE / 'vector-minecraft-0.1.0.jar')) != ADDON_SHA):
         raise RuntimeError('CHAT_IDENTITY_OWNER_CAPTURE_CHANGED')
     # Reuse qualified addon/backend/assets. No build, native model calls or repeated bootstrap gates.
-    for path in ('integrations/fegcraft-addon/src', 'services/fegcraft-assistant', 'scripts/build-fegcraft-identity.py'):
+    for path in ('integrations/fegcraft-addon/src', 'scripts/build-fegcraft-identity.py'):
         p.run('git', '-C', str(REPO), 'diff', '--exit-code', BASE, revision, '--', path)
-    p.current_assistant(h, support); h.addon()
+    conversation = p.load(revision, 'scripts/deploy/update-fegcraft-conversation.py')
+    if conversation.POINTER.exists():
+        conversation.verify_current(p, h, support, revision)
+    else:
+        p.run('git', '-C', str(REPO), 'diff', '--exit-code', BASE, revision, '--', 'services/fegcraft-assistant')
+        p.current_assistant(h, support)
+    h.addon()
     auditor = p.load(BASE, 'scripts/diagnostics/fegcraft-recreation-safety.py')
     persistence, paths = auditor.audit()
     if (persistence['game_container'] != prepared['persistence']['game_container']

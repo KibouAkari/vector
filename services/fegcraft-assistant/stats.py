@@ -76,7 +76,7 @@ def snapshot(stats_dir, usercache, max_players=1000, include_items=False):
             uid = path.stem.lower()
             if uid not in names:
                 unknown += 1
-            person = {'name': names.get(uid), 'values': metrics,
+            person = {'uuid': uid, 'name': names.get(uid), 'values': metrics,
                       'saved_at': datetime.fromtimestamp(modified, timezone.utc).isoformat()}
             if include_items:
                 for category in ('used', 'mined'):
@@ -146,4 +146,5 @@ def block_leaders(data, category, block_items=()):
                 totals[identifier] = totals.get(identifier, 0) + count
     highest = max(totals.values(), default=0)
     return [(identifier, count) for identifier, count in sorted(totals.items()) if count == highest and count > 0]
+
 

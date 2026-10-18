@@ -19,7 +19,7 @@ import stats
 
 SLOT = 6194261933202610
 METRIC_WORDS = {
-    'player_kills': r'spieler.?kills|player.?kills|pvp',
+    'player_kills': r'spieler.?kills|player.?kills|pvp|\b(?:spieler|player)\s+und\s+mob.?kills',
     'mob_kills': r'mob.?kills|monster|mobs|getötete.*(?:kreaturen|monster)',
     'play_time': r'spielzeit|spielstunden|play.?time|(?:längsten|meisten).*gespielt',
     'distance': r'strecke|distanz|kilometer|gelaufen|gereist',
@@ -300,7 +300,7 @@ class Assistant:
         if not question:
             self.mod_help.clear(scope)
             self.clear_knowledge(scope)
-            answer = 'ich helfe bei Minecraft-Fragen, Mods und gespeicherten Statistiken.'
+            answer = 'schön, dass du da bist. Wie läuft es bei dir gerade?' 
         elif request_forbidden(question):
             self.mod_help.clear(scope)
             self.clear_knowledge(scope)
@@ -308,7 +308,7 @@ class Assistant:
         else:
             answer = self.mod_help.answer(question, self.mods, scope, fallback=not getattr(self.knowledge, 'broad_topics', False))
             if answer is None:
-                answer = self.stat_answer(question, block_items)
+                answer = self.stat_answer(question, block_items, principal=principal if source == 'minecraft' else None)
             if answer is None and self.recipes is not None:
                 answer = self.recipes.answer(question)
             if answer is not None:
@@ -343,23 +343,39 @@ class Assistant:
             raise ValueError('INVALID_MOD_INVENTORY')
         return sorted(set(value))
 
-    def stat_answer(self, question, block_items=()):
-        q = question.casefold()
+    def stat_answer(self, question, block_items=(), *, principal=None):
+        q = unicodedata.normalize('NFKC', question).casefold()
         selected = [key for key, pattern in METRIC_WORDS.items() if re.search(pattern, q)]
         is_record = re.search(r'rekord|record', q)
+        wants_ranks = bool(re.search(r'\br[äa]ng(?:e|en)?\b|\branks?\b|platzierung', q))
+        best = bool(re.search(r'\bbeste[rn]?\s+spieler\b', q))
+        self_reference = bool(re.search(r'\b(?:ich|von mir|für mich|fuer mich|mein(?:e[rmns]?)?|my)\b(?!\s+(?:server|fegcraft))', q))
+        if best and not selected:
+            return 'einen objektiv besten Spieler gibt es nicht. Meinst du Mobkills, Spielerkills, Spielzeit oder einen anderen Rekord?'
         blocks = bool(re.search(r'\bblock\b|blöck|bloeck|\bblocks\b', q))
         block_category = ('used' if re.search(r'platzier|gesetzt|placed', q) else 'mined' if re.search(r'abgebaut|abgebau|gebaut.*ab|mined', q) else None) if blocks else None
-        if not selected and not is_record and not block_category and not re.search(r'statistik|statistic|\bstats\b|rangliste|leaderboard', q):
+        if not selected and not is_record and not block_category and not wants_ranks and not re.search(r'statistik|statistic|\bstats\b|rangliste|leaderboard', q):
             return None
         try:
             data = stats.snapshot(self.stats_dir, self.usercache, include_items=bool(block_category))
             stats.require_complete(data)
             people = [p for p in data['players'] if re.search(r'(?<![a-z0-9_])' + re.escape(p['name'].casefold()) + r'(?![a-z0-9_])', q)]
+            # Self resolution uses the authenticated game UUID, never a Discord display name.
+            if self_reference and not people:
+                if principal is None:
+                    return 'welcher Minecraft-Spieler bist du? Nenne bitte deinen vollständigen Spielernamen; dein Discord-Anzeigename ist keine bestätigte Verknüpfung.'
+                people = [p for p in data['players'] if p['uuid'] == principal]
+                if len(people) != 1:
+                    return 'für deinen Minecraft-Account fehlen gerade zugeordnete gespeicherte Statistiken.'
             # Never silently substitute the author for an unknown named player.
             if len(people) > 1:
                 return 'bitte frage nach einem Spieler oder einer einzelnen Rangliste.'
             holders = bool(re.search(r'\brekorde?halter\b|\brecord.?holders?\b|\balle\s+(?:aktuellen\s+)?rekorde\b|\b(?:wer|who)\b.*\b(?:rekord|record)', q))
             unknown_target = unknown_player_target(q, people)
+            if self_reference:
+                # Pronouns may occupy the target position, but arbitrary names still cannot.
+                resolved = re.sub(r'\b(?:mir|mich|mein(?:e[rmns]?)?)\b', people[0]['name'].casefold() if people else '', q)
+                unknown_target = unknown_player_target(resolved, people)
             if unknown_target and not block_category:
                 return 'nenne bitte den vollständigen Spielernamen für die Statistikabfrage.'
             if block_category:
@@ -374,6 +390,12 @@ class Assistant:
                 text = ('Block-Item-Nutzungen' if block_category == 'used' else 'Abgebaute Blöcke') + ': ' + '; '.join(label(k) + ' ' + number(v, 'Mal') for k, v in top)
                 if block_category == 'used':
                     text += ' (aktuelle Block-Items, keine exakte Gesamtzahl aller Platzierungen)'
+            elif wants_ranks and people and not selected:
+                person = people[0]
+                metrics = selected or list(stats.METRICS)
+                text = person['name'] + ': ' + '; '.join(stats.METRICS[k][0] + ' Rang ' + str(stats.rank(data, person, k)) for k in metrics)
+                if 'deaths' in metrics:
+                    text += ' (Tode nach Anzahl)'
             elif is_record and not people and holders and not unknown_target:
                 details = []
                 for metric, (label, unit, *_) in stats.METRICS.items():
@@ -391,6 +413,19 @@ class Assistant:
                 found = stats.records(data, people[0]['name'])
                 details = [r['label'] + ' ' + number(r['value'], r['unit']) + (' (geteilt)' if r['shared'] else '') for r in found['records']]
                 text = found['name'] + (' führt bei ' + '; '.join(details) if details else ' hält in den fünf geprüften Kategorien keinen positiven Höchstwert')
+            elif len(selected) > 1:
+                details = []
+                for metric in selected:
+                    label, unit, *_ = stats.METRICS[metric]
+                    if people:
+                        person = people[0]
+                        details.append(label + ' ' + number(person['values'][metric], unit) + '; Rang ' + str(stats.rank(data, person, metric)))
+                    elif re.search(r'\bwer\b|\bwho\b|meist|höchst|rekord', q):
+                        top = stats.leaders(data, metric)
+                        details.append(label + ': ' + '/'.join(p['name'] for p in top) + ' ' + number(top[0]['value'], unit))
+                    else:
+                        return 'nenne bitte den vollständigen Spielernamen oder frage nach den Spitzenreitern.'
+                text = (people[0]['name'] + ': ' if people else '') + '; '.join(details)
             elif len(selected) == 1:
                 metric = selected[0]
                 label, unit, *_ = stats.METRICS[metric]
@@ -407,6 +442,9 @@ class Assistant:
                     if len(leaders) > 10:
                         return 'es gibt mehr als zehn gleichplatzierte Spieler. Bitte grenze die Frage ein.'
                     text = label + ': ' + '; '.join(p['name'] + ' ' + number(p['value'], unit) for p in leaders)
+            elif not selected and people:
+                person = people[0]
+                text = person['name'] + ': ' + '; '.join(label + ' ' + number(person['values'][key], unit) + ' (Rang ' + str(stats.rank(data, person, key)) + ')' for key, (label, unit, *_) in stats.METRICS.items())
             elif not selected:
                 text = str(len(data['players'])) + ' Spieler; ' + '; '.join(label + ' ' + number(sum(p['values'][key] for p in data['players']), unit) for key, (label, unit, *_) in stats.METRICS.items())
             else:
@@ -416,5 +454,6 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 
 
