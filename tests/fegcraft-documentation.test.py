@@ -15,7 +15,8 @@ sys.path.insert(0, str(ROOT/'services/fegcraft-assistant'))
 import documentation as d
 import knowledge
 
-CATALOG = ROOT/'services/fegcraft-assistant/public-knowledge.json'
+# Preserve the exact historical selector-qualification catalog. Expanded mode4 is tested separately.
+CATALOG = ROOT/'tests/fixtures/fegcraft-reviewed-catalog-v1.json'
 PIN = '214261e4c9184837e4f532dcb6482cc1be8e0b8db0089a130a3e20e7a18df7b8'
 MODS = ['carryon', 'openpartiesandclaims', 'voicechat', 'travelersbackpack']
 

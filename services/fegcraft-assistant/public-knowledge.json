@@ -71,6 +71,454 @@
       "revision": null,
       "scope": "vanilla-basics-not-server-configuration",
       "license": "copyright; original short factual paraphrase only"
+    },
+    "mod-antixray": {
+      "url": "https://api.github.com/repos/DrexHD/AntiXray/git/blobs/23fdfb2c48db2ee4337cca2762e91893b167818e",
+      "author": "DrexHD",
+      "revision": "23fdfb2c48db2ee4337cca2762e91893b167818e",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-balm": {
+      "url": "https://api.github.com/repos/TwelveIterations/Balm/git/blobs/cc3d9c0a19e0aec70c37c63b2417ec3f542a73e7",
+      "author": "TwelveIterations",
+      "revision": "cc3d9c0a19e0aec70c37c63b2417ec3f542a73e7",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-betterdays": {
+      "url": "https://api.github.com/repos/wendall911/BetterDays/git/blobs/961b1b0f4b3132a6d69b94d53091f1062273f6de",
+      "author": "wendall911",
+      "revision": "961b1b0f4b3132a6d69b94d53091f1062273f6de",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-c2me": {
+      "url": "https://api.github.com/repos/RelativityMC/C2ME-fabric/git/blobs/fedbfea8efcafd69724e87a0fb6821f49f62517b",
+      "author": "RelativityMC",
+      "revision": "fedbfea8efcafd69724e87a0fb6821f49f62517b",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-carryon": {
+      "url": "https://api.github.com/repos/Tschipp/CarryOn/git/blobs/42f92501cb3e5d790ac3355a1d96dfda05b821fd",
+      "author": "Tschipp",
+      "revision": "42f92501cb3e5d790ac3355a1d96dfda05b821fd",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-chopt": {
+      "url": "https://api.github.com/repos/ItsJustMeChris/chopt/git/blobs/6c95f5ca2b32dfa8a74bf880c2b9bebdbbf4f7c5",
+      "author": "ItsJustMeChris",
+      "revision": "6c95f5ca2b32dfa8a74bf880c2b9bebdbbf4f7c5",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-chunky": {
+      "url": "https://api.github.com/repos/pop4959/Chunky/git/blobs/efbe4fe978c60314665d4eb32757f041b1303d71",
+      "author": "pop4959",
+      "revision": "efbe4fe978c60314665d4eb32757f041b1303d71",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-cloth-config": {
+      "url": "https://modrinth.com/mod/cloth-config",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-clumps": {
+      "url": "https://api.github.com/repos/jaredlll08/Clumps/git/blobs/3baaed57a4198a478ee63eb28854fd67c87eaf87",
+      "author": "jaredlll08",
+      "revision": "3baaed57a4198a478ee63eb28854fd67c87eaf87",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-collective": {
+      "url": "https://modrinth.com/mod/collective",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-cristellib": {
+      "url": "https://modrinth.com/mod/cristel-lib",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-crossstitch": {
+      "url": "https://modrinth.com/mod/crossstitch",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-cushionbackport": {
+      "url": "https://modrinth.com/mod/cushions-backport",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-dcintegration-fabric": {
+      "url": "https://modrinth.com/mod/dcintegration",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-droppablevillagertrades": {
+      "url": "https://modrinth.com/mod/droppable-villager-trades",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-elytraslot": {
+      "url": "https://modrinth.com/mod/elytra-slot",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-elytratrims": {
+      "url": "https://modrinth.com/mod/elytra-trims",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-emotecraft": {
+      "url": "https://api.github.com/repos/KosmX/emotes/git/blobs/e06014ec18c7ac91b2afe2ae84a06708ff5301f7",
+      "author": "KosmX",
+      "revision": "e06014ec18c7ac91b2afe2ae84a06708ff5301f7",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-entityculling": {
+      "url": "https://api.github.com/repos/tr7zw/EntityCulling/git/blobs/6b0758bbe59f679e9840edb2449e96df23b2b12d",
+      "author": "tr7zw",
+      "revision": "6b0758bbe59f679e9840edb2449e96df23b2b12d",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-fabric-api": {
+      "url": "https://modrinth.com/mod/fabric-api",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-fabric-language-kotlin": {
+      "url": "https://api.github.com/repos/FabricMC/fabric-language-kotlin/git/blobs/7a086abd25e1918067de525a28e4e852500304de",
+      "author": "FabricMC",
+      "revision": "7a086abd25e1918067de525a28e4e852500304de",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-fabricproxy-lite": {
+      "url": "https://api.github.com/repos/OKTW-Network/FabricProxy-Lite/git/blobs/9f9522cba7ebceb6996b1b791ce0516b2b80f871",
+      "author": "OKTW-Network",
+      "revision": "9f9522cba7ebceb6996b1b791ce0516b2b80f871",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-ferritecore": {
+      "url": "https://modrinth.com/mod/ferrite-core",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-forgeconfigapiport": {
+      "url": "https://modrinth.com/mod/forge-config-api-port",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-getittogetherdrops": {
+      "url": "https://modrinth.com/mod/get-it-together-drops",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-invview": {
+      "url": "https://api.github.com/repos/PotatoPresident/InvView/git/blobs/94679c1c60f51485d44179d5a69d0db2ca526dc7",
+      "author": "PotatoPresident",
+      "revision": "94679c1c60f51485d44179d5a69d0db2ca526dc7",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-jamlib": {
+      "url": "https://api.github.com/repos/JamCoreModding/jamlib/git/blobs/88dc938cfd6aeba1285bdcdee378a7fd090f11c4",
+      "author": "JamCoreModding",
+      "revision": "88dc938cfd6aeba1285bdcdee378a7fd090f11c4",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-lithium": {
+      "url": "https://modrinth.com/mod/lithium",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-lithostitched": {
+      "url": "https://api.github.com/repos/Apollounknowndev/lithostitched/git/blobs/91d2d7597d10170100f9829f4bcce1fbd41c3ffc",
+      "author": "Apollounknowndev",
+      "revision": "91d2d7597d10170100f9829f4bcce1fbd41c3ffc",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-mineable_spawner": {
+      "url": "https://modrinth.com/datapack/mineable-spawner",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-modernfix": {
+      "url": "https://api.github.com/repos/coredex-source/ModernFix---mVUS/git/blobs/eb2f9c07cad82ee70e9dc77a8c7d9d4973e2b703",
+      "author": "coredex-source",
+      "revision": "eb2f9c07cad82ee70e9dc77a8c7d9d4973e2b703",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-modmenu": {
+      "url": "https://api.github.com/repos/TerraformersMC/ModMenu/git/blobs/92217a451f001ae6ecc337e91dc501da29ab369e",
+      "author": "TerraformersMC",
+      "revision": "92217a451f001ae6ecc337e91dc501da29ab369e",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-moogs_structures": {
+      "url": "https://api.github.com/repos/FinnSetchell/MoogsStructureLib/git/blobs/9bf1d108a7ea6539c534d5ba8dcd10d8e538587e",
+      "author": "FinnSetchell",
+      "revision": "9bf1d108a7ea6539c534d5ba8dcd10d8e538587e",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-mr_openable": {
+      "url": "https://modrinth.com/mod/openable",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-mr_players_dropheads": {
+      "url": "https://modrinth.com/datapack/players-drop-heads",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-mr_true_ending": {
+      "url": "https://modrinth.com/datapack/true-ending",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-netherportalfix": {
+      "url": "https://api.github.com/repos/TwelveIterations/NetherPortalFix/git/blobs/e23964884512a3100d7b418b7fb34e098ad41735",
+      "author": "TwelveIterations",
+      "revision": "e23964884512a3100d7b418b7fb34e098ad41735",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-noisium": {
+      "url": "https://api.github.com/repos/Steveplays28/noisium/git/blobs/4e3edaac4bb2481232a63586ff79170679977973",
+      "author": "Steveplays28",
+      "revision": "4e3edaac4bb2481232a63586ff79170679977973",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-openpartiesandclaims": {
+      "url": "https://api.github.com/repos/thexaero/open-parties-and-claims/git/blobs/ed11ffec79c867a09fe9cfe73d30594f8b305613",
+      "author": "thexaero",
+      "revision": "ed11ffec79c867a09fe9cfe73d30594f8b305613",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-packetfixer": {
+      "url": "https://api.github.com/repos/TonimatasDEV/PacketFixer/git/blobs/fc62aadd7787a5e798880ae608bc397a624781e1",
+      "author": "TonimatasDEV",
+      "revision": "fc62aadd7787a5e798880ae608bc397a624781e1",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-perplayerwanderingtraders": {
+      "url": "https://modrinth.com/mod/perplayerwanderingtraders",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-placeholder-api": {
+      "url": "https://api.github.com/repos/Patbox/TextPlaceholderAPI/git/blobs/60ef336bf4b9169c5a69f508af60b22f912b183e",
+      "author": "Patbox",
+      "revision": "60ef336bf4b9169c5a69f508af60b22f912b183e",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-player_animation_library": {
+      "url": "https://modrinth.com/mod/player-animation-library",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-polymer-bundled": {
+      "url": "https://api.github.com/repos/Patbox/polymer/git/blobs/1f1eef18d72e4834c36f79a06a9f0885d03fceeb",
+      "author": "Patbox",
+      "revision": "1f1eef18d72e4834c36f79a06a9f0885d03fceeb",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-puzzleslib": {
+      "url": "https://api.github.com/repos/Fuzss/puzzles-lib/git/blobs/7f91ce2d661fa6c1621b0190f1db93047bc2d232",
+      "author": "Fuzss",
+      "revision": "7f91ce2d661fa6c1621b0190f1db93047bc2d232",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-rightclickharvest": {
+      "url": "https://api.github.com/repos/JamCoreModding/right-click-harvest/git/blobs/5ce1faabe83fcabc007d5ea6e85121798da85845",
+      "author": "JamCoreModding",
+      "revision": "5ce1faabe83fcabc007d5ea6e85121798da85845",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-scalablelux": {
+      "url": "https://api.github.com/repos/RelativityMC/ScalableLux/git/blobs/5066ce5eab04f27749eae551e2a3e90ae8caae58",
+      "author": "RelativityMC",
+      "revision": "5066ce5eab04f27749eae551e2a3e90ae8caae58",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-seamlesssleep": {
+      "url": "https://api.github.com/repos/GabrielFl4/Seamless-Sleep-MultiLoader/git/blobs/a88abac759b153a499e1ad7c29fe46e20936f90b",
+      "author": "GabrielFl4",
+      "revision": "a88abac759b153a499e1ad7c29fe46e20936f90b",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-servercore": {
+      "url": "https://api.github.com/repos/Wesley1808/ServerCore/git/blobs/660006e77ff782e4b72cd53fe878bec6a828d629",
+      "author": "Wesley1808",
+      "revision": "660006e77ff782e4b72cd53fe878bec6a828d629",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-smallernetherportals": {
+      "url": "https://modrinth.com/mod/smaller-nether-portals",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-spark": {
+      "url": "https://api.github.com/repos/lucko/spark/git/blobs/4264d93435adb8ad8e4a9c8e2ae934c51d04dc84",
+      "author": "lucko",
+      "revision": "4264d93435adb8ad8e4a9c8e2ae934c51d04dc84",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-structory": {
+      "url": "https://modrinth.com/mod/structory",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-tectonic": {
+      "url": "https://modrinth.com/mod/tectonic",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-terralith": {
+      "url": "https://modrinth.com/mod/terralith",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-trade_cycling": {
+      "url": "https://modrinth.com/mod/trade-cycling",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-travelersbackpack": {
+      "url": "https://modrinth.com/mod/travelersbackpack",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-universal-graves": {
+      "url": "https://api.github.com/repos/Patbox/UniversalGraves/git/blobs/1a8d32f059dac9df61e521f1e8ee0bd65e39ea86",
+      "author": "Patbox",
+      "revision": "1a8d32f059dac9df61e521f1e8ee0bd65e39ea86",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "mod-vcinteraction": {
+      "url": "https://modrinth.com/mod/voice-chat-interaction",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-voicechat": {
+      "url": "https://modrinth.com/mod/simple-voice-chat",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-wwoo": {
+      "url": "https://modrinth.com/mod/wwoo",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-xaerominimap": {
+      "url": "https://modrinth.com/mod/xaeros-minimap",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-xaeroworldmap": {
+      "url": "https://modrinth.com/mod/xaeros-world-map",
+      "author": "mod author project description",
+      "revision": null,
+      "scope": "public general purpose; installed settings not inspected",
+      "license": "original short factual paraphrase; no upstream code or assets redistributed"
+    },
+    "mod-yet_another_config_lib_v3": {
+      "url": "https://api.github.com/repos/isXander/YetAnotherConfigLib/git/blobs/6e1eda1600e59cf1474b4ce3cf24bf3ce6453ad6",
+      "author": "isXander",
+      "revision": "6e1eda1600e59cf1474b4ce3cf24bf3ce6453ad6",
+      "scope": "public-purpose-only; README blob, not installed configuration",
+      "license": "original short factual paraphrase; upstream license not relicensed"
+    },
+    "opac-ui": {
+      "url": "https://github.com/thexaero/open-parties-and-claims/blob/1f160f60c7f3df8b08a58a32822e16db240bf472/Common/src/main/resources/assets/openpartiesandclaims/lang/en_us.json",
+      "author": "Xaero96",
+      "revision": "1f160f60c7f3df8b08a58a32822e16db240bf472",
+      "scope": "26.2 public UI labels; no live rights",
+      "license": "LGPL-3.0-only; original short paraphrase"
     }
   },
   "passages": [
@@ -226,6 +674,839 @@
       "source": "opac",
       "terms": "claims claim chunk chunks gebiet bereich bereiche kiste kisten truhe truhen schützen schütze schutz sichern sichere beanspruchen beanspruche ofen öfen block blöcke",
       "text": "Zum Schutz von Kisten, Truhen und Öfen beanspruche den freien Chunk in der Claim-Oberfläche. Prüfe dort die Schutzrechte. In Xaeros World Map öffnet Rechtsklick auf die Karte die Claim-Verwaltung.",
+      "kinds": [
+        "procedure"
+      ]
+    },
+    {
+      "id": "mod-antixray",
+      "topic": "antixray",
+      "mod": "antixray",
+      "source": "mod-antixray",
+      "terms": "antixray Anti Xray",
+      "text": "Antixray erschwert das Erkennen verdeckter Erze durch eine veränderte Darstellung. Daraus lässt sich nichts über das Verhalten eines bestimmten Spielers ableiten.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-balm",
+      "topic": "balm",
+      "mod": "balm",
+      "source": "mod-balm",
+      "terms": "balm Balm",
+      "text": "Balm ist eine Hilfsbibliothek für andere Mods. Sie stellt gemeinsame Funktionen bereit und ist kein eigenes Werkzeug, das du im Spiel bedienen musst.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-betterdays",
+      "topic": "betterdays",
+      "mod": "betterdays",
+      "source": "mod-betterdays",
+      "terms": "betterdays Better Days Tageslänge Nacht schlafen",
+      "text": "Better Days kann die Länge von Tag und Nacht verändern und Schlafübergänge beschleunigen. Die tatsächlich eingestellten Zeiten kann ich hier nicht sehen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-c2me",
+      "topic": "c2me",
+      "mod": "c2me",
+      "source": "mod-c2me",
+      "terms": "c2me C2ME Chunk laden",
+      "text": "C2ME verteilt Arbeiten beim Erzeugen und Laden von Chunks auf mehrere Prozessorkerne. Das ist eine technische Optimierung, kein zusätzlicher Gegenstand.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-carryon",
+      "topic": "carryon",
+      "mod": "carryon",
+      "source": "mod-carryon",
+      "terms": "carryon Carry On tragen aufheben",
+      "text": "Mit Carry On kannst du geeignete Tiere und Blöcke tragen: beide Hände leeren, schleichen und rechts anklicken. Schutzrechte können das verhindern.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-chopt",
+      "topic": "chopt",
+      "mod": "chopt",
+      "source": "mod-chopt",
+      "terms": "chopt Chopt Baum Bäume Holz fällen Axt",
+      "text": "Mit Chopt bearbeitest du einen Baum mit der Axt, bis er fällt. Die benötigten Schläge hängen von seiner Grösse ab. Schleichen erlaubt normales einzelnes Abbauen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-chunky",
+      "topic": "chunky",
+      "mod": "chunky",
+      "source": "mod-chunky",
+      "terms": "chunky Chunky",
+      "text": "Chunky bereitet Chunks im Voraus vor, damit spätere Erkundung weniger neue Weltgenerierung benötigt. Das ist ein Werkzeug für den Serverbetrieb.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-cloth-config",
+      "topic": "cloth-config",
+      "mod": "cloth-config",
+      "source": "mod-cloth-config",
+      "terms": "cloth-config Cloth Config",
+      "text": "Cloth Config stellt Einstellungsoberflächen für andere Mods bereit. Es fügt selbst keine Gegenstände oder Spielziele hinzu.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-clumps",
+      "topic": "clumps",
+      "mod": "clumps",
+      "source": "mod-clumps",
+      "terms": "clumps Clumps Erfahrung XP Kugeln",
+      "text": "Clumps fasst nahe Erfahrungskugeln zusammen. Das reduziert die Zahl einzelner Objekte und kann grosse Mengen Erfahrung flüssiger einsammelbar machen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-collective",
+      "topic": "collective",
+      "mod": "collective",
+      "source": "mod-collective",
+      "terms": "collective Collective",
+      "text": "Collective enthält gemeinsame Funktionen für Mods von Serilum. Es ist eine Abhängigkeit und keine eigene Spielmechanik.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-cristellib",
+      "topic": "cristellib",
+      "mod": "cristellib",
+      "source": "mod-cristellib",
+      "terms": "cristellib Cristel Lib",
+      "text": "Cristel Lib unterstützt andere Mods bei Strukturen und datenbasierten Anpassungen. Es ist eine Bibliothek, kein selbst bedienbares Bauwerkzeug.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-crossstitch",
+      "topic": "crossstitch",
+      "mod": "crossstitch",
+      "source": "mod-crossstitch",
+      "terms": "crossstitch CrossStitch",
+      "text": "CrossStitch verbessert die Verträglichkeit von Minecraft mit Proxy-Verbindungen. Es ergänzt keine eigenen Rezepte oder Spielgegenstände.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-cushionbackport",
+      "topic": "cushionbackport",
+      "mod": "cushionbackport",
+      "source": "mod-cushionbackport",
+      "terms": "cushionbackport Cushion Kissen sitzen Sitzkissen",
+      "text": "Cushion Backport ergänzt Sitzkissen. Platziere ein Kissen auf einer geeigneten Oberfläche und klicke es rechts an, um dich daraufzusetzen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-dcintegration-fabric",
+      "topic": "dcintegration-fabric",
+      "mod": "dcintegration-fabric",
+      "source": "mod-dcintegration-fabric",
+      "terms": "dcintegration-fabric Discord Integration Chat Brücke",
+      "text": "Discord Integration verbindet den Minecraft-Chat mit dem vorgesehenen Discord-Kanal. Deshalb können Nachrichten aus beiden Chats zusammen erscheinen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-droppablevillagertrades",
+      "topic": "droppablevillagertrades",
+      "mod": "droppablevillagertrades",
+      "source": "mod-droppablevillagertrades",
+      "terms": "droppablevillagertrades Droppable Villager Trades Handelswaren",
+      "text": "Droppable Villager Trades lässt Dorfbewohner nach ihrem Tod zufällig Handelswaren fallen. Das ist keine Garantie für einen bestimmten Gegenstand.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-elytraslot",
+      "topic": "elytraslot",
+      "mod": "elytraslot",
+      "source": "mod-elytraslot",
+      "terms": "elytraslot Elytra Slot Brustpanzer Rüstung fliegen",
+      "text": "Elytra Slot erlaubt eine Elytra in einem zusätzlichen Ausrüstungsplatz, damit sie mit einer Brustrüstung kombinierbar ist. Schau in die Zubehörplätze deines Inventars.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-elytratrims",
+      "topic": "elytratrims",
+      "mod": "elytratrims",
+      "source": "mod-elytratrims",
+      "terms": "elytratrims Elytra Trims Muster färben verzieren",
+      "text": "Elytra Trims ergänzt Farben, Muster und Verzierungen für Elytren. Zum Sehen der Darstellung brauchst du die passende Mod auch auf deinem Client.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-emotecraft",
+      "topic": "emotecraft",
+      "mod": "emotecraft",
+      "source": "mod-emotecraft",
+      "terms": "emotecraft Emotecraft Emotes Animationen",
+      "text": "Emotecraft synchronisiert Spieler-Emotes. Prüfe in der Steuerung die Belegung für das Emote-Menü; die konkrete Taste kann in deinem Modpack anders sein.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-entityculling",
+      "topic": "entityculling",
+      "mod": "entityculling",
+      "source": "mod-entityculling",
+      "terms": "entityculling Entity Culling FPS Sichtbarkeit",
+      "text": "Entity Culling vermeidet das Zeichnen verdeckter Objekte auf dem Client. Das hilft bei der Bildrate; es ändert nicht die Besitzrechte an einem Gebiet.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-fabric-api",
+      "topic": "fabric-api",
+      "mod": "fabric-api",
+      "source": "mod-fabric-api",
+      "terms": "fabric-api Fabric API",
+      "text": "Fabric API stellt gemeinsame Schnittstellen für Fabric-Mods bereit. Viele andere Mods benötigen es, ohne dass du im Spiel etwas dafür einstellen musst.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-fabric-language-kotlin",
+      "topic": "fabric-language-kotlin",
+      "mod": "fabric-language-kotlin",
+      "source": "mod-fabric-language-kotlin",
+      "terms": "fabric-language-kotlin Fabric Language Kotlin",
+      "text": "Fabric Language Kotlin ermöglicht Kotlin-basierten Fabric-Mods das Laden. Es ist eine technische Abhängigkeit ohne eigene Spielgegenstände.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-fabricproxy-lite",
+      "topic": "fabricproxy-lite",
+      "mod": "fabricproxy-lite",
+      "source": "mod-fabricproxy-lite",
+      "terms": "fabricproxy-lite Fabric Proxy Lite Velocity",
+      "text": "FabricProxy Lite unterstützt die Verbindung eines Fabric-Servers über Velocity. Für dich ist es keine eigene Spielmechanik.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-ferritecore",
+      "topic": "ferritecore",
+      "mod": "ferritecore",
+      "source": "mod-ferritecore",
+      "terms": "ferritecore Ferrite Core Speicher RAM",
+      "text": "FerriteCore verringert den Speicherbedarf von Minecraft. Es arbeitet im Hintergrund und ergänzt keine neuen Rezepte.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-forgeconfigapiport",
+      "topic": "forgeconfigapiport",
+      "mod": "forgeconfigapiport",
+      "source": "mod-forgeconfigapiport",
+      "terms": "forgeconfigapiport Forge Config API Port",
+      "text": "Forge Config API Port stellt die Konfigurationsfunktionen des Forge-Ökosystems anderen Mod-Umgebungen bereit. Es ist eine Hilfsbibliothek.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-getittogetherdrops",
+      "topic": "getittogetherdrops",
+      "mod": "getittogetherdrops",
+      "source": "mod-getittogetherdrops",
+      "terms": "getittogetherdrops Get It Together Drops Gegenstände Boden",
+      "text": "Get It Together Drops beeinflusst das Zusammenfassen fallengelassener Gegenstände. Gerade bei Farmen können weniger einzelne Objekte die Verarbeitung entlasten.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-invview",
+      "topic": "invview",
+      "mod": "invview",
+      "source": "mod-invview",
+      "terms": "invview Inv View Inventar einsehen",
+      "text": "InvView ist ein Verwaltungswerkzeug für Inventare. Private Inventarinhalte anderer Spieler gebe ich hier nicht weiter.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-jamlib",
+      "topic": "jamlib",
+      "mod": "jamlib",
+      "source": "mod-jamlib",
+      "terms": "jamlib Jam Lib",
+      "text": "JamLib liefert gemeinsame Funktionen, Ereignisse und Einstellungsfunktionen für andere Mods. Es ist kein eigenständiger Spielinhalt.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-lithium",
+      "topic": "lithium",
+      "mod": "lithium",
+      "source": "mod-lithium",
+      "terms": "lithium Lithium",
+      "text": "Lithium optimiert interne Berechnungen von Minecraft. Es arbeitet im Hintergrund; du musst dafür keine Gegenstände benutzen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-lithostitched",
+      "topic": "lithostitched",
+      "mod": "lithostitched",
+      "source": "mod-lithostitched",
+      "terms": "lithostitched Lithostitched",
+      "text": "Lithostitched ist eine Bibliothek für datenbasierte Weltgenerierung und deren Zusammenspiel mit anderen Mods.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-mineable_spawner",
+      "topic": "mineable_spawner",
+      "mod": "mineable_spawner",
+      "source": "mod-mineable_spawner",
+      "terms": "mineable_spawner Mineable Spawner Spawner abbauen",
+      "text": "Mineable Spawner ermöglicht das Abbauen von Spawnern mit einer Spitzhacke. Ob Behutsamkeit nötig ist und ein Spawn-Ei fällt, hängt von der Einstellung ab.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-modernfix",
+      "topic": "modernfix",
+      "mod": "modernfix",
+      "source": "mod-modernfix",
+      "terms": "modernfix Modern Fix",
+      "text": "ModernFix und seine Portierungen zielen auf technische Verbesserungen und Fehlerkorrekturen. Es ist kein eigener Gegenstand mit einem Herstellungsrezept.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-modmenu",
+      "topic": "modmenu",
+      "mod": "modmenu",
+      "source": "mod-modmenu",
+      "terms": "modmenu Mod Menu Mods Einstellungen",
+      "text": "Mod Menu zeigt deine Client-Mods an. Bei unterstützten Mods kannst du dort auch deren Einstellungsoberfläche öffnen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-moogs_structures",
+      "topic": "moogs_structures",
+      "mod": "moogs_structures",
+      "source": "mod-moogs_structures",
+      "terms": "moogs_structures Moogs Structure Lib",
+      "text": "Moogs Structure Lib stellt anderen Mods Funktionen zur datenbasierten Erzeugung von Strukturen bereit. Es ist eine Bibliothek.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-mr_openable",
+      "topic": "mr_openable",
+      "mod": "mr_openable",
+      "source": "mod-mr_openable",
+      "terms": "mr_openable Openable Türen Falltüren Zauntore",
+      "text": "Openable ergänzt schnelles Öffnen und Schliessen von Türen, Falltüren und Zauntoren.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-mr_players_dropheads",
+      "topic": "mr_players_dropheads",
+      "mod": "mr_players_dropheads",
+      "source": "mod-mr_players_dropheads",
+      "terms": "mr_players_dropheads Players Drop Heads Spielerkopf Köpfe",
+      "text": "Players Drop Heads lässt bei einem Tod durch einen anderen Spieler einen Spielerkopf fallen. Einen Herstellungsweg für beliebige Köpfe kann ich daraus nicht ableiten.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-mr_true_ending",
+      "topic": "mr_true_ending",
+      "mod": "mr_true_ending",
+      "source": "mod-mr_true_ending",
+      "terms": "mr_true_ending True Ending Enderdrache Boss Kampf",
+      "text": "True Ending verändert den Kampf gegen den Enderdrachen mit weiteren Angriffen und Phasen. Achte auf die Arena und halte Abstand zu angekündigten Flächenangriffen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-netherportalfix",
+      "topic": "netherportalfix",
+      "mod": "netherportalfix",
+      "source": "mod-netherportalfix",
+      "terms": "netherportalfix Nether Portal Fix falsches Portal",
+      "text": "NetherPortalFix verbessert die Rückreise durch Netherportale im Mehrspielerbetrieb. Es soll verhindern, dass die Rückkehr an einem unpassenden Portal endet.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-noisium",
+      "topic": "noisium",
+      "mod": "noisium",
+      "source": "mod-noisium",
+      "terms": "noisium Noisium",
+      "text": "Noisium optimiert Teile der Weltgenerierung. Es läuft im Hintergrund und bietet keine eigenen Spielrezepte.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-openpartiesandclaims",
+      "topic": "claims",
+      "mod": "openpartiesandclaims",
+      "source": "mod-openpartiesandclaims",
+      "terms": "openpartiesandclaims Open Parties and Claims OPAC Party Claim",
+      "text": "Open Parties and Claims schützt beanspruchte Chunks und bietet Spieler-Partys sowie eigene Spielergruppen für Zugriffsrechte. Welche Rechte du aktuell hast, lese ich hier nicht aus.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-packetfixer",
+      "topic": "packetfixer",
+      "mod": "packetfixer",
+      "source": "mod-packetfixer",
+      "terms": "packetfixer Packet Fixer Verbindung Paket Fehler",
+      "text": "PacketFixer behandelt bestimmte Fehler durch zu grosse oder fehlerhafte Netzwerkpakete. Bei einem Verbindungsproblem hilft die genaue Fehlermeldung beim Eingrenzen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-perplayerwanderingtraders",
+      "topic": "perplayerwanderingtraders",
+      "mod": "perplayerwanderingtraders",
+      "source": "mod-perplayerwanderingtraders",
+      "terms": "perplayerwanderingtraders Per Player Wandering Traders Wanderhändler",
+      "text": "PerPlayerWanderingTraders verwaltet das Erscheinen von Wanderhändlern pro Spieler. Einen aktuell verfügbaren Händler kann ich hier nicht orten.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-placeholder-api",
+      "topic": "placeholder-api",
+      "mod": "placeholder-api",
+      "source": "mod-placeholder-api",
+      "terms": "placeholder-api Placeholder API Text Placeholder",
+      "text": "Text Placeholder API ersetzt Textplatzhalter für andere Mods. Sie stellt selbst keine neuen Spielgegenstände oder Rezepte bereit.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-player_animation_library",
+      "topic": "player_animation_library",
+      "mod": "player_animation_library",
+      "source": "mod-player_animation_library",
+      "terms": "player_animation_library Player Animation Library",
+      "text": "Player Animation Library liefert anderen Mods Funktionen für Spieleranimationen. Die konkrete Animation stammt von der jeweiligen darauf aufbauenden Mod.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-polymer-bundled",
+      "topic": "polymer-bundled",
+      "mod": "polymer-bundled",
+      "source": "mod-polymer-bundled",
+      "terms": "polymer-bundled Polymer",
+      "text": "Polymer unterstützt serverseitige benutzerdefinierte Inhalte und deren Darstellung für Clients. Welche Darstellung du siehst, kann auch von deinem Ressourcenpaket abhängen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-puzzleslib",
+      "topic": "puzzleslib",
+      "mod": "puzzleslib",
+      "source": "mod-puzzleslib",
+      "terms": "puzzleslib Puzzles Lib",
+      "text": "Puzzles Lib ist eine gemeinsame Grundlage für andere Mods von Fuzss. Es ist eine Abhängigkeit ohne eigene Spielziele.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-rightclickharvest",
+      "topic": "rightclickharvest",
+      "mod": "rightclickharvest",
+      "source": "mod-rightclickharvest",
+      "terms": "rightclickharvest Right Click Harvest Ernten Pflanzen",
+      "text": "Mit RightClickHarvest kannst du erntereife Pflanzen rechts anklicken. Die Mod erntet und pflanzt nach; eine nötige Hacke oder zusätzliche Kosten hängen von Einstellungen ab.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-scalablelux",
+      "topic": "scalablelux",
+      "mod": "scalablelux",
+      "source": "mod-scalablelux",
+      "terms": "scalablelux Scalable Lux Licht Beleuchtung",
+      "text": "ScalableLux optimiert Lichtberechnungen. Es arbeitet im Hintergrund und ist kein Werkzeug zum Setzen eigener Lichtregeln.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-seamlesssleep",
+      "topic": "seamlesssleep",
+      "mod": "seamlesssleep",
+      "source": "mod-seamlesssleep",
+      "terms": "seamlesssleep Seamless Sleep Schlaf Nacht",
+      "text": "Seamless Sleep gestaltet den Übergang von Nacht zu Tag fliessender. Wie viele schlafende Spieler dafür nötig sind, ist eine separate Servereinstellung.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-servercore",
+      "topic": "servercore",
+      "mod": "servercore",
+      "source": "mod-servercore",
+      "terms": "servercore Server Core Lag Leistung",
+      "text": "ServerCore optimiert die Verarbeitung des Servers und kann abhängig von Einstellungen weitere Anpassungen vornehmen. Daraus kenne ich keine aktuellen Leistungswerte.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-smallernetherportals",
+      "topic": "smallernetherportals",
+      "mod": "smallernetherportals",
+      "source": "mod-smallernetherportals",
+      "terms": "smallernetherportals Smaller Nether Portals kleines Netherportal",
+      "text": "Smaller Nether Portals erlaubt kleinere Netherportale als üblich. Welche kleinste Form dein Modpack zulässt, sollte am konkreten Portal geprüft werden.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-spark",
+      "topic": "spark",
+      "mod": "spark",
+      "source": "mod-spark",
+      "terms": "spark Spark Leistung Lag Profiling",
+      "text": "Spark hilft bei der Untersuchung von Leistungsproblemen. Ich starte hier keine Messung und lese keine privaten Diagnoseausgaben vor.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-structory",
+      "topic": "structory",
+      "mod": "structory",
+      "source": "mod-structory",
+      "terms": "structory Structory Ruinen Gebäude Strukturen",
+      "text": "Structory ergänzt atmosphärische Strukturen wie Ruinen und kleine Gebäude. Neue Strukturen entstehen in neu erzeugten Chunks.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-tectonic",
+      "topic": "tectonic",
+      "mod": "tectonic",
+      "source": "mod-tectonic",
+      "terms": "tectonic Tectonic Berge Gelände",
+      "text": "Tectonic verändert die Form der Landschaft und erzeugt abwechslungsreicheres Gelände. Es ist eine Weltgenerierungsmod, kein Baumenü.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-terralith",
+      "topic": "terralith",
+      "mod": "terralith",
+      "source": "mod-terralith",
+      "terms": "terralith Terralith Biome Landschaft",
+      "text": "Terralith ergänzt und überarbeitet Biome mit gewöhnlichen Minecraft-Blöcken. Es verändert die Landschaft, ohne dass jedes Biom eigene neue Blöcke benötigt.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-trade_cycling",
+      "topic": "trade_cycling",
+      "mod": "trade_cycling",
+      "source": "mod-trade_cycling",
+      "terms": "trade_cycling Trade Cycling Handel Angebote Dorfbewohner",
+      "text": "Mit Trade Cycling kannst du Angebote noch unbenutzter Händler über die Handelsschaltfläche wechseln. Bereits durch Handel festgelegte Angebote werden dadurch nicht frei austauschbar.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-travelersbackpack",
+      "topic": "backpack",
+      "mod": "travelersbackpack",
+      "source": "mod-travelersbackpack",
+      "terms": "travelersbackpack Travelers Backpack Rucksack Backpack",
+      "text": "Halte den Rucksack in der Haupthand und klicke rechts, um ihn zu öffnen. Zum getragenen Rucksack führt normalerweise B; prüfe bei Bedarf deine Tastenbelegung.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-universal-graves",
+      "topic": "universal-graves",
+      "mod": "universal-graves",
+      "source": "mod-universal-graves",
+      "terms": "universal-graves Universal Graves Grab Gräber Tod Ausrüstung",
+      "text": "Universal Graves legt Grabbehälter für Gegenstände nach einem Tod an. Schutzdauer und Rückholung hängen von der Version und den eingestellten Regeln ab.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-vcinteraction",
+      "topic": "vcinteraction",
+      "mod": "vcinteraction",
+      "source": "mod-vcinteraction",
+      "terms": "vcinteraction Voice Chat Interaction Warden Sculk sprechen",
+      "text": "Voice Chat Interaction kann gesprochenen Voice-Chat für Sculk-Sensoren und den Warden hörbar machen. Flüstern, Gruppen und Schleichen können anders eingestellt sein.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-voicechat",
+      "topic": "voicechat",
+      "mod": "voicechat",
+      "source": "mod-voicechat",
+      "terms": "voicechat Simple Voice Chat Mikrofon Sprachchat",
+      "text": "Simple Voice Chat bietet Nähe-Sprachchat. Öffne normalerweise mit V das Menü und prüfe dort Mikrofon und Ausgabegerät. Die Taste kann umbelegt sein.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-wwoo",
+      "topic": "wwoo",
+      "mod": "wwoo",
+      "source": "mod-wwoo",
+      "terms": "wwoo William Wythers Overhauled Overworld WWOO",
+      "text": "WWOO überarbeitet die Landschaft der gewöhnlichen Biome. Die installierte Versionsliste ist hier mehrdeutig; ich nenne deshalb keine versionsgenaue Spezialfunktion.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-xaerominimap",
+      "topic": "xaerominimap",
+      "mod": "xaerominimap",
+      "source": "mod-xaerominimap",
+      "terms": "xaerominimap Xaero Minimap Karte Wegpunkte",
+      "text": "Xaeros Minimap zeigt eine kleine Umgebungskarte und unterstützt Wegpunkte. Deine Belegung für Kartenmenü und Wegpunkte findest du in der Steuerung.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-xaeroworldmap",
+      "topic": "xaeroworldmap",
+      "mod": "xaeroworldmap",
+      "source": "mod-xaeroworldmap",
+      "terms": "xaeroworldmap Xaero World Map Weltkarte",
+      "text": "Xaeros World Map zeigt eine erkundbare Weltkarte. Mit Open Parties and Claims kannst du dort per Rechtsklick die Claim-Funktionen erreichen.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "mod-yet_another_config_lib_v3",
+      "topic": "yet_another_config_lib_v3",
+      "mod": "yet_another_config_lib_v3",
+      "source": "mod-yet_another_config_lib_v3",
+      "terms": "yet_another_config_lib_v3 Yet Another Config Lib YACL",
+      "text": "YACL liefert Einstellungsoberflächen für andere Mods. Eigene Gegenstände oder ein Spielziel fügt diese Bibliothek nicht hinzu.",
+      "kinds": [
+        "explanation",
+        "limitation"
+      ]
+    },
+    {
+      "id": "claims-build-access",
+      "topic": "claims",
+      "mod": "openpartiesandclaims",
+      "source": "opac-ui",
+      "terms": "claim bauen anderer spieler zugriff freunde freigeben rechte mitgliedern erlauben",
+      "text": "Öffne deine Claim-Einstellungen und lege unter Player Groups eine Gruppe an. Füge den Spieler hinzu und erlaube der Gruppe im Blockschutz die gewünschten Bauaktionen.",
+      "kinds": [
+        "procedure"
+      ]
+    },
+    {
+      "id": "claims-grey-options",
+      "topic": "claims",
+      "mod": "openpartiesandclaims",
+      "source": "opac-ui",
+      "terms": "claim ausgegraut grau gesperrt option ändern",
+      "text": "Ausgegraute Claim-Optionen können vom Server festgelegt sein. Diese lassen sich nicht durch eine andere Tastenbelegung freischalten. Welche Option ist betroffen?",
+      "kinds": [
+        "procedure"
+      ]
+    },
+    {
+      "id": "claims-group-step",
+      "topic": "claims",
+      "mod": "openpartiesandclaims",
+      "source": "opac-ui",
+      "terms": "spielergruppe gruppe hinzufügen aufnehmen player groups include player",
+      "text": "Wähle deine eigene Gruppe unter Player Groups und dann Include Player. Anschliessend musst du dieser Gruppe noch die gewünschten Schutz-Ausnahmen erlauben.",
+      "kinds": [
+        "procedure"
+      ]
+    },
+    {
+      "id": "backpack-equip",
+      "topic": "backpack",
+      "mod": "travelersbackpack",
+      "source": "mod-travelersbackpack",
+      "terms": "backpack rucksack tragen ausrüsten anziehen equip rücken",
+      "text": "Öffne den Rucksack und nutze Equip, um ihn anzulegen. Bei Zubehör-Integration kann stattdessen der Rückenplatz im Zubehör-Inventar zuständig sein.",
+      "kinds": [
+        "procedure"
+      ]
+    },
+    {
+      "id": "backpack-open",
+      "topic": "backpack",
+      "mod": "travelersbackpack",
+      "source": "mod-travelersbackpack",
+      "terms": "backpack rucksack öffnen bedienen benutzen funktioniert b taste",
+      "text": "In der Haupthand öffnest du den Rucksack per Rechtsklick. Einen getragenen Rucksack öffnest du normalerweise mit B. Prüfe die Steuerung, wenn B anders belegt ist.",
+      "kinds": [
+        "procedure"
+      ]
+    },
+    {
+      "id": "backpack-upgrade",
+      "topic": "backpack",
+      "mod": "travelersbackpack",
+      "source": "mod-travelersbackpack",
+      "terms": "backpack rucksack erweitern upgrade stufe eisen gold diamant netherite",
+      "text": "Rucksack-Stufen werden am Schmiedetisch mit dem passenden Upgrade und den verlangten Zutaten verbessert. Die genaue Stufe und Zutaten hängen vom Upgrade ab.",
+      "kinds": [
+        "procedure"
+      ]
+    },
+    {
+      "id": "backpack-sleep",
+      "topic": "backpack",
+      "mod": "travelersbackpack",
+      "source": "mod-travelersbackpack",
+      "terms": "backpack rucksack schlafsack schlafen spawn",
+      "text": "Der Schlafsack des Rucksacks lässt dich schlafen, ohne den Wiederbelebungspunkt zu verändern. Er ersetzt damit nicht dein gesetztes Bett.",
       "kinds": [
         "procedure"
       ]

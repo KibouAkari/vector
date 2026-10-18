@@ -37,7 +37,7 @@ class ReviewedService(unittest.TestCase):
     def test_explicit_mode3_constructs_only_pinned_reviewed_model_with_usage(self):
         self.assertIsInstance(self.model,documentation.DocumentationKnowledge)
         self.assertEqual(self.model.model,documentation.MODEL)
-        self.assertEqual(len(self.model.documentation.rows),14)
+        self.assertEqual(len(self.model.documentation.rows),84)
         self.assertEqual(self.model.documentation.sha256,server.DOCUMENTATION_SHA256)
         self.assertEqual(self.model.usage,self.state.model_usage)
 
