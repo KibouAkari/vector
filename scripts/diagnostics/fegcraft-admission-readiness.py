@@ -165,6 +165,24 @@ def evidence(value):
             'input_tokens': value['input_tokens'], 'output_tokens': value['output_tokens']}
 
 
+def canonical_mounts(mounts):
+    # Docker's Mounts array has no precedence semantics. Retain every complete
+    # record and duplicate; normalize ONLY this array's enumeration order.
+    return sorted(mounts, key=lambda value: json.dumps(value, sort_keys=True))
+
+
+def snapshot_differences(before, after):
+    # Never serialize snapshot values: Config can contain credentials.
+    containers = []
+    for name in NAMES:
+        key = '/' + name
+        fields = sorted(field for field in before[key] if before[key][field] != after[key].get(field))
+        if fields:
+            containers.append({'container': name, 'changed_fields': fields})
+    return {'containers': containers, 'changed_file_count': sum(
+        before[key] != after.get(key) for key in before if not isinstance(before[key], dict))}
+
+
 def snapshot():
     values = json.loads(run('docker', 'inspect', *NAMES))
     if len(values) != len(NAMES) or {v['Name'].lstrip('/') for v in values} != set(NAMES):
@@ -177,6 +195,7 @@ def snapshot():
         if v['Name'] in ('/fegcraft-updated', '/' + SERVICE) and state.get('Health', {}).get('Status') != 'healthy':
             raise RuntimeError('READINESS_GAME_OR_ASSISTANT_UNHEALTHY')
         result[v['Name']] = {k: v[k] for k in ('Id', 'Image', 'Config', 'HostConfig', 'Mounts')}
+        result[v['Name']]['Mounts'] = canonical_mounts(v['Mounts'])
         result[v['Name']]['StartedAt'] = state['StartedAt']
         result[v['Name']]['networks'] = sorted(v['NetworkSettings']['Networks'])
     for path in (Path('/opt/vector/docker-compose.yml'), Path('/opt/fegcraft-updated/docker-compose.yml'),
@@ -292,20 +311,33 @@ def audit():
         raise RuntimeError('READINESS_REPORT_SYMLINK')
     directory.mkdir(mode=0o700)
     print('Nur Laufzeit-/Berechtigungsprüfung. Keine Installation, Rechteänderung, Modellanfrage oder Spielnachricht.', flush=True)
+    result = {'audit_completed': False, 'revision': revision, 'model_evidence': summary,
+      'baseline': owned, 'installed_addon': deadline, 'dedicated_role_qualified': False,
+      'eligible_for_activation': False, 'production_activated': False,
+      'cloud_calls': 0, 'model_calls': 0, 'messages_sent': 0, 'database_writes': False}
     try:
         database = json.loads(run('docker', 'exec', '-i', 'vector-app', 'node', '--input-type=module', '-', input=DB_AUDIT.encode(), timeout=25))
+        result['database_catalog'] = database
         driver = driver_probe('vector-admission-probe-' + secrets.token_hex(10), secrets.token_hex(16))
-        result = {'audit_completed': True, 'revision': revision, 'model_evidence': summary,
-          'baseline': owned, 'installed_addon': deadline, 'database_catalog': database,
-          'driver_in_current_python_image': driver, 'dedicated_role_qualified': False,
-          'eligible_for_activation': False, 'production_activated': False,
-          'cloud_calls': 0, 'model_calls': 0, 'messages_sent': 0, 'database_writes': False,
-          'cleanup_verified': True, 'production_unchanged': snapshot() == before}
+        after = snapshot()
+        result.update(driver_in_current_python_image=driver, cleanup_verified=True,
+          production_unchanged=after == before, production_differences=snapshot_differences(before, after))
         if not result['production_unchanged']:
             raise RuntimeError('READINESS_PRODUCTION_CHANGED')
+        result['audit_completed'] = True
     except Exception:
-        (directory/'result.json').write_text(json.dumps({'audit_completed': False,
-          'production_unchanged': snapshot() == before, 'production_activated': False}) + '\n')
+        result['audit_completed'] = False
+        if 'production_unchanged' not in result:
+            try:
+                after = snapshot()
+                result.update(production_unchanged=after == before,
+                  production_differences=snapshot_differences(before, after))
+            except Exception:
+                result.update(production_unchanged=None, production_comparison_unavailable=True)
+        (directory/'result.json').write_text(json.dumps(result, indent=2) + '\n')
+        print('Report:', directory/'result.json')
+        if result.get('production_differences'):
+            print(json.dumps({'production_differences': result['production_differences']}))
         raise
     (directory/'result.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result, indent=2))

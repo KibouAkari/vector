@@ -1,5 +1,9 @@
 # Local FEGCraft help: candidate and operational limits
 
+## Mount comparison correction, PR #74
+
+The owner readiness audit failed09:14 with READINESS_PRODUCTION_CHANGED; original failure detail was not retained. Three subsequent locked read-only samples09:19 reproduced only order changes in app/assistant Mounts arrays, equal complete records ignoring order and0 file differences. The old failure cannot be retrospectively certified, and no role/driver values were reported. PR #74 normalizes only this enumeration order, retaining all fields/duplicates and strict comparison elsewhere. Sixteen local tests cover genuine mount/config/file changes and safe retained failure diagnostics. A failed comparison stays failed; no second snapshot substitutes for it. NEXT: new current/vector-fegcraft-admission-readiness-v2.py from this PR; preserve v1 and rerun only this read-only audit, not the passed31-case model gate. No role/ACL/driver/runtime change, model request, restart or activation.
+
 ## Current observed result and next readiness audit, PR #73
 
 Owner v3 native qualification PASSED31/31 at /root/vector-workspace/releases/vector-fegcraft-general-20261018T070145Z-b27866/result.json (07dcb2e3d16df6796b5db2a236cd88b7d3bc6f8e). Cold10.642s, warm median4.592s/slowest7.379s,17 calls,2821 input/168 output, unknown0. Existing latency/quality gates passed without relaxation. No cloud/model API fees/messages/production activation, unchanged production and verified cleanup/unload. No identical model rerun is needed. This is limited reviewed-extractive coverage, not all installed mods or exact server rights.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-18 — Compare complete mount records without enumeration-order false alarms (PR #74)
+
+- Owner PR #73 audit stopped with READINESS_PRODUCTION_CHANGED at09:14. Its original failure report omitted the field differences and completed metadata. Three subsequent locked read-only owner samples at09:19 found only Mounts order changes for app/assistant in samples1/3; full mount records equal ignoring order, no configuration-file differences. Original failure's exact diff was not retained; don't retroactively certify that earlier snapshot.
+- Canonicalize ONLY Docker inspect Mounts enumeration by full-record JSON; preserve every field and duplicate, all other arrays/configuration/identity/start/network/file hashes stay strict. Add redacted container/field and changed-file-count diagnostics. Keep the first failed comparison and completed audit sections on failure; never resnapshot to replace a real failure or emit Config/secret values.
+- Sixteen local tests passed, including order-only equality, changed source/destination/RW/type/propagation/new fields, duplicates/removal, non-mount changes, file hashes and failure-report preservation/redaction. The PostgreSQL catalog query/driver probe/model/runtime are unchanged. New owner v2 target preserves failed v1. No model rerun, production change, role/ACL change, restart or activation. Update current handoff.
+
 ## 2026-10-18 — Record successful native help gate and audit admission prerequisites (PR #73)
 
 - Owner PR #72 v3 PASSED31/31: cold10.642s, warm median4.592s,17 calls/2821 input/168 output, unknown0; no cloud/API fees/messages/activation, production unchanged, cleanup/unload verified. Preserve limited14-passage scope; no universal mod/version/rights claim or repeated unchanged model test.
