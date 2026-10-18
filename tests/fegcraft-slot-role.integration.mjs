@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 import {once} from 'node:events';
-import {ROLE,prepareRole,rollbackRole,destination} from '../scripts/lib/fegcraft-slot-role.mjs';
+import {ROLE,prepareRole,verifyRole,rollbackRole,destination} from '../scripts/lib/fegcraft-slot-role.mjs';
 
 assert.equal(process.env.CI,'true','disposable CI required');
 const dsn=process.env.VECTOR_ADMISSION_FIXTURE_DSN;
@@ -32,6 +32,7 @@ function launch(mode,file){
 }
 try{
   await absent();
+  await assert.rejects(verifyRole(args),/FOREIGN_OR_ABSENT/);await absent();
   const version=(await admin.query('SHOW server_version_num')).rows[0].server_version_num;
   assert.ok(version.startsWith('17'));
   const publicQuery=`SELECT d.oid,a.privilege_type,a.is_grantable FROM pg_database d,
@@ -49,6 +50,7 @@ try{
   assert.equal(prepared.created,true);assert.equal(prepared.privileges.inherited_public_temp,true);
   assert.ok(prepared.privileges.checked_databases>=3,'include connectable template1 and postgres');
   assert.equal((await prepareRole(args)).created,false,'idempotent owned resume');
+  const verified=await verifyRole(args);assert.equal(verified.owned,true);assert.equal(verified.dsn,prepared.dsn);
   await assert.rejects(prepareRole({...args,owner:'3'.repeat(32)}),/FOREIGN/);
   await assert.rejects(rollbackRole({...args,owner:'3'.repeat(32)}),/FOREIGN/);
   role=connect(prepared.dsn);await role.connect();
