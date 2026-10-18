@@ -217,6 +217,15 @@ class ConversationKnowledge(DocumentationKnowledge):
                 and re.search(r'erstell|anleg|gründ|gruend', q)):
             self.remember(scope, [{'role': 'user', 'content': question[:200], 'topic': 'claims'}])
             return 'für gemeinsames Bauen kannst du eine eigene Spielergruppe in deinen Claim-Einstellungen nutzen. Soll ich dir zeigen, wie du einen Spieler aufnimmst?'
+        if 'travelersbackpack' in mods and re.search(r'backpack|rucksack|rucksäcke', q):
+            desired = ('backpack-equip' if re.search(r'tragen|ausrüst|ausruest|equip|rücken', q)
+                       else 'backpack-upgrade' if re.search(r'erweitern|verbesser|upgrade|stufe', q)
+                       else 'backpack-sleep' if re.search(r'schlaf|spawn', q)
+                       else 'backpack-open' if re.search(r'funktionier|benutz|bedien|öffn|oeffn', q) else None)
+            chosen = next((row for row, _, _ in self.documentation.rows if row['id'] == desired), None)
+            if chosen:
+                self.remember(scope, [{'role': 'user', 'content': question[:200], 'topic': 'backpack'}])
+                return safe_answer(chosen['text'])
         if 'openpartiesandclaims' in mods and (re.search(r'claim', q) and re.search(r'ander|freund|spieler|mitglied', q) and re.search(r'bau|abba|zugriff|erlaub', q)):
             chosen = next((row for row, _, _ in self.documentation.rows if row['id'] == 'claims-build-access'), None)
             if chosen:

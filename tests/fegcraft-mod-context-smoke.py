@@ -36,6 +36,7 @@ def main():
     for question in ('wie bekomme ich einen Backpack?','wie crafte ich einen Backpack?','wie lautet das Rezept für einen standart Backpack?'):
         value=ask('hey Vector '+question)
         check('Standardrucksack' in value.get('text','') and 'Grundrezept der installierten Mod' in value['text'],'MOD_CONTEXT_INSTALLED_BACKPACK_RECIPE')
+    check('Haupthand' in ask('hey Vector wie funktioniert diese Backpack Mod?').get('text',''),'MOD_CONTEXT_BACKPACK_CONTROLS')
     check('Axt' in ask('hey Vector wie funktioniert Chopt?').get('text',''),'MOD_CONTEXT_OTHER_MOD')
     users=json.loads(Path('/inputs/usercache.json').read_text())
     person=next(u for u in users if Path('/inputs/stats',u.get('uuid','')+'.json').is_file())

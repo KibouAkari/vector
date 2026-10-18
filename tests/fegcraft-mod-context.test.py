@@ -69,6 +69,7 @@ class ModContext(TestCase):
         with patch.object(self.ai,'request',side_effect=AssertionError('direct help invoked model')):
             rights=self.ai.answer_scoped('wie kann ein anderer Spieler in meinem Claim bauen?',['openpartiesandclaims'],('mc','one'))
             self.assertIn('Player Groups',rights)
+            self.assertIn('Haupthand',self.ai.answer_scoped('wie funktioniert diese Backpack Mod?',['travelersbackpack'],('mc','one')))
             app=Assistant(SimpleNamespace(admit=lambda *args:'accepted'),'/unused','/unused','/unused',self.ai,RecipeBook())
             app.mods=lambda:['openpartiesandclaims']
             response=app.handle(dict(principal='00000000-0000-0000-0000-000000000001',name='Synthetic',event='00000000-0000-0000-0000-000000000001:1',message='hey vector wie baue ich einen Claim?'))
