@@ -219,11 +219,18 @@ def rollback(p, h, old, directory):
         if (labels.get('com.docker.compose.project') != plan['game_project']
                 or labels.get('com.docker.compose.service') != plan['game_service']
                 or game['Image'] not in (plan['preservation']['image'], plan['original_image'])
-                or (game['Image'] == plan['original_image'] and game['Id'] != plan['original_container'])):
+                or (game['Image'] == plan['original_image'] and game['Id'] != plan['original_container'])
+                or len(game['Mounts']) != 1
+                or any(m.get('Type') != 'bind' or m.get('Source') != str(DATA)
+                       or m.get('Destination') != '/data' or m.get('RW') is not True for m in game['Mounts'])):
             raise RuntimeError('CHAT_IDENTITY_ROLLBACK_GAME_OWNER_CHANGED')
     rollback_raw = p.read(directory / 'compose.rollback.yml')
     if p.sha(rollback_raw) != plan['rollback_compose_sha256']:
         raise RuntimeError('CHAT_IDENTITY_ROLLBACK_PROFILE_CHANGED')
+    image = json.loads(p.run('docker', 'image', 'inspect', plan['preservation']['image']))[0]
+    if (image['Id'] != plan['preservation']['image']
+            or image['Config'].get('Labels', {}).get('com.vector.fegcraft-root-preservation') != plan['preservation']['owner']):
+        raise RuntimeError('CHAT_IDENTITY_ROLLBACK_PRESERVED_IMAGE_CHANGED')
     properties = old.restore_properties(p.read(DATA / 'server.properties'), plan['properties_before'])
     print('Stelle die vorherige Chat-Anbindung wieder her; Welt und Spielerdateien bleiben bestehen.', flush=True)
     if present:
@@ -257,6 +264,9 @@ def install(p, h, support, old, layer, revision):
             raise RuntimeError('CHAT_IDENTITY_PREVIOUS_RELEASE_REQUIRES_REVIEW')
         check_files(old, directory, plan); check_protected(p, h, old, plan)
         wait_game(old, plan['preservation']['image']); old.verify_assets()
+        actual = old.properties(p.read(DATA / 'server.properties'))
+        if any(actual.get(k) != v for k, v in old.PACK_PROPERTIES.items()):
+            raise RuntimeError('CHAT_IDENTITY_COMPLETED_PACK_CHANGED')
         print('Bereits installiert und erneut geprüft. Kein Neustart und keine erneute Begrüssung.'); return
     prepared = json.loads(p.read(PREPARED / 'result.json'))
     captured = json.loads(p.read(CAPTURE / 'result.json'))
@@ -323,6 +333,14 @@ def install(p, h, support, old, layer, revision):
     print('Rollback:', directory / 'rollback.sh', flush=True)
     stopped_game = False
     try:
+        # Validate both exact YAML edits while the old game is still online.
+        original_raw = p.read(old.GAME_COMPOSE)
+        before_profile = old.compose_config(old.GAME_COMPOSE, project)
+        for name, raw, pack in (
+                ('compose.preflight.yml', patch_loader(old.patch_compose(original_raw, service, game['Image']), service), True),
+                ('rollback.preflight.yml', patch_loader(image_only(original_raw, service, game['Image']), service), False)):
+            old.atomic(directory / name, raw, 0, 0, 0o600)
+            validate_profile(before_profile, old.compose_config(directory / name, project), service, game['Image'], pack, old)
         # Publish and validate exact HTTPS assets while Minecraft is still online.
         old.PUBLIC.mkdir(mode=0o755); old.PUBLIC.chmod(0o755)
         for i, row in enumerate(plan['files']):
@@ -333,6 +351,8 @@ def install(p, h, support, old, layer, revision):
         check_protected(p, h, old, plan)
         # Bound the unknown input before downtime; no full-world backup or model scan.
         layer.copy_archive(original, paths[0]['path'], directory / 'root-online-preflight.tar')
+        if h.snapshot() != before:
+            raise RuntimeError('CHAT_IDENTITY_PRODUCTION_CHANGED_BEFORE_STOP')
         print('Stoppe Minecraft regulär; sichere nur seine private Containerschicht, keine erneute Weltkopie.', flush=True)
         stopped_game = True
         p.run('docker', 'stop', '--time', '120', original, timeout=180)
@@ -341,6 +361,11 @@ def install(p, h, support, old, layer, revision):
             raise RuntimeError('CHAT_IDENTITY_WRITABLE_PATHS_CHANGED_AT_STOP')
         plan['preservation'] = layer.preserve(original, paths, directory, secrets.token_hex(6)); old.save(directory, plan)
         image = plan['preservation']['image']
+        if (old.inspect(old.GAME)['Id'] != original or old.digest(old.GAME_COMPOSE) != persistence['compose_sha256']
+                or [DATA.stat().st_dev, DATA.stat().st_ino] != persistence['data_directory_identity']
+                or [(DATA / 'world').stat().st_dev, (DATA / 'world').stat().st_ino] != persistence['world_directory_identity']):
+            raise RuntimeError('CHAT_IDENTITY_OWNER_OR_DATA_CHANGED_BEFORE_RECREATION')
+        check_protected(p, h, old, plan)
         original_raw = p.read(old.GAME_COMPOSE)
         candidate = patch_loader(old.patch_compose(original_raw, service, image), service)
         restore = patch_loader(image_only(original_raw, service, image), service)

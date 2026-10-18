@@ -1,5 +1,6 @@
 """Scoped compose edits, private preservation and recovery of a stopped game."""
 import copy
+import hashlib
 import importlib.util
 import io
 import json
@@ -28,6 +29,22 @@ old = load('scripts/deploy/release-fegcraft-dialogue.py', 'identity_pure_helpers
 
 
 class Guards(unittest.TestCase):
+    def test_unhealthy_or_absent_game_does_not_prevent_other_service_protection(self):
+        records = [{'Name': '/vector-app', 'Id': 'app', 'Image': 'fixture-image', 'Config': {'Env': ['SYNTHETIC=one']},
+                    'HostConfig': {}, 'Mounts': [], 'NetworkSettings': {'Networks': {'private': {}}},
+                    'State': {'Running': True, 'StartedAt': 'fixture-time'}}]
+        p = SimpleNamespace(run=Mock(side_effect=lambda *args: json.dumps(records).encode()),
+                            INSTALL=Path('/synthetic-install'), read=lambda path: b'synthetic config',
+                            sha=lambda value: hashlib.sha256(value).hexdigest())
+        h = SimpleNamespace(NAMES=('fegcraft-updated', 'vector-app'), sha=p.sha, ADDON=Path('/synthetic-addon.jar'),
+                            canonical_mounts=lambda value: sorted(value, key=lambda row: json.dumps(row, sort_keys=True)))
+        baseline = installer.protected_live(p, h, {})
+        p.run.assert_called_once_with('docker', 'inspect', 'vector-app')
+        self.assertIn('/vector-app', baseline)
+        self.assertNotIn('/fegcraft-updated', baseline)
+        records[0]['Config']['Env'] = ['SYNTHETIC=changed']
+        self.assertNotEqual(baseline, installer.protected_live(p, h, {}))
+
     def test_compose_patch_retains_game_settings_and_pins_both_versions(self):
         for env in ('      VERSION: "26.2"\n      TYPE: FABRIC\n', '      - VERSION=26.2\n      - TYPE=FABRIC\n'):
             raw = ('services:\n  mc:\n    image: current\n    environment:\n' + env
@@ -96,6 +113,8 @@ class Guards(unittest.TestCase):
         image['Config']['Labels'][layer.LABEL] = 'owner'
         layer.validate_image(game, parent, image, 'owner')
         image['Config']['Env'] = ['DIFFERENT=fixture']
+        with self.assertRaises(RuntimeError): layer.validate_image(game, parent, image, 'owner')
+        image['Config']['Env'] = config['Env']; image['RootFS']['Layers'] = ['other-parent', 'private']
         with self.assertRaises(RuntimeError): layer.validate_image(game, parent, image, 'owner')
 
 

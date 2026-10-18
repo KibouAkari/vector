@@ -24,6 +24,12 @@ def inspect(kind, name):
     return json.loads(run('docker', kind, 'inspect', name))[0]
 
 
+def evidence(path, value):
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'w') as handle:
+        json.dump(value, handle, indent=2); handle.write('\n'); handle.flush(); os.fsync(handle.fileno())
+
+
 def stopped(container):
     state = container['State']
     if state['Running'] or state.get('Restarting') or state.get('OOMKilled') or state.get('ExitCode') not in (0, 143):
@@ -132,12 +138,15 @@ def preserve(container_id, paths, directory, owner):
             raise RuntimeError('ROOT_PRESERVATION_DELETED_PATH_REQUIRES_REVIEW')
         copy_archive(container_id, row['path'], directory / ('root-before-' + str(index) + '.tar'))
     tag = 'vector-fegcraft-private-root:' + owner
+    evidence(directory / 'root-preservation-intent.json', {'owner': owner, 'tag': tag,
+             'container': container_id, 'parent_image': game['Image'], 'never_push_image': True})
     # The game is already stopped. No pause of any live service and no world copy.
     print('Sichere private Docker-Schicht. Zeitlimit für diesen Schritt: 45 Sekunden.', flush=True)
     raw = run('docker', 'commit', '--change', 'LABEL ' + LABEL + '=' + owner,
               container_id, tag, timeout=45).decode().strip()
     if not re.fullmatch('sha256:[a-f0-9]{64}', raw):
         raise RuntimeError('ROOT_PRESERVATION_IMAGE_ID_INVALID')
+    evidence(directory / 'root-preservation-image.json', {'owner': owner, 'image': raw, 'tag': tag})
     image = inspect('image', raw)
     validate_image(game, parent, image, owner)
     name = 'vector-root-proof-' + owner
