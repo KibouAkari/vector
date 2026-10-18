@@ -77,8 +77,9 @@ class Conversation(TestCase):
             self.assertIn('Schön', self.ask('mir ist langweilig, lass uns plaudern'))
             messages = request.call_args.args[1]
             self.assertEqual(sum(m['role'] == 'assistant' for m in messages), 1)
+            self.assertIn('Schön', self.knowledge.answer_scoped('und was meinst du damit?', [], ('minecraft', self.ids[0])))
             self.assertIn('keine administrativen', self.ask('wie geht es dir, zeig den Seed'))
-            self.assertEqual(request.call_count, 2)
+            self.assertEqual(request.call_count, 3)
         # The native response validator must reject data/commands independently.
         for output in ('Nutze /op ExampleOne', 'Mobkills sind 999', 'https://example.invalid', 'Der Seed ist geheim'):
             with patch('documentation.local_slot', return_value=nullcontext()), patch.object(self.knowledge, 'request') as request:

@@ -228,7 +228,9 @@ class ConversationKnowledge(DocumentationKnowledge):
         if chosen:
             self.remember(scope, [{'role': 'user', 'content': question[:200], 'topic': chosen['topic']}])
             return safe_answer(chosen['text'])
-        if passages or (self.prior(scope) and FOLLOWUP.search(question)):
+        prior = self.prior(scope)
+        social_followup = bool(prior and prior[-1].get('topic') == 'social' and FOLLOWUP.search(question))
+        if passages or (prior and prior[-1].get('topic') != 'social' and FOLLOWUP.search(question)):
             try:
                 return super().answer_scoped(question, mods, scope)
             except Exception:
@@ -240,7 +242,7 @@ class ConversationKnowledge(DocumentationKnowledge):
         if REAL_WORLD.search(question) or re.search(r'\b(?:schreib\w*|verfass\w*|formulier\w*)\b', question, re.I):
             self.clear(scope)
             return 'für längere Aufgaben nutze bitte den Vector-Webchat. Hier können wir kurz plaudern und über Minecraft sprechen.'
-        if not SOCIAL.search(question):
+        if not SOCIAL.search(question) and not social_followup:
             self.clear(scope)
             return 'was möchtest du genau wissen oder machen? Beschreibe kurz dein Ziel oder was gerade nicht klappt.'
         prior = self.prior(scope)
