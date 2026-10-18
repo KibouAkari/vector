@@ -34,6 +34,20 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      admission-postgres:
+        image: postgres:17.11-alpine
+        env:
+          POSTGRES_USER: vector_driver_fixture
+          POSTGRES_PASSWORD: vector_driver_fixture_password
+          POSTGRES_DB: vector_admission_fixture
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U vector_driver_fixture -d vector_admission_fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
       CI: 'true'
       NEXT_TELEMETRY_DISABLED: '1'
@@ -74,6 +88,8 @@ jobs:
           python3 tests/fegcraft-documentation.test.py
           python3 tests/fegcraft-documentation-evaluation.test.py
           python3 tests/fegcraft-admission-readiness.test.py
+          python3 tests/fegcraft-admission-driver.test.py
+          python3 -m py_compile scripts/deploy/qualify-fegcraft-admission-driver.py tests/fegcraft-admission-driver.integration.py tests/fegcraft-admission-driver-ci.py
           python3 -m py_compile scripts/diagnostics/fegcraft-admission-readiness.py
           python3 -m py_compile services/fegcraft-assistant/documentation.py scripts/deploy/evaluate-fegcraft-documentation.py
           python3 tests/fegcraft-public-mod-sources.test.py
@@ -201,6 +217,17 @@ jobs:
 
       - name: Build the application
         run: npm run build
+
+      - name: Install verified local admission driver in disposable CI venv
+        run: |
+          python3 scripts/deploy/qualify-fegcraft-admission-driver.py --fetch-ci-wheels /tmp/vector-admission-driver-wheels
+          python3 -m venv /tmp/vector-admission-driver-ci
+          /tmp/vector-admission-driver-ci/bin/python -m pip install --disable-pip-version-check --no-cache-dir --no-index --no-deps --require-hashes --find-links=/tmp/vector-admission-driver-wheels -r services/fegcraft-assistant/driver-requirements.txt
+
+      - name: Qualify binary driver and restricted fixture role against PostgreSQL 17
+        env:
+          VECTOR_ADMISSION_FIXTURE_DSN: postgresql://vector_driver_fixture:vector_driver_fixture_password@127.0.0.1:5433/vector_admission_fixture
+        run: python3 tests/fegcraft-admission-driver-ci.py
 
       - name: Test authenticated API authorization against PostgreSQL
         env:

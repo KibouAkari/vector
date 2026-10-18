@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-18 — Prepare binary driver and qualify admission only in a disposable database (PR #75)
+
+- Owner readiness v2 passed: current mode0/profile/input scope retained, installed captured addon27s vs candidate24s, PG170011 PUBLIC CONNECT/TEMP+schema USAGE only in reported scope, role absent, base-image psycopg absent. Cleanup verified/production unchanged; no writes/model/cloud/messages/activation. Record actual evidence and stop repeating readiness/model gates.
+- Pin three maintainer PyPI wheels by exact URL/size/SHA with existing psycopg/binary3.2.13 and typing_extensions4.15.0. Actual scratch downloads/hash checks and offline installation/binary import passed; preserve package/bundled licenses. Prepare a separate offline-built local driver image without host installs or changing any running image.
+- Add actual runtime.local_slot integration harness restricted to a disposable database name, synthetic credentials/data and temporary role. Check app-read/permanent-create denial after removing read-only default, inherited PUBLIC TEMP honestly, attributes/membership, contention both ways and normal/exception release. Owner uses installed PG17.11 image in an internal-only labelled temporary network with tmpfs DB; preserve production fingerprints and clean owned fixtures.
+- Nine local scope/artifact/evidence/cleanup tests passed. Add the same actual driver harness to disposable PostgreSQL17.11 CI. Production role creation, effective privilege review, service-only rollout/health/rollback and real chat are still pending. No runtime/model change, production role, game restart, backup, welcome or activation. Update handoff and current next command.
+
 ## 2026-10-18 — Compare complete mount records without enumeration-order false alarms (PR #74)
 
 - Owner PR #73 audit stopped with READINESS_PRODUCTION_CHANGED at09:14. Its original failure report omitted the field differences and completed metadata. Three subsequent locked read-only owner samples at09:19 found only Mounts order changes for app/assistant in samples1/3; full mount records equal ignoring order, no configuration-file differences. Original failure's exact diff was not retained; don't retroactively certify that earlier snapshot.
