@@ -108,12 +108,21 @@ def archive_fingerprint(path):
     return hashlib.sha256(json.dumps(entries, sort_keys=True).encode()).hexdigest()
 
 
+def unspecified_user(value):
+    # OCI ImageConfig.User is an optional string with json omitempty. Docker
+    # container inspection retains "" while committed image inspection can omit
+    # it (get -> None). Only these two spellings mean no user override.
+    # https://github.com/opencontainers/image-spec/blob/main/specs-go/v1/config.go
+    return '' if value is None else value
+
+
 def validate_image(container, parent, image, owner):
     expected = container['Config']
     actual = image['Config']
-    keys = ('Entrypoint', 'Cmd', 'Env', 'User', 'WorkingDir', 'Volumes', 'ExposedPorts',
+    keys = ('Entrypoint', 'Cmd', 'Env', 'WorkingDir', 'Volumes', 'ExposedPorts',
             'Healthcheck', 'StopSignal', 'Shell', 'OnBuild')
     if (any(expected.get(k) != actual.get(k) for k in keys)
+            or unspecified_user(expected.get('User')) != unspecified_user(actual.get('User'))
             or actual.get('Labels') != dict(expected.get('Labels') or {}, **{LABEL: owner})
             or image.get('Os') != parent.get('Os') or image.get('Architecture') != parent.get('Architecture')):
         raise RuntimeError('ROOT_PRESERVATION_IMAGE_CONFIG_CHANGED')
@@ -157,7 +166,8 @@ def preserve(container_id, paths, directory, owner):
                     '--label', 'com.docker.compose.project=' + name, '--label', 'com.docker.compose.service=root-proof',
                     '--mount', 'type=tmpfs,destination=/data', '--entrypoint', '/bin/true', raw).decode().strip()
         value = inspect('container', probe)
-        if value['State']['Running'] or value['Image'] != raw:
+        if (value['State']['Running'] or value['Image'] != raw
+                or unspecified_user(value['Config'].get('User')) != unspecified_user(game['Config'].get('User'))):
             raise RuntimeError('ROOT_PRESERVATION_REFERENCE_NOT_ISOLATED')
         fingerprints = []
         print('Vergleiche die geänderten Dateien mit der gesicherten Containerschicht.', flush=True)
@@ -178,3 +188,4 @@ def preserve(container_id, paths, directory, owner):
             if value['State']['Running'] or value['Config'].get('Labels', {}).get(LABEL) != owner:
                 raise RuntimeError('ROOT_PRESERVATION_REFERENCE_OWNER_CHANGED')
             run('docker', 'rm', probe)
+
