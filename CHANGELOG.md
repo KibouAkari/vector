@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-18 — Prepare and qualify an owned production CPU-slot role without service rollout (PR #76)
+
+- Owner PR #75 actual driver/PG17.11 fixture passed, including denied app/permanent-create access, inherited PUBLIC TEMP, both slot directions, release and cleanup. Record exact prepared db331 image, wheel fingerprint and report; reuse them without downloads, rebuilds, readiness or native31-case reruns.
+- Add a guarded owner step that audits every connectable database (including template1) before creating one owned restricted login and private credential. Check PUBLIC/direct object/column/routine/SECURITY DEFINER/foreign/default data/create privileges and role attributes/memberships/ownership. Preserve all global PUBLIC ACLs and report inherited TEMP honestly. No application rows or admin credential in probes/model/service.
+- Verify actual runtime.local_slot in both directions against the existing-app same-database CPU lock using labelled, nonroot readonly driver probes. Keep current mode0/profile/source and all nine production identities/configurations unchanged. Role writes and private secret creation are explicit; no service rollout, inference/cloud/game message, backup or Minecraft restart.
+- Add foreign-role-safe resumability and mounted/active/dependency-aware transactional rollback without DROP OWNED/CASCADE or credential overwrite. Eleven local guards pass; add actual PostgreSQL17.11 create/resume/privilege/cross-database/rollback and Python slot integration to existing CI driver environment. Update project handoff/current next owner command; production role and service activation remain unobserved until owner evidence.
+
 ## 2026-10-18 — Prepare binary driver and qualify admission only in a disposable database (PR #75)
 
 - Owner readiness v2 passed: current mode0/profile/input scope retained, installed captured addon27s vs candidate24s, PG170011 PUBLIC CONNECT/TEMP+schema USAGE only in reported scope, role absent, base-image psycopg absent. Cleanup verified/production unchanged; no writes/model/cloud/messages/activation. Record actual evidence and stop repeating readiness/model gates.
@@ -678,5 +685,3 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The owner observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at vector-privacy-composer-release-20261016T123251Z-4139a9. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
-
-

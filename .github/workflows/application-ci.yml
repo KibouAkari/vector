@@ -89,6 +89,9 @@ jobs:
           python3 tests/fegcraft-documentation-evaluation.test.py
           python3 tests/fegcraft-admission-readiness.test.py
           python3 tests/fegcraft-admission-driver.test.py
+          node --test tests/fegcraft-slot-role.test.mjs
+          python3 tests/fegcraft-slot-role.test.py
+          python3 -m py_compile scripts/deploy/prepare-fegcraft-slot-role.py tests/fegcraft-slot-role-probe.py
           python3 -m py_compile scripts/deploy/qualify-fegcraft-admission-driver.py tests/fegcraft-admission-driver.integration.py tests/fegcraft-admission-driver-ci.py
           python3 -m py_compile scripts/diagnostics/fegcraft-admission-readiness.py
           python3 -m py_compile services/fegcraft-assistant/documentation.py scripts/deploy/evaluate-fegcraft-documentation.py
@@ -229,6 +232,11 @@ jobs:
           VECTOR_ADMISSION_FIXTURE_DSN: postgresql://vector_driver_fixture:vector_driver_fixture_password@127.0.0.1:5433/vector_admission_fixture
         run: python3 tests/fegcraft-admission-driver-ci.py
 
+      - name: Qualify owned slot role privileges and actual Python coordination against PostgreSQL 17
+        env:
+          VECTOR_ADMISSION_FIXTURE_DSN: postgresql://vector_driver_fixture:vector_driver_fixture_password@127.0.0.1:5433/vector_admission_fixture
+        run: node tests/fegcraft-slot-role.integration.mjs
+
       - name: Test authenticated API authorization against PostgreSQL
         env:
           DATABASE_URL: postgres://vector_ci:vector_ci_password@127.0.0.1:5432/vector_ci
@@ -301,6 +309,3 @@ jobs:
         run: |
           python3 scripts/build-fegcraft-addon.py
           python3 tests/fegcraft-flow.test.py
-
-
-
