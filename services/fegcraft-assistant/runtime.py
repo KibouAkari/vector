@@ -159,7 +159,7 @@ def friendly_statistics(answer, sender):
     match = re.fullmatch(r"([A-Za-z0-9_]{1,16}): (Spielerkills|Mobkills|Spielzeit|Strecke|Tode) (.+); Rang ([0-9]+)( nach Anzahl)?", value)
     if match:
         subject, metric, amount, rank, _ = match.groups()
-        own = subject.casefold() == sender.casefold()
+        own = isinstance(sender, str) and subject.casefold() == sender.casefold()
         who = 'du' if own else subject
         count = amount.rsplit(' ', 1)[0]
         if metric in ('Spielerkills', 'Mobkills'):
@@ -167,9 +167,9 @@ def friendly_statistics(answer, sender):
         if metric == 'deaths' or metric == 'Tode':
             return who + (' bist ' if own else ' ist ') + count + ' Mal gestorben und ' + ('liegst' if own else 'liegt') + ' damit auf Rang ' + rank + ' nach Anzahl.'
         return who + (' liegst' if own else ' liegt') + ' mit ' + amount + ' ' + metric + ' auf Rang ' + rank + '.'
-    if value.startswith(sender + ': '):
+    if sender and value.startswith(sender + ': '):
         value = ('deine Ränge: ' if re.search(r'(?:Spielzeit|Strecke|Mobkills|Spielerkills|Tode) Rang', value) else 'deine Werte: ') + value[len(sender)+2:]
-    elif value.startswith(sender + ' führt bei '):
+    elif sender and value.startswith(sender + ' führt bei '):
         value = 'deine Rekorde: ' + value[len(sender+' führt bei '):]
     match = re.fullmatch(r"(Mobkills|Spielerkills): ([A-Za-z0-9_]{1,16}) ([0-9'.,]+) Kills", value)
     if match:
@@ -364,7 +364,7 @@ class Assistant:
                 else:
                     answer = 'bleiben wir bitte bei Minecraft. Welche Frage zum Spiel oder zu einer Mod hast du?'
         if getattr(self.knowledge, 'friendly_statistics', False):
-            answer = friendly_statistics(answer, name)
+            answer = friendly_statistics(answer, name if source == 'minecraft' else None)
         # Deterministic responses use the same presentation/command boundary.
         safe_answer(answer)
         return {'status': 'answered', 'text': safe_display(prefix + answer)}

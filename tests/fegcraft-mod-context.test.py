@@ -82,6 +82,11 @@ class ModContext(TestCase):
         self.assertEqual(friendly_statistics('ExampleTwo: Mobkills 100 Kills; Rang 1. Stand: gespeicherte Spielerdateien.','ExampleOne'),
                          'ExampleTwo hat 100 Mobkills und ist damit auf Rang 1.')
         self.assertNotIn('Stand:',friendly_statistics('ExampleOne führt bei Spielzeit 20.0 h. Stand: gespeicherte Spielerdateien.','ExampleOne'))
+        app=Assistant(SimpleNamespace(admit=lambda *args:'accepted'),'/unused','/unused','/unused',self.ai)
+        app.stat_answer=lambda *args,**kwargs:'ExampleOne: Spielerkills 50 Kills; Rang 2. Stand: gespeicherte Spielerdateien.'
+        result=app.handle(dict(principal='00000000-0000-0000-0000-000000000001',name='ExampleOne',source='discord',event='00000000-0000-0000-0000-000000000001:1',message='hey vector welchen Rang hat ExampleOne bei Spielerkills?'))
+        self.assertNotIn('du hast',result['text'])
+        self.assertIn('ExampleOne hat',result['text'])
 
     def test_update_keeps_permissions_and_only_adds_readonly_public_recipe_input(self):
         spec=importlib.util.spec_from_file_location('context_update',ROOT/'scripts/deploy/update-fegcraft-mod-context.py')
