@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-18 — Record successful native help gate and audit admission prerequisites (PR #73)
+
+- Owner PR #72 v3 PASSED31/31: cold10.642s, warm median4.592s,17 calls/2821 input/168 output, unknown0; no cloud/API fees/messages/activation, production unchanged, cleanup/unload verified. Preserve limited14-passage scope; no universal mod/version/rights claim or repeated unchanged model test.
+- Add a non-activating owner audit of successful evidence/current source, owned mode0 backend/read-only data scope, exact installed vs captured addon deadline, offline base-image psycopg availability and aggregate READ ONLY PostgreSQL privilege catalogs. No credentials/names/application rows are output; no role/ACL changes, packages, model requests or restarts. Temporary driver probe uses network none, no mounts, nonroot/read-only and labelled cleanup. Nine production containers/configuration fingerprints must remain unchanged.
+- Twelve local guard/evidence/baseline/cleanup tests passed, and real owner report parsing passed. Add a disposable PostgreSQL CI integration test for schema/table/column/sequence/routine/default PUBLIC ACL semantics and unchanged repeated audit; no production role security claim from test fixtures. Driver/role, assistant-only rollout and real chat remain pending. Update project handoff/current next action and retain backup/game recreation/welcome holds.
+
 ## 2026-10-18 — Complete container-protection evidence and broaden native qualification (PR #72)
 
 - Owner v2 ran correctly: party followup passed, but chest protection chose none. Keep25/26 as failed quality; warm median4.234s/cold10.179s passed timing, exact2193 input/136 output across14 calls, no unknown/cloud/messages/activation, unchanged production and verified unload/cleanup.

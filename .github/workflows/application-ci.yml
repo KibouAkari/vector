@@ -73,6 +73,8 @@ jobs:
           python3 tests/fegcraft-instruct4b.test.py
           python3 tests/fegcraft-documentation.test.py
           python3 tests/fegcraft-documentation-evaluation.test.py
+          python3 tests/fegcraft-admission-readiness.test.py
+          python3 -m py_compile scripts/diagnostics/fegcraft-admission-readiness.py
           python3 -m py_compile services/fegcraft-assistant/documentation.py scripts/deploy/evaluate-fegcraft-documentation.py
           python3 tests/fegcraft-public-mod-sources.test.py
           python3 -m py_compile scripts/diagnostics/fegcraft-public-mod-sources.py
@@ -230,6 +232,7 @@ jobs:
           node --test tests/usage-attribution.integration.test.mjs
           node --test tests/privacy-vault.integration.test.mjs
           node --test tests/local-workers-db.integration.test.mjs
+          node --test tests/fegcraft-admission-db.integration.test.mjs
           node --test tests/model-intelligence-api.integration.test.mjs
 
   secret-scan:
