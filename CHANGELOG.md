@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-18 — Retry logo publication safely and preserve actionable failure evidence (PR #82)
+
+- Owner PR #81 attempt at vector-fegcraft-chat-identity-20261018T154321Z-403dfd rolled back BEFORE recreation/root preservation. Owner read-only diagnosis confirms original game healthy/same ID, current assistant healthy, app running, all five managed files at before hashes, both compose preflights approved, current Nginx syntax and origin/public health200. Only an empty public-asset directory remains. No new addon/avatar/head/welcome activation is observed. Original failing command/status was hidden; its exact cause remains unproven.
+- Replace immediate one-shot HTTPS checks in this installer with a bounded30s readiness poll after Nginx reload. Require200, exact asset hashes on origin AND public routes, and healthy app before Minecraft can stop. Retry only bounded transient transport/status conditions and wrong200 bodies during publication; TLS errors, redirects and permanent HTTP failures fail closed. No insecure TLS, HTTP fallback or reduced digest checks. Record redacted curl/status/digest observations and preserve initial publication evidence.
+- Record named phases and separate primary/recovery private tracebacks with safe public error codes. A recovery failure no longer hides all evidence of the original failure. No credentials/configuration/body content enters stdout. Remove the prior empty directory only after proving the exact rolled-back release/script/game/protected-state/file hashes and root-owned directory metadata within that attempt's time window; never recursive removal. New pre-recreation recovery removes only its own empty public directory.
+- Seven new tests pass locally, including actual loopback TLS/curl with an initial404 then correct assets, rejection of an untrusted certificate, persistent wrong200 digest failure, redirects, bounded retry, specific/private error reporting and failed-release directory ownership/drift checks. Existing seven pure installer/root tests also pass (Docker proof skipped locally; existing CI runs it). Root preservation, world bind, mode3 backend, captured addon, local-model policies and one-time delayed welcome are unchanged. Actual retry/production delivery remain unobserved.
+
 ## 2026-10-18 — Preserve root state and install qualified Discord input and Vector identity (PR #81)
 
 - Owner PR #80 preparation PASSED at vector-fegcraft-chat-preparation-20261018T133907Z-40c47c. Current mode3 is intact; existing nightly snapshot is11.97h old with recorded consistent staging and world-header restore probe. Current addon still has Discord input/avatar/head off. Fresh installed-API capture vector-fegcraft-bridge-evaluation-20261018T133909Z-16ca1f passed Discord/policy/replay/limits and delayed-native-welcome tests, JARSHA440d4231e5e5711e14250b39528f9b9702b4b8e29f8ecedf4bbfbe671b02da1f. No production activation or messages in that preparation.
@@ -720,4 +727,5 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The owner observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at vector-privacy-composer-release-20261016T123251Z-4139a9. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
+
 

@@ -11,8 +11,12 @@ import secrets
 import shlex
 import signal
 import stat
+import subprocess
 import sys
+import tempfile
 import time
+import traceback
+from urllib.parse import urlsplit, urlunsplit
 
 ROOT = Path('/root/vector-workspace')
 REPO = ROOT / 'github/vector'
@@ -25,6 +29,141 @@ PATH_SHA = 'a42629617a16e4fea0486435eb0d4924ee109613684cf5c5e6674fc6a65370d9'
 POINTER = ROOT / 'fegcraft-chat-identity.json'
 BRIDGE = DATA / 'DiscordIntegration-Data/vector/bridge.properties'
 CONTROL = BRIDGE.parent
+FAILED_RELEASE = ROOT / 'releases/vector-fegcraft-chat-identity-20261018T154321Z-403dfd'
+FAILED_REVISION = '4fc136eb67f20c7b0beccc38b00dfa46bf73e151'
+
+
+def safe_error(exc):
+    value = str(exc)
+    if type(exc) is RuntimeError and (
+            re.fullmatch('[A-Z][A-Z0-9_]{2,100}', value)
+            or re.fullmatch('RELEASE_COMMAND_FAILED:(?:docker|curl|nginx|systemctl)', value)):
+        return value
+    return type(exc).__name__
+
+
+def phase(old, directory, plan, name):
+    plan['phase'] = name
+    old.save(directory, plan)
+    print('Schritt: ' + name, flush=True)
+
+
+def record_failure(old, directory, plan, exc, kind='primary'):
+    # Keep parser/command details private. Only a fixed error code leaves the host.
+    name = 'failure-' + kind
+    old.atomic(directory / (name + '-private.txt'), traceback.format_exc().encode(), 0, 0, 0o600)
+    summary = {'phase': plan.get('phase', 'unknown'), 'error': safe_error(exc), 'exception_type': type(exc).__name__}
+    old.atomic(directory / (name + '.json'), (json.dumps(summary) + '\n').encode(), 0, 0, 0o600)
+    plan[name] = summary
+    old.save(directory, plan)
+    print('Fehler bei ' + summary['phase'] + ': ' + summary['error'], flush=True)
+
+
+def http_probe(old, directory, name, origin, expected, timeout):
+    location = urlsplit(old.URL)
+    if location.scheme != 'https' or location.hostname != old.DOMAIN or location.username or location.password:
+        raise RuntimeError('CHAT_IDENTITY_PROBE_TARGET_REFUSED')
+    target = old.URL + name if name != 'health' else urlunsplit(('https', location.netloc, '/api/health', '', ''))
+    with tempfile.NamedTemporaryFile(dir=directory, prefix='.https-check-') as body:
+        args = ['curl', '--silent', '--show-error', '--noproxy', '*', '--proto', '=https',
+                '--max-time', str(timeout), '--connect-timeout', str(min(2, timeout)),
+                '--max-filesize', '32768', '--header', 'Cache-Control: no-cache',
+                '--output', body.name, '--write-out', '%{http_code}']
+        if origin:
+            args += ['--resolve', old.DOMAIN + ':' + str(location.port or 443) + ':127.0.0.1']
+        try:
+            result = subprocess.run(args + [target], capture_output=True, timeout=timeout + 1)
+            code = result.returncode
+            status = int(result.stdout) if re.fullmatch(b'[0-9]{3}', result.stdout) else 0
+        except subprocess.TimeoutExpired:
+            code, status = 28, 0
+        body.seek(0)
+        raw = body.read(32769)
+        match = expected is None or (len(raw) <= 32768 and old.sha(raw) == expected)
+    return {'asset': name, 'route': 'origin' if origin else 'public', 'curl_exit': code,
+            'http_status': status, 'digest_matches': match if expected is not None else None,
+            'ready': code == 0 and status == 200 and match}
+
+
+def verify_assets_ready(old, directory, *, timeout=30, clock=time.monotonic, sleep=time.sleep, probe=http_probe):
+    deadline = clock() + timeout
+    observations, attempt = [], 0
+    checks = [(name, origin, expected) for name, expected in old.ASSETS.items() for origin in (True, False)]
+    checks.append(('health', True, None))
+    transient_curl = {6, 7, 28, 52, 55, 56}
+    transient_http = {200, 404, 408, 425, 429, 500, 502, 503, 504}
+    while clock() < deadline:
+        attempt += 1
+        complete = True
+        for name, origin, expected in checks:
+            remaining = deadline - clock()
+            if remaining <= .01:
+                complete = False
+                break
+            row = probe(old, directory, name, origin, expected, min(5, remaining))
+            row['attempt'] = attempt
+            observations.append(row)
+            observations = observations[-128:]
+            old.atomic(directory / 'https-checks.json', (json.dumps(observations, indent=2) + '\n').encode(), 0, 0, 0o600)
+            if not row['ready']:
+                complete = False
+                if (row['curl_exit'] not in ({0} | transient_curl)
+                        or (row['curl_exit'] == 0 and row['http_status'] not in transient_http)):
+                    print(json.dumps({'https_check_failed': row}), flush=True)
+                    raise RuntimeError('CHAT_IDENTITY_HTTPS_CHECK_REJECTED')
+                break
+        if complete:
+            print('Logo-Dateien über HTTPS und App-Gesundheit geprüft.', flush=True)
+            return
+        if clock() < deadline:
+            print('HTTPS-Veröffentlichung noch nicht bereit; prüfe erneut.', flush=True)
+            sleep(min(1, max(0, deadline - clock())))
+    if observations:
+        print(json.dumps({'https_check_failed': observations[-1]}), flush=True)
+    raise RuntimeError('CHAT_IDENTITY_HTTPS_READINESS_TIMEOUT')
+
+
+def owned_empty_directory(meta, earliest, latest):
+    return (stat.S_ISDIR(meta.st_mode) and meta.st_uid == 0
+            and stat.S_IMODE(meta.st_mode) == 0o755
+            and earliest <= meta.st_ctime_ns <= latest and earliest <= meta.st_mtime_ns <= latest)
+
+
+def retire_failed_public_directory(p, h, old, game):
+    if not old.PUBLIC.exists():
+        return
+    p.safe(old.PUBLIC); p.safe(FAILED_RELEASE)
+    if not old.PUBLIC.is_dir() or any(old.PUBLIC.iterdir()):
+        raise RuntimeError('CHAT_IDENTITY_PUBLIC_DIRECTORY_NOT_EMPTY')
+    previous = json.loads(p.read(FAILED_RELEASE / 'plan.json'))
+    expected = {str(old.nginx_site()), str(h.ADDON), str(BRIDGE)} | {str(old.PUBLIC / n) for n in old.ASSETS}
+    protected_files = {str(CONTROL / 'token'), str(CONTROL / 'introduction-v1.attempted'),
+                       str(DATA / 'config/Discord-Integration.toml')}
+    if (previous.get('revision') != FAILED_REVISION or previous.get('status') != 'rolled_back'
+            or previous.get('recreation_started') is not False or 'preservation' in previous
+            or previous.get('original_container') != game['Id'] or previous.get('original_image') != game['Image']
+            or len(previous.get('files', [])) != len(expected)
+            or {r['path'] for r in previous['files']} != expected
+            or set(previous.get('protected_files', {})) != protected_files
+            or any(r['backup'] != 'before-' + str(i) for i, r in enumerate(previous['files']))
+            or protected_live(p, h, previous) != previous['protected']):
+        raise RuntimeError('CHAT_IDENTITY_FAILED_RELEASE_NOT_OWNED')
+    if p.read(FAILED_RELEASE / 'installer.py') != p.source(FAILED_REVISION, 'scripts/deploy/install-fegcraft-chat-identity.py'):
+        raise RuntimeError('CHAT_IDENTITY_FAILED_INSTALLER_CHANGED')
+    for row in previous['files']:
+        path = Path(row['path']); p.safe(path)
+        current = old.digest(path) if path.exists() else None
+        if current != row['before'] or (path.parent == old.PUBLIC and row['before'] is not None):
+            raise RuntimeError('CHAT_IDENTITY_FAILED_FILES_NOT_RESTORED')
+    for path, checksum in previous['protected_files'].items():
+        if old.digest(Path(path)) != checksum:
+            raise RuntimeError('CHAT_IDENTITY_FAILED_PROTECTED_FILE_CHANGED')
+    earliest = (FAILED_RELEASE / 'installer.py').stat().st_mtime_ns
+    latest = (FAILED_RELEASE / 'plan.json').stat().st_mtime_ns
+    if not owned_empty_directory(old.PUBLIC.stat(), earliest, latest):
+        raise RuntimeError('CHAT_IDENTITY_EMPTY_DIRECTORY_METADATA_CHANGED')
+    old.PUBLIC.rmdir()  # Only this proven empty directory; never recursive deletion.
+    print('Leeres Logo-Verzeichnis des zurückgerollten Versuchs bereinigt.', flush=True)
 
 
 def bootstrap():
@@ -185,6 +324,10 @@ def recover_original(p, old, engine, game, directory, plan, stopped_game):
     try:
         old.write_records(directory, plan, reverse=True)
         p.run('nginx', '-t'); p.run('systemctl', 'reload', 'nginx')
+        if plan.get('public_directory_created'):
+            p.safe(old.PUBLIC)
+            if old.PUBLIC.is_dir() and not any(old.PUBLIC.iterdir()) and old.PUBLIC.stat().st_uid == 0:
+                old.PUBLIC.rmdir()
         plan['status'] = 'rolled_back'; old.save(directory, plan)
     finally:
         # A changed public/config file must never prevent recovery of the original game.
@@ -263,7 +406,7 @@ def install(p, h, support, old, layer, revision):
         if plan['status'] != 'deployed_pending_client_test' or pointer['revision'] != plan['revision']:
             raise RuntimeError('CHAT_IDENTITY_PREVIOUS_RELEASE_REQUIRES_REVIEW')
         check_files(old, directory, plan); check_protected(p, h, old, plan)
-        wait_game(old, plan['preservation']['image']); old.verify_assets()
+        wait_game(old, plan['preservation']['image']); verify_assets_ready(old, directory)
         actual = old.properties(p.read(DATA / 'server.properties'))
         if any(actual.get(k) != v for k, v in old.PACK_PROPERTIES.items()):
             raise RuntimeError('CHAT_IDENTITY_COMPLETED_PACK_CHANGED')
@@ -307,6 +450,7 @@ def install(p, h, support, old, layer, revision):
     for name, digest in old.ASSETS.items():
         if old.digest(PREPARED / 'public-assets' / name) != digest:
             raise RuntimeError('CHAT_IDENTITY_PUBLIC_ASSET_CHANGED')
+    retire_failed_public_directory(p, h, old, game)
     if old.PUBLIC.exists() or any((CONTROL / ('owner-welcome-v2.' + suffix)).exists() for suffix in ('ready', 'attempted', 'instance')):
         raise RuntimeError('CHAT_IDENTITY_EXISTING_ASSETS_OR_WELCOME_REQUIRE_REVIEW')
     prop = old.properties(p.read(DATA / 'server.properties'))
@@ -333,6 +477,7 @@ def install(p, h, support, old, layer, revision):
     print('Rollback:', directory / 'rollback.sh', flush=True)
     stopped_game = False
     try:
+        phase(old, directory, plan, 'compose_preflight')
         # Validate both exact YAML edits while the old game is still online.
         original_raw = p.read(old.GAME_COMPOSE)
         before_profile = old.compose_config(old.GAME_COMPOSE, project)
@@ -342,23 +487,35 @@ def install(p, h, support, old, layer, revision):
             old.atomic(directory / name, raw, 0, 0, 0o600)
             validate_profile(before_profile, old.compose_config(directory / name, project), service, game['Image'], pack, old)
         # Publish and validate exact HTTPS assets while Minecraft is still online.
+        phase(old, directory, plan, 'publish_logo_files')
         old.PUBLIC.mkdir(mode=0o755); old.PUBLIC.chmod(0o755)
+        plan['public_directory_created'] = True
+        old.save(directory, plan)
         for i, row in enumerate(plan['files']):
             path = Path(row['path'])
             if path == site or path.parent == old.PUBLIC:
                 old.atomic(path, p.read(directory / ('after-' + str(i))), row['uid'], row['gid'], row['mode'])
-        p.run('nginx', '-t'); p.run('systemctl', 'reload', 'nginx'); old.verify_assets()
+        phase(old, directory, plan, 'nginx_config_test')
+        p.run('nginx', '-t')
+        phase(old, directory, plan, 'nginx_reload')
+        p.run('systemctl', 'reload', 'nginx')
+        phase(old, directory, plan, 'https_assets')
+        verify_assets_ready(old, directory)
+        old.atomic(directory / 'https-publication.json', p.read(directory / 'https-checks.json'), 0, 0, 0o600)
         check_protected(p, h, old, plan)
         # Bound the unknown input before downtime; no full-world backup or model scan.
+        phase(old, directory, plan, 'root_archive_preflight')
         layer.copy_archive(original, paths[0]['path'], directory / 'root-online-preflight.tar')
         if h.snapshot() != before:
             raise RuntimeError('CHAT_IDENTITY_PRODUCTION_CHANGED_BEFORE_STOP')
         print('Stoppe Minecraft regulär; sichere nur seine private Containerschicht, keine erneute Weltkopie.', flush=True)
+        phase(old, directory, plan, 'game_stop')
         stopped_game = True
         p.run('docker', 'stop', '--time', '120', original, timeout=180)
         layer.stopped(old.inspect(old.GAME))
         if auditor.unpersisted(p.run('docker', 'diff', original)) != paths:
             raise RuntimeError('CHAT_IDENTITY_WRITABLE_PATHS_CHANGED_AT_STOP')
+        phase(old, directory, plan, 'root_preservation')
         plan['preservation'] = layer.preserve(original, paths, directory, secrets.token_hex(6)); old.save(directory, plan)
         image = plan['preservation']['image']
         if (old.inspect(old.GAME)['Id'] != original or old.digest(old.GAME_COMPOSE) != persistence['compose_sha256']
@@ -366,6 +523,7 @@ def install(p, h, support, old, layer, revision):
                 or [(DATA / 'world').stat().st_dev, (DATA / 'world').stat().st_ino] != persistence['world_directory_identity']):
             raise RuntimeError('CHAT_IDENTITY_OWNER_OR_DATA_CHANGED_BEFORE_RECREATION')
         check_protected(p, h, old, plan)
+        phase(old, directory, plan, 'finalize_compose_and_files')
         original_raw = p.read(old.GAME_COMPOSE)
         candidate = patch_loader(old.patch_compose(original_raw, service, image), service)
         restore = patch_loader(image_only(original_raw, service, image), service)
@@ -379,6 +537,7 @@ def install(p, h, support, old, layer, revision):
         old.write_records(directory, plan)
         plan['recreation_started'] = True; old.save(directory, plan)
         print('Containerschicht und geänderte Datei geprüft. Starte Minecraft mit dem neuen Addon.', flush=True)
+        phase(old, directory, plan, 'game_recreation')
         old.game_up(plan); new_game = wait_game(old, image)
         after, _ = auditor.audit()
         if (after['data_directory_identity'] != persistence['data_directory_identity']
@@ -391,20 +550,33 @@ def install(p, h, support, old, layer, revision):
         actual = old.properties(p.read(DATA / 'server.properties'))
         if any(actual.get(k) != v for k, v in old.PACK_PROPERTIES.items()):
             raise RuntimeError('CHAT_IDENTITY_MANDATORY_PACK_NOT_APPLIED')
-        check_files(old, directory, plan); check_protected(p, h, old, plan); old.verify_assets()
+        phase(old, directory, plan, 'verify_running_installation')
+        check_files(old, directory, plan); check_protected(p, h, old, plan); verify_assets_ready(old, directory)
         plan['status'] = 'deployed_pending_client_test'; old.save(directory, plan)
         old.atomic(POINTER, (json.dumps({'release': str(directory), 'revision': revision}) + '\n').encode(), 0, 0, 0o600)
-    except BaseException:
+    except BaseException as exc:
         signal.signal(signal.SIGINT, signal.SIG_IGN); signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        try:
+            record_failure(old, directory, plan, exc)
+        except Exception:
+            print('Private Fehlerdetails konnten nicht gespeichert werden. Stelle den vorherigen Betrieb wieder her.', flush=True)
         # Before recreation, keep and recover the original container, not a replacement.
-        if not plan['recreation_started']:
-            recover_original(p, old, engine, game, directory, plan, stopped_game)
-        else:
-            print('Installation fehlgeschlagen; starte geschützten Rollback.', flush=True)
-            rollback(p, h, old, directory)
+        try:
+            if not plan['recreation_started']:
+                recover_original(p, old, engine, game, directory, plan, stopped_game)
+            else:
+                print('Installation fehlgeschlagen; starte geschützten Rollback.', flush=True)
+                rollback(p, h, old, directory)
+        except BaseException as recovery:
+            try:
+                record_failure(old, directory, plan, recovery, 'recovery')
+            except Exception:
+                print('Zusätzlicher Wiederherstellungsfehler: ' + safe_error(recovery), flush=True)
+            raise recovery from exc
         raise
     # Welcome failure is not a reason to undo a healthy working installation.
     try:
+        phase(old, directory, plan, 'owner_welcome')
         welcome = arm_welcome(p, old, new_game, directory, plan)
     except BaseException:
         welcome = False
@@ -450,7 +622,7 @@ if __name__ == '__main__':
     try:
         main()
     except BaseException as exc:
-        value = str(exc)
-        code = value if type(exc) is RuntimeError and re.fullmatch('[A-Z][A-Z0-9_]{2,100}', value) else type(exc).__name__
+        code = safe_error(exc)
         print('ERROR: ' + code + '. Private Belege und Sicherungen bleiben erhalten.', file=sys.stderr)
         raise SystemExit(1)
+
