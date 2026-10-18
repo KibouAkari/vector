@@ -19,11 +19,11 @@ DOCUMENTATION_SHA256 = '214261e4c9184837e4f532dcb6482cc1be8e0b8db0089a130a3e20e7
 
 def knowledge_for(mode, state, dsn_path='/run/secrets/vector_fegcraft_slot_dsn',
                   documentation_path='/inputs/documentation.json'):
-    if mode not in ('0', '1', '2', '3'):
+    if mode not in ('0', '1', '2', '3', '4'):
         raise RuntimeError('INVALID_KNOWLEDGE_MODE')
     if mode == '0':
         return None
-    if mode == '3':
+    if mode in ('3', '4'):
         fd = os.open(dsn_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(fd, 'rb') as handle:
             meta = os.fstat(handle.fileno())
@@ -39,9 +39,10 @@ def knowledge_for(mode, state, dsn_path='/run/secrets/vector_fegcraft_slot_dsn',
                 or not value.password or not value.hostname or value.port not in (None, 5432)
                 or value.path in ('', '/') or value.query or value.fragment):
             raise RuntimeError('RESTRICTED_LOCAL_SLOT_REQUIRED')
-        from documentation import DocumentationIndex, DocumentationKnowledge
+        from documentation import DocumentationIndex, DocumentationKnowledge, ConversationKnowledge
         index = DocumentationIndex(documentation_path, DOCUMENTATION_SHA256)
-        return DocumentationKnowledge(dsn, documentation=index, usage=state.model_usage)
+        kind = ConversationKnowledge if mode == '4' else DocumentationKnowledge
+        return kind(dsn, documentation=index, usage=state.model_usage)
     # Retain existing explicitly opted-in legacy modes; rollout only selects3.
     dsn = Path(dsn_path).read_text().strip()
     if not dsn:
@@ -161,3 +162,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

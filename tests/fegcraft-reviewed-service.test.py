@@ -43,8 +43,14 @@ class ReviewedService(unittest.TestCase):
 
     def test_default_off_needs_no_role_driver_catalog_or_model(self):
         self.assertIsNone(server.knowledge_for('0',self.state,'/missing','/missing'))
-        for mode in ('auto','4','',None):
+        for mode in ('auto','5','',None):
             with self.assertRaisesRegex(RuntimeError,'INVALID_KNOWLEDGE_MODE'):server.knowledge_for(mode,self.state)
+
+    def test_mode4_retains_restricted_construction_and_adds_local_social_class(self):
+        model=server.knowledge_for('4',self.state,self.secret,self.catalog)
+        self.assertIsInstance(model,documentation.ConversationKnowledge)
+        self.assertEqual(model.model,documentation.MODEL)
+        self.assertEqual(model.documentation.sha256,server.DOCUMENTATION_SHA256)
 
     def test_admin_credentials_options_and_foreign_ports_refused(self):
         for dsn in ('postgresql://postgres:synthetic@postgres/vector',
@@ -130,3 +136,4 @@ class ReviewedService(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
