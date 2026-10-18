@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-18 — Record successful reviewed-help deployment and pending real-chat verification (PR #79)
+
+- Owner PR #78 release PASSED at14:59, source45f3400d472603e0e55d16c31fce32bb1a8283fb, evidence vector-fegcraft-reviewed-help-20261018T125908Z-f15216. Only assistant recreated; actual mode3 health/readonly inputs passed with50 player files/63 mod IDs/975 base recipes. Minecraft/other services and production state retained.
+- Actual staged signed HTTP/policy/native routes/restricted role/own followup passed. Two local calls used303 input/18 output tokens, unknown0, first11.034s/followup5.526s; no cloud/API fee/game message/welcome. Keep these measured scope/time distinctions and real_chat_verified=false.
+- Update active image/source/code/network/role/rollback baseline and next three addressed Minecraft tests. Preserve14-passage limitation and separate Discord-input/logo/welcome/recreation/backup holds. Historical mode0-only bootstrap guards must not be rerun or loosened against deployed mode3. Documentation only; no production action or repeated model/role/image qualification.
+
 ## 2026-10-18 — Qualify and roll out reviewed local Minecraft help through the actual service (PR #78)
 
 - Owner PR #77 v2 role preparation PASSED at vector-fegcraft-slot-role-20261018T091321Z-5b8e9f/result.json. Actual private destination verified, owned role created, three DB privilege audits/no app-object or permanent-create rights, inherited PUBLIC TEMP retained, actual same-database contention both directions/release passed. Cleanup and production fingerprints unchanged; no model/cloud/messages/activation. Reuse the driver image, role and private secret.
