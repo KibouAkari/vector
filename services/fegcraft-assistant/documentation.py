@@ -183,7 +183,7 @@ class DocumentationKnowledge(GeneralKnowledge):
 
 
 
-SOCIAL = re.compile(r'\b(?:wie (?:geht|gaht|goht)(?: es|s)? (?:dir|euch)|wie (?:läuft|lauft)(?: es|s)?(?: bei dir)?[?!. ]*$|wie (?:war|isch|ist) (?:dein|din|dä|der|dis)|was (?:machst|machsch|geht|gaht)|alles (?:klar|gut)|guten (?:morgen|abend)|guete|gueti|danke|merci|thank|hi|hallo|hey|hoi|tschüss|tschau|bis bald|gute nacht|guet nacht|freut mich|schön|lustig|langweilig|langeweile|gelangweilt|müde|muede|spass|spaß|witz|witzig|reden|plaudern|smalltalk|quatschen|how are you|how is it going|hello)\b', re.I)
+SOCIAL = re.compile(r'\b(?:wie (?:geht|gaht|goht)(?: es|s)? (?:dir|euch)|wie (?:läuft|lauft)(?: es|s)?(?: bei dir)?[?!. ]*$|wie (?:war|isch|ist) (?:dein|din|dä|der|dis)|was (?:machst|machsch|geht|gaht)|alles (?:klar|gut)|guten (?:morgen|abend)|guete|gueti|danke|merci|thank|hi|hallo|hey|hoi|tschüss|tschau|bis bald|gute nacht|guet nacht|freut mich|schön|lustig|langweilig|langeweile|gelangweilt|müde|muede|spass|spaß|witz|witzig|reden|plaudern|smalltalk|quatschen|how are you|how is it going|hello|was denkst du|wie findest du|magst du|lieblings\w*|erzähl\w*|erzaehl\w*)\b', re.I)
 SOCIAL_FORBIDDEN = re.compile(r'\d|\b(?:rekord\w*|rang\w*|kill\w*|spielzeit|claim\w*|part(?:y|ys|ies)|serverrecht\w*|besitzer|installiert\w*|live|gelesen|geprüft|spielerdatei\w*)\b', re.I)
 
 
@@ -209,6 +209,10 @@ class ConversationKnowledge(DocumentationKnowledge):
             return 'bis bald und viel Spass beim nächsten Mal.'
         if re.search(r'\b(?:wer bist du|bisch du|was bist du)\b', q):
             return 'ich bin Vector, der KI-Assistent hier im Chat. Wir können kurz plaudern oder gemeinsam eine Minecraft-Frage klären.'
+        if ('openpartiesandclaims' in mods and re.search(r'\bpart(?:y|ys|ies)\b', q)
+                and re.search(r'erstell|anleg|gründ|gruend', q)):
+            self.remember(scope, [{'role': 'user', 'content': question[:200], 'topic': 'claims'}])
+            return 'öffne die Party-Verwaltung von Open Parties and Claims. Welches Menü siehst du dort? Die genaue Schaltfläche deiner Version kann ich hier nicht prüfen.'
         # Reuse source-backed search. A unique passage needs no selector call.
         passages = self.documentation.search(question, mods)
         chosen = None
