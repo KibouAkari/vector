@@ -83,9 +83,24 @@ class RoleSetup(unittest.TestCase):
         intent={'owner':'a'*32,'password':'b'*64}
         for error,expected in [(b'private DSN or raw driver output','SLOT_ROLE_DATABASE_OPERATION_FAILED'),
           (b'SLOT_ROLE_DATABASE_OPERATION_FAILED ROLE_FOREIGN_OR_ABSENT','ROLE_FOREIGN_OR_ABSENT')]:
-            with patch.object(m.subprocess,'run',return_value=SimpleNamespace(returncode=1,stdout=b'',stderr=error)),self.assertRaisesRegex(RuntimeError,expected) as failure:
+            with patch.object(m,'private_endpoint',return_value={}),patch.object(m.subprocess,'run',return_value=SimpleNamespace(returncode=1,stdout=b'',stderr=error)),self.assertRaisesRegex(RuntimeError,expected) as failure:
                 m.actor(b'// synthetic','prepare',intent)
             self.assertNotIn('private DSN',str(failure.exception))
+
+    def test_endpoint_uses_only_fixed_running_containers_shared_network_and_inspected_aliases(self):
+        app={'Name':'/vector-app','State':{'Running':True},'NetworkSettings':{'Networks':{'vector-internal':{}}}}
+        db={'Name':'/vector-postgres','Id':'a'*64,'State':{'Running':True},
+          'Config':{'Labels':{'com.docker.compose.service':'postgres'}},'NetworkSettings':{'Networks':{
+          'vector-internal':{'IPAddress':'172.23.0.4','Aliases':[],'DNSNames':['vector-postgres']}}}}
+        with patch.object(m,'run',return_value=json.dumps([app,db]).encode()) as run:
+            value=m.private_endpoint()
+            run.assert_called_once_with('docker','inspect','vector-app','vector-postgres')
+        self.assertEqual(value['aliases'],['postgres','vector-postgres'])
+        self.assertEqual(value['addresses'],['172.23.0.4'])
+        for changed in ({**db,'Name':'/foreign'},{**db,'State':{'Running':False}},
+          {**db,'NetworkSettings':{'Networks':{}}}):
+            with patch.object(m,'run',return_value=json.dumps([app,changed]).encode()),self.assertRaisesRegex(RuntimeError,'NETWORK_CHANGED'):
+                m.private_endpoint()
 
     def test_probe_failure_releases_coordinator_and_cleans_every_owned_container(self):
         process=object();removed=[]

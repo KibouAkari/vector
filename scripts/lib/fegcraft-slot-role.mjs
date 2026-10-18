@@ -1,4 +1,5 @@
 // Deployment-side catalog/role management only. Never imported by the model.
+import {isIP} from 'node:net';
 export const ROLE='vector_fegcraft_slot';
 export const SETTINGS={statement_timeout:'3s',lock_timeout:'1s',idle_in_transaction_session_timeout:'5s',
   idle_session_timeout:'45s',default_transaction_read_only:'on',search_path:'pg_catalog'};
@@ -7,14 +8,45 @@ const ident=value=>'"'+value.replaceAll('"','""')+'"';
 const literal=value=>"'"+value.replaceAll("'","''")+"'";
 function fail(code){const e=new Error(code);e.name='RoleGuardError';e.code=code;throw e;}
 
-export function destination(dsn,fixture=false){
+export function destination(dsn,fixture=false,privateHost='vector-postgres'){
   const url=new URL(dsn);
   if(!['postgres:','postgresql:'].includes(url.protocol)||!url.username||!url.password||!url.pathname||url.pathname==='/'||url.hash)
     fail('ROLE_DESTINATION_INVALID');
   if(fixture){
-    if(url.hostname!=='127.0.0.1'||url.port!=='5433'||url.pathname!=='/vector_admission_fixture')fail('ROLE_FIXTURE_REQUIRED');
-  }else if(url.hostname!=='vector-postgres'||!['','5432'].includes(url.port))fail('ROLE_PRIVATE_DATABASE_REQUIRED');
+    if(url.hostname!=='127.0.0.1'||url.port!=='5433'||url.pathname!=='/vector_admission_fixture'||url.search)fail('ROLE_FIXTURE_REQUIRED');
+  }else if(url.hostname!==privateHost||!['','5432'].includes(url.port)||url.search)fail('ROLE_PRIVATE_DATABASE_REQUIRED');
   return url;
+}
+
+function privateAddress(value){
+  if(typeof value!=='string')return false;
+  if(isIP(value)===6)return /^f[cd]/i.test(value);
+  if(isIP(value)!==4)return false;
+  const [a,b]=value.split('.').map(Number);
+  return a===10||a===172&&b>=16&&b<=31||a===192&&b===168;
+}
+
+export async function verifyPrivateEndpoint(dsn,endpoint,lookup){
+  const url=new URL(dsn),host=url.hostname.replace(/^\[|\]$/g,'');
+  // Metadata comes only from host-side inspect of the fixed running container.
+  if(!endpoint||endpoint.container!=='vector-postgres'||endpoint.network!=='vector-internal'
+    ||!(/^[a-f0-9]{64}$/.test(endpoint.container_id??''))||typeof lookup!=='function'
+    ||!Array.isArray(endpoint.aliases)||endpoint.aliases.length>32
+    ||endpoint.aliases.some(v=>typeof v!=='string'||!(/^[a-zA-Z0-9_.-]{1,253}$/.test(v)))
+    ||!Array.isArray(endpoint.addresses)||!endpoint.addresses.length||endpoint.addresses.length>4
+    ||!endpoint.addresses.every(privateAddress))fail('ROLE_PRIVATE_ENDPOINT_PROOF_REQUIRED');
+  if(!endpoint.aliases.includes(host)&&!endpoint.addresses.includes(host))fail('ROLE_PRIVATE_ALIAS_REQUIRED');
+  destination(dsn,false,url.hostname);
+  let rows;
+  try{rows=await lookup(host,{all:true});}catch{fail('ROLE_PRIVATE_DNS_UNAVAILABLE');}
+  if(!Array.isArray(rows)||!rows.length||rows.length>8||rows.some(row=>!endpoint.addresses.includes(row.address)))
+    fail('ROLE_PRIVATE_DNS_MISMATCH');
+  return url;
+}
+
+async function checkedDestination({dsn,fixture,endpoint,lookup}){
+  if(fixture)return destination(dsn,true);
+  return verifyPrivateEndpoint(dsn,endpoint,lookup);
 }
 
 function inputCheck(owner,password){
@@ -98,8 +130,8 @@ async function auditCluster(dsn,connect,oid){
     system_catalog_access_retained:true,global_public_acl_changed:false};
 }
 
-export async function prepareRole({dsn,owner,password,fixture=false,connect}){
-  destination(dsn,fixture);inputCheck(owner,password);
+export async function prepareRole({dsn,owner,password,fixture=false,connect,endpoint,lookup}){
+  inputCheck(owner,password);await checkedDestination({dsn,fixture,endpoint,lookup});
   const old=await session(dsn,connect,true,async db=>{
     if((await db.query("SELECT current_setting('server_version_num')::int AS version")).rows[0].version!==170011)
       fail('ROLE_DATABASE_VERSION_CHANGED');
@@ -126,8 +158,8 @@ export async function prepareRole({dsn,owner,password,fixture=false,connect}){
   return {created,owned:true,privileges,dsn:url.href};
 }
 
-export async function rollbackRole({dsn,owner,password,fixture=false,connect}){
-  destination(dsn,fixture);inputCheck(owner,password);
+export async function rollbackRole({dsn,owner,password,fixture=false,connect,endpoint,lookup}){
+  inputCheck(owner,password);await checkedDestination({dsn,fixture,endpoint,lookup});
   return session(dsn,connect,false,async db=>{
     const row=await roleRecord(db);
     if(!row)return {removed:false,already_absent:true};
