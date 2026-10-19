@@ -576,7 +576,7 @@ class Assistant:
                 if not maximum:return 'in den fünf geprüften Kategorien gibt es noch keinen positiven Rekord.'
                 winners=[p for p,count in counts if count==maximum]
                 if len(winners)>3:return 'mehr als drei Spieler teilen sich die meisten Spitzenplätze. Frage bitte nach einer Kategorie.'
-                return ' und '.join(p['name'] for p in winners)+' führt '+('jeweils ' if len(winners)>1 else '')+'in '+str(maximum)+' von fünf Kategorien. Geteilte Spitzenplätze zählen mit; Tode zählen nur nach Anzahl. Das ist keine Wertung, wer am besten spielt.'
+                return ' und '.join(p['name'] for p in winners)+(' führen jeweils ' if len(winners)>1 else ' führt ')+'in '+str(maximum)+' von fünf Kategorien. Geteilte Spitzenplätze zählen mit; Tode zählen nur nach Anzahl. Das ist keine Wertung, wer am besten spielt.'
             if unknown_target and not block_category:
                 return ('zum Vergleich brauche ich zwei vollständige Spielernamen und eine Kategorie, zum Beispiel Mobkills.' if comparison
                         else 'nenne bitte den vollständigen Spielernamen für die Statistikabfrage.')
