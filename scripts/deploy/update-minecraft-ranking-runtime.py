@@ -42,14 +42,14 @@ def read_config(path):
     if meta.st_uid != os.getuid() or stat.S_IMODE(meta.st_mode) & 0o077 or meta.st_size > 16384:
         raise RuntimeError('PRIVATE_CONFIG_REQUIRED')
     value = json.loads(path.read_bytes())
-    if set(value) != FIELDS or value['schema'] != 1:
+    if set(value) not in (FIELDS, FIELDS | {'expected_portraits_sha256'}) or value['schema'] != 1:
         raise RuntimeError('UNSUPPORTED_OPERATOR_CONFIG')
     if not isinstance(value['expected_project_name'], str) or not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,62}', value['expected_project_name']):
         raise RuntimeError('INVALID_COMPOSE_PROJECT_NAME')
     for key in ('container', 'service'):
         if not isinstance(value[key], str) or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}', value[key]):
             raise RuntimeError('INVALID_OPERATOR_IDENTITY')
-    for key in ('expected_runtime_sha256', 'expected_compose_sha256', 'expected_profile_sha256'):
+    for key in ('expected_runtime_sha256', 'expected_compose_sha256', 'expected_profile_sha256', *(['expected_portraits_sha256'] if 'expected_portraits_sha256' in value else [])):
         if not isinstance(value[key], str) or not re.fullmatch('[a-f0-9]{64}', value[key]):
             raise RuntimeError('INVALID_OPERATOR_PIN')
     if not re.fullmatch('sha256:[a-f0-9]{64}', value['expected_image']):
@@ -372,6 +372,7 @@ def main():
     parser.add_argument('--release-root', type=Path, required=True)
     parser.add_argument('--lock-file', type=Path, required=True)
     parser.add_argument('--activate', action='store_true')
+    parser.add_argument('--portraits', action='store_true', help='Also replace the explicitly pinned portrait module and qualify its boundaries')
     parser.add_argument('--rollback', type=Path)
     args = parser.parse_args()
     os.umask(0o077)
@@ -403,6 +404,10 @@ def main():
         checked_path(source / 'services/minecraft-assistant/runtime.py')
         checked_path(source / 'tests/minecraft-ranking-requests.test.py')
         installed_runtime = (old_code / 'runtime.py').read_text()
+        if bool(args.portraits) != ('expected_portraits_sha256' in config):
+            raise RuntimeError('EXPLICIT_PORTRAITS_PIN_REQUIRED')
+        if args.portraits and digest((old_code / 'portraits.py').read_bytes()) != config['expected_portraits_sha256']:
+            raise RuntimeError('INSTALLED_PORTRAITS_PIN_MISMATCH')
         candidate_runtime = preserve_joke(installed_runtime, preserve_server_literals(installed_runtime,
             (source / 'services/minecraft-assistant/runtime.py').read_text()))
         release = args.release_root / ('minecraft-ranking-runtime-' + time.strftime('%Y%m%dT%H%M%SZ', time.gmtime()) + '-' + uuid.uuid4().hex[:6])
@@ -420,25 +425,35 @@ def main():
             os.chown(folder, meta.st_uid, meta.st_gid)
             os.chmod(folder, stat.S_IMODE(meta.st_mode))
         (candidate_code / 'runtime.py').write_bytes(candidate_runtime)
+        allowed = {'runtime.py'}
+        if args.portraits:
+            portrait_source = checked_path(source / 'services/minecraft-assistant/portraits.py')
+            portrait_raw = portrait_source.read_bytes()
+            ast.parse(portrait_raw)
+            (candidate_code / 'portraits.py').write_bytes(portrait_raw)
+            allowed.add('portraits.py')
         candidate_files = tree_files(candidate_code)
-        if {k: v for k, v in candidate_files.items() if k != 'runtime.py'} != {k: v for k, v in original_files.items() if k != 'runtime.py'}:
+        if {k: v for k, v in candidate_files.items() if k not in allowed} != {k: v for k, v in original_files.items() if k not in allowed}:
             raise RuntimeError('NON_RUNTIME_CODE_CHANGED')
-        test = source / 'tests/minecraft-ranking-requests.test.py'
+        tests = [source / 'tests/minecraft-ranking-requests.test.py']
+        if args.portraits:
+            tests.append(checked_path(source / 'tests/minecraft-portraits.test.py'))
         qualification_code = release / 'qualification-code'
         shutil.copytree(candidate_code, qualification_code)
         for entry in [qualification_code, *qualification_code.rglob('*')]:
             os.chmod(entry, 0o755 if entry.is_dir() else 0o644)
-        qualifier = 'vector-ranking-check-' + uuid.uuid4().hex
-        try:
-            run(['docker', 'run', '--name', qualifier, '--rm', '--network', 'none', '--read-only', '--user', '65534:65534',
-                 '--cpus', '1', '--memory', '256m', '--memory-swap', '256m', '--pids-limit', '64', '--cap-drop', 'ALL',
-                 '--security-opt', 'no-new-privileges', '--tmpfs', '/tmp:rw,nosuid,nodev,size=16m,mode=1777',
-                 '-e', 'PYTHONDONTWRITEBYTECODE=1', '--mount', 'type=bind,src=' + str(qualification_code) + ',dst=/qualification/services/minecraft-assistant,readonly',
-                 '--mount', 'type=bind,src=' + str(test) + ',dst=/qualification/tests/check.py,readonly',
-                 '--entrypoint', 'python3', config['expected_image'], '/qualification/tests/check.py'], timeout=30)
-        finally:
-            # Only the unique temporary container created above can be removed.
-            subprocess.run(['docker', 'rm', '-f', qualifier], capture_output=True, timeout=15)
+        for test in tests:
+            qualifier = 'vector-ranking-check-' + uuid.uuid4().hex
+            try:
+                run(['docker', 'run', '--name', qualifier, '--rm', '--network', 'none', '--read-only', '--user', '65534:65534',
+                     '--cpus', '1', '--memory', '256m', '--memory-swap', '256m', '--pids-limit', '64', '--cap-drop', 'ALL',
+                     '--security-opt', 'no-new-privileges', '--tmpfs', '/tmp:rw,nosuid,nodev,size=16m,mode=1777',
+                     '-e', 'PYTHONDONTWRITEBYTECODE=1', '--mount', 'type=bind,src=' + str(qualification_code) + ',dst=/qualification/services/minecraft-assistant,readonly',
+                     '--mount', 'type=bind,src=' + str(test) + ',dst=/qualification/tests/check.py,readonly',
+                     '--entrypoint', 'python3', config['expected_image'], '/qualification/tests/check.py'], timeout=30)
+            finally:
+                # Only the unique temporary container created above can be removed.
+                subprocess.run(['docker', 'rm', '-f', qualifier], capture_output=True, timeout=15)
         candidate = changed_profile(profile, config['service'], candidate_code)
         candidate_raw = json.dumps(candidate, indent=2).replace('$', '$$').encode() + b'\n'
         candidate_path = release / 'compose.candidate.json'
@@ -476,4 +491,5 @@ if __name__ == '__main__':
         main()
     except Exception as exc:
         raise SystemExit('Assistant runtime update failed: ' + str(exc) if isinstance(exc, RuntimeError) else 'Assistant runtime update failed: ' + type(exc).__name__)
+
 

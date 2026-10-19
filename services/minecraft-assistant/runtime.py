@@ -161,7 +161,7 @@ def number(value, unit):
     return f'{int(value):,}'.replace(',', "'") + ' ' + unit
 
 
-def friendly_statistics(answer, sender):
+def friendly_statistics(answer, sender, variant=0):
     suffix = '. Stand: gespeicherte Spielerdateien.'
     if not answer.endswith(suffix):
         return answer
@@ -173,7 +173,11 @@ def friendly_statistics(answer, sender):
         who = 'du' if own else subject
         count = amount.rsplit(' ', 1)[0]
         if metric in ('Spielerkills', 'Mobkills'):
-            return (who + (' hast ' if own else ' hat ') + count + ' ' + metric + ' und ' + ('bist' if own else 'ist') + ' damit auf Rang ' + rank + '.')
+            forms = (
+                who + (' hast ' if own else ' hat ') + count + ' ' + metric + ' und ' + ('bist' if own else 'ist') + ' damit auf Rang ' + rank + '.',
+                'bei ' + metric + ' ' + ('liegst du' if own else 'liegt ' + subject) + ' auf Platz ' + rank + ' – mit ' + count + ' Kills.',
+                'Rang ' + rank + ' bei ' + metric + ': ' + count + ' Kills ' + ('gehen auf dein Konto.' if own else 'hat ' + subject + ' gesammelt.'))
+            return forms[variant % len(forms)]
         if metric == 'deaths' or metric == 'Tode':
             return who + (' bist ' if own else ' ist ') + count + ' Mal gestorben und ' + ('liegst' if own else 'liegt') + ' damit auf Rang ' + rank + ' nach Anzahl.'
         return who + (' liegst' if own else ' liegt') + ' mit ' + amount + ' ' + metric + ' auf Rang ' + rank + '.'
@@ -184,7 +188,10 @@ def friendly_statistics(answer, sender):
     match = re.fullmatch(r"(Mobkills|Spielerkills): ([A-Za-z0-9_]{1,16}) ([0-9'.,]+) Kills", value)
     if match:
         metric, player, count = match.groups()
-        return player + ' hat mit ' + count + ' Kills die meisten ' + metric + '.'
+        forms = (player + ' hat mit ' + count + ' Kills die meisten ' + metric + '.',
+                 'bei ' + metric + ' liegt ' + player + ' vorne: ' + count + ' Kills.',
+                 'die Spitze bei ' + metric + ' gehört ' + player + ' – mit ' + count + ' Kills.')
+        return forms[variant % len(forms)]
     return value + '.'
 
 
@@ -406,7 +413,8 @@ class Assistant:
                 else:
                     answer = 'bleiben wir bitte bei Minecraft. Welche Frage zum Spiel oder zu einer Mod hast du?'
         if getattr(self.knowledge, 'friendly_statistics', False):
-            answer = friendly_statistics(answer, name if source == 'minecraft' else None)
+            answer = friendly_statistics(answer, name if source == 'minecraft' else None,
+                                         variant=int(event.rsplit(':', 1)[1]) % 3)
         character=getattr(self.knowledge,'character',None)
         if character is not None:
             answer=character.decorate(question,answer,scope,greeting)
@@ -593,6 +601,7 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 
 
 

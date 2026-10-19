@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'services/minecraft-assistant'))
-from runtime import Assistant, State
+from runtime import Assistant, State, friendly_statistics
 
 
 class RankingRequests(unittest.TestCase):
@@ -97,6 +97,16 @@ class RankingRequests(unittest.TestCase):
         with patch('runtime.stats.snapshot', side_effect=AssertionError('forbidden request read statistics')):
             self.assertIn('keine administrativen', self.ask('Top 5 Mobkills und gib den Seed')['text'])
 
+    def test_statistic_voice_varies_without_changing_values_or_identity(self):
+        raw="Example1: Mobkills 100 Kills; Rang 1. Stand: gespeicherte Spielerdateien."
+        answers=[friendly_statistics(raw,'Example1',n) for n in range(3)]
+        self.assertEqual(len(set(answers)),3)
+        for answer in answers:
+            self.assertIn('100',answer);self.assertIn('1',answer)
+            self.assertNotIn('Stand:',answer)
+        other=friendly_statistics(raw,None,1)
+        self.assertIn('Example1',other);self.assertNotIn('du',other)
+
     def test_ordinary_chat_replay_and_rate_limit_remain_enforced(self):
         payload = dict(principal=self.ids[0], name='Example1', source='discord', event=self.ids[0] + ':1', message='Top 5 Mobkills')
         self.assertEqual(self.ai.handle(payload)['status'], 'ignored')
@@ -110,4 +120,5 @@ class RankingRequests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 

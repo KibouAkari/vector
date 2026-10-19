@@ -8,7 +8,7 @@ import time
 import unicodedata
 import stats
 
-INTENT=re.compile(r'einschätz|einschaetz|beurteil|bewert|\b(?:bin ich|ist \w+) (?:ein |eine |wirklich |eigentlich )?gut\w* spieler|was (?:hältst|haltest|denkst|meinst|findest) du (?:eigentlich |so )?(?:von|über|ueber)|wie findest du|beschreib\w* (?:mich|den spieler)|spielerportr|spielertyp|was bin ich für ein spieler',re.I)
+INTENT=re.compile(r'einschätz|einschaetz|beurteil|bewert|\b(?:bin ich|ist \w+) (?:ein |eine |wirklich |eigentlich )?gut\w* spieler|(?:was )?(?:hältst|haltest|denkst|meinst|findest) du (?:eigentlich |so )?(?:von|über|ueber)|wie findest du|beschreib\w* (?:mich|den spieler)|spielerportr|spielertyp|was bin ich für ein spieler',re.I)
 SELF=re.compile(r'\b(?:bin ich|mich|von mir|über mich|ueber mich|mein(?:e[rmns]?)? (?:spielstil|profil|spieler))\b',re.I)
 KNOWN_ADVANCEMENTS={'minecraft:adventure/sniper_duel':'Sniper-Duell','minecraft:adventure/kill_all_mobs':'Monsterjäger',
  'minecraft:adventure/adventuring_time':'Abenteurer','minecraft:nether/explore_nether':'Nether-Erkundung',
@@ -28,7 +28,7 @@ def distance_one(a,b):
 
 def targets(question,players):
     tokens={normalized(x) for x in re.findall(r'\w+',question)}
-    exact=[p for p in players if normalized(p['name']) in tokens]
+    exact=[p for p in players if normalized(p['name']) in tokens or re.search(r'\b(?:von|über|ueber)'+re.escape(p['name'])+r'(?![A-Za-z0-9_])',question,re.I)]
     if exact:return exact
     result=[]
     for p in players:
@@ -65,7 +65,7 @@ def advancement_summary(directory,uid):
 class PlayerPortraits:
     def __init__(self,stats_dir,usercache,advancements=None,clock=time.monotonic):
         self.stats_dir,self.usercache,self.advancements=stats_dir,usercache,advancements
-        self.clock=clock;self.context=OrderedDict();self.lock=threading.Lock()
+        self.clock=clock;self.context=OrderedDict();self.variants=OrderedDict();self.lock=threading.Lock()
 
     def clear(self,scope):
         with self.lock:self.context.pop(scope,None)
@@ -93,41 +93,87 @@ class PlayerPortraits:
         if len(matches)!=1:
             self.clear(scope);return 'nenne bitte einen eindeutigen Minecraft-Spielernamen, dann gebe ich dir ein kurzes Spielerporträt aus seinen Spielwerten.'
         p=matches[0];v=p['values'];rank=lambda metric:stats.rank(data,p,metric)
-        details=[];joke='noch kein eindeutiger Spielstil erkennbar. Ein paar weitere Abenteuer fehlen mir fürs grosse Urteil.'
-        def n(x):return f'{int(x):,}'.replace(',',"'")
-        def metric(key,label):return n(v[key])+' '+label+' (Rang '+str(rank(key))+')'
-        if v['deaths']>=100 and rank('deaths')<=2:
-            details=[metric('deaths','Tode')]
-            joke=('Respawn-Stammkunde. Der Wiederbelebungspunkt kennt ihn wohl schon beim Vornamen.' if rank('deaths')==1
-                  else 'Respawn-Vizechampion. Er erkundet die Welt offenbar gern auch vom Wiederbelebungspunkt aus.')
-        elif v['player_kills']>0 and rank('player_kills')<=2 and rank('mob_kills')<=3:
-            details=[metric('mob_kills','Mobkills'),metric('player_kills','Spielerkills')]
-            joke='Endgegner mit leicht blutdurstiger Kill-Liste. Auf ein Duell würde ich trotzdem nicht nur nach Zahlen wetten.'
-        elif v['play_time']>0 and rank('play_time')<=3 and v['distance']>0 and rank('distance')<=3:
-            details=[f"{v['play_time']:.1f} h Spielzeit",f"{v['distance']:.1f} km Strecke"]
-            blocks=sum(p['used'].get(k,0) for k in set(block_items))
-            if blocks>0:details.append(n(blocks)+' platzierte Blöcke')
-            joke='Architekt auf Weltreise und offenbar ein treuer Stammgast.' if blocks>=500 else 'Weltenbummler mit Dauerticket. Das Zuhause ist offenbar der ganze Server.'
-        else:
-            selected=sorted((k for k in stats.METRICS if v[k]>0),key=lambda k:(rank(k),list(stats.METRICS).index(k)))[:2]
-            for key in selected:
-                label,unit,_,_=stats.METRICS[key];amount=f'{v[key]:.1f}' if unit in ('h','km') else n(v[key])
-                details.append(amount+' '+unit+' '+label+' (Rang '+str(rank(key))+')')
-            if selected:joke={'mob_kills':'Monster haben hier wohl keine ruhige Nachbarschaft.','player_kills':'Für friedliche Verhandlungen wird offenbar nicht immer Zeit eingeplant.',
-                 'play_time':'Der Server scheint ein gemütliches zweites Zuhause zu sein.','distance':'Reiselust statt Stillstand. Die Schuhe haben sich ihre Pause verdient.',
-                 'deaths':'Abenteuerlust ist vorhanden; die Landung braucht gelegentlich noch Feinschliff.'}[selected[0]]
+        key=(scope,p['uuid']);now=self.clock()
+        with self.lock:
+            for old in list(self.variants):
+                if self.variants[old][1]<=now:self.variants.pop(old,None)
+            previous=self.variants.pop(key,(0,0))[0]
+            self.variants[key]=(previous+1,now+180)
+            while len(self.variants)>256:self.variants.popitem(last=False)
+        n=lambda x:f'{int(x):,}'.replace(',',"'")
+        own=principal==p['uuid']
+        subject='Du' if own else p['name']
+        has='hast' if own else 'hat'
+        # Describe multiple observable strengths, not a permanent label. Every
+        # clause is tied to this fresh snapshot; no invented victims or weapon kills.
+        traits=[]
+        def add(score,kind,text):traits.append((score,kind,text))
+        if v['player_kills']>0 and rank('player_kills')<=2:
+            add(1.55,'fighter',f"{subject} {has} {n(v['player_kills'])} Spielerkills (Rang {rank('player_kills')}) – friedliche Verhandlungen sind offenbar nicht immer die erste Wahl.")
+        if v['mob_kills']>=100 and rank('mob_kills')<=3:
+            add(1.5,'hunter',f"Mit {n(v['mob_kills'])} Mobkills (Rang {rank('mob_kills')}) sieht die Nachbarschaft für Monster ziemlich ungemütlich aus.")
+        blocks=sum(p['used'].get(k,0) for k in set(block_items))
+        if blocks>=500:
+            add(1.3,'builder',f"{n(blocks)} platzierte Blöcke sprechen für ordentlich Baulust.")
+        if v['distance']>=1 and rank('distance')<=3:
+            add(1.25,'traveler',f"{v['distance']:,.1f} km Strecke (Rang {rank('distance')}) – Stillstehen scheint nicht die Lieblingsbeschäftigung zu sein.".replace(',',"'"))
         bow=p['used'].get('minecraft:bow',0)
-        if bow>0 and bow==max(x['used'].get('minecraft:bow',0) for x in data['players']):details.append(n(bow)+' Bogennutzungen (Rang 1)')
+        if bow>0 and bow==max(x['used'].get('minecraft:bow',0) for x in data['players']):
+            add(1.05,'archer',f"Dazu {n(bow)} Bogennutzungen (Rang 1): Der Bogen liegt wohl selten nur zur Dekoration herum.")
+        if v['deaths']>=100 and rank('deaths')<=2:
+            add(1.35,'respawn',f"Bei {n(v['deaths'])} Toden (Rang {rank('deaths')} nach Anzahl) kennt der Respawn-Punkt vermutlich schon die Lieblingsposition.")
+        if v['play_time']>=1:
+            add(.85,'regular',f"{v['play_time']:.1f} h Spielzeit: Das hier scheint ein recht gemütliches zweites Zuhause zu sein.")
         advancement=advancement_summary(self.advancements,p['uuid'])
-        if advancement and advancement['count']:details.append(str(advancement['count'])+' Fortschritte'+(' inkl. '+advancement['latest'] if advancement['latest'] else ''))
-        suffix=' Mein Spieleindruck: '+joke
-        lead=p['name']+': '+('; '.join(details) if details else 'noch wenig gespeicherte Spielwerte')+'.'
-        if len(lead+suffix)>355:suffix=' Mein Spieleindruck: '+joke.split('. ')[0]+'.'
-        while len(lead+suffix)>355 and len(details)>1:
-            details.pop(1);lead=p['name']+': '+'; '.join(details)+'.'
+        if advancement and advancement['latest']:
+            add(.9,'adventure',f"{advancement['count']} Fortschritte, darunter {advancement['latest']}: Ein bisschen Abenteuergeist ist jedenfalls belegt.")
+        elif advancement and advancement['count']:
+            add(.7,'adventure',f"{advancement['count']} Fortschritte zeigen, dass auch abseits der Ranglisten etwas passiert.")
+        if not traits:
+            positive=[k for k in stats.METRICS if v[k]>0]
+            if positive:
+                metric=min(positive,key=rank);label,unit,_,_=stats.METRICS[metric]
+                amount=f'{v[metric]:.1f}' if unit in ('h','km') else n(v[metric])
+                add(.5,'new',f"Bisher stehen {amount} {unit} bei {label} in den Spielwerten. Für ein grosses Urteil ist das noch eine kleine Grundlage.")
+        if re.search(r'bogen|bow',question,re.I):
+            traits=[(score+3 if kind=='archer' else score,kind,text) for score,kind,text in traits]
+        if re.search(r'fortschritt|achievement|advancement',question,re.I):
+            traits=[(score+3 if kind=='adventure' else score,kind,text) for score,kind,text in traits]
+        traits.sort(key=lambda row:-row[0])
+        chosen=traits[:2]
+        kinds={kind for _,kind,_ in chosen}
+        if {'builder','traveler'}<=kinds:
+            labels=('Architekt auf Weltreise','Bauprofi mit Fernweh','Baustelle und Weltreise in einer Person')
+        elif {'fighter','hunter'}<=kinds:
+            labels=('Endgegner mit leicht blutdurstiger Kill-Liste','Monsterjäger mit Duell-Ambitionen','ordentlich kampflustiges Gesamtpaket')
+        elif 'respawn' in kinds:
+            labels=('Abenteurer mit Respawn-Stammkarte','mutig unterwegs, Landung noch ausbaufähig','Entdecker mit kurzer Rückfahrt zum Spawn')
+        elif 'traveler' in kinds:
+            labels=('Weltenbummler mit Dauerticket','Entdecker mit akutem Fernweh','Reisender, dessen Zuhause die ganze Karte ist')
+        elif 'archer' in kinds:
+            labels=('Bogenschütze mit reichlich Übung','jemand, dessen Bogen kaum Pause bekommt','Fernkämpfer nach Trainingsstand, nicht nach bestätigten Kills')
+        elif 'builder' in kinds:
+            labels=('Baumeister mit gut gefülltem Blockvorrat','jemand, der eine leere Fläche als Einladung sieht','Baulust statt Langeweile')
+        elif 'fighter' in kinds or 'hunter' in kinds:
+            labels=('eher Gegner als Zuschauer','Monster-Schreck im Aufbau','jemand mit reichlich Kampflust')
+        else:
+            labels=('ein eigener Spielstil im Aufbau','jemand mit Lust aufs nächste Abenteuer','ein Spieler, dessen Geschichte noch weitergeht')
+        label=labels[previous%len(labels)]
+        intro=(f'Du? Für mich: {label}.' if own else f'{p["name"]}? Für mich: {label}.')
+        if previous%3==1:intro=(f'Zu dir passt für mich: {label}.' if own else f'Bei {p["name"]} denke ich an {label}.')
+        elif previous%3==2:intro=(f'Mein Eindruck von dir: {label}.' if own else f'Mein Eindruck von {p["name"]}: {label}.')
+        if not chosen:
+            lead=f'{p["name"]} ist in den gespeicherten Spielerdaten dabei, aber für eine faire Einschätzung fehlen mir noch Aktivitäten. Ein unbeschriebenes Abenteuerbuch, sozusagen.'
+        else:
+            lead=intro+' '+' '.join(text for _,_,text in chosen)
+        if len(lead)>350:lead=intro+' '+chosen[0][2]
+        if chosen and previous%2:
+            lead=lead.replace('sprechen für ordentlich Baulust.', '– da wächst vermutlich mehr als nur eine kleine Hütte.').replace('sieht die Nachbarschaft für Monster ziemlich ungemütlich aus.', 'dürften Monster selten freiwillig Hallo sagen.').replace('friedliche Verhandlungen sind offenbar nicht immer die erste Wahl.', 'steckt wohl etwas Duell-Erfahrung drin; über einzelne Kämpfe sagen die Zahlen nichts.').replace('kennt der Respawn-Punkt vermutlich schon die Lieblingsposition.', 'wäre eine Treuekarte am Respawn-Punkt langsam angemessen.')
+        if len(lead)>350 and chosen:lead=intro+' '+chosen[0][2]
         with self.lock:
             for key in list(self.context):
                 if self.context[key][1]<=self.clock():self.context.pop(key,None)
             self.context.pop(scope,None);self.context[scope]=(p['uuid'],self.clock()+180)
             while len(self.context)>256:self.context.popitem(last=False)
-        return lead+suffix
+        return lead
+
