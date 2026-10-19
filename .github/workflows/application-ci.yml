@@ -15,10 +15,9 @@ concurrency:
 
 jobs:
   build:
-    name: Next.js production build
+    name: Web build, policy and database integration
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-
     services:
       postgres:
         image: postgres:16-alpine
@@ -26,232 +25,68 @@ jobs:
           POSTGRES_USER: vector_ci
           POSTGRES_PASSWORD: vector_ci_password
           POSTGRES_DB: vector_ci
-        ports:
-          - 5432:5432
+        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U vector_ci -d vector_ci"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
+          --health-interval 5s --health-timeout 5s --health-retries 10
       admission-postgres:
         image: postgres:17.11-alpine
         env:
           POSTGRES_USER: vector_driver_fixture
           POSTGRES_PASSWORD: vector_driver_fixture_password
           POSTGRES_DB: vector_admission_fixture
-        ports:
-          - 5433:5432
+        ports: ['5433:5432']
         options: >-
           --health-cmd "pg_isready -U vector_driver_fixture -d vector_admission_fixture"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       CI: 'true'
       NEXT_TELEMETRY_DISABLED: '1'
-
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-
-      - name: Test local capability and conversation routing regressions
+      - name: Test reusable Node policy, UI, privacy and routing boundaries
         run: |
-          node --test tests/local-routing-regression.test.mjs tests/chat-controls.test.mjs tests/web-recovery.test.mjs tests/local-context-executor.test.mjs
-          python3 tests/chat-server-read.test.py
-          python3 tests/app-listener-fix.test.py
-          python3 -m py_compile scripts/deploy/fix-app-listener.py
-          bash -n scripts/deploy/stage-chat-controls.sh
-          bash -n scripts/deploy/stage-fresh-statistics.sh
-
-      - name: Test local FEGCraft statistics and admission foundation
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {spawnSync} from 'node:child_process';
+          const files=fs.readdirSync('tests').filter(name=>name.endsWith('.test.mjs')&&!name.endsWith('.integration.test.mjs')).map(name=>'tests/'+name);
+          const result=spawnSync(process.execPath,['--test',...files],{stdio:'inherit'});
+          process.exit(result.status ?? 1);
+          JS
+      - name: Test Python runtime, Minecraft and privacy policy
         run: |
-          python3 tests/fegcraft-stats.test.py
-          python3 tests/fegcraft-policy.test.py
-          python3 tests/fegcraft-runtime.test.py
-          python3 tests/fegcraft-knowledge-evaluation.test.py
-          python3 tests/fegcraft-general-knowledge.test.py
-          python3 tests/fegcraft-general-evaluation.test.py
-          python3 tests/fegcraft-model-format.test.py
-          python3 tests/fegcraft-minimal-prompts.test.py
-          python3 tests/fegcraft-instruct4b.test.py
-          python3 tests/fegcraft-documentation.test.py
-          python3 tests/fegcraft-documentation-evaluation.test.py
-          python3 tests/fegcraft-admission-readiness.test.py
-          python3 tests/fegcraft-admission-driver.test.py
-          node --test tests/fegcraft-slot-role.test.mjs
-          python3 tests/fegcraft-slot-role.test.py
-          python3 tests/fegcraft-reviewed-service.test.py
-          python3 tests/fegcraft-reviewed-release.test.py
-          python3 tests/fegcraft-chat-preparation.test.py
-          python3 tests/fegcraft-mod-context.test.py
-          python3 tests/fegcraft-conversation.test.py
-          python3 tests/fegcraft-intent-repair.test.py
-          python3 tests/fegcraft-companion.test.py
-          python3 tests/fegcraft-staged-restart.test.py
-          python3 tests/fegcraft-portraits.test.py
-          python3 tests/fegcraft-chat-publication.test.py
-          VECTOR_ROOT_PRESERVATION_DOCKER=1 python3 tests/fegcraft-chat-identity-install.test.py
-          python3 -m py_compile scripts/deploy/install-fegcraft-chat-identity.py scripts/lib/fegcraft-root-preservation.py
-          python3 -m py_compile scripts/deploy/prepare-fegcraft-chat-cutover.py
-          python3 -m py_compile scripts/deploy/release-fegcraft-reviewed-help.py tests/fegcraft-service-smoke.py
-          python3 -m py_compile scripts/deploy/prepare-fegcraft-slot-role.py tests/fegcraft-slot-role-probe.py
-          python3 -m py_compile scripts/deploy/qualify-fegcraft-admission-driver.py tests/fegcraft-admission-driver.integration.py tests/fegcraft-admission-driver-ci.py
-          python3 -m py_compile scripts/diagnostics/fegcraft-admission-readiness.py
-          python3 -m py_compile services/fegcraft-assistant/documentation.py scripts/deploy/evaluate-fegcraft-documentation.py
-          python3 tests/fegcraft-public-mod-sources.test.py
-          python3 -m py_compile scripts/diagnostics/fegcraft-public-mod-sources.py
-          python3 -m py_compile scripts/deploy/evaluate-fegcraft-instruct4b.py
-          python3 -m py_compile scripts/deploy/diagnose-fegcraft-minimal-prompts.py
-          python3 tests/local-model-artifact-audit.test.py
-          python3 -m py_compile scripts/diagnostics/audit-local-model-artifacts.py
-          python3 -m py_compile scripts/deploy/diagnose-fegcraft-model-format.py
-          python3 -m py_compile services/fegcraft-assistant/knowledge.py scripts/deploy/evaluate-fegcraft-general-help.py
-          python3 tests/fegcraft-recipes.test.py
-          python3 tests/fegcraft-recipe-evaluation.test.py
-          python3 tests/fegcraft-install.test.py
-          python3 tests/fegcraft-welcome.test.py
-          python3 -m py_compile scripts/deploy/announce-fegcraft-assistant.py
-          python3 -m py_compile scripts/deploy/install-fegcraft-assistant.py
-          python3 -m py_compile services/fegcraft-assistant/recipes.py scripts/deploy/evaluate-fegcraft-recipes.py
-          python3 tests/fegcraft-recipe-preflight.test.py
-          python3 -m py_compile scripts/diagnostics/fegcraft-recipe-preflight.py
-          python3 -m py_compile scripts/deploy/evaluate-fegcraft-knowledge.py
-          python3 tests/fegcraft-evaluation.test.py
-
-      - name: Test offline model broker policy
-        run: node --test tests/model-broker-*.test.mjs tests/provider-telemetry.test.mjs tests/model-intelligence-summary.test.mjs
-
-      - name: Test project access policy
-        run: node --test tests/project-access-policy.test.mjs tests/project-access-routes.test.mjs
-
-      - name: Test account switch navigation
-        run: node --test tests/account-switch-navigation.test.mjs
-
-      - name: Validate persistent deployment maintenance script
-        run: python3 -m py_compile scripts/deploy/pin-live-app-595.py
-
-      - name: Test chat UI grouping and download links
-        run: node --test tests/chat-history-ui.test.mjs
-
-      - name: Test project file browsing and downloads
-        run: node --test tests/project-file-view.test.mjs
-
-      - name: Test requested artifact format enforcement
-        run: node --test tests/artifact-format-policy.test.mjs
-
-      - name: Test isolated CPU inference pilot
-        run: |
-          python3 tests/local-inference-pilot.test.py
-          python3 -m py_compile scripts/deploy/local-inference-pilot.py
-          bash -n scripts/deploy/release-ranking-cost.sh
-          python3 -m py_compile scripts/deploy/evaluate-local-workers.py
-          python3 tests/local-worker-evaluation.test.py
-          python3 -m py_compile scripts/deploy/compare-local-models.py
-          python3 tests/local-model-comparison.test.py
-          python3 -m py_compile scripts/diagnostics/local-worker-wiring.py
-          python3 tests/local-worker-wiring.test.py
-          python3 tests/local-worker-activation.test.py
-          python3 -m py_compile scripts/deploy/activate-local-workers.py
-          bash -n scripts/deploy/release-local-workers.sh
-          bash -n scripts/deploy/stage-local-workers.sh
-          node --test tests/local-workers.test.mjs
-
-      - name: Test explicit local privacy review and isolated execution
-        run: |
-          node --test tests/privacy-review.test.mjs tests/privacy-routes.test.mjs tests/privacy-ner-client.test.mjs tests/privacy-send-controller.test.mjs
-          python3 tests/privacy-evaluation.test.py
-          python3 tests/privacy-ner-pilot.test.py
-          python3 tests/privacy-ner-context.test.py
-          python3 tests/privacy-ner-service.test.py
-          python3 tests/privacy-ner-service-evaluation.test.py
-          python3 tests/privacy-api-evaluation.test.py
-          python3 tests/chat-controls-release.test.py
-          python3 tests/fresh-statistics-release.test.py
-          bash -n scripts/deploy/release-fresh-statistics.sh
-          python3 -m py_compile scripts/deploy/qualify-and-release-fresh-statistics.py
-          bash -n scripts/deploy/release-chat-controls.sh
-          python3 -m py_compile scripts/deploy/qualify-and-release-chat-controls.py
-          python3 tests/privacy-release-preflight.test.py
-          python3 tests/privacy-release.test.py
-          python3 -m py_compile scripts/deploy/activate-privacy-review.py
-          bash -n scripts/deploy/release-privacy-review.sh
-          python3 -m py_compile scripts/deploy/preflight-privacy-release.py
-          python3 -m py_compile scripts/deploy/evaluate-privacy-api.py scripts/deploy/stage-and-evaluate-privacy-api.py
-          node --check tests/privacy-api.integration.mjs
-          python3 -m py_compile services/privacy-ner/server.py scripts/deploy/evaluate-privacy-ner-service.py
-          python3 -m py_compile lib/privacy-ner-core.py
-          python3 -m py_compile scripts/deploy/pilot-privacy-ner.py
-          python3 -m py_compile scripts/deploy/evaluate-privacy-review.py
-          bash -n scripts/deploy/stage-privacy-review.sh
-
-      - name: Install backup verification dependencies
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends restic rsync
-
-      - name: Test Vector Minecraft identity assets and guarded qualification
-        run: |
-          python3 tests/fegcraft-identity.test.py
-          python3 tests/fegcraft-identity-qualification.test.py
-          python3 tests/fegcraft-mod-help.test.py
-          python3 tests/fegcraft-mod-help-update.test.py
-          python3 -m py_compile scripts/deploy/update-fegcraft-mod-help.py
-          python3 tests/fegcraft-dialogue.test.py
-          python3 tests/fegcraft-dialogue-release.test.py
-          python3 tests/fegcraft-backup.test.py
-          python3 tests/fegcraft-backup-repair.test.py
-          command -v restic
-          python3 tests/fegcraft-incremental-backup.test.py
-          python3 -m py_compile scripts/maintenance/fegcraft-incremental-backup.py scripts/deploy/install-fegcraft-incremental-backup.py
-          bash -n scripts/maintenance/fegcraft-backup.sh
-          python3 -m py_compile scripts/maintenance/fegcraft-backup.py scripts/deploy/repair-fegcraft-backup.py
-          python3 tests/fegcraft-recreation-safety.test.py
-          python3 tests/fegcraft-safe-cutover-qualification.test.py
-          python3 -m py_compile scripts/diagnostics/fegcraft-recreation-safety.py scripts/deploy/qualify-fegcraft-safe-cutover.py scripts/deploy/arm-fegcraft-owner-welcome.py
-          python3 -m py_compile scripts/deploy/release-fegcraft-dialogue.py
-          python3 -m py_compile scripts/build-fegcraft-identity.py scripts/deploy/qualify-fegcraft-identity.py
-
-      - name: Test local JSON ranking aggregation and cost metadata
-        run: |
-          node --test tests/server-json-rankings.test.mjs
-          node --test tests/provider-call-usage.test.mjs
-          bash -n scripts/deploy/stage-json-rankings.sh
-
-      - name: Test PDF ranking rendering and provider completion metadata
-        run: node --test tests/pdf-ranking-renderer.test.mjs tests/provider-completion.test.mjs
-
-      - name: Test server resources and authorization
-        run: node --test tests/server-resources.test.mjs
-
-      - name: Build the application
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          for path in sorted(Path('tests').glob('*.test.py')):
+              if path.name!='minecraft-flow.test.py':
+                  subprocess.run(['python3',str(path)],check=True)
+          for path in [*Path('services').rglob('*.py'),*Path('scripts').rglob('*.py')]:
+              subprocess.run(['python3','-m','py_compile',str(path)],check=True)
+          PY
+      - name: Check source publication boundary
+        run: python3 scripts/check_public_source.py
+      - name: Build application
         run: npm run build
-
-      - name: Install verified local admission driver in disposable CI venv
+      - name: Install pinned binary admission driver in disposable venv
         run: |
-          python3 scripts/deploy/qualify-fegcraft-admission-driver.py --fetch-ci-wheels /tmp/vector-admission-driver-wheels
           python3 -m venv /tmp/vector-admission-driver-ci
-          /tmp/vector-admission-driver-ci/bin/python -m pip install --disable-pip-version-check --no-cache-dir --no-index --no-deps --require-hashes --find-links=/tmp/vector-admission-driver-wheels -r services/fegcraft-assistant/driver-requirements.txt
-
-      - name: Qualify binary driver and restricted fixture role against PostgreSQL 17
+          /tmp/vector-admission-driver-ci/bin/python -m pip install --disable-pip-version-check --no-cache-dir --only-binary=:all: --no-deps --require-hashes -r services/minecraft-assistant/driver-requirements.txt
+      - name: Qualify restricted fixture roles and shared lock against PostgreSQL 17
         env:
           VECTOR_ADMISSION_FIXTURE_DSN: postgresql://vector_driver_fixture:vector_driver_fixture_password@127.0.0.1:5433/vector_admission_fixture
-        run: python3 tests/fegcraft-admission-driver-ci.py
-
-      - name: Qualify owned slot role privileges and actual Python coordination against PostgreSQL 17
-        env:
-          VECTOR_ADMISSION_FIXTURE_DSN: postgresql://vector_driver_fixture:vector_driver_fixture_password@127.0.0.1:5433/vector_admission_fixture
-        run: node tests/fegcraft-slot-role.integration.mjs
-
-      - name: Test authenticated API authorization against PostgreSQL
+        run: |
+          python3 tests/minecraft-admission-driver-ci.py
+          node tests/minecraft-slot-role.integration.mjs
+      - name: Test authenticated API authorization and accounting
         env:
           DATABASE_URL: postgres://vector_ci:vector_ci_password@127.0.0.1:5432/vector_ci
           VECTOR_SECRET: vector-ci-test-key-not-for-production
@@ -277,34 +112,21 @@ jobs:
             cat /tmp/vector-auth-ci-next.log
             false
           fi
-          node --test tests/project-access-api.integration.test.mjs
-          node --test tests/usage-attribution.integration.test.mjs
-          node --test tests/privacy-vault.integration.test.mjs
-          node --test tests/local-workers-db.integration.test.mjs
-          node --test tests/fegcraft-admission-db.integration.test.mjs
-          node --test tests/model-intelligence-api.integration.test.mjs
+          node --test tests/project-access-api.integration.test.mjs tests/usage-attribution.integration.test.mjs tests/privacy-vault.integration.test.mjs tests/local-workers-db.integration.test.mjs tests/model-intelligence-api.integration.test.mjs
 
   secret-scan:
     name: Working tree secret scan
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-
-      - name: Scan source with Gitleaks
+      - name: Scan source with pinned Gitleaks
         run: |
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/repo:ro" \
-            ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
-            dir --redact --verbose /repo
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f dir --redact --verbose /repo
 
-
-
-
-  fegcraft-addon:
+  minecraft-addon:
     name: Compile and verify Minecraft bridge addon (Java ${{ matrix.java }})
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -319,9 +141,7 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
-      - name: Compile against pinned actual Fabric integration and test offline boundaries
+      - name: Compile against pinned integration API and test signed offline transport
         run: |
-          python3 scripts/build-fegcraft-addon.py
-          python3 tests/fegcraft-flow.test.py
-
-
+          python3 scripts/build-minecraft-addon.py
+          python3 tests/minecraft-flow.test.py

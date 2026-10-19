@@ -1,24 +1,14 @@
-# Coding Agent Instructions
+# Coding instructions
 
-Before proposing changes, read:
+Read VISION.md, docs/ARCHITECTURE.md, docs/SECURITY.md, docs/DESIGN_SYSTEM.md and docs/PROJECT_HANDOFF.md before implementation.
 
-- `docs/OWNER_PREFERENCES.md`
-- `docs/PROJECT_HANDOFF.md`
-- `VISION.md`
-- `docs/ARCHITECTURE.md`
-- `docs/SECURITY.md`
-- `docs/DESIGN_SYSTEM.md`
-
-## Rules
-
-1. Work on an isolated branch.
-2. Never edit production during a Git documentation task.
-3. Keep secrets and user records out of Git and model context.
-4. Preserve existing API contracts and permissions.
-5. Prefer a fast path for simple tasks.
-6. Verify work with tests and evaluation evidence.
-7. Obtain owner approval for privileged or external actions.
-8. Review license and security implications of external tools.
-9. Document rollback instructions for risky modifications.
-10. Never claim success without observed verification.
-11. Update `CHANGELOG.md` in every change PR; include the date, PR number when known, and accurately verified changes.
+1. Work on an isolated branch and preserve existing API contracts and authorization.
+2. Keep credentials, real user records, host inventories and deployment diaries outside Git. Use synthetic test fixtures.
+3. Prefer direct and deterministic paths where sufficient. Do not introduce orchestration or model calls without need.
+4. Test meaningful boundaries: privacy consent, ownership, permissions, routing and failure behavior.
+5. Update CHANGELOG.md with accurately verified user-facing and engineering changes. Distinguish source checks from live deployment evidence.
+6. Do not deploy, send messages, restart services or change data outside the user's authorized scope.
+7. Keep web and Minecraft deployments independent. Source refactoring never authorizes a game rollout.
+8. Preserve immutable release evidence and rollback guards. Do not rewrite Git history or publish a repository without explicit authorization.
+9. Review external dependencies, licensing and security implications. Never claim success without evidence.
+10. Maintain private project-specific handoff material outside this repository. This file contains reusable engineering rules, not personal operating instructions.

@@ -25,5 +25,8 @@
 
 ## Immediate priority
 
-Audit existing routing behavior, then compare gateway
-candidates before changing production traffic.
+1. Restore reliable web consent and server investigation paths with regressions for original/replace/off and new tool evidence.
+2. Qualify an exact app/worker release against the observed host baseline while preserving the independent Minecraft integration.
+3. Measure routing, native cold/warm latency, tool completeness and actual provider costs before changing gateways or orchestration.
+4. Add representative task evaluations for conversations, server reads, file work and failure recovery. Preserve ownership and privacy boundaries throughout.
+5. Complete history/artifact/license review before any public release; keep deployment evidence private.

@@ -1,58 +1,9 @@
-# Engineering Checks
+# Engineering checks
 
-## Purpose
+Pull requests run a Next.js production build, synthetic unit/API tests, PostgreSQL-backed authorization and usage checks, documentation validation, a source-publication scan and the pinned Gitleaks working-tree scan. The optional Minecraft addon is compiled against its pinned upstream API on Java17 and25 and exercises offline signed transport, identity, replay and policy boundaries.
 
-Vector uses automated pull request checks to detect
-build failures and potential security issues before
-changes are merged.
+Tests never require production credentials. Host-specific installers, deployment inventories and their historical qualification reports are private operating material. Removing those installers from the reusable repository does not replace live staging qualification.
 
-## Current checks
+Run Node tests with `node --test tests/*.test.mjs` only when the required dependency and database services are available; database-backed entrypoints need the environment shown in the CI workflow. For a targeted change run its meaningful unit tests first. Python policy/runtime tests use synthetic temporary files and mocked local inference; native model quality and actual Minecraft/Discord delivery need separate operator-side qualification.
 
-### Next.js production build
-
-- Runs on GitHub-hosted Ubuntu runners.
-- Uses Node.js 22.
-- Installs dependencies from `package-lock.json`.
-- Executes the repository's `npm run build` script.
-- Requires no production API keys or server credentials.
-
-### Secret scanning
-
-- Runs Gitleaks against the checked-out source tree.
-- Detects recognizable credentials and other secrets.
-- Uses a pinned Gitleaks container image.
-- Does not replace manual security review.
-
-### Documentation validation
-
-The existing documentation workflow checks Markdown
-links, SVG assets and image alternatives. It also runs
-the documentation validator regression tests.
-
-## Deployment boundary
-
-This workflow contains no deployment steps and does not
-connect to the production Hetzner server.
-
-However, external deployment triggers and host-side
-automation have not yet been independently audited.
-
-See [Deployment Policy](DEPLOYMENT.md).
-
-## CI limitations
-
-The first application build may reveal dependencies on
-production-only environment variables or live services.
-
-These issues must be resolved through test isolation or
-safe configuration changes, not by copying production
-credentials into GitHub Actions.
-
-## Future improvements
-
-- Targeted unit and integration tests.
-- Dependency vulnerability checks.
-- Branch protection and required status checks.
-- Isolated development and staging environments.
-- Versioned releases and controlled rollback.
-- Automated evaluation of agent and provider changes.
+CI deploys nothing and sends no game messages. A green source build is not evidence that an app image is running or that a real client rendered its resource pack. See [deployment policy](DEPLOYMENT.md) and [publication boundary](PUBLICATION.md).

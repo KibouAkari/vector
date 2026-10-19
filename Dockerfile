@@ -2,9 +2,9 @@ FROM node:24-alpine AS dependencies
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 
-RUN npm install --omit=dev
+RUN npm ci --omit=dev --no-audit --no-fund
 
 
 FROM node:24-alpine AS builder

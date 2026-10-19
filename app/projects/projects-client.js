@@ -274,7 +274,7 @@ export default function ProjectsClient() {
                   value={
                     name
                   }
-                  placeholder="FEGCraft"
+                  placeholder="Minecraft"
                   maxLength="100"
                   onChange={
                     (

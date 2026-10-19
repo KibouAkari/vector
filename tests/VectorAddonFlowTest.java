@@ -79,7 +79,7 @@ public final class VectorAddonFlowTest {
         for (int i = 0; i < 25; i++) {
             try {
                 String time = Long.toString(Instant.now().getEpochSecond());
-                HttpRequest request = HttpRequest.newBuilder(URI.create("http://vector-fegcraft-assistant:8090/v1/minecraft"))
+                HttpRequest request = HttpRequest.newBuilder(URI.create("http://vector-minecraft-assistant:8090/v1/minecraft"))
                     .timeout(Duration.ofSeconds(1)).header("X-Vector-Time", time)
                     .header("X-Vector-Signature", VectorAddon.sign(key, time, raw))
                     .POST(HttpRequest.BodyPublishers.ofByteArray(raw)).build();

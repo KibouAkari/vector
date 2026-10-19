@@ -1,0 +1,17 @@
+import importlib.util
+from pathlib import Path
+import tempfile
+import unittest
+spec=importlib.util.spec_from_file_location('publication',Path(__file__).parents[1]/'check_public_source.py')
+module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+class Publication(unittest.TestCase):
+ def test_private_material_fails_without_disclosing_contents(self):
+  with tempfile.TemporaryDirectory() as directory:
+   root=Path(directory);(root/'example.txt').write_text('/root/'+'vector-workspace/releases/private')
+   self.assertEqual(module.audit(root),[('example.txt','private-operating-material')])
+ def test_private_terms_are_external_and_build_output_is_excluded(self):
+  with tempfile.TemporaryDirectory() as directory:
+   root=Path(directory);(root/'readme.md').write_text('Synthetic community')
+   (root/'node_modules').mkdir();(root/'node_modules/vendor.txt').write_text('Synthetic community')
+   self.assertEqual(module.audit(root,['COMMUNITY']),[('readme.md','operator-deny-list')])
+if __name__=='__main__':unittest.main()

@@ -1,0 +1,15 @@
+# Disabled until isolated qualification and guarded owner installation.
+enabled=false
+introductionEnabled=false
+# Opt in only after isolated Discord channel/bot/replay qualification.
+discordInputEnabled=false
+tokenFile=/run/secrets/vector_minecraft_token
+# Optional public PNG URL; no Discord token or webhook belongs in this file.
+avatarUrl=
+# Set only after the matching client resource pack is installed and qualified.
+# Empty retains the readable <Vector> name without a missing texture.
+logoTexture=
+
+
+# Owner-only second welcome: stays unarmed until post-readiness session signal.
+ownerWelcomeEnabled=false
