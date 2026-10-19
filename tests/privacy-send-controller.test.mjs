@@ -15,7 +15,7 @@ test('checking is visible before a pending request and persists until review, wi
   await assert.rejects(sender.send('/chat',{message:'duplicate'}),/bereits/);
   first.resolve(review());await tick();assert.equal(states.at(-1).phase,'review');assert.equal(calls.length,1);
   choice.resolve('replace');assert.equal((await result).ok,true);
-  assert.deepEqual(JSON.parse(calls[1].body),{message:'fixture',privacyDecision:'replace',privacyReviewToken:'synthetic-review'});
+  assert.deepEqual(JSON.parse(calls[1].body),{message:'fixture',privacyDecision:'replace',privacyReviewToken:'synthetic-review',toolEvidenceDecision:'replace'});
   assert.deepEqual(states.map(s=>s.phase),['checking','review','sending','idle']);
 });
 

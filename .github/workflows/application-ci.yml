@@ -67,7 +67,7 @@ jobs:
 
       - name: Test local capability and conversation routing regressions
         run: |
-          node --test tests/local-routing-regression.test.mjs tests/chat-controls.test.mjs
+          node --test tests/local-routing-regression.test.mjs tests/chat-controls.test.mjs tests/web-recovery.test.mjs tests/local-context-executor.test.mjs
           python3 tests/chat-server-read.test.py
           python3 tests/app-listener-fix.test.py
           python3 -m py_compile scripts/deploy/fix-app-listener.py

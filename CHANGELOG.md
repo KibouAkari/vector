@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-19 — Web privacy and local context recovery
+
+- Preserve explicitly approved original prompt/context while separately masking newly read tool evidence; bind this choice to the signed review and job policy.
+- Inspect sensitive structured fields and restore advancement lookup arguments only inside authorized local tools.
+- Keep short local requests usable in long conversations by dropping old complete turns instead of rejecting the whole chat.
+- Resolve own-server corrections only within an uninterrupted statistics task. Minecraft deployment is unchanged.
+- Validation: targeted privacy, routing, controller and real local-executor regression tests. Live deployment remains separate.
+
+
 ## 2026-10-19 — Record observed player-portrait deployment (PR #90)
 
 - Owner confirms PR89 deployed at074446Z-d611cc, only assistant recreated, Minecraft/current addon unchanged and saved advancements available. No new restart/welcome required.

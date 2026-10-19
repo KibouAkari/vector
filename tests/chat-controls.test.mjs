@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {requestDestination,localStatisticsIntent,CHAT_MODES} from '../lib/chat-controls.mjs';
+import {requestDestination,localStatisticsIntent,statisticsRequest,CHAT_MODES} from '../lib/chat-controls.mjs';
 import {localServerStatistics} from '../lib/local-server-statistics.mjs';
 
 const prompt='Gib mir die Rekorde und besten Statistiken von ExampleOne vom Minecraft Server';
@@ -166,4 +166,11 @@ test('each completed statistics query rereads changed source files and returns n
   assert.equal(reads,4);assert.match(first.text,/10 Kills/);assert.match(next.text,/25 Kills/);
   assert.equal(first.readAt,'2026-10-17T00:00:00.000Z');assert.equal(next.readAt,'2026-10-17T00:01:00.000Z');
   assert.match(next.text,/erst nach dem Speichern durch Minecraft/);
+});
+
+
+test('an own-server correction retains only an uninterrupted statistics task',()=>{
+  const history=[{role:'user',content:'Welche Rekorde hat ExampleOne auf meinem Minecraft Server?'}];
+  assert.deepEqual(statisticsRequest('ich meine von meinem server',history),{targets:['exampleone']});
+  assert.equal(statisticsRequest('ich meine von meinem server',[...history,{role:'user',content:'Schreibe eine Mail'}]),null);
 });
