@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-19 — Fresh player portraits and natural smalltalk routing (PR #89)
+
+- Owner confirms PR88 same-container restart/load verified at071209Z-f46d18. Eyy/Discord input and the best-player joke were observed; feelings smalltalk still fell into clarification. Record actual state before adding another assistant-only update.
+- Recognize feelings, mood and more conversational phrases; add harmless dry humour to the existing short native social prompt. Preserve local-only model/CPU lease/role, independent restrictions and output bounds.
+- Add fresh public-statistics portraits for known players, authenticated Minecraft self, unique nickname/typo matching and bounded own UUID followups. Show evidence-based playful game impressions, never inferred real personality, invented victims, all death causes, weapon kills or guaranteed PvP skill. No permanent labels, value cache or ordinary-chat ingestion.
+- Optionally mount only a verified saved-advancement directory readonly. Bounded per-player parsing includes completed advancement counts/known labels; missing/invalid files do not become invented events. Keep weapon uses distinct from kills and bound placed totals by the live block registry.
+- Guarded updater verifies observed PR87 backend and PR88 game start, stages exactly1 accepted native feelings reply plus synthetic deterministic portraits over signed HTTP, then recreates only assistant. Preserve pack/addon/game/backup/markers/state and owned rollback. Seven new focused tests plus affected local regressions pass; actual native stage and production rollout remain pending.
+
 ## 2026-10-19 — Load the staged addon with an owned regular restart (PR #88)
 
 - Owner confirms PR #87 deployed mode5 at064939Z-d1f1fc with192 facts/63 mods and3 accepted native calls (981 input/25 output tokens); cached repeat0.051s, zero cloud/messages. Minecraft has not restarted; greeting addon is still pending.
