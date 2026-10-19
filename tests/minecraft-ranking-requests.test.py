@@ -107,6 +107,26 @@ class RankingRequests(unittest.TestCase):
         other=friendly_statistics(raw,None,1)
         self.assertIn('Example1',other);self.assertNotIn('du',other)
 
+    def test_personal_block_totals_favorites_ties_and_placement_scope(self):
+        path=self.directory/(self.ids[0]+'.json');data=json.loads(path.read_bytes())
+        data['stats']['minecraft:mined']={'minecraft:stone':40,'minecraft:dirt':10}
+        data['stats']['minecraft:used']={'minecraft:stone':15,'minecraft:dirt':15,'minecraft:bow':999}
+        path.write_text(json.dumps(data))
+        self.assertIn('50 Blöcke',self.ai.stat_answer('wie viele Blöcke habe ich abgebaut?',principal=self.ids[0]))
+        self.assertIn('40 Mal',self.ai.stat_answer('welchen Block habe ich am meisten abgebaut?',principal=self.ids[0]))
+        text=self.ai.stat_answer('wie viele Blöke habe ich plaziert?',('minecraft:stone','minecraft:dirt'),principal=self.ids[0])
+        self.assertIn('30 Block-Items',text);self.assertIn('Näherung',text);self.assertNotIn('999',text)
+        favorite=self.ai.stat_answer('welchen Block habe ich am meisten platziert?',('minecraft:stone','minecraft:dirt'),principal=self.ids[0])
+        self.assertIn('Stein',favorite);self.assertIn('Erde',favorite);self.assertIn('15 Mal',favorite)
+        self.assertIn('Block-Item-Verzeichnis',self.ai.stat_answer('wie viele Blöcke habe ich platziert?',principal=self.ids[0]))
+        self.assertIn('Discord',self.ai.stat_answer('wie viele Blöcke habe ich abgebaut?',principal=None))
+        self.assertIn('eindeutigen Namen',self.ai.stat_answer('wie viele Blöcke hat UnknownPlayer abgebaut?'))
+        self.assertIn('Example1 hat',self.ai.stat_answer('wie viele Blöcke hat Example1 abgebaut?'))
+        self.assertIn('beiden Zählungen',self.ai.stat_answer('wie viele Blöcke habe ich abgebaut und platziert?',principal=self.ids[0]))
+        data['stats']['minecraft:mined']={'examplemod:'+letter*90:10 for letter in 'abc'}
+        path.write_text(json.dumps(data))
+        self.assertIn('zu lang',self.ai.stat_answer('welchen Block habe ich am meisten abgebaut?',principal=self.ids[0]))
+
     def test_ordinary_chat_replay_and_rate_limit_remain_enforced(self):
         payload = dict(principal=self.ids[0], name='Example1', source='discord', event=self.ids[0] + ':1', message='Top 5 Mobkills')
         self.assertEqual(self.ai.handle(payload)['status'], 'ignored')

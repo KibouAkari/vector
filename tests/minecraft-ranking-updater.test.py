@@ -20,6 +20,17 @@ class Guards(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)
 
+    def test_command_failure_reports_phase_but_keeps_stderr_private(self):
+        from types import SimpleNamespace
+        evidence=self.root/'evidence';evidence.mkdir(mode=0o700)
+        with patch.object(updater,'COMMAND_EVIDENCE',evidence), patch.object(updater,'COMMAND_INDEX',0), \
+             patch.object(updater.subprocess,'run',return_value=SimpleNamespace(returncode=1,stderr=b'synthetic_private_value')):
+            with self.assertRaisesRegex(RuntimeError,'isolated-qualification') as raised:
+                updater.run(['docker','run','synthetic'])
+            self.assertNotIn('synthetic_private_value',str(raised.exception))
+        self.assertEqual((evidence/'1-isolated-qualification.stderr').read_bytes(),b'synthetic_private_value')
+        self.assertEqual((evidence/'1-isolated-qualification.stderr').stat().st_mode & 0o777,0o600)
+
     def test_missing_release_lock_does_not_create_a_parallel_lock(self):
         lock = self.root / 'mistyped.lock'
         result = subprocess.run([sys.executable, spec.origin, '--release-root', str(self.root),

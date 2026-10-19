@@ -65,7 +65,7 @@ class Dialogue(unittest.TestCase):
         self.write(self.ids[0], 10, stone=100)
         self.assertIn('Stein 160 Mal', self.ai.stat_answer(question, ids))
         self.assertIn('Block-Item-Verzeichnis', self.ai.stat_answer(question))
-        self.assertIn('serverweit', self.ai.stat_answer('welcher Block wurde von UnknownPlayer am meisten platziert?', ids))
+        self.assertIn('eindeutigen Namen', self.ai.stat_answer('welcher Block wurde von UnknownPlayer am meisten platziert?', ids))
         self.assertIn('Erde 600 Mal', self.ai.stat_answer('welcher Block wurde am häufigsten abgebaut?'))
 
     def test_discord_display_name_and_input_validation(self):

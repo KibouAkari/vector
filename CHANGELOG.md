@@ -2,6 +2,13 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-19 — Personal block statistics and weapon-style impressions (PR #101)
+
+- Answer personal saved block totals and most-used/mined block types, including ties and authenticated self identity. Filter placement approximations through the current block-item registry; do not count food or tools as placed blocks.
+- Describe preferred weapon families from fresh item-use counters, with explicit ties and missing evidence. Keep weapon preference distinct from accuracy, kill attribution or proven combat ability.
+- Tolerate a common portrait-question misspelling and a unique adjacent-letter transposition in player names. Retain ambiguity clarification and existing policy/rate/replay boundaries.
+- Make guarded updater failures actionable with a safe phase label and private stderr evidence, without printing resolved configuration or secrets. Network-disabled qualification still precedes any assistant recreation.
+
 ## 2026-10-19 — Give fresh player portraits a more natural voice (PR #100)
 
 - Combine multiple observed strengths into short, varied player impressions instead of a statistics list followed by a fixed label. Keep descriptions grounded in fresh counters and advancements; never invent victims, weapon kills or personal character traits.
