@@ -398,10 +398,11 @@ class Assistant:
         if (getattr(self.knowledge,'personality',False) and re.search(r'grab|gräber|graves|rucksack|backpack',q)
                 and not re.search(r'wie oft|wie viele|meist|rekord|record|rang|statistik',q)):
             return None
-        # Correct only this unambiguous ranking typo, never arbitrary player names.
+        # Aliases affect category recognition only; names/target guards use original text.
+        category_q = q
         if re.search(r'\btop\s*\d+\b|\brangliste\b|\bleaderboard\b', q):
-            q = re.sub(r'\bmonkills\b', 'mobkills', q)
-        selected = [key for key, pattern in METRIC_WORDS.items() if re.search(pattern, q)]
+            category_q = re.sub(r'\bmonkills\b', 'mobkills', q)
+        selected = [key for key, pattern in METRIC_WORDS.items() if re.search(pattern, category_q)]
         top_match = re.search(r'\btop\s*(\d+)\b', q)
         comparison = bool(re.search(r'unterschied|differenz|vergleich|\bmehr\b.*\bals\b|\bweniger\b.*\bals\b', q))
         is_record = re.search(r'rekord|record', q)
@@ -432,6 +433,14 @@ class Assistant:
                 people = [p for p in data['players'] if p['uuid'] == principal]
                 if len(people) != 1:
                     return 'für deinen Minecraft-Account fehlen gerade zugeordnete gespeicherte Statistiken.'
+            unknown_target = unknown_player_target(q, people)
+            if self_reference:
+                # Pronouns may occupy the target position, but arbitrary names still cannot.
+                resolved = re.sub(r'\b(?:mir|mich|mein(?:e[rmns]?)?)\b', people[0]['name'].casefold() if people else '', q)
+                unknown_target = unknown_player_target(resolved, people)
+            if unknown_target and not block_category:
+                return ('zum Vergleich brauche ich zwei vollständige Spielernamen und eine Kategorie, zum Beispiel Mobkills.' if comparison
+                        else 'nenne bitte den vollständigen Spielernamen für die Statistikabfrage.')
             # Never silently substitute the author for an unknown named player.
             if comparison:
                 if len(people) != 2 or len(selected) != 1:
@@ -449,13 +458,6 @@ class Assistant:
             if top_match and (not 1 <= int(top_match[1]) <= 10 or len(selected) != 1 or people):
                 return 'frage bitte nach einer Rangliste mit Top 1 bis Top 10 und einer Kategorie, zum Beispiel Mobkills.'
             holders = bool(re.search(r'\brekorde?halter\b|\brecord.?holders?\b|\balle\s+(?:aktuellen\s+)?rekorde\b|\b(?:wer|who)\b.*\b(?:rekord|record)', q))
-            unknown_target = unknown_player_target(q, people)
-            if self_reference:
-                # Pronouns may occupy the target position, but arbitrary names still cannot.
-                resolved = re.sub(r'\b(?:mir|mich|mein(?:e[rmns]?)?)\b', people[0]['name'].casefold() if people else '', q)
-                unknown_target = unknown_player_target(resolved, people)
-            if unknown_target and not block_category:
-                return 'nenne bitte den vollständigen Spielernamen für die Statistikabfrage.'
             if ores:
                 if len(ores) != 1:
                     return 'welches Erz möchtest du vergleichen? Bitte frage nach einer Erzart.'

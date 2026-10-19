@@ -59,9 +59,19 @@ class RankingRequests(unittest.TestCase):
         self.write(self.ids[6], 120)
         self.assertIn('1. Example7 120 Kills', self.ask('Top 3 Mobkills')['text'])
 
+    def test_category_typo_never_rewrites_a_valid_player_target(self):
+        users = json.loads((self.root / 'users.json').read_text())
+        users[0]['name'] = 'Monkills'
+        (self.root / 'users.json').write_text(json.dumps(users))
+        self.assertIn('Top 1 bis Top 10', self.ai.stat_answer('Top 3 Mobkills von Monkills'))
+        answer = self.ai.stat_answer('Mobkills Rangliste von Monkills')
+        self.assertIn('Monkills: Mobkills 100 Kills; Rang 1', answer)
+        self.assertNotIn('Example2', answer)
+
     def test_incomplete_statistics_and_ambiguous_requests_fail_closed(self):
         for q in ('Vergleiche Mobkills von Example1 und UnknownPlayer', 'Unterschied von Mobkills zwischen Example1, Example2 und Example3',
-                  'Unterschied bei Mobkills und Spielerkills zwischen Example1 und Example2'):
+                  'Unterschied bei Mobkills und Spielerkills zwischen Example1 und Example2',
+                  'Vergleiche Mobkills von UnknownPlayer mit Example1 und Example2'):
             self.assertIn('zwei vollständige Spielernamen und eine Kategorie', self.ai.stat_answer(q))
         for q in ('Top 0 Mobkills', 'Top 11 Mobkills', 'Top 5 Rangliste', 'Top 5 Mobkills von Example1'):
             self.assertIn('Top 1 bis Top 10', self.ai.stat_answer(q))

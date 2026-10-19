@@ -17,6 +17,8 @@ from pathlib import Path
 import re
 import secrets
 import selectors
+import signal
+import stat
 import subprocess
 import tarfile
 import time
@@ -30,6 +32,7 @@ def sha(data):
 def canonical_container(row):
     return {'id': row['Id'], 'image_id': row['Image'],
             'running': row['State']['Running'], 'started_at': row['State']['StartedAt'],
+            'state_flags': {key: row['State'].get(key) for key in ('Paused', 'Restarting', 'Dead', 'OOMKilled', 'ExitCode')},
             'mounts': sorted(row.get('Mounts', []), key=lambda item: json.dumps(item, sort_keys=True)),
             'mount_fingerprints': sorted(sha(json.dumps(item, sort_keys=True).encode()) for item in row.get('Mounts', [])),
             'networks': {name: {key: sorted(network.get(key) or []) if key in ('Aliases', 'DNSNames') else network.get(key) for key in
@@ -67,10 +70,20 @@ def validate_baseline(baseline, observed, app, worker, compose_hash):
                 raise RuntimeError('BASELINE_CONTAINER_CHANGED')
         if expected.get('mount_fingerprints') != current.get('mount_fingerprints'):
             raise RuntimeError('BASELINE_MOUNTS_CHANGED')
+        if any(current.get('state_flags', {}).get(key) for key in ('Paused', 'Restarting', 'Dead')):
+            raise RuntimeError('BASELINE_CONTAINER_NOT_READY')
         if not current['running']:
             raise RuntimeError('BASELINE_CONTAINER_NOT_RUNNING')
     if baseline.get('compose_sha256') != compose_hash:
         raise RuntimeError('BASELINE_COMPOSE_CHANGED')
+
+
+def native_watchdog(deadline, server='/work/server.py'):
+    return ("import os,signal,time,math,runpy; "
+            "signal.signal(signal.SIGALRM,lambda *_: os._exit(124)); "
+            "remaining=math.floor(" + str(float(deadline)) + "-time.monotonic()); "
+            "remaining>0 or os._exit(124); signal.alarm(remaining); "
+            "runpy.run_path(" + repr(server) + ",run_name='__main__')")
 
 
 def limits(name, network, user, memory='512m', cpus='1'):
@@ -92,9 +105,9 @@ const c=new Client({connectionString:process.env.DATABASE_URL,connectionTimeoutM
  console.log('LOCKED');
  let lease;
  await new Promise(resolve=>{lease=setTimeout(()=>process.exit(1),900000);process.stdin.once('data',resolve);process.stdin.once('end',resolve);process.stdin.resume();});
- clearTimeout(lease);
  await c.query('SELECT pg_advisory_unlock($1::bigint)',['6194261933202610']);
  await c.end();
+ clearTimeout(lease);
 }catch{console.log('UNAVAILABLE');await c.end().catch(()=>{});process.exitCode=1;}})();
 """
 
@@ -109,6 +122,7 @@ def cpu_slot(app):
             if not selector.select(10) or process.stdout.readline().strip() != b'LOCKED':
                 raise RuntimeError('SHARED_CPU_SLOT_UNAVAILABLE')
         process.lease_deadline = time.monotonic() + 840
+        process.native_deadline_monotonic = time.monotonic() + 780
         yield process
         if process.poll() is not None:
             raise RuntimeError('SHARED_CPU_SLOT_LOST')
@@ -129,6 +143,8 @@ class Stage:
         self.owned, self.network = [], None
         self.sequence = 0
         self.slot = None
+        self.native_name = None
+        self.native_deadline_monotonic = None
 
     def check_slot(self):
         if self.slot is not None:
@@ -184,6 +200,49 @@ class Stage:
     def start(self, name, *arguments):
         self.owned.append(name)
         return self.run('docker', 'run', *arguments)
+
+    def ensure_native_stopped(self):
+        """Do not release cooperative admission while an isolated model can run.
+
+        An absolute monotonic-deadline PID1 watchdog is armed independently of the Docker
+        daemon. If daemon operations cannot verify shutdown, hold the lease past
+        that deadline and fail qualification rather than claiming cleanup.
+        """
+        name = self.native_name
+        if not name:
+            return
+        with contextlib.suppress(Exception):
+            logs = subprocess.run(['docker', 'logs', name], capture_output=True, timeout=3)
+            (self.release / (name + '.log')).write_bytes(logs.stdout + logs.stderr)
+        for attempt in range(2):
+            try:
+                removed = subprocess.run(['docker', 'rm', '-fv', name], capture_output=True, timeout=8)
+                if removed.returncode == 0:
+                    self.owned = [item for item in self.owned if item != name]
+                    self.native_name = None
+                    return
+            except Exception:
+                pass
+            try:
+                subprocess.run(['docker', 'kill', '--signal', 'KILL', name], capture_output=True, timeout=5)
+                observed = subprocess.run(['docker', 'inspect', name], capture_output=True, timeout=5)
+                if observed.returncode == 0 and json.loads(observed.stdout)[0]['State']['Running'] is False:
+                    return
+                if observed.returncode and (b'No such object' in observed.stderr or b'No such container' in observed.stderr):
+                    self.owned = [item for item in self.owned if item != name]
+                    self.native_name = None
+                    return
+            except Exception:
+                pass
+        # The native PID1 watchdog deadline is fixed when the slot is acquired,
+        # not when Docker eventually starts the container. Delayed creation
+        # therefore cannot extend its runtime past the lease's safety reserve.
+        if self.native_deadline_monotonic is None:
+            raise RuntimeError('NATIVE_WATCHDOG_NOT_ARMED')
+        while time.monotonic() <= self.native_deadline_monotonic + 5:
+            print('Waiting for the isolated model shutdown watchdog; the CPU slot remains held.', flush=True)
+            time.sleep(min(20, max(.1, self.native_deadline_monotonic + 5 - time.monotonic())))
+        raise RuntimeError('NATIVE_SHUTDOWN_UNVERIFIED_AFTER_WATCHDOG')
 
     def cleanup(self):
         errors, remaining = [], []
@@ -259,12 +318,16 @@ class Stage:
             time.sleep(.25)
         else:
             raise RuntimeError('DISPOSABLE_DATABASE_NOT_READY')
+        self.check_slot()
+        self.native_name = ner_name
+        self.native_deadline_monotonic = self.slot.native_deadline_monotonic
+        watchdog = native_watchdog(self.slot.native_deadline_monotonic)
         self.start(ner_name, '--detach', *limits(ner_name, network, '65534:65534', '4g', '2'),
                    '--network-alias', 'vector-privacy-ner', '--mount', f'type=bind,src={work},dst=/work,readonly',
                    '--mount', f'type=bind,src={token},dst=/run/secrets/vector_privacy_ner_token,readonly',
                    '--env', 'HF_HOME=/tmp/hf', '--env', 'HF_HUB_OFFLINE=1', '--env', 'TRANSFORMERS_OFFLINE=1',
                    '--env', 'TOKENIZERS_PARALLELISM=false', '--env', 'VECTOR_PRIVACY_NER_IDLE_SECONDS=3',
-                   native_image, 'python', '/work/server.py')
+                   '--entrypoint', 'python', native_image, '-c', watchdog)
         self.start(app_name, '--detach', *limits(app_name, network, '1001:1001', '1g'),
                    '--network-alias', 'privacy-test-app', '--env-file', str(env),
                    '--mount', f'type=bind,src={token},dst=/run/secrets/vector_privacy_ner_token,readonly',
@@ -300,14 +363,43 @@ def main():
     args = parser.parse_args()
     if any(part.is_symlink() for part in (args.lock_file, *args.lock_file.parents)):
         raise SystemExit('Symlink lock paths are not supported.')
-    descriptor = os.open(args.lock_file, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    descriptor = os.open(args.lock_file, os.O_WRONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    metadata = os.fstat(descriptor)
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.geteuid():
+        os.close(descriptor)
+        raise SystemExit('Existing operator lock must be a regular file owned by the executing user.')
     with os.fdopen(descriptor, 'a') as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             raise SystemExit('Another release operation holds the operator lock.')
-        stage_main(args)
+        with termination_handler():
+            stage_main(args)
 
+
+
+@contextlib.contextmanager
+def uninterrupted_cleanup():
+    previous = {sig: signal.signal(sig, signal.SIG_IGN) for sig in (signal.SIGTERM, signal.SIGINT)}
+    try:
+        yield
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
+@contextlib.contextmanager
+def termination_handler():
+    previous = signal.getsignal(signal.SIGTERM)
+    def terminate(signum, frame):
+        # A repeated termination request must not interrupt cleanup midway.
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        raise RuntimeError('STAGE_TERMINATED')
+    signal.signal(signal.SIGTERM, terminate)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous)
 
 def stage_main(args):
     if not re.fullmatch('[a-f0-9]{40}', args.revision) or not re.fullmatch('sha256:[a-f0-9]{64}', args.native_image):
@@ -323,9 +415,11 @@ def stage_main(args):
     release.mkdir(mode=0o700)
     stage = Stage(args, release)
     report = {'passed': False, 'production_activated': False, 'messages_sent': 0, 'cloud_calls': 0, 'revision': args.revision}
-    before = stage.fingerprint()
+    before = None
     print('Private stage evidence: ' + str(release), flush=True)
     try:
+        before = stage.fingerprint()
+        (release / 'before.json').write_text(json.dumps(before, indent=2) + '\n')
         baseline = json.loads(args.baseline.read_text())
         validate_baseline(baseline, before['containers'], args.app, args.worker, before['compose'])
         for relative, expected in baseline.get('host_source_hashes', {}).items():
@@ -351,7 +445,7 @@ def stage_main(args):
         image_tag = 'vector-web-stage:' + release.name
         environment = dict(os.environ, DOCKER_BUILDKIT='0')
         print('Build with two CPUs and 4 GiB maximum; unsupported limits fail closed.', flush=True)
-        stage.run('docker', 'build', '--pull=false', '--memory', '4g', '--memory-swap', '4g',
+        stage.run('docker', 'build', '--force-rm', '--pull=false', '--memory', '4g', '--memory-swap', '4g',
                   '--cpu-period', '100000', '--cpu-quota', '200000', '-f', str(context / 'Dockerfile.stage'),
                   '-t', image_tag, str(context), timeout=1200, environment=environment)
         image = json.loads(stage.run('docker', 'image', 'inspect', image_tag))[0]['Id']
@@ -364,9 +458,17 @@ def stage_main(args):
             finally:
                 # Destroy the model-bearing test container before releasing the
                 # shared CPU slot, including on assertions or interrupted scans.
-                report['cleanup_errors'] = stage.cleanup()
-                if report['cleanup_errors']:
-                    raise RuntimeError('ISOLATED_CLEANUP_FAILED')
+                with uninterrupted_cleanup():
+                    shutdown_error = None
+                    try:
+                        stage.ensure_native_stopped()
+                    except Exception as exc:
+                        shutdown_error = exc
+                    report['cleanup_errors'] = stage.cleanup()
+                    if shutdown_error is not None:
+                        raise shutdown_error
+                    if report['cleanup_errors']:
+                        raise RuntimeError('ISOLATED_CLEANUP_FAILED')
         stage.slot = None
         report['passed'] = True
     except Exception as exc:
@@ -379,9 +481,12 @@ def stage_main(args):
         except Exception:
             report['cleanup_verified'] = False
         try:
-            report['production_unchanged'] = stage.fingerprint() == before
-        except Exception:
+            after = stage.fingerprint()
+            report['production_unchanged'] = before is not None and after == before
+        except Exception as exc:
+            after = {'snapshot_error': type(exc).__name__}
             report['production_unchanged'] = False
+        (release / 'after.json').write_text(json.dumps(after, indent=2) + '\n')
         report['passed'] = report['passed'] and report['cleanup_verified'] and report['production_unchanged']
         (release / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))

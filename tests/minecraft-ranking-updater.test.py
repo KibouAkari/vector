@@ -1,6 +1,8 @@
 """Pure guards for a code-only assistant rollout. No Docker or production actions."""
 import importlib.util
 import json
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -17,6 +19,13 @@ class Guards(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)
+
+    def test_missing_release_lock_does_not_create_a_parallel_lock(self):
+        lock = self.root / 'mistyped.lock'
+        result = subprocess.run([sys.executable, spec.origin, '--release-root', str(self.root),
+            '--lock-file', str(lock)], capture_output=True, timeout=5)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(lock.exists())
 
     def test_private_joke_is_preserved_without_reformatting_other_source(self):
         old = "def old():\n    return 'Example captain natürlich. Völlig unvoreingenommene Vector-Meinung.'\n"
@@ -114,6 +123,77 @@ class Guards(unittest.TestCase):
         with patch.object(updater, 'run', return_value=('assistant ' + 'c' * 64).encode()):
             with self.assertRaisesRegex(RuntimeError, 'RUNNING_SERVICE_PROFILE_DRIFT'):
                 updater.validate_live(config, {'assistant': row}, profile)
+
+    def rollback_fixture(self):
+        original_code = self.root / 'original-code'
+        candidate_code = self.root / 'candidate-code'
+        original_code.mkdir()
+        candidate_code.mkdir()
+        (original_code / 'runtime.py').write_text('original')
+        (candidate_code / 'runtime.py').write_text('candidate')
+        active = self.root / 'active.yml'
+        active.write_bytes(b'candidate')
+        release = self.root / 'release'
+        release.mkdir()
+        (release / 'compose.original').write_bytes(b'original')
+        profile = {'name': 'synthetic', 'services': {'assistant': {'image': 'synthetic-image'}}}
+        config = dict(schema=1, container='assistant', service='assistant', compose=str(active), project_directory=str(self.root),
+            expected_image='sha256:' + 'a' * 64, expected_runtime_sha256=updater.digest(b'original'),
+            expected_compose_sha256=updater.digest(b'original'), expected_profile_sha256=updater.digest(updater.canonical(profile)))
+        updater.write_private(release / 'operator.json', updater.canonical(config))
+        def row(generation, source):
+            return dict(Id=generation, Image=config['expected_image'], State=dict(StartedAt=generation),
+                        Mounts=[dict(Destination='/code', Source=str(source), RW=False)])
+        original = row('original', original_code)
+        candidate = row('candidate', candidate_code)
+        restored = row('restored', original_code)
+        record = dict(candidate_compose_sha256=updater.digest(b'candidate'), original_code=str(original_code), candidate_code=str(candidate_code),
+            original_files=updater.tree_files(original_code), candidate_files=updater.tree_files(candidate_code), other_containers={},
+            original_identity=updater.identity(original), deployed_identity=updater.identity(candidate))
+        updater.write_private(release / 'record.json', updater.canonical(record))
+        return release, active, profile, candidate, restored
+
+    def test_rollback_resolved_profile_or_image_drift_cannot_consume_precondition(self):
+        release, active, profile, candidate, restored = self.rollback_fixture()
+        with patch.object(updater, 'compose', return_value=dict(profile, changed='environment')):
+            with self.assertRaisesRegex(RuntimeError, 'ORIGINAL_RESOLVED_PROFILE_DRIFT'):
+                updater.rollback(release)
+        self.assertEqual(active.read_bytes(), b'candidate')
+        self.assertFalse((release / 'rollback.progress.json').exists())
+        with patch.object(updater, 'compose', return_value=profile), patch.object(updater, 'verify_image', side_effect=RuntimeError('IMAGE_TAG_DRIFT')):
+            with self.assertRaisesRegex(RuntimeError, 'IMAGE_TAG_DRIFT'):
+                updater.rollback(release)
+        self.assertEqual(active.read_bytes(), b'candidate')
+        self.assertFalse((release / 'rollback.progress.json').exists())
+
+    def test_failed_recreate_has_owned_resume_and_rejects_foreign_generation(self):
+        release, active, profile, candidate, restored = self.rollback_fixture()
+        with patch.object(updater, 'compose', return_value=profile), patch.object(updater, 'verify_image'), patch.object(updater, 'inventory', return_value={'assistant': candidate}), patch.object(updater, 'recreate', side_effect=RuntimeError('synthetic failure')):
+            with self.assertRaisesRegex(RuntimeError, 'synthetic failure'):
+                updater.rollback(release)
+        self.assertEqual(active.read_bytes(), b'original')
+        marker = json.loads((release / 'rollback.progress.json').read_bytes())
+        self.assertEqual(marker['phase'], 'failed')
+        self.assertEqual(marker['generation'], list(updater.identity(candidate)))
+        with patch.object(updater, 'compose', return_value=profile), patch.object(updater, 'verify_image'), patch.object(updater, 'inventory', return_value={'assistant': restored}), patch.object(updater, 'recreate') as recreate:
+            with self.assertRaisesRegex(RuntimeError, 'RESUME_GENERATION_OR_COMPOSE_DRIFT'):
+                updater.rollback(release)
+            recreate.assert_not_called()
+        with patch.object(updater, 'compose', return_value=profile), patch.object(updater, 'verify_image'), patch.object(updater, 'inventory', side_effect=[{'assistant': candidate}, {'assistant': restored}]), patch.object(updater, 'recreate'), patch.object(updater, 'await_health'):
+            updater.rollback(release)
+        self.assertEqual(json.loads((release / 'rollback.progress.json').read_bytes())['phase'], 'verified')
+
+    def test_failed_health_records_new_owned_generation_for_resume(self):
+        release, active, profile, candidate, restored = self.rollback_fixture()
+        with patch.object(updater, 'compose', return_value=profile), patch.object(updater, 'verify_image'), patch.object(updater, 'inventory', side_effect=[{'assistant': candidate}, {'assistant': restored}]), patch.object(updater, 'recreate'), patch.object(updater, 'await_health', side_effect=RuntimeError('synthetic health failure')):
+            with self.assertRaisesRegex(RuntimeError, 'synthetic health failure'):
+                updater.rollback(release)
+        marker = json.loads((release / 'rollback.progress.json').read_bytes())
+        self.assertEqual(marker['phase'], 'failed')
+        self.assertEqual(marker['generation'], list(updater.identity(restored)))
+        with patch.object(updater, 'compose', return_value=profile), patch.object(updater, 'verify_image'), patch.object(updater, 'inventory', return_value={'assistant': restored}), patch.object(updater, 'recreate'), patch.object(updater, 'await_health'):
+            updater.rollback(release)
+        self.assertEqual(json.loads((release / 'rollback.progress.json').read_bytes())['phase'], 'verified')
 
     def test_private_config_requires_complete_pins_and_owner_only_permissions(self):
         compose = self.root / 'compose.json'

@@ -2,6 +2,14 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-19 — Harden recovery cleanup and preserve ranking subjects (PR #97)
+
+- Retain full private before/after fingerprints, including paused and failed runtime states. Require the existing owned release lock and remove legacy build intermediates on failures.
+- Unwind controlled termination through cleanup. Verify native shutdown while holding CPU admission, with an independent monotonic PID1 deadline before lease expiry; failed cleanup cannot be reported as success.
+- Keep actual player names separate from category typo aliases and reject unknown named subjects before comparing players.
+- Verify the saved original resolved Compose profile and image before rollback writes. Track owned rollback progress and container generations so interrupted recovery can resume without accepting unrelated drift.
+- Synthetic failure tests cover these boundaries; real Docker/native qualification and production updates remain operator-run, separate from CI.
+
 ## 2026-10-19 — Fresh comparisons and bounded Minecraft leaderboards (PR #96)
 
 - Compare one saved statistic for exactly two known players with the actual counts, direction, difference and ties. Read fresh data for each request.

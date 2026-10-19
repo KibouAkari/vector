@@ -164,10 +164,21 @@ def tree_files(root):
     return files
 
 
+def sync_directory(path):
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def write_private(path, raw):
     with path.open('xb') as handle:
         os.chmod(path, 0o600)
         handle.write(raw)
+        handle.flush()
+        os.fsync(handle.fileno())
+    sync_directory(path.parent)
 
 
 def replace_atomic(path, raw):
@@ -178,6 +189,7 @@ def replace_atomic(path, raw):
         os.chown(temporary, previous.st_uid, previous.st_gid)
         os.chmod(temporary, stat.S_IMODE(previous.st_mode))
         os.replace(temporary, path)
+        sync_directory(path.parent)
     finally:
         temporary.unlink(missing_ok=True)
 
@@ -221,12 +233,15 @@ def changed_profile(profile, service, source):
     return candidate
 
 
-def recreate(config):
-    profile = compose(config, Path(config['compose']))
+def verify_image(config, profile):
     image = profile['services'][config['service']]['image']
     inspected = json.loads(run(['docker', 'image', 'inspect', image]))
     if len(inspected) != 1 or inspected[0]['Id'] != config['expected_image']:
         raise RuntimeError('IMAGE_TAG_DRIFT')
+
+
+def recreate(config):
+    verify_image(config, compose(config, Path(config['compose'])))
     run(['docker', 'compose', '--project-directory', config['project_directory'], '-f', config['compose'],
          'up', '-d', '--no-deps', '--no-build', '--pull', 'never', '--force-recreate', config['service']], timeout=60)
 
@@ -252,33 +267,96 @@ def rollback(release, *, allow_missing=False):
     config = read_config(release / 'operator.json')
     record = json.loads((release / 'record.json').read_bytes())
     active = Path(config['compose'])
-    if digest(active.read_bytes()) != record['candidate_compose_sha256']:
-        raise RuntimeError('ROLLBACK_COMPOSE_DRIFT')
-    rows = inventory()
+    original_compose = (release / 'compose.original').read_bytes()
+    if digest(original_compose) != config['expected_compose_sha256']:
+        raise RuntimeError('ROLLBACK_ORIGINAL_COMPOSE_DRIFT')
+    # Saved bytes can resolve differently after env_file/interpolation changes.
+    original_profile = compose(config, release / 'compose.original')
+    if digest(canonical(original_profile)) != config['expected_profile_sha256']:
+        raise RuntimeError('ROLLBACK_ORIGINAL_RESOLVED_PROFILE_DRIFT')
+    verify_image(config, original_profile)
     expected_others = {k: tuple(v) for k, v in record['other_containers'].items()}
-    if others(rows, config['container']) != expected_others:
-        raise RuntimeError('ROLLBACK_UNRELATED_CONTAINER_DRIFT')
-    row = rows.get(config['container'])
-    if row is None and not allow_missing:
-        raise RuntimeError('ROLLBACK_ASSISTANT_MISSING')
-    if row is not None:
-        mounts = [m for m in row.get('Mounts', []) if m.get('Destination') == '/code']
-        if (row['Image'] != config['expected_image'] or len(mounts) != 1
-                or mounts[0]['Source'] not in (record['candidate_code'], record['original_code'])
-                or mounts[0]['Source'] == record['original_code'] and identity(row) != tuple(record['original_identity'])):
-            raise RuntimeError('ROLLBACK_ASSISTANT_DRIFT')
-    if row is not None and record.get('deployed_identity') and identity(row) != tuple(record['deployed_identity']):
-        raise RuntimeError('ROLLBACK_DEPLOYMENT_GENERATION_DRIFT')
     if tree_files(Path(record['candidate_code'])) != record['candidate_files']:
         raise RuntimeError('ROLLBACK_CANDIDATE_CODE_DRIFT')
     if tree_files(Path(record['original_code'])) != record['original_files']:
         raise RuntimeError('ROLLBACK_ORIGINAL_CODE_DRIFT')
-    original_compose = (release / 'compose.original').read_bytes()
-    if digest(original_compose) != config['expected_compose_sha256']:
-        raise RuntimeError('ROLLBACK_ORIGINAL_COMPOSE_DRIFT')
-    replace_atomic(active, original_compose)
-    recreate(config)
-    await_health(config, expected_others, Path(record['original_code']))
+
+    marker = release / 'rollback.progress.json'
+    progress = None
+    if marker.exists() or marker.is_symlink():
+        checked_path(marker)
+        meta = marker.stat()
+        if meta.st_uid != os.getuid() or stat.S_IMODE(meta.st_mode) != 0o600 or meta.st_size > 16384:
+            raise RuntimeError('ROLLBACK_PRIVATE_PROGRESS_REQUIRED')
+        progress = json.loads(marker.read_bytes())
+        if (set(progress) != {'schema', 'record_sha256', 'phase', 'generation'} or progress['schema'] != 1
+                or progress['record_sha256'] != digest(canonical(record))
+                or progress['phase'] not in ('prepared', 'compose_restored', 'recreating', 'recreated', 'failed', 'verified')):
+            raise RuntimeError('ROLLBACK_PROGRESS_INVALID')
+    rows = inventory()
+    if others(rows, config['container']) != expected_others:
+        raise RuntimeError('ROLLBACK_UNRELATED_CONTAINER_DRIFT')
+    row = rows.get(config['container'])
+    current_generation = list(identity(row)) if row is not None else None
+    active_hash = digest(active.read_bytes())
+    if progress is not None:
+        # Only an owned interrupted rollback permits original Compose on resume.
+        permitted = {config['expected_compose_sha256']}
+        if progress['phase'] == 'prepared':
+            permitted.add(record['candidate_compose_sha256'])
+        if active_hash not in permitted or current_generation != progress['generation']:
+            raise RuntimeError('ROLLBACK_RESUME_GENERATION_OR_COMPOSE_DRIFT')
+    else:
+        if active_hash != record['candidate_compose_sha256']:
+            raise RuntimeError('ROLLBACK_COMPOSE_DRIFT')
+        if row is None and not allow_missing:
+            raise RuntimeError('ROLLBACK_ASSISTANT_MISSING')
+        if row is not None and record.get('deployed_identity') and identity(row) != tuple(record['deployed_identity']):
+            raise RuntimeError('ROLLBACK_DEPLOYMENT_GENERATION_DRIFT')
+    if row is not None:
+        mounts = [m for m in row.get('Mounts', []) if m.get('Destination') == '/code']
+        if (row['Image'] != config['expected_image'] or len(mounts) != 1 or mounts[0].get('RW')
+                or mounts[0]['Source'] not in (record['candidate_code'], record['original_code'])):
+            raise RuntimeError('ROLLBACK_ASSISTANT_DRIFT')
+        if (progress is None and mounts[0]['Source'] == record['original_code']
+                and identity(row) != tuple(record['original_identity'])):
+            raise RuntimeError('ROLLBACK_ASSISTANT_DRIFT')
+    if progress is None:
+        progress = dict(schema=1, record_sha256=digest(canonical(record)), phase='prepared', generation=current_generation)
+        write_private(marker, canonical(progress))
+
+    def save(phase):
+        progress['phase'] = phase
+        replace_atomic(marker, canonical(progress))
+
+    if progress['phase'] == 'verified':
+        await_health(config, expected_others, Path(record['original_code']))
+    else:
+        if active_hash == record['candidate_compose_sha256']:
+            replace_atomic(active, original_compose)
+        save('compose_restored')
+        try:
+            save('recreating')
+            recreate(config)
+            after = inventory()
+            if others(after, config['container']) != expected_others:
+                raise RuntimeError('ROLLBACK_UNRELATED_CONTAINER_DRIFT')
+            observed = after.get(config['container'])
+            if observed is None:
+                raise RuntimeError('ROLLBACK_RECREATED_ASSISTANT_MISSING')
+            mounts = [m for m in observed.get('Mounts', []) if m.get('Destination') == '/code']
+            if (observed['Image'] != config['expected_image'] or len(mounts) != 1
+                    or mounts[0].get('RW') or mounts[0]['Source'] != record['original_code']):
+                raise RuntimeError('ROLLBACK_RECREATED_ASSISTANT_DRIFT')
+            progress['generation'] = list(identity(observed))
+            save('recreated')
+            await_health(config, expected_others, Path(record['original_code']))
+            save('verified')
+        except Exception:
+            # Keep the exact last known generation. Uncertain/new generations
+            # cannot be adopted by a later retry merely because paths match.
+            save('failed')
+            raise
     print(json.dumps({'rolled_back': True, 'only_assistant_recreated': True, 'messages_sent': 0}))
 
 
@@ -296,7 +374,12 @@ def main():
     checked_path(args.lock_file.parent, directory=True)
     if args.lock_file.is_symlink():
         raise RuntimeError('UNSAFE_LOCK')
-    with args.lock_file.open('a') as lock:
+    descriptor = os.open(args.lock_file, os.O_WRONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    metadata = os.fstat(descriptor)
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.geteuid():
+        os.close(descriptor)
+        raise RuntimeError('EXISTING_OWNED_RELEASE_LOCK_REQUIRED')
+    with os.fdopen(descriptor, 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if args.rollback:
             return rollback(args.rollback)
