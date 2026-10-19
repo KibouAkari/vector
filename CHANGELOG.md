@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-19 — Record observed player-portrait deployment (PR #90)
+
+- Owner confirms PR89 deployed at074446Z-d611cc, only assistant recreated, Minecraft/current addon unchanged and saved advancements available. No new restart/welcome required.
+- Actual isolated qualification passed:1 local social call,177 input/33 output tokens,14.260s; seven synthetic deterministic cases0.045–0.070s. Unknown usage/cloud/API fees/messages0. These measurements do not claim live latency or a real-channel portrait test.
+- Update authoritative handoff with fegcraft-portraits.json, exact release/verifier/rollback and remaining manual chat verification. Documentation only; no runtime changes, server action, model test or message.
+
 ## 2026-10-19 — Fresh player portraits and natural smalltalk routing (PR #89)
 
 - Owner confirms PR88 same-container restart/load verified at071209Z-f46d18. Eyy/Discord input and the best-player joke were observed; feelings smalltalk still fell into clarification. Record actual state before adding another assistant-only update.
