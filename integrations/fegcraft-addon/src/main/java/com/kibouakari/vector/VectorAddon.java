@@ -56,7 +56,7 @@ import java.util.regex.Pattern;
 /** Uses the installed bridge; no separate bot or Minecraft commands. */
 public final class VectorAddon implements DiscordIntegrationAddon {
     private static final Logger LOG = Logger.getLogger("VectorMinecraft");
-    private static final Pattern GREETING = Pattern.compile("^\\s*(hi|hey|hallo|yo{1,3}|hoi|huhu|hello)\\s+vector(?:\\s*[,!:?]\\s*|\\s+|$)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GREETING = Pattern.compile("^\\s*(hi|hey|hallo|yo{1,5}|ey{1,4}|hoi|huhu|hello|moin|servus|guten\\s+(?:morgen|tag|nachmittag|abend)|guete\\s+(?:morge|tag|abig))\\s+vector(?:\\s*[,!:?]\\s*|\\s+|$)", Pattern.CASE_INSENSITIVE);
     private static final Pattern UNSAFE = Pattern.compile("[/\\\\](give|op|deop|execute|gamemode|tp|teleport|seed|summon|kill|setblock|fill|sudo|bin|etc|opt)\\b|\\b(seed|passwort|password|api.?key|token|rcon|docker|curl|wget|bash|powershell|cheat|gamemode)\\b|https?://|www\\.|@|`|[<>\\x00-\\x1f\\x7f]|\\u00a7", Pattern.CASE_INSENSITIVE);
     private static final URI ENDPOINT = URI.create("http://vector-fegcraft-assistant:8090/v1/minecraft");
     private static final Pattern BLOCK_USE = Pattern.compile("platzier|gesetzt|placed", Pattern.CASE_INSENSITIVE);
@@ -510,4 +510,5 @@ public final class VectorAddon implements DiscordIntegrationAddon {
         if (ownerWelcomeTimer != null) ownerWelcomeTimer.shutdownNow();
     }
 }
+
 

@@ -148,3 +148,14 @@ def block_leaders(data, category, block_items=()):
     return [(identifier, count) for identifier, count in sorted(totals.items()) if count == highest and count > 0]
 
 
+
+
+
+def mined_leaders(data, identifiers):
+    """Saved block counters, not item drops or current inventory. Include ties."""
+    require_complete(data)
+    if not isinstance(identifiers, tuple) or not 1 <= len(identifiers) <= 3:
+        raise ValueError('Unsupported block group')
+    counts = [(p['name'], sum(p['mined'].get(k, 0) for k in identifiers)) for p in data['players']]
+    highest = max(v for _, v in counts)
+    return [{'name': n, 'value': v} for n, v in sorted(counts, key=lambda row: row[0].casefold()) if v == highest and v > 0]

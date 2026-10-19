@@ -67,6 +67,15 @@ public final class VectorAddonTest {
 
     public static void main(String[] args) throws Exception {
         ownerWelcome();
+        var field = VectorAddon.class.getDeclaredField("GREETING"); field.setAccessible(true);
+        var greetings = (java.util.regex.Pattern) field.get(null);
+        for (String greeting : List.of("Eyy", "yooo", "yo", "hello", "moin", "guten morgen", "guten nachmittag", "guten abend", "guete morge")) {
+            if (!greetings.matcher(greeting + " VEcToR, synthetic question").find()) throw new AssertionError("Greeting rejected: " + greeting);
+        }
+        for (String ignored : List.of("ordinary chat", "heute moin Vector", "moin VectorSuffix", "guten Morgen zusammen", "eyyyyyyyyy Vector")) {
+            if (greetings.matcher(ignored).find()) throw new AssertionError("Unaddressed message accepted");
+        }
+
         if (!VectorAddon.discordName("Example Discord").equals("Example Discord")) throw new AssertionError("Discord display name changed");
         if (!VectorAddon.discordName("@<>\n").equals("DiscordUser")) throw new AssertionError("Unsafe Discord name accepted");
         var serializer = dcshadow.net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson();
