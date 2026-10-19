@@ -491,6 +491,7 @@ class Assistant:
                 if self.ranking_pages[key][2]<=now:self.ranking_pages.pop(key,None)
             prior=self.ranking_pages.pop(scope,None)
             if all_top:
+                if explicit_subjects(q):return 'meinst du die serverweiten Ranglisten oder die Werte eines bestimmten Spielers?'
                 limit=int(all_top[1])
                 if not 1<=limit<=10:return 'frage bitte nach Top 1 bis Top 10.'
                 remaining=list(stats.METRICS)

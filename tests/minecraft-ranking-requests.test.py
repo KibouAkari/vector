@@ -83,6 +83,7 @@ class RankingRequests(unittest.TestCase):
         self.assertIn('letzte Kategorie',self.ask('weiter')['text'])
         self.assertIsNone(self.ai.ranking_page('weiter',('minecraft',self.ids[0])))
         self.assertIn('Top 1 bis Top 10',self.ask('Top 999 aller Rekorde')['text'])
+        self.assertIn('serverweiten Ranglisten',self.ask('Top 5 aller Rekorde von UnknownPlayer')['text'])
 
     def test_stat_typo_gameplay_and_bounded_smalltalk(self):
         self.ai.state.clock=lambda: self.serial*61
