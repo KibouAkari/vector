@@ -66,7 +66,8 @@ class IntentRepair(unittest.TestCase):
             answer = self.ask('wie viele spieler waren schon auf dem server')
             self.assertIn('3 Spieler erfasst', answer); self.assertNotIn('Claim', answer)
         for q in ('wie viele Spieler können in meinem Claim bauen?', 'wie viele Spieler sind gerade online?',
-                  'wie viele Spieler sind in meiner Party?', 'wie viele Spieler dürfen gleichzeitig auf dem Server sein?'):
+                  'wie viele Spieler sind in meiner Party?', 'wie viele Spieler dürfen gleichzeitig auf dem Server sein?',
+                  'wie viele Spieler habe ich auf dem Server besiegt?', 'wie viele Spieler wurden auf dem Server getötet?'):
             self.assertIsNone(self.ai.stat_answer(q))
         self.assertEqual(self.knowledge.documentation.search('wie viele Spieler waren schon auf dem Server', ['openpartiesandclaims']), [])
         self.assertIn('Player Groups', self.ask('wie kann ein anderer Spieler in meinem Claim bauen?'))

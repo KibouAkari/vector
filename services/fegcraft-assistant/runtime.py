@@ -396,9 +396,9 @@ class Assistant:
             return 'einen objektiv besten Spieler gibt es nicht. Meinst du Mobkills, Spielerkills, Spielzeit oder einen anderen Rekord?'
         mined = bool(re.search(r'abgebaut|abgebau|abbau|abzubauen|mined|\bmining\b', q))
         ores = [(label, ids) for label, (pattern, ids) in ORE_WORDS.items() if mined and re.search(pattern, q)]
-        population = bool(not selected and not ores and re.search(r'\b(?:wie\s+viele|wieviele|anzahl(?:\s+der)?)\s+(?:spieler(?:innen)?|players?)\b', q)
+        population = bool(not selected and not ores and not self_reference and re.search(r'\b(?:wie\s+viele|wieviele|anzahl(?:\s+der)?)\s+(?:spieler(?:innen)?|players?)\b', q)
                           and re.search(r'\bserver\b|fegcraft|\binsgesamt\b|\bschon\b|\bbisher\b', q)
-                          and not re.search(r'claim|part(?:y|ys|ies)|gleichzeitig|online|gerade|aktuell|momentan|können|koennen|dürfen|duerfen|limit', q))
+                          and not re.search(r'claim|part(?:y|ys|ies)|gleichzeitig|online|gerade|aktuell|momentan|können|koennen|dürfen|duerfen|limit|kill|getötet|getoetet|besiegt|gestorben|erlegt', q))
         blocks = bool(re.search(r'\bblock\b|blöck|bloeck|\bblocks\b', q))
         block_category = ('used' if re.search(r'platzier|gesetzt|placed', q) else 'mined' if re.search(r'abgebaut|abgebau|gebaut.*ab|mined', q) else None) if blocks else None
         if not selected and not is_record and not block_category and not ores and not population and not wants_ranks and not re.search(r'statistik|statistic|\bstats\b|rangliste|leaderboard', q):
