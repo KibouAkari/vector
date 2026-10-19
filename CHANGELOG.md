@@ -18,4 +18,5 @@ This file describes product and engineering changes. Deployment diaries, persona
 - Document Minecraft as an optional independent integration, with operator-supplied data locations and aliases.
 - Build container dependencies with `npm ci` and the committed lockfile.
 - Refresh README and engineering guidance. Preserve authorization role identifiers and existing private Git history.
+- Reject dangling/directory symlinks in source checks and detect configuration disappearance during a read-only inventory.
 - Add a source publication check and read-only web deployment inventory; no game deployment or restart is performed by this change.

@@ -14,4 +14,10 @@ class Publication(unittest.TestCase):
    root=Path(directory);(root/'readme.md').write_text('Synthetic community')
    (root/'node_modules').mkdir();(root/'node_modules/vendor.txt').write_text('Synthetic community')
    self.assertEqual(module.audit(root,['COMMUNITY']),[('readme.md','operator-deny-list')])
+ def test_dangling_and_directory_symlinks_require_review(self):
+  with tempfile.TemporaryDirectory() as directory:
+   root=Path(directory);(root/'folder').mkdir()
+   (root/'directory-link').symlink_to(root/'folder',target_is_directory=True)
+   (root/'dangling-link').symlink_to('/private/nonexistent-example')
+   self.assertEqual(module.audit(root),[('dangling-link','symlink-review'),('directory-link','symlink-review')])
 if __name__=='__main__':unittest.main()

@@ -88,6 +88,7 @@ test('configured server aliases retain actual tool requirements in explicit clou
     for(const label of ['Example Realm','Realm[1]']) {
       assert.equal(classifyExecution({taskText:'Welche Rekorde hat ExampleOne auf '+label+'?',allowServer:true}).requirements.server,true);
       assert.equal(classifyExecution({taskText:'Welche Rekorde hat ExampleOne auf '+label+'?',allowServer:false}).requirements.server,false);
+      assert.equal(classifyExecution({taskText:'und für ExampleTwo?',allowServer:true,recentMessages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf '+label+'?'}]}).requirements.server,true);
     }
     assert.equal(classifyExecution({taskText:'Schreibe eine Mail',allowServer:true,recentMessages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf Example Realm?'}]}).requirements.server,false);
   } finally {if(old===undefined)delete process.env.VECTOR_MINECRAFT_SERVER_ALIASES;else process.env.VECTOR_MINECRAFT_SERVER_ALIASES=old;}

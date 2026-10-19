@@ -10,9 +10,10 @@ PRIVATE = re.compile(r'/root/vector-workspace|/releases/vector-[\w-]+-20\d{6}T\d
 def audit(root, denied=()):
     failures=[]
     for path in sorted(root.rglob('*')):
-        if set(path.relative_to(root).parts)&SKIP or not path.is_file():continue
+        if set(path.relative_to(root).parts)&SKIP:continue
         if path.is_symlink():
             failures.append((str(path.relative_to(root)),'symlink-review'));continue
+        if not path.is_file():continue
         try:text=path.read_text()
         except UnicodeError:continue
         if path.resolve()!=Path(__file__).resolve() and PRIVATE.search(text):

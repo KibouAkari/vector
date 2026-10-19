@@ -11,6 +11,9 @@ def run(args,timeout=20):
     if result.returncode:raise RuntimeError('READ_ONLY_COMMAND_FAILED')
     return result.stdout
 
+def configuration_fingerprint(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+
 def snapshot():
     ids=run(['docker','ps','-aq']).split()
     if not ids:raise RuntimeError('NO_CONTAINERS')
@@ -35,7 +38,7 @@ def main():
     args=parser.parse_args()
     before=snapshot()
     if args.app not in before:raise RuntimeError('WEB_APP_NOT_FOUND')
-    compose=hashlib.sha256(args.compose.read_bytes()).hexdigest() if args.compose.is_file() else None
+    compose=configuration_fingerprint(args.compose)
     # Read only known source files. Never print environment values, tokens, paths or configuration.
     code="""const fs=require('node:fs'),crypto=require('node:crypto');
 const hashes={};
@@ -54,7 +57,7 @@ server_aliases_configured:Boolean(process.env.VECTOR_MINECRAFT_SERVER_ALIASES)})
         source_hashes[name]=hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() and not path.is_symlink() else None
     runtime=json.loads(run(['docker','exec',args.app,'node','-e',code]))
     after=snapshot()
-    unchanged=before==after and (not args.compose.is_file() or hashlib.sha256(args.compose.read_bytes()).hexdigest()==compose)
+    unchanged=before==after and configuration_fingerprint(args.compose)==compose
     print(json.dumps({'read_only':True,'app':before[args.app],'worker':before.get(args.worker),
         'runtime':runtime,'host_source_hashes':source_hashes,'compose_sha256':compose,'production_unchanged':unchanged,
         'containers_observed':len(before),'model_calls':0,'database_writes':False,'messages_sent':0},indent=2))
