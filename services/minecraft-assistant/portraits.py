@@ -168,7 +168,7 @@ class PlayerPortraits:
             lead=intro+' '+' '.join(text for _,_,text in chosen)
         if len(lead)>350:lead=intro+' '+chosen[0][2]
         if chosen and previous%2:
-            lead=lead.replace('sprechen für ordentlich Baulust.', '– da wächst vermutlich mehr als nur eine kleine Hütte.').replace('sieht die Nachbarschaft für Monster ziemlich ungemütlich aus.', 'dürften Monster selten freiwillig Hallo sagen.').replace('friedliche Verhandlungen sind offenbar nicht immer die erste Wahl.', 'steckt wohl etwas Duell-Erfahrung drin; über einzelne Kämpfe sagen die Zahlen nichts.').replace('kennt der Respawn-Punkt vermutlich schon die Lieblingsposition.', 'wäre eine Treuekarte am Respawn-Punkt langsam angemessen.')
+            lead=lead.replace('sprechen für ordentlich Baulust.', '– da wächst vermutlich mehr als nur eine kleine Hütte.').replace('sieht die Nachbarschaft für Monster ziemlich ungemütlich aus.', 'dürften Monster selten freiwillig Hallo sagen.').replace('friedliche Verhandlungen sind offenbar nicht immer die erste Wahl.', 'das sieht nach etwas Duell-Erfahrung aus, auch wenn Zahlen nicht jeden Kampf erklären.').replace('kennt der Respawn-Punkt vermutlich schon die Lieblingsposition.', 'wäre eine Treuekarte am Respawn-Punkt langsam angemessen.')
         if len(lead)>350 and chosen:lead=intro+' '+chosen[0][2]
         with self.lock:
             for key in list(self.context):
