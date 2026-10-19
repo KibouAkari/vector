@@ -58,7 +58,7 @@ class Portraits(unittest.TestCase):
         self.assertIn('Example2',self.ask('gib mir eine Einschätzung von Example2',self.users[0]['uuid']))
 
     def test_authenticated_self_own_followup_expiry_and_discord_no_impersonation(self):
-        self.assertIn('du',self.ask('bin ich ein guter Spieler?',self.users[0]['uuid']))
+        self.assertTrue(self.ask('bin ich ein guter Spieler?',self.users[0]['uuid']).startswith('Du? '))
         self.assertIn('Example1',self.ask('und er?'))
         self.assertIn('eindeutigen',self.ask('und er?',scope=('discord',self.users[0]['uuid'])))
         self.assertIn('Minecraft-Spielernamen',self.ask('was hältst du von mir?',scope=('discord','unlinked')))
