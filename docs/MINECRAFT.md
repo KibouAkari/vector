@@ -34,3 +34,9 @@ The web adapter reads `usercache.json` and the configured statistics folder. Pat
 ## Rollout boundaries
 
 The generic source intentionally uses Minecraft-specific names, role names and example paths. It is not a migration for an existing installation. Do not replace live mounts, secrets or database roles merely because source names changed. Qualify a separate game rollout against the installed API, preserve world/player/mod state and tested backups, and keep rollback evidence. A one-time welcome needs durable replay protection and readiness confirmation. Never replay it during a web release.
+
+## Narrow ranking runtime update
+
+`scripts/deploy/update-minecraft-ranking-runtime.py` accepts private operator pins for a dedicated single-service Compose profile and its healthy current assistant. It stages a copy of the installed code, replaces only `runtime.py`, retains a uniquely identified configured best-player joke, and runs synthetic ranking tests in the same image without networking or secrets. Unknown code/profile shapes fail closed.
+
+The default only qualifies. Explicit `--activate` changes the read-only code bind and recreates only that assistant. Existing state, image, environment, input mounts and the game addon remain unchanged. Rollback verifies the owned Compose/code/container generation before restoring it. This updater does not migrate generic names into an existing installation or restart the Minecraft server. Keep its private configuration, observed hashes and release record outside Git.

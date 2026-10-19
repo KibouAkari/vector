@@ -398,10 +398,15 @@ class Assistant:
         if (getattr(self.knowledge,'personality',False) and re.search(r'grab|gräber|graves|rucksack|backpack',q)
                 and not re.search(r'wie oft|wie viele|meist|rekord|record|rang|statistik',q)):
             return None
+        # Correct only this unambiguous ranking typo, never arbitrary player names.
+        if re.search(r'\btop\s*\d+\b|\brangliste\b|\bleaderboard\b', q):
+            q = re.sub(r'\bmonkills\b', 'mobkills', q)
         selected = [key for key, pattern in METRIC_WORDS.items() if re.search(pattern, q)]
+        top_match = re.search(r'\btop\s*(\d+)\b', q)
+        comparison = bool(re.search(r'unterschied|differenz|vergleich|\bmehr\b.*\bals\b|\bweniger\b.*\bals\b', q))
         is_record = re.search(r'rekord|record', q)
         wants_ranks = bool(re.search(r'\br[äa]ng(?:e|en)?\b|\branks?\b|platzierung', q))
-        best = bool(re.search(r'\bbeste[rn]?\s+spieler\b', q))
+        best = bool(re.search(r'\bbeste[rn]?\s+(?:minecraft[ -]+)?spieler\b', q))
         self_reference = bool(re.search(r'\b(?:ich|von mir|für mich|fuer mich|mein(?:e[rmns]?)?|my)\b(?!\s+(?:server|minecraft))', q))
         if best and not selected:
             if getattr(self.knowledge,'personality',False):
@@ -428,8 +433,21 @@ class Assistant:
                 if len(people) != 1:
                     return 'für deinen Minecraft-Account fehlen gerade zugeordnete gespeicherte Statistiken.'
             # Never silently substitute the author for an unknown named player.
+            if comparison:
+                if len(people) != 2 or len(selected) != 1:
+                    return 'zum Vergleich brauche ich zwei vollständige Spielernamen und eine Kategorie, zum Beispiel Mobkills.'
+                metric = selected[0]
+                label, unit, *_ = stats.METRICS[metric]
+                first, second = sorted(people, key=lambda p: -p['values'][metric])
+                difference = first['values'][metric] - second['values'][metric]
+                if difference == 0:
+                    return first['name'] + ' und ' + second['name'] + ' liegen gleichauf: je ' + number(first['values'][metric], unit) + ' bei ' + label + '.'
+                return (first['name'] + ' hat ' + number(difference, unit) + ' mehr bei ' + label + ' als ' + second['name']
+                        + ' (' + number(first['values'][metric], unit) + ' gegenüber ' + number(second['values'][metric], unit) + ').')
             if len(people) > 1:
-                return 'bitte frage nach einem Spieler oder einer einzelnen Rangliste.'
+                return 'bitte frage nach einem Spieler oder vergleiche zwei Spieler in einer Kategorie.'
+            if top_match and (not 1 <= int(top_match[1]) <= 10 or len(selected) != 1 or people):
+                return 'frage bitte nach einer Rangliste mit Top 1 bis Top 10 und einer Kategorie, zum Beispiel Mobkills.'
             holders = bool(re.search(r'\brekorde?halter\b|\brecord.?holders?\b|\balle\s+(?:aktuellen\s+)?rekorde\b|\b(?:wer|who)\b.*\b(?:rekord|record)', q))
             unknown_target = unknown_player_target(q, people)
             if self_reference:
@@ -517,13 +535,14 @@ class Assistant:
                     if metric == 'deaths':
                         text += ' nach Anzahl'
                 else:
-                    if not re.search(r'\bwer\b|\bwho\b|meist|längst|höchst|top\s*10|rangliste|leaderboard', q):
+                    if not re.search(r'\bwer\b|\bwho\b|meist|längst|höchst|top\s*\d+|rangliste|leaderboard', q):
                         return 'nenne bitte den vollständigen Spielernamen oder frage nach dem Spitzenreiter.'
-                    limit = 10 if re.search(r'top\s*10', q) else 1
+                    limit = int(top_match[1]) if top_match else 1
                     leaders = stats.leaders(data, metric, limit)
                     if len(leaders) > 10:
                         return 'es gibt mehr als zehn gleichplatzierte Spieler. Bitte grenze die Frage ein.'
-                    text = label + ': ' + '; '.join(p['name'] + ' ' + number(p['value'], unit) for p in leaders)
+                    text = label + ': ' + '; '.join((str(1 + sum(other['value'] > p['value'] for other in leaders)) + '. ' if top_match else '')
+                        + p['name'] + ' ' + number(p['value'], unit) for p in leaders)
             elif not selected and people:
                 person = people[0]
                 text = person['name'] + ': ' + '; '.join(label + ' ' + number(person['values'][key], unit) + ' (Rang ' + str(stats.rank(data, person, key)) + ')' for key, (label, unit, *_) in stats.METRICS.items())
