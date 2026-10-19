@@ -55,7 +55,7 @@ def advancement_summary(directory,uid):
             for stamp in criteria.values():
                 if not isinstance(stamp,str) or len(stamp)>40:raise ValueError('ADVANCEMENT_DATE')
                 stamps.append(datetime.strptime(stamp,'%Y-%m-%d %H:%M:%S %z').timestamp())
-            if row['done'] and not identifier.startswith('minecraft:recipes/'):
+            if row['done'] and not identifier.split(':',1)[1].startswith('recipes/'):
                 count+=1
                 if identifier in KNOWN_ADVANCEMENTS:known.append((max(stamps,default=0),KNOWN_ADVANCEMENTS[identifier]))
         return dict(count=count,latest=max(known,default=(0,None))[1])

@@ -71,6 +71,9 @@ class Portraits(unittest.TestCase):
         self.assertIn('unvollständig',self.ask('bewerte Example1'))
 
     def test_advancements_and_bow_usage_never_become_weapon_kills_or_live_events(self):
+        path=self.adv/(self.users[2]['uuid']+'.json');value=json.loads(path.read_bytes())
+        value['examplemod:recipes/test']={'done':True,'criteria':{}};path.write_text(json.dumps(value))
+        self.assertEqual(advancement_summary(self.adv,self.users[2]['uuid'])['count'],1)
         answer=self.ask('bewerte Example3');self.assertIn('Sniper-Duell',answer);self.assertIn('30 Bogennutzungen',answer)
         self.assertNotIn('Bogenkills',answer);self.assertIn('keine Bogenkills',self.ask('wer hat die meisten Bogenkills?'))
         path=self.adv/(self.users[2]['uuid']+'.json');path.write_text('{bad')
