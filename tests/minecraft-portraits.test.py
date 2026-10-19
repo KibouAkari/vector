@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'services/minecraft-assistant'))
 from portraits import PlayerPortraits,advancement_summary,targets
-from companion import CompanionKnowledge,KnowledgePack
+from companion import CompanionKnowledge,KnowledgePack,Character
 from documentation import DocumentationIndex,SOCIAL
 from runtime import Assistant,State
 from server import Service
@@ -74,6 +74,15 @@ class Portraits(unittest.TestCase):
             self.assertNotIn('Mein Spieleindruck:',text)
             self.assertLessEqual(len(text),390)
         self.assertIn('eindeutigen',self.ask('hältst du von UnknownPlayer?'))
+
+    def test_portrait_voice_is_not_wrapped_in_stock_casual_prefix(self):
+        mods=self.root/'mods.json';mods.write_text('[]')
+        ai=Assistant(SimpleNamespace(admit=lambda *args:'accepted'),self.stats,self.cache,mods,
+            knowledge=SimpleNamespace(character=Character(),friendly_statistics=True),portraits=self.portraits)
+        text=ai.handle(dict(principal=self.users[0]['uuid'],name='Example1',source='minecraft',
+            event=self.users[0]['uuid']+':1',message='Yoo Vector was hältst du von Example2?',block_items=['minecraft:stone']))['text']
+        self.assertNotIn('Klar:',text);self.assertIn('Respawn',text)
+        self.assertLessEqual(len(text),420)
 
     def test_unknown_or_partial_data_never_fabricates_portraits_or_victims(self):
         self.assertIn('eindeutigen',self.ask('bewerte UnknownName'))

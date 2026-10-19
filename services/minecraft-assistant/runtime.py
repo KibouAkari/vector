@@ -370,6 +370,7 @@ class Assistant:
         greeting, question = addressed
         prefix = greeting.capitalize() + ' ' + name + ', '
         scope = (source, principal)
+        portrait_response = False
         if not question:
             if self.portraits:self.portraits.clear(scope)
             self.mod_help.clear(scope)
@@ -382,6 +383,7 @@ class Assistant:
             answer = 'dazu gebe ich keine administrativen oder vertraulichen Auskünfte.'
         else:
             answer = self.portraits.answer(question,principal if source=='minecraft' else None,scope,block_items) if self.portraits else None
+            portrait_response = answer is not None
             if answer is None:
                 answer = self.mod_help.answer(question, self.mods, scope, fallback=not getattr(self.knowledge, 'broad_topics', False))
             if answer is None:
@@ -416,7 +418,7 @@ class Assistant:
             answer = friendly_statistics(answer, name if source == 'minecraft' else None,
                                          variant=int(event.rsplit(':', 1)[1]) % 3)
         character=getattr(self.knowledge,'character',None)
-        if character is not None:
+        if character is not None and not portrait_response:
             answer=character.decorate(question,answer,scope,greeting)
         # Deterministic responses use the same presentation/command boundary.
         safe_answer(answer)
