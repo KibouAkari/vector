@@ -375,6 +375,9 @@ class Assistant:
                     answer = 'bleiben wir bitte bei Minecraft. Welche Frage zum Spiel oder zu einer Mod hast du?'
         if getattr(self.knowledge, 'friendly_statistics', False):
             answer = friendly_statistics(answer, name if source == 'minecraft' else None)
+        character=getattr(self.knowledge,'character',None)
+        if character is not None:
+            answer=character.decorate(question,answer,scope,greeting)
         # Deterministic responses use the same presentation/command boundary.
         safe_answer(answer)
         return {'status': 'answered', 'text': safe_display(prefix + answer)}
@@ -387,12 +390,17 @@ class Assistant:
 
     def stat_answer(self, question, block_items=(), *, principal=None):
         q = unicodedata.normalize('NFKC', question).casefold()
+        if (getattr(self.knowledge,'personality',False) and re.search(r'grab|gräber|graves|rucksack|backpack',q)
+                and not re.search(r'wie oft|wie viele|meist|rekord|record|rang|statistik',q)):
+            return None
         selected = [key for key, pattern in METRIC_WORDS.items() if re.search(pattern, q)]
         is_record = re.search(r'rekord|record', q)
         wants_ranks = bool(re.search(r'\br[äa]ng(?:e|en)?\b|\branks?\b|platzierung', q))
         best = bool(re.search(r'\bbeste[rn]?\s+spieler\b', q))
         self_reference = bool(re.search(r'\b(?:ich|von mir|für mich|fuer mich|mein(?:e[rmns]?)?|my)\b(?!\s+(?:server|fegcraft))', q))
         if best and not selected:
+            if getattr(self.knowledge,'personality',False):
+                return 'Simi natürlich, wer denn sonst? Völlig unvoreingenommene Vector-Meinung.'
             return 'einen objektiv besten Spieler gibt es nicht. Meinst du Mobkills, Spielerkills, Spielzeit oder einen anderen Rekord?'
         mined = bool(re.search(r'abgebaut|abgebau|abbau|abzubauen|mined|\bmining\b', q))
         ores = [(label, ids) for label, (pattern, ids) in ORE_WORDS.items() if mined and re.search(pattern, q)]

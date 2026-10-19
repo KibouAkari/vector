@@ -97,6 +97,7 @@ jobs:
           python3 tests/fegcraft-mod-context.test.py
           python3 tests/fegcraft-conversation.test.py
           python3 tests/fegcraft-intent-repair.test.py
+          python3 tests/fegcraft-companion.test.py
           python3 tests/fegcraft-chat-publication.test.py
           VECTOR_ROOT_PRESERVATION_DOCKER=1 python3 tests/fegcraft-chat-identity-install.test.py
           python3 -m py_compile scripts/deploy/install-fegcraft-chat-identity.py scripts/lib/fegcraft-root-preservation.py
