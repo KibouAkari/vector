@@ -27,6 +27,27 @@ class Guards(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'UNIQUE_PRIVATE_JOKE_REQUIRED'):
                 updater.preserve_joke(invalid, new)
 
+    def test_three_operator_alias_guards_are_preserved_without_other_literal_changes(self):
+        generic = (ROOT / 'services/minecraft-assistant/runtime.py').read_text()
+        patterns = (
+            r'(?:server|minecraft)(?:\b|$)',
+            r'\b(?:ich|von mir|für mich|fuer mich|mein(?:e[rmns]?)?|my)\b(?!\s+(?:server|minecraft))',
+            r'\bserver\b|minecraft|\binsgesamt\b|\bschon\b|\bbisher\b',
+        )
+        installed = generic
+        expected = generic
+        for pattern in patterns:
+            self.assertEqual(generic.count(pattern), 1)
+            installed = installed.replace(pattern, pattern.replace('minecraft', 'ExampleRealm'))
+            # The candidate is unchanged outside these literal source ranges.
+            expected = expected.replace("r'" + pattern + "'", repr(pattern.replace('minecraft', 'ExampleRealm')))
+        self.assertEqual(updater.preserve_server_literals(installed, generic), expected)
+        self.assertIn("model='vector-qwen3:1.7b-q8'", expected)
+        for incomplete in (installed.replace(patterns[0].replace('minecraft', 'ExampleRealm'), 'no alias'),
+                           installed + "\ndef unknown_player_target(): pass\n"):
+            with self.assertRaisesRegex(RuntimeError, 'UNIQUE_OPERATOR_ROUTING'):
+                updater.preserve_server_literals(incomplete, generic)
+
     def test_only_readonly_code_bind_source_changes(self):
         old = self.root / 'old'
         old.mkdir()

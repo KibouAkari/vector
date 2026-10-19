@@ -109,6 +109,40 @@ def preserve_joke(old, new):
     return candidate.encode()
 
 
+def preserve_server_literals(old, new):
+    """Retain installed operator aliases only in the three existing routing guards."""
+    rules = (
+        ('unknown_player_target', '(?:server|', r')(?:\b|$)'),
+        ('stat_answer', r'\b(?:ich|von mir|für mich|fuer mich|mein(?:e[rmns]?)?|my)\b(?!\s+(?:server|', '))'),
+        ('stat_answer', r'\bserver\b|', r'|\bbisher\b'),
+    )
+
+    def find(text, function, prefix, suffix):
+        functions = [n for n in ast.walk(ast.parse(text)) if isinstance(n, ast.FunctionDef) and n.name == function]
+        if len(functions) != 1:
+            raise RuntimeError('UNIQUE_OPERATOR_ROUTING_CONTEXT_REQUIRED')
+        nodes = [n for n in ast.walk(functions[0]) if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                 and n.value.startswith(prefix) and n.value.endswith(suffix)]
+        if len(nodes) != 1:
+            raise RuntimeError('UNIQUE_OPERATOR_ROUTING_LITERAL_REQUIRED')
+        re.compile(nodes[0].value)
+        return nodes[0]
+
+    replacements = []
+    lines = new.encode().splitlines(keepends=True)
+    for function, prefix, suffix in rules:
+        old_node = find(old, function, prefix, suffix)
+        new_node = find(new, function, prefix, suffix)
+        start = sum(map(len, lines[:new_node.lineno - 1])) + new_node.col_offset
+        end = sum(map(len, lines[:new_node.end_lineno - 1])) + new_node.end_col_offset
+        replacements.append((start, end, repr(old_node.value).encode()))
+    raw = new.encode()
+    for start, end, value in sorted(replacements, reverse=True):
+        raw = raw[:start] + value + raw[end:]
+    ast.parse(raw)
+    return raw.decode()
+
+
 def tree_files(root):
     files = {}
     total = 0
@@ -280,8 +314,9 @@ def main():
         original_files = tree_files(old_code)
         checked_path(source / 'services/minecraft-assistant/runtime.py')
         checked_path(source / 'tests/minecraft-ranking-requests.test.py')
-        candidate_runtime = preserve_joke((old_code / 'runtime.py').read_text(),
-            (source / 'services/minecraft-assistant/runtime.py').read_text())
+        installed_runtime = (old_code / 'runtime.py').read_text()
+        candidate_runtime = preserve_joke(installed_runtime, preserve_server_literals(installed_runtime,
+            (source / 'services/minecraft-assistant/runtime.py').read_text()))
         release = args.release_root / ('minecraft-ranking-runtime-' + time.strftime('%Y%m%dT%H%M%SZ', time.gmtime()) + '-' + uuid.uuid4().hex[:6])
         release.mkdir(mode=0o700)
         candidate_code = release / 'code'
