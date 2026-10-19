@@ -4,6 +4,12 @@ This file describes product and engineering changes. Deployment diaries, persona
 
 ## 2026-10-19
 
+### Exact original snapshots and credential promotion — PR #93
+
+- Preserve the exact reviewed message/context on subsequent provider rounds even when new tool values overlap names or ordinary numbers.
+- Bind the actual project message wrapper to the encrypted consent snapshot; tool evidence and arguments never inherit that exemption.
+- Promote reused mappings to credential types before saving and displaying later review metadata.
+
 ### Web reliability — PR #91
 
 - Preserve original-send consent for the reviewed prompt/context while separately protecting newly read tool evidence with placeholders.
