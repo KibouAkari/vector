@@ -106,7 +106,7 @@ try {
     await call('/api/chat',{as:null,method:'POST',body:{message:prompt},status:401});
     await call('/api/chat',{as:'disabled',method:'POST',body:{message:prompt},status:403});
     noNewChat(beforeUnauthorized,await counts());assert.equal(await usage(),0);check('authorization-precedes-detection');
-    const input={message:prompt,mode:'normal'};
+    const input={message:prompt,mode:'normal',toolEvidenceDecision:'replace'};
     const initialStarted=performance.now();
     const approval=await review('/api/chat',input);timings.initialReviewMs=Math.round(performance.now()-initialStarted);
     assert.ok(approval.canReplace);assert.ok(approval.findings.some(f=>f.displayValue==='Erika Muster'));
@@ -117,6 +117,7 @@ try {
     const beforeBad=await counts();
     await call('/api/chat',{as:'bob',method:'POST',body:{...input,privacyDecision:'replace',privacyReviewToken:approval.token},status:503});
     await call('/api/chat',{method:'POST',body:{...input,message:prompt+' Changed.',privacyDecision:'replace',privacyReviewToken:approval.token},status:503});
+    await call('/api/chat',{method:'POST',body:{...input,toolEvidenceDecision:undefined,privacyDecision:'original',privacyReviewToken:approval.token},status:503});
     noNewChat(beforeBad,await counts());check('consent-is-bound-to-user-and-exact-request');
     const beforeConfirm=await usage();
     const replaced=await queued('/api/chat',{...input,privacyDecision:'replace',privacyReviewToken:approval.token});
@@ -141,6 +142,15 @@ try {
     assert.equal(await usage(),beforeConfirm);check('off-restores-owned-historical-placeholders-without-rescan');
     const original=await queued('/api/chat',{...input,privacyDecision:'original',privacyReviewToken:approval.token});
     assert.ok(original.job.payload.messages.some(m=>m.content===prompt));assert.equal(original.job.payload.privacyDestination,'cloud');
+    // Read only this synthetic encrypted policy. The disposable test key never
+    // leaves the fixture and no queued job/provider is executed here.
+    const bytes=Buffer.from(original.job.payload.privacyPolicy,'base64url');
+    const decipher=crypto.createDecipheriv('aes-256-gcm',Buffer.from(process.env.FILE_ENCRYPTION_KEY,'hex'),bytes.subarray(0,12));
+    decipher.setAAD(Buffer.from('vector/privacy/v1'));decipher.setAuthTag(bytes.subarray(12,28));
+    const policy=JSON.parse(Buffer.concat([decipher.update(bytes.subarray(28)),decipher.final()]).toString());
+    assert.equal(policy.decision,'original');assert.equal(policy.toolEvidenceDecision,'replace');
+    assert.ok(policy.reviewedTexts.includes(prompt));
+    check('original-send-binds-separate-tool-masking-and-exact-reviewed-message');
     assert.equal(await usage(),beforeConfirm);check('explicit-unchanged-send-preserves-original-without-rescan');
     const beforeLocal=await usage();const local=await queued('/api/chat',{message:prompt,mode:'local'});
     assert.equal(local.job.payload.privacyDestination,'local');assert.equal(local.job.payload.privacyPolicy,null);
