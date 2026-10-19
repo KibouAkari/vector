@@ -95,6 +95,7 @@ class Portraits(unittest.TestCase):
             self.assertIn(label.casefold(),text.casefold())
             self.assertIn('keine Trefferquote',text)
             self.assertLessEqual(len(text),350)
+        self.assertIn('Speerkämpfer',self.ask('welche Waffe benutze ich in Minecraft?',self.users[0]['uuid']))
         value['stats']['minecraft:used']={'minecraft:bow':250,'minecraft:iron_sword':250}
         path.write_text(json.dumps(value))
         self.assertIn('gleichauf',self.ask('Kampfstil von Example1'))

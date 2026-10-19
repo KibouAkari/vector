@@ -85,9 +85,9 @@ class PlayerPortraits:
         except (OSError,ValueError,KeyError,TypeError):
             self.clear(scope);return 'für ein faires Spielerporträt sind die gespeicherten Statistiken gerade unvollständig. Ich möchte niemandem falsche Werte anhängen.'
         matches=targets(question,data['players'])
-        if not matches and not SELF.search(question) and re.search(r'\b(?:minecraft|redstone|vector|mods?|backpack|rucksack|claims?|partys)\b',question,re.I):
-            self.clear(scope);return None
         self_intent=bool(SELF.search(question) or combat and re.search(r'\b(?:ich|mir|mein\w*)\b',question,re.I))
+        if not matches and not self_intent and re.search(r'\b(?:minecraft|redstone|vector|mods?|backpack|rucksack|claims?|partys)\b',question,re.I):
+            self.clear(scope);return None
         if self_intent:
             if principal is None:self.clear(scope);return 'welchen Minecraft-Spielernamen meinst du? Dein Discord-Anzeigename ist keine bestätigte Minecraft-Verknüpfung.'
             matches=[p for p in data['players'] if p['uuid']==principal]
