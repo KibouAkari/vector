@@ -293,6 +293,28 @@ except RuntimeError as exc:
             self.assertEqual(signal.getsignal(signal.SIGINT), signal.SIG_IGN)
         self.assertEqual(signal.getsignal(signal.SIGINT), before)
 
+    def test_terminal_group_interrupt_cannot_release_admission_client(self):
+        code = r'''import importlib.util,os,signal,subprocess,sys,time
+spec=importlib.util.spec_from_file_location('stage', %r)
+m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+real_popen=subprocess.Popen
+child="import signal,sys; signal.signal(signal.SIGINT,signal.SIG_DFL); print('LOCKED',flush=True); sys.stdin.buffer.read()"
+def synthetic_client(command,**kwargs):
+ return real_popen([sys.executable,'-c',child],**kwargs)
+m.subprocess.Popen=synthetic_client
+signal.signal(signal.SIGINT,signal.SIG_IGN)
+with m.cpu_slot('synthetic') as client:
+ os.killpg(os.getpgrp(),signal.SIGINT)
+ time.sleep(.1)
+ assert client.poll() is None, 'admission received terminal interrupt'
+print('HELD_UNTIL_EXPLICIT_RELEASE')
+''' % spec.origin
+        result = subprocess.run([sys.executable, '-c', code], capture_output=True,
+                                text=True, timeout=5, start_new_session=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), 'HELD_UNTIL_EXPLICIT_RELEASE')
+
 
 if __name__ == '__main__':
     unittest.main()
+

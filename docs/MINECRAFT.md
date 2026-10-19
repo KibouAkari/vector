@@ -40,3 +40,6 @@ The generic source intentionally uses Minecraft-specific names, role names and e
 `scripts/deploy/update-minecraft-ranking-runtime.py` accepts private operator pins for a dedicated single-service Compose profile and its healthy current assistant. It stages a copy of the installed code, replaces only `runtime.py`, retains a uniquely identified configured best-player joke, and runs synthetic ranking tests in the same image without networking or secrets. Unknown code/profile shapes fail closed.
 
 The default only qualifies. Explicit `--activate` changes the read-only code bind and recreates only that assistant. Existing state, image, environment, input mounts and the game addon remain unchanged. Rollback verifies the owned Compose/code/container generation before restoring it. This updater does not migrate generic names into an existing installation or restart the Minecraft server. Keep its private configuration, observed hashes and release record outside Git.
+
+
+The runtime updater requires `expected_project_name` in its private operator JSON. Obtain it from the running container's Compose project label and render the baseline using the same explicit project name. Deriving a project from the release directory can select a different Compose project; a failed identity guard must not be bypassed.

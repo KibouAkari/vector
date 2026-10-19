@@ -115,7 +115,8 @@ const c=new Client({connectionString:process.env.DATABASE_URL,connectionTimeoutM
 @contextlib.contextmanager
 def cpu_slot(app):
     process = subprocess.Popen(['docker', 'exec', '-i', app, 'node', '-e', SLOT_CODE],
-                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                               start_new_session=True)
     try:
         with selectors.DefaultSelector() as selector:
             selector.register(process.stdout, selectors.EVENT_READ)
@@ -497,3 +498,4 @@ def stage_main(args):
 
 if __name__ == '__main__':
     main()
+

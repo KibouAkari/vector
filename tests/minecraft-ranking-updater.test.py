@@ -106,7 +106,7 @@ class Guards(unittest.TestCase):
         compose = self.root / 'compose.json'
         compose.write_text('{}')
         profile = {'name': 'synthetic', 'services': {'assistant': {'volumes': [dict(type='bind', source=str(code), target='/code', read_only=True)]}}}
-        config = dict(container='assistant', service='assistant', compose=str(compose), project_directory=str(self.root),
+        config = dict(expected_project_name='synthetic', container='assistant', service='assistant', compose=str(compose), project_directory=str(self.root),
             expected_image='sha256:' + 'a' * 64, expected_runtime_sha256=updater.digest(b'pass'),
             expected_profile_sha256=updater.digest(updater.canonical(profile)))
         row = dict(Image=config['expected_image'], State=dict(Running=True, Health=dict(Status='healthy')),
@@ -114,8 +114,13 @@ class Guards(unittest.TestCase):
                                'com.docker.compose.config-hash': 'b' * 64, 'com.docker.compose.project': 'synthetic',
                                'com.docker.compose.project.working_dir': str(self.root)}),
             Mounts=[dict(Destination='/code', Source=str(code), RW=False)])
-        with patch.object(updater, 'run', return_value=('assistant ' + 'b' * 64).encode()):
+        with patch.object(updater, 'run', return_value=('assistant ' + 'b' * 64).encode()) as command:
+            foreign = json.loads(json.dumps(row))
+            foreign['Config']['Labels']['com.docker.compose.project'] = 'foreign'
+            with self.assertRaisesRegex(RuntimeError, 'COMPOSE_PROJECT_IDENTITY_MISMATCH'):
+                updater.validate_live(config, {'assistant': foreign}, profile)
             self.assertEqual(updater.validate_live(config, {'assistant': row}, profile), code)
+            self.assertEqual(command.call_args.args[0][:4], ['docker', 'compose', '--project-name', 'synthetic'])
             row['Mounts'][0]['RW'] = True
             with self.assertRaisesRegex(RuntimeError, 'LIVE_CODE_BIND_MISMATCH'):
                 updater.validate_live(config, {'assistant': row}, profile)
@@ -137,7 +142,7 @@ class Guards(unittest.TestCase):
         release.mkdir()
         (release / 'compose.original').write_bytes(b'original')
         profile = {'name': 'synthetic', 'services': {'assistant': {'image': 'synthetic-image'}}}
-        config = dict(schema=1, container='assistant', service='assistant', compose=str(active), project_directory=str(self.root),
+        config = dict(expected_project_name='synthetic', schema=1, container='assistant', service='assistant', compose=str(active), project_directory=str(self.root),
             expected_image='sha256:' + 'a' * 64, expected_runtime_sha256=updater.digest(b'original'),
             expected_compose_sha256=updater.digest(b'original'), expected_profile_sha256=updater.digest(updater.canonical(profile)))
         updater.write_private(release / 'operator.json', updater.canonical(config))
@@ -195,16 +200,32 @@ class Guards(unittest.TestCase):
             updater.rollback(release)
         self.assertEqual(json.loads((release / 'rollback.progress.json').read_bytes())['phase'], 'verified')
 
+    def test_explicit_project_is_used_for_render_recreate_and_rollback_render(self):
+        config = dict(expected_project_name='synthetic', project_directory='/operator', compose='/operator/current.yml', service='assistant')
+        with patch.object(updater, 'run', return_value=b'{}') as command:
+            updater.compose(config, '/release/compose.original')
+            self.assertEqual(command.call_args.args[0], ['docker', 'compose', '--project-name', 'synthetic',
+                '--project-directory', '/operator', '-f', '/release/compose.original', 'config', '--format', 'json'])
+        with patch.object(updater, 'compose', return_value={}), patch.object(updater, 'verify_image'), patch.object(updater, 'run') as command:
+            updater.recreate(config)
+            self.assertEqual(command.call_args.args[0][:4], ['docker', 'compose', '--project-name', 'synthetic'])
+            self.assertIn('--no-deps', command.call_args.args[0])
+
     def test_private_config_requires_complete_pins_and_owner_only_permissions(self):
         compose = self.root / 'compose.json'
         compose.write_text('{}')
-        value = dict(schema=1, container='assistant', service='assistant', compose=str(compose),
+        value = dict(expected_project_name='synthetic', schema=1, container='assistant', service='assistant', compose=str(compose),
             project_directory=str(self.root), expected_image='sha256:' + 'a' * 64,
             expected_runtime_sha256='b' * 64, expected_compose_sha256='c' * 64, expected_profile_sha256='d' * 64)
         config = self.root / 'operator.json'
         config.write_text(json.dumps(value))
         config.chmod(0o600)
         self.assertEqual(updater.read_config(config), value)
+        for project in ('', 'Foreign', '-foreign', 'bad/project', 'bad project', 'a' * 64):
+            config.write_text(json.dumps(dict(value, expected_project_name=project)))
+            with self.assertRaisesRegex(RuntimeError, 'INVALID_COMPOSE_PROJECT_NAME'):
+                updater.read_config(config)
+        config.write_text(json.dumps(value))
         config.chmod(0o644)
         with self.assertRaisesRegex(RuntimeError, 'PRIVATE_CONFIG_REQUIRED'):
             updater.read_config(config)
@@ -216,3 +237,4 @@ class Guards(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

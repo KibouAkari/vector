@@ -16,7 +16,7 @@ import uuid
 
 JOKE_END = 'Völlig unvoreingenommene Vector-Meinung.'
 FIELDS = {'schema', 'container', 'service', 'compose', 'project_directory', 'expected_image',
-          'expected_runtime_sha256', 'expected_compose_sha256', 'expected_profile_sha256'}
+          'expected_runtime_sha256', 'expected_compose_sha256', 'expected_profile_sha256', 'expected_project_name'}
 
 
 def digest(raw):
@@ -44,6 +44,8 @@ def read_config(path):
     value = json.loads(path.read_bytes())
     if set(value) != FIELDS or value['schema'] != 1:
         raise RuntimeError('UNSUPPORTED_OPERATOR_CONFIG')
+    if not isinstance(value['expected_project_name'], str) or not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,62}', value['expected_project_name']):
+        raise RuntimeError('INVALID_COMPOSE_PROJECT_NAME')
     for key in ('container', 'service'):
         if not isinstance(value[key], str) or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}', value[key]):
             raise RuntimeError('INVALID_OPERATOR_IDENTITY')
@@ -79,9 +81,13 @@ def others(rows, target):
     return {name: identity(row) for name, row in rows.items() if name != target}
 
 
+def compose_command(config, path):
+    return ['docker', 'compose', '--project-name', config['expected_project_name'],
+            '--project-directory', config['project_directory'], '-f', str(path)]
+
+
 def compose(config, path):
-    return json.loads(run(['docker', 'compose', '--project-directory', config['project_directory'],
-        '-f', str(path), 'config', '--format', 'json']))
+    return json.loads(run(compose_command(config, path) + ['config', '--format', 'json']))
 
 
 def code_source(profile, service):
@@ -203,14 +209,14 @@ def validate_live(config, rows, profile):
     labels = row['Config'].get('Labels') or {}
     if labels.get('com.docker.compose.service') != config['service']:
         raise RuntimeError('COMPOSE_SERVICE_MISMATCH')
-    if (profile.get('name') != labels.get('com.docker.compose.project')
+    if (profile.get('name') != config['expected_project_name']
+            or labels.get('com.docker.compose.project') != config['expected_project_name']
             or labels.get('com.docker.compose.project.working_dir') != config['project_directory']):
         raise RuntimeError('COMPOSE_PROJECT_IDENTITY_MISMATCH')
     paths = labels.get('com.docker.compose.project.config_files', '').split(',')
     if paths != [config['compose']]:
         raise RuntimeError('SINGLE_CURRENT_COMPOSE_FILE_REQUIRED')
-    current_hash = run(['docker', 'compose', '--project-directory', config['project_directory'],
-        '-f', config['compose'], 'config', '--hash', config['service']]).decode().split()
+    current_hash = run(compose_command(config, config['compose']) + ['config', '--hash', config['service']]).decode().split()
     if (len(current_hash) != 2 or current_hash[0] != config['service']
             or not re.fullmatch('[a-f0-9]{64}', current_hash[1])
             or current_hash[1] != labels.get('com.docker.compose.config-hash')):
@@ -242,8 +248,7 @@ def verify_image(config, profile):
 
 def recreate(config):
     verify_image(config, compose(config, Path(config['compose'])))
-    run(['docker', 'compose', '--project-directory', config['project_directory'], '-f', config['compose'],
-         'up', '-d', '--no-deps', '--no-build', '--pull', 'never', '--force-recreate', config['service']], timeout=60)
+    run(compose_command(config, config['compose']) + ['up', '-d', '--no-deps', '--no-build', '--pull', 'never', '--force-recreate', config['service']], timeout=60)
 
 
 def await_health(config, baseline, source):
@@ -471,3 +476,4 @@ if __name__ == '__main__':
         main()
     except Exception as exc:
         raise SystemExit('Assistant runtime update failed: ' + str(exc) if isinstance(exc, RuntimeError) else 'Assistant runtime update failed: ' + type(exc).__name__)
+

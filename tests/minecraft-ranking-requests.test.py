@@ -64,6 +64,11 @@ class RankingRequests(unittest.TestCase):
         users[0]['name'] = 'Monkills'
         (self.root / 'users.json').write_text(json.dumps(users))
         self.assertIn('Top 1 bis Top 10', self.ai.stat_answer('Top 3 Mobkills von Monkills'))
+        self.assertIn('Monkills: Spielzeit', self.ai.stat_answer('Spielzeit Rangliste von Monkills'))
+        top = self.ai.stat_answer('Top 3 Monkills')
+        self.assertIn('1. Monkills 100 Kills', top)
+        self.assertIn('3. Example3 60 Kills', top)
+        self.assertNotIn('Top 1 bis Top 10', top)
         answer = self.ai.stat_answer('Mobkills Rangliste von Monkills')
         self.assertIn('Monkills: Mobkills 100 Kills; Rang 1', answer)
         self.assertNotIn('Example2', answer)
@@ -71,7 +76,12 @@ class RankingRequests(unittest.TestCase):
     def test_incomplete_statistics_and_ambiguous_requests_fail_closed(self):
         for q in ('Vergleiche Mobkills von Example1 und UnknownPlayer', 'Unterschied von Mobkills zwischen Example1, Example2 und Example3',
                   'Unterschied bei Mobkills und Spielerkills zwischen Example1 und Example2',
-                  'Vergleiche Mobkills von UnknownPlayer mit Example1 und Example2'):
+                  'Vergleiche Mobkills von UnknownPlayer mit Example1 und Example2',
+                  'Vergleiche Mobkills von Example1 und UnknownPlayer mit Example2',
+                  'Vergleiche Mobkills zwischen Example1 und UnknownPlayer mit Example2',
+                  'Compare Mobkills between Example1, UnknownPlayer and Example2',
+                  'Vergleiche Mobkills für Example1, UnknownPlayer und Example2',
+                  'Compare Mobkills of Example1 with UnknownPlayer and Example2'):
             self.assertIn('zwei vollständige Spielernamen und eine Kategorie', self.ai.stat_answer(q))
         for q in ('Top 0 Mobkills', 'Top 11 Mobkills', 'Top 5 Rangliste', 'Top 5 Mobkills von Example1'):
             self.assertIn('Top 1 bis Top 10', self.ai.stat_answer(q))
@@ -100,3 +110,4 @@ class RankingRequests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
