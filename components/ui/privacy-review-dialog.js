@@ -61,11 +61,11 @@ export function usePrivacySend(scopeKey) {
       <details><summary>Vorschau dieser Nachricht</summary><pre>{readablePreview(review)}</pre></details>
       <div className="vector-privacy-actions">
         <button type="button" onClick={()=>finish(null)}>Abbrechen</button>
-        <button type="button" onClick={()=>finish('original')}>Original senden</button>
+        <button type="button" onClick={()=>finish('original')}>Nachricht original senden</button>
         <button type="button" className="vector-privacy-primary" disabled={!review.canReplace}
           onClick={()=>finish('replace')}>Platzhalter verwenden</button>
       </div>
-      <p className="vector-privacy-hint">Bitte prüfen. Die Erkennung kann Angaben übersehen.</p>
+      <p className="vector-privacy-hint">Die Originalfreigabe gilt für diese Nachricht und den geprüften Kontext. Neue Tool-Daten werden mit Platzhaltern geschützt und in der Antwort lokal wieder eingesetzt. Die Erkennung kann Angaben übersehen.</p>
     </section>:<div className="vector-privacy-status" role="status" aria-live="polite">
       <span className="vector-privacy-spinner" aria-hidden="true" />
       <span>{status.phase==='checking'?'Vector überprüft die Anfrage':'Vector sendet deine Anfrage'}</span>

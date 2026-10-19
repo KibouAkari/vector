@@ -398,3 +398,41 @@ test('an unsealed payload preference cannot bypass worker privacy',async()=>{
   await assert.rejects(runtime.withJobPrivacy({userId:'alice',conversationId:'c',privacyEnabled:false},async()=>{entered=true;}));
   assert.equal(entered,false);
 });
+
+
+test('original prompt consent can separately mask new evidence and restore local tool arguments',async()=>{
+  process.env.VECTOR_PRIVACY_REVIEW='1';process.env.FILE_ENCRYPTION_KEY=key.toString('hex');
+  const runtime=loadRuntime({extraFindings:[{type:'PERSON',value:'New Example'}]});
+  const input=args();input.body.toolEvidenceDecision='replace';
+  const review=await runtime.reviewPrivacyRequest(input);
+  const token=(await review.response.json()).privacyReview.token;
+  await assert.rejects(()=>runtime.reviewPrivacyRequest({...input,body:{...input.body,toolEvidenceDecision:undefined,privacyDecision:'original',privacyReviewToken:token}}));
+  const plan=await runtime.reviewPrivacyRequest({...input,body:{...input.body,privacyDecision:'original',privacyReviewToken:token}});
+  assert.equal(plan.apply(text),text);
+  await runtime.withJobPrivacy({userId:'alice',conversationId:'new-chat',privacyPolicy:plan.policy},async()=>{
+    const raw=JSON.stringify({person:'New Example',approved:'Erika Muster',password:'another-synthetic-password'});
+    const evidence=await runtime.protectToolEvidence(raw);
+    const safe=JSON.parse(evidence.sanitized);
+    assert.equal(safe.approved,'Erika Muster');
+    assert.ok(!evidence.sanitized.includes('New Example'));
+    assert.ok(!evidence.sanitized.includes('another-synthetic-password'));
+    const outgoing=runtime.protectProviderPayload({input:[{role:'user',content:text},{type:'function_call_output',output:raw}]});
+    assert.equal(outgoing.input[0].content,text);
+    assert.ok(!outgoing.input[1].output.includes('another-synthetic-password'));
+    const mapping=evidence.mappings.find(m=>m.value==='New Example');
+    assert.equal(runtime.restoreLocalToolArguments('server_minecraft_advancements',{player:mapping.placeholder}).player,'New Example');
+    assert.equal(runtime.restoreLocalToolArguments('web_search',{query:mapping.placeholder}).query,mapping.placeholder);
+    assert.equal(core.literalReplace(evidence.sanitized,runtime.vault.get('new-chat'),true),raw);
+  });
+});
+
+test('a clean initial request explicitly protects newly read confidential evidence',async()=>{
+  const runtime=loadRuntime();
+  const input={...args(),text:'Inspect the server',body:{message:'Inspect the server',toolEvidenceDecision:'replace'}};
+  const plan=await runtime.reviewPrivacyRequest(input);
+  await runtime.withJobPrivacy({userId:'alice',conversationId:'clean-chat',privacyPolicy:plan.policy},async()=>{
+    const evidence=await runtime.protectToolEvidence(JSON.stringify({password:'new-synthetic-secret'}));
+    assert.ok(!evidence.sanitized.includes('new-synthetic-secret'));
+  });
+  await assert.rejects(()=>runtime.reviewPrivacyRequest({...input,body:{...input.body,toolEvidenceDecision:'original'}}),/Invalid tool evidence/);
+});

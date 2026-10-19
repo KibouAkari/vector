@@ -24,9 +24,10 @@ export default function ChatControls({mode,onModeChange,privacyEnabled,onPrivacy
   return <div className="vector-chat-controls" ref={root}>
     <button type="button" className="vector-privacy-switch" role="switch" aria-checked={privacyEnabled}
       aria-label="Datenschutzprüfung" disabled={disabled} onClick={()=>onPrivacyChange(!privacyEnabled)}
-      title={privacyEnabled?'Namen und Zugangsdaten vor externem Versand prüfen':'Datenschutzprüfung aus: Angaben werden unverändert gesendet'}>
+      title={privacyEnabled?'Nachricht und Kontext prüfen; neue Tool-Daten mit Platzhaltern schützen':'Datenschutzprüfung aus: Angaben werden unverändert gesendet'}>
       <Shield size={15} aria-hidden="true"/><span>Datenschutz {privacyEnabled?'an':'aus'}</span>
     </button>
+    {privacyEnabled && <span className="vector-tool-privacy-note">Neue Tool-Daten werden geschützt.</span>}
     <div className="vector-mode-picker">
       <button type="button" ref={trigger} disabled={disabled} aria-haspopup="menu" aria-expanded={open}
         aria-controls={open?id:undefined} onClick={()=>{place();setOpen(!open);}} aria-label={`Chatmodus: ${selected.label}`}>
@@ -58,7 +59,7 @@ export default function ChatControls({mode,onModeChange,privacyEnabled,onPrivacy
       .vector-chat-controls button,.vector-mode-menu button{display:flex;align-items:center;justify-content:center;gap:6px;width:auto;min-height:30px;padding:5px 9px;border:1px solid #ffffff20;border-radius:8px;background:#131a1b;color:#c5d9cd;font:inherit;font-size:12px;cursor:pointer}
       .vector-chat-controls button:focus-visible,.vector-mode-menu button:focus-visible{outline:2px solid #8de0b7;outline-offset:2px}.vector-chat-controls button:disabled{opacity:.5;cursor:default}
       .vector-privacy-switch[aria-checked=true]{color:#8de0b7}.vector-privacy-switch[aria-checked=false]{color:#e5c48a;border-color:#e5c48a55}
-      .vector-mode-picker{position:relative}.vector-mode-menu{position:fixed;box-sizing:border-box;overflow:auto;z-index:1000;padding:5px;border:1px solid #8de0b740;border-radius:10px;background:#131a1b;box-shadow:0 8px 24px #0005}
+      .vector-tool-privacy-note{font-size:11px;color:#9eb5ad}.vector-mode-picker{position:relative}.vector-mode-menu{position:fixed;box-sizing:border-box;overflow:auto;z-index:1000;padding:5px;border:1px solid #8de0b740;border-radius:10px;background:#131a1b;box-shadow:0 8px 24px #0005}
       .vector-mode-menu button{width:100%;justify-content:space-between;border:0;background:transparent;padding:8px 9px}
       .vector-mode-menu button:hover,.vector-mode-menu button[aria-checked=true]{background:#8de0b714;color:#f0f7f3}
       @media(max-width:480px){.vector-chat-controls{gap:4px}.vector-chat-controls button,.vector-mode-menu button{padding:5px 7px;font-size:11px}}

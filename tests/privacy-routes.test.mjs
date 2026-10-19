@@ -1,3 +1,4 @@
+import {boundedLocalContext} from '../lib/local-context.mjs';
 import {requestDestination} from '../lib/chat-controls.mjs';
 import {localServerStatistics} from '../lib/local-server-statistics.mjs';
 import test from 'node:test';
@@ -70,7 +71,7 @@ test('fully local executor uses native inference only and retains zero-cost toke
   const calls=[],events=[],finished=[],failed=[];
   let nativeFails=false,cancelled=false;
   const {classifyExecution}=load('../lib/execution-router.js',{},['classifyExecution']);
-  const {executeLocalPrivateJob}=load('../lib/local-private-chat.js',{crypto,providerUsageTotals,classifyExecution,localServerStatistics,hostInspect:async()=>{throw Error('unexpected read')},
+  const {executeLocalPrivateJob}=load('../lib/local-private-chat.js',{crypto,boundedLocalContext,providerUsageTotals,classifyExecution,localServerStatistics,hostInspect:async()=>{throw Error('unexpected read')},
     db:{query:async(...args)=>calls.push(args)},restorePrivateValues:async({text})=>text,
     withLocalWorkerSlot:execute=>execute(),heartbeatAgentJob:async()=>{},
     getAgentJob:async()=>({status:cancelled?'cancelled':'running'}),
@@ -174,7 +175,7 @@ test('actual local executor reads fixed statistics without inference, scans or p
   const complete=items=>({complete:true,files_discovered:items.length,files_returned:items.length,items});
   const inspect=async args=>{reads.push(args);return complete([{relative_path:uuid+'.json',content:JSON.stringify(
     args.pattern==='usercache.json'?[{uuid,name:'ExampleOne'}]:{stats:{'minecraft:custom':{'minecraft:mob_kills':42}}})}]);};
-  const {executeLocalPrivateJob}=load('../lib/local-private-chat.js',{crypto,providerUsageTotals,classifyExecution,localServerStatistics,
+  const {executeLocalPrivateJob}=load('../lib/local-private-chat.js',{crypto,boundedLocalContext,providerUsageTotals,classifyExecution,localServerStatistics,
     hostInspect:inspect,db:{query:async(...args)=>writes.push(args)},restorePrivateValues:async({text})=>text,
     heartbeatAgentJob:async()=>{},getAgentJob:async()=>({status:'running'}),completeAgentJob:async args=>finished.push(args),
     failAgentJob:async()=>{},requestLocalChat:()=>{throw Error('unexpected inference')},
