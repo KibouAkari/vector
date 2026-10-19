@@ -436,3 +436,54 @@ test('a clean initial request explicitly protects newly read confidential eviden
   });
   await assert.rejects(()=>runtime.reviewPrivacyRequest({...input,body:{...input.body,toolEvidenceDecision:'original'}}),/Invalid tool evidence/);
 });
+
+test('new overlapping tool values cannot rewrite exact original prompt or context snapshots',async()=>{
+  process.env.VECTOR_PRIVACY_REVIEW='1';process.env.FILE_ENCRYPTION_KEY=key.toString('hex');
+  const additions=[];const runtime=loadRuntime({extraFindings:additions});
+  const prompt='Write to Erika Muster in exactly 2 sentences.';
+  const wrapped=prompt+'\n\nPROJECT CONTEXT:\nErika Muster';
+  const input={...args(),text:prompt,body:{message:prompt,toolEvidenceDecision:'replace'},outboundTexts:[wrapped]};
+  const ticket=(await (await runtime.reviewPrivacyRequest(input)).response.json()).privacyReview.token;
+  const confirmed={...input,body:{...input.body,privacyDecision:'original',privacyReviewToken:ticket}};
+  await assert.rejects(()=>runtime.reviewPrivacyRequest({...confirmed,outboundTexts:[wrapped+' changed']}));
+  const plan=await runtime.reviewPrivacyRequest(confirmed);
+  additions.push({type:'PERSON',value:'Erika'});
+  await runtime.withJobPrivacy({userId:'alice',conversationId:'overlap',privacyPolicy:plan.policy},async()=>{
+    const raw=JSON.stringify({person:'Erika',password:'2'});
+    const evidence=await runtime.protectToolEvidence(raw);
+    assert.notEqual(JSON.parse(evidence.sanitized).person,'Erika');
+    assert.notEqual(JSON.parse(evidence.sanitized).password,'2');
+    const outgoing=runtime.protectProviderPayload({model:'model-2',instructions:wrapped,input:[
+      {role:'user',content:prompt},{role:'user',content:[{type:'input_text',text:wrapped}]},
+      {type:'function_call_output',output:raw},{type:'function_call',name:'lookup',arguments:'{"password":2}'}]});
+    assert.equal(outgoing.model,'model-2');
+    assert.equal(outgoing.instructions,wrapped);
+    assert.equal(outgoing.input[0].content,prompt);
+    assert.equal(outgoing.input[1].content[0].text,wrapped);
+    assert.notEqual(JSON.parse(outgoing.input[2].output).password,'2');
+    assert.notEqual(JSON.parse(outgoing.input[3].arguments).password,2);
+    assert.equal(core.literalReplace(evidence.sanitized,runtime.vault.get('overlap'),true),raw);
+  });
+});
+
+test('credential-shaped tool fields promote every existing alias before future review metadata',async()=>{
+  const runtime=loadRuntime();const email='erika@example.invalid';
+  const input={...args(),text:email,body:{message:email,toolEvidenceDecision:'replace'}};
+  const ticket=(await (await runtime.reviewPrivacyRequest(input)).response.json()).privacyReview.token;
+  const plan=await runtime.reviewPrivacyRequest({...input,body:{...input.body,privacyDecision:'replace',privacyReviewToken:ticket}});
+  const mapping=plan.mappings.find(m=>m.value===email);
+  runtime.vault.set('promotion',[...plan.mappings,{...mapping,placeholder:'<EMAIL_A1B2C3>'}]);
+  await runtime.withJobPrivacy({userId:'alice',conversationId:'promotion',privacyPolicy:plan.policy},async()=>{
+    const raw=JSON.stringify({password:email});
+    const evidence=await runtime.protectToolEvidence(raw);
+    assert.ok(!evidence.sanitized.includes(email));
+    for(const item of runtime.vault.get('promotion').filter(m=>m.value===email)){
+      assert.equal(item.type,'PASSWORD');assert.equal(core.displayFinding(item).displayValue,'••••••••');
+    }
+    assert.equal(core.literalReplace(evidence.sanitized,runtime.vault.get('promotion'),true),raw);
+  });
+  const next=await runtime.reviewPrivacyRequest({...input,conversationId:'promotion'});
+  const metadata=await next.response.json();
+  assert.ok(!JSON.stringify(metadata).includes(email));
+  assert.equal(metadata.privacyReview.findings[0].type,'PASSWORD');
+});

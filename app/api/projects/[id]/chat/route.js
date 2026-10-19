@@ -200,6 +200,12 @@ async function responseFromJob({
 }
 
 
+function projectContextMessage(message, context) {
+  return context ? [message,'','PROJECT CONTEXT RETRIEVED LOCALLY:',
+    'Use this context when relevant.',
+    'Do not claim a fact comes from a file unless it appears below.','',context].join('\n') : message;
+}
+
 export async function POST(
   request,
   context
@@ -402,6 +408,7 @@ export async function POST(
   try {
     privacy = await reviewPrivacyRequest({text:[originalMessage,rawContext,...priorHistory.map(m=>m.content)].join('\n\n'),
       scanSegments:[originalMessage,rawContext,...priorHistory.map(m=>m.content)],previewText:originalMessage,
+      outboundTexts:[projectContextMessage(originalMessage,rawContext),...priorHistory.map(m=>m.content)],
       body,session,scope:'project:'+projectId,conversationId,
       destination:project.privacy_level==='local_only'||requestedMode==='local'?'local':'cloud'});
   } catch {
@@ -550,16 +557,7 @@ export async function POST(
       role:
         "user",
 
-      content: [
-        history[lastIndex]
-          .content,
-        "",
-        "PROJECT CONTEXT RETRIEVED LOCALLY:",
-        "Use this context when relevant.",
-        "Do not claim a fact comes from a file unless it appears below.",
-        "",
-        safeContext
-      ].join("\n")
+      content: projectContextMessage(history[lastIndex].content, safeContext)
     };
   }
 

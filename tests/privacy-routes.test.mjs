@@ -101,14 +101,15 @@ test('fully local executor uses native inference only and retains zero-cost toke
 test('confirmed project jobs keep originals out of finding metadata and retrieved filenames',async()=>{
   const core=await import('../lib/privacy-review-core.mjs');
   const email='erika@example.invalid',password='synthetic privacy phrase';
-  const jobs=[];
+  const jobs=[];let outboundSnapshot,mappingSnapshot;
   const chunks=[{original_name:email,start_line:1,end_line:1,content:`Passwort: "${password}".`}];
   const deps={crypto,requestDestination,getSession:async()=>({userId:'alice',role:'owner',username:'alice'}),
     canAccessProject:async()=>true,initializeDatabase:async()=>{},assertUserBudget:async()=>({allowed:true}),
     db:{query:async sql=>/SELECT \*/.test(sql)?{rowCount:1,rows:[{privacy_level:'personal'}]}:{rowCount:1,rows:[]}},
     searchProjectChunks:async()=>chunks,
-    reviewPrivacyRequest:async({text})=>{
-      const plan=core.makePrivacyPlan(text,core.deterministicFindings(text));
+    reviewPrivacyRequest:async({text,outboundTexts})=>{
+      outboundSnapshot=outboundTexts;
+      const plan=core.makePrivacyPlan(text,core.deterministicFindings(text));mappingSnapshot=plan.mappings;
       return {...plan,apply:value=>core.literalReplace(value,plan.mappings),destination:'cloud',policy:'encrypted-policy-fixture'};
     },determineTaskMode:()=> 'normal',getModelForMode:()=> 'fixed-model',shouldUseWebSearch:()=>false,
     getMaximumOutputTokens:()=>100,estimateRequestCost:()=>({chf:0}),usdToChf:()=>0,
@@ -118,6 +119,7 @@ test('confirmed project jobs keep originals out of finding metadata and retrieve
   const api=load('../app/api/projects/[id]/chat/route.js',deps,['POST']);
   const response=await api.POST(new Request('http://vector.test',{method:'POST',body:JSON.stringify({message:'Bitte Kontakt Nachricht.',mode:'normal'})}),{params:{id:'project'}});
   assert.equal(response.status,202);assert.equal(jobs.length,1);
+  assert.equal(jobs[0].payload.messages.at(-1).content,core.literalReplace(outboundSnapshot[0],mappingSnapshot));
   const wire=JSON.stringify(jobs[0].payload);
   assert.ok(!wire.includes(email),'Email must not survive in durable finding or retrieval metadata.');
   assert.ok(!wire.includes(password),'Credential must not survive in durable job metadata.');
