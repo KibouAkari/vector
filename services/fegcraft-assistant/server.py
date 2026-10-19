@@ -14,16 +14,17 @@ from urllib.parse import urlsplit
 from runtime import Assistant, LocalKnowledge, State
 from recipes import RecipeBook
 
+KNOWLEDGE_PACK_SHA256 = '4f492319690283634c594cabf0bd1ea72d4c6381e8e69c762886b68904ea2488'
 DOCUMENTATION_SHA256 = '074462abb97ae7a1a91c884e776fd6826ecf27c9f82288cd9c0fc8f370ade00d'
 
 
 def knowledge_for(mode, state, dsn_path='/run/secrets/vector_fegcraft_slot_dsn',
-                  documentation_path='/inputs/documentation.json'):
-    if mode not in ('0', '1', '2', '3', '4'):
+                  documentation_path='/inputs/documentation.json', knowledge_pack_path='/inputs/knowledge-pack.json'):
+    if mode not in ('0', '1', '2', '3', '4', '5'):
         raise RuntimeError('INVALID_KNOWLEDGE_MODE')
     if mode == '0':
         return None
-    if mode in ('3', '4'):
+    if mode in ('3', '4', '5'):
         fd = os.open(dsn_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(fd, 'rb') as handle:
             meta = os.fstat(handle.fileno())
@@ -41,6 +42,9 @@ def knowledge_for(mode, state, dsn_path='/run/secrets/vector_fegcraft_slot_dsn',
             raise RuntimeError('RESTRICTED_LOCAL_SLOT_REQUIRED')
         from documentation import DocumentationIndex, DocumentationKnowledge, ConversationKnowledge
         index = DocumentationIndex(documentation_path, DOCUMENTATION_SHA256)
+        if mode == '5':
+            from companion import CompanionKnowledge, KnowledgePack
+            return CompanionKnowledge(dsn,documentation=index,pack=KnowledgePack(knowledge_pack_path,KNOWLEDGE_PACK_SHA256),usage=state.model_usage)
         kind = ConversationKnowledge if mode == '4' else DocumentationKnowledge
         return kind(dsn, documentation=index, usage=state.model_usage)
     # Retain existing explicitly opted-in legacy modes; rollout only selects3.
@@ -156,7 +160,7 @@ def main():
     # mounted. Missing/unsupported recipes must never go to the small model.
     recipes = RecipeBook.load('/inputs/recipes.json') if os.environ.get('VECTOR_FEGCRAFT_RECIPES') == '1' else RecipeBook()
     mod_recipes = None
-    if mode == '4' and os.environ.get('VECTOR_FEGCRAFT_MOD_RECIPES_SHA256'):
+    if mode in ('4', '5') and os.environ.get('VECTOR_FEGCRAFT_MOD_RECIPES_SHA256'):
         from modrecipes import ModRecipes
         mod_recipes = ModRecipes('/inputs/mod-recipes.json', os.environ['VECTOR_FEGCRAFT_MOD_RECIPES_SHA256'])
     assistant = Assistant(state, '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json', knowledge, recipes, mod_recipes)

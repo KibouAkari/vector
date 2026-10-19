@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-19 — Grounded mod context and a concise Vector character (PR #87)
+
+- Owner confirms PR #86 backend deployed at061702Z-802ac8; staged greeting addon remains for the next regular restart. No further game restart or welcome is requested.
+- Add opt-in mode5 with192 reviewed public facts covering63 observed mod IDs and Minecraft basics. Retrieve at most6 same-topic facts and let the same local4B model select1–2 allowed IDs. Compose only reviewed text/wording variants, with bounded own followups and short static-selection caching. Original84 passage catalog, recipes, model/image/role/lease and fresh statistic computation retained. This is not universal mod correctness or unrestricted factual generation. Source/license/scope review is recorded separately.
+- Add warm, concise voice, light casual/Swiss cues and gentle own repetition humour with180-second/256-author bounds. Never tease on reported trouble or uncertainty. Generic best-player questions get the owner-requested Simi joke, marked as an opinion; real metrics and private-command boundaries take priority. No emojis, ordinary-chat capture or cross-author memory.
+- Add a guarded assistant-only updater with readonly pack mount and mode4->5. Require exactly3 accepted native selections with complete token usage in isolated signed HTTP before deployment; zero cloud/game messages. Preserve game/addon/pack/state/backup/markers and offer owned rollback. Repeated completed update verifies rather than rerunning tests.
+- Eight focused synthetic tests cover factory pin/permissions, readonly candidate, complete-usage gate, real local signed HTTP, ID-only selection, own-cache/TTL and opinion/statistic/policy separation. Actual server-native stage and deployment remain unobserved until the owner runs the pinned wrapper.
+
 ## 2026-10-19 — Repair statistic intents, group greetings and pending addon salutations (PR #86)
 
 - Owner confirms PR #85 cutover worked: native welcome visible, logo attached and Discord-origin questions answered. Full terminal report was not retained; exact live release/result is read and verified locally by the next guarded update rather than fabricated. No new game restart is requested.
