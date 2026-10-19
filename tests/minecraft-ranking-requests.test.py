@@ -122,6 +122,10 @@ class RankingRequests(unittest.TestCase):
         self.assertIn('Discord',self.ai.stat_answer('wie viele Blöcke habe ich abgebaut?',principal=None))
         self.assertIn('eindeutigen Namen',self.ai.stat_answer('wie viele Blöcke hat UnknownPlayer abgebaut?'))
         self.assertIn('Example1 hat',self.ai.stat_answer('wie viele Blöcke hat Example1 abgebaut?'))
+        self.assertIn('beiden Zählungen',self.ai.stat_answer('wie viele Blöcke habe ich abgebaut und platziert?',principal=self.ids[0]))
+        data['stats']['minecraft:mined']={'examplemod:'+letter*90:10 for letter in 'abc'}
+        path.write_text(json.dumps(data))
+        self.assertIn('zu lang',self.ai.stat_answer('welchen Block habe ich am meisten abgebaut?',principal=self.ids[0]))
 
     def test_ordinary_chat_replay_and_rate_limit_remain_enforced(self):
         payload = dict(principal=self.ids[0], name='Example1', source='discord', event=self.ids[0] + ':1', message='Top 5 Mobkills')

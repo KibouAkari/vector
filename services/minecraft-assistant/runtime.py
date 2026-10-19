@@ -527,6 +527,8 @@ class Assistant:
             elif population:
                 return 'in den vollständig gelesenen Statistiken sind ' + str(len(data['players'])) + ' Spieler erfasst. Frühere Spieler ohne gespeicherte Statistik sind darin nicht nachweisbar.'
             elif block_category:
+                if re.search(r'abgebaut|abgebau|mined',q) and re.search(r'platzi|plazi|gesetzt|placed',q):
+                    return 'meinst du abgebaute oder platzierte Blöcke? Frage bitte nach einer der beiden Zählungen.'
                 if unknown_target:
                     return 'welchen Minecraft-Spieler meinst du? Nenne bitte einen eindeutigen Namen für die Blockstatistik.'
                 if block_category == 'used' and not block_items:
@@ -548,6 +550,7 @@ class Assistant:
                     else:
                         result=(who+(' hast' if own else ' hat')+' bisher '+number(sum(counters.values()),'Blöcke' if block_category=='mined' else 'Block-Items')+' '+('abgebaut.' if block_category=='mined' else 'verwendet.'))
                     if block_category=='used':result+=' Das ist eine Näherung für Platzierungen aus den Nutzungszählern.'
+                    if len(result)>340:return 'die gleichplatzierten Blocknamen sind für eine Chatantwort zu lang. Frage bitte nach einer bestimmten Blockart.'
                     return result
                 if re.search(r'\b(?:hat|habe|hast|ich)\b',q):
                     return 'nenne bitte einen eindeutigen Namen für die persönliche Blockstatistik.'
