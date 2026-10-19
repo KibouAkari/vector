@@ -25,6 +25,16 @@ METRIC_WORDS = {
     'distance': r'strecke|distanz|kilometer|gelaufen|gereist',
     'deaths': r'\btod(?:e|esfälle)?\b|gestorben|\bstarb\b|\bstarben\b|\bsterben\b|\bstirbt\b|\bdied\b|\bdeaths?\b',
 }
+ORE_WORDS = {
+    'Diamanterz-Blöcke': (r'\b(?:diamant(?:en|erz(?:e)?)?|diamonds?|diamond ore)\b', ('minecraft:diamond_ore', 'minecraft:deepslate_diamond_ore')),
+    'Eisenerz-Blöcke': (r'\b(?:eisen(?:erz(?:e)?)?|iron(?: ore)?)\b', ('minecraft:iron_ore', 'minecraft:deepslate_iron_ore')),
+    'Golderz-Blöcke': (r'\b(?:gold(?:erz(?:e)?)?|gold ore)\b', ('minecraft:gold_ore', 'minecraft:deepslate_gold_ore', 'minecraft:nether_gold_ore')),
+    'Kohleerz-Blöcke': (r'\b(?:kohle(?:erz(?:e)?)?|coal(?: ore)?)\b', ('minecraft:coal_ore', 'minecraft:deepslate_coal_ore')),
+    'Kupfererz-Blöcke': (r'\b(?:kupfer(?:erz(?:e)?)?|copper(?: ore)?)\b', ('minecraft:copper_ore', 'minecraft:deepslate_copper_ore')),
+    'Smaragderz-Blöcke': (r'\b(?:smaragd(?:e|erz(?:e)?)?|emeralds?(?: ore)?)\b', ('minecraft:emerald_ore', 'minecraft:deepslate_emerald_ore')),
+    'Redstoneerz-Blöcke': (r'\bredstone(?:erz(?:e)?)?\b', ('minecraft:redstone_ore', 'minecraft:deepslate_redstone_ore')),
+    'Lapislazulierz-Blöcke': (r'\b(?:lapis(?:lazuli)?(?:erz(?:e)?)?)\b', ('minecraft:lapis_ore', 'minecraft:deepslate_lapis_ore')),
+}
 PRIVATE = re.compile(r'seed|welt.?schlüssel|passw[oö]rt|password|api.?key|token|credential|/opt/|/etc/|rcon|docker|system.?prompt|ignore.*(?:instructions|regeln)|ignoriere.*(?:anweisung|regel)|gamemode|creative|kreativmodus|cheat|\bhack(?:s|ing|er|en)?\b|operator|admin.?recht|betr[üu]g|betrueg|schummel|kreativ|spectator', re.I)
 MOD_INVENTORY = re.compile(r'welche.*mods|mod.?liste|installierte.*mods', re.I)
 TOPIC = re.compile(r'minecraft|redstone|craft|rezept|recipe|item|block|blöck|erz|verzauber|enchant|villager|dorfbewohner|creeper|zombie|skelett|enderman|nether|ender|farm|kolben|piston|trichter|hopper|komparator|comparator|repeater|verstärker|biom|elytra|rüstung|werkbank|schmelz|ofen|diamant|eisen|mod\b|mods\b|rucksack|backpack|claim|grab|graves|lag\b|fps\b|chunk|server.*(?:ruckel|problem|fehler)', re.I)
@@ -384,12 +394,17 @@ class Assistant:
         self_reference = bool(re.search(r'\b(?:ich|von mir|für mich|fuer mich|mein(?:e[rmns]?)?|my)\b(?!\s+(?:server|fegcraft))', q))
         if best and not selected:
             return 'einen objektiv besten Spieler gibt es nicht. Meinst du Mobkills, Spielerkills, Spielzeit oder einen anderen Rekord?'
+        mined = bool(re.search(r'abgebaut|abgebau|abbau|abzubauen|mined|\bmining\b', q))
+        ores = [(label, ids) for label, (pattern, ids) in ORE_WORDS.items() if mined and re.search(pattern, q)]
+        population = bool(not selected and not ores and re.search(r'\b(?:wie\s+viele|wieviele|anzahl(?:\s+der)?)\s+(?:spieler(?:innen)?|players?)\b', q)
+                          and re.search(r'\bserver\b|fegcraft|\binsgesamt\b|\bschon\b|\bbisher\b', q)
+                          and not re.search(r'claim|part(?:y|ys|ies)|gleichzeitig|online|gerade|aktuell|momentan|können|koennen|dürfen|duerfen|limit', q))
         blocks = bool(re.search(r'\bblock\b|blöck|bloeck|\bblocks\b', q))
         block_category = ('used' if re.search(r'platzier|gesetzt|placed', q) else 'mined' if re.search(r'abgebaut|abgebau|gebaut.*ab|mined', q) else None) if blocks else None
-        if not selected and not is_record and not block_category and not wants_ranks and not re.search(r'statistik|statistic|\bstats\b|rangliste|leaderboard', q):
+        if not selected and not is_record and not block_category and not ores and not population and not wants_ranks and not re.search(r'statistik|statistic|\bstats\b|rangliste|leaderboard', q):
             return None
         try:
-            data = stats.snapshot(self.stats_dir, self.usercache, include_items=bool(block_category))
+            data = stats.snapshot(self.stats_dir, self.usercache, include_items=bool(block_category or ores))
             stats.require_complete(data)
             people = [p for p in data['players'] if re.search(r'(?<![a-z0-9_])' + re.escape(p['name'].casefold()) + r'(?![a-z0-9_])', q)]
             # Self resolution uses the authenticated game UUID, never a Discord display name.
@@ -410,7 +425,29 @@ class Assistant:
                 unknown_target = unknown_player_target(resolved, people)
             if unknown_target and not block_category:
                 return 'nenne bitte den vollständigen Spielernamen für die Statistikabfrage.'
-            if block_category:
+            if ores:
+                if len(ores) != 1:
+                    return 'welches Erz möchtest du vergleichen? Bitte frage nach einer Erzart.'
+                label, identifiers = ores[0]
+                if people:
+                    person = people[0]
+                    counts = [(p, sum(p['mined'].get(k, 0) for k in identifiers)) for p in data['players']]
+                    count = next(v for p, v in counts if p['uuid'] == person['uuid'])
+                    rank = 1 + sum(v > count for _, v in counts)
+                    text = person['name'] + ': ' + number(count, label) + '; Rang ' + str(rank)
+                elif re.search(r'\bwer\b|\bwho\b|spitzenreiter|meist|rangliste|leaderboard', q):
+                    leaders = stats.mined_leaders(data, identifiers)
+                    if not leaders:
+                        return 'für diese Erzart ist noch kein positiver gespeicherter Abbauzähler vorhanden.'
+                    if len(leaders) > 10:
+                        return 'es gibt mehr als zehn gleichplatzierte Spieler. Bitte grenze die Frage ein.'
+                    text = '/'.join(p['name'] for p in leaders) + ' führt mit ' + number(leaders[0]['value'], label)
+                else:
+                    return 'meinst du die meisten abgebauten Erzblöcke auf dem Server oder die Werte eines bestimmten Spielers?'
+                text += ' (inklusive Tiefenschiefer; Erzblöcke, keine erhaltenen Items)'
+            elif population:
+                return 'in den vollständig gelesenen Statistiken sind ' + str(len(data['players'])) + ' Spieler erfasst. Frühere Spieler ohne gespeicherte Statistik sind darin nicht nachweisbar.'
+            elif block_category:
                 if people or unknown_target or re.search(r'\b(?:hat|habe|hast|ich)\b', q) or not re.search(r'meist|häufigst|haeufigst|most', q):
                     return 'frage bitte nach dem serverweit häufigsten Block.'
                 if block_category == 'used' and not block_items:
@@ -486,6 +523,7 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 
 
 

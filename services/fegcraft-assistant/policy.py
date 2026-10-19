@@ -8,7 +8,7 @@ INTRODUCTION = ('Hey zusammen, ich bin Vector, euer neuer Minecraft-Assistent! '
                 'Ich helfe bei Fragen und Problemen rund um Minecraft und zeige '
                 'euch Statistiken und Rekorde. Beginnt eure Nachricht einfach '
                 'mit Hey Vector oder Yoo Vector.')
-GREETING = re.compile(r'^\s*(hi|hey|hallo|yo{1,3}|hoi|huhu|hello)\s+vector(?:\s*[,!:?]\s*|\s+|$)', re.I)
+GREETING = re.compile(r'^\s*(hi|hey|hallo|yo{1,5}|ey{1,4}|hoi|huhu|hello|moin|servus|guten\s+(?:morgen|tag|nachmittag|abend)|guete\s+(?:morge|tag|abig))\s+vector(?:\s*[,!:?]\s*|\s+|$)', re.I)
 
 
 def addressed_question(message):
@@ -17,7 +17,7 @@ def addressed_question(message):
     match = GREETING.match(message)
     if not match:
         return None
-    return match.group(1).lower(), message[match.end():].strip()
+    return ' '.join(match.group(1).lower().split()), message[match.end():].strip()
 
 
 def display_name(value):
@@ -74,3 +74,4 @@ class Admission:
             self.users[principal] = values
             self.global_events.append(now)
             return {'status': 'accepted', 'greeting': question[0], 'question': question[1]}
+

@@ -14,6 +14,7 @@ from runtime import local_slot, safe_answer, request_forbidden
 MODEL = 'vector-qwen3-instruct2507:4b-q4km'
 MISSING = 'dazu fehlt mir ein passender geprüfter Eintrag. Welche Mod oder Spielmechanik möchtest du genauer verstehen?'
 STOP = set('wie was wer und oder der die das ein eine einen einer einem den dem des ich du mir mich sich ist sind hat haben kann kannst bitte man mit von zu im in am auf fur bei es so noch auch offnen'.split())
+SUBJECT_NOISE = set('spieler spielern spielerin spielerinnen player players server fegcraft viele vielen viel schon bisher waren wurde kann konnen koennen erstelle erstellen mache machen nutzt nutzen'.split())
 REFERENCE_WORDS = set('und wie wo wozu was warum womit welche welcher welches taste tasten menu menue das damit dabei dort geht klappt funktioniert nicht es jetzt dann genau weiter offnen geoffnet'.split())
 
 
@@ -88,7 +89,7 @@ class DocumentationIndex:
             # subject words. Reviewed limitations remain valid for either form.
             if intent != 'any' and not set(row['kinds']) & {intent, 'limitation'}:
                 continue
-            hits = query & tags
+            hits = (query & tags) - SUBJECT_NOISE
             # Generic verbs are deliberately absent from subject tags.
             if not hits and topic is None:
                 continue
@@ -211,7 +212,21 @@ class ConversationKnowledge(DocumentationKnowledge):
         if re.fullmatch(r'(?:tschüss|tschau|bis bald|bis später|gute nacht|guet nacht|bye)', q):
             self.clear(scope)
             return 'bis bald und viel Spass beim nächsten Mal.'
-        if re.search(r'\b(?:wer bist du|bisch du|was bist du)\b', q):
+        group_greeting = re.search(r'\b(?:guten morgen|guten nachmittag|guten abend|guten tag|guete morge|guete abig)\b', q)
+        if group_greeting and re.search(r'\b(?:allen|alle|zusammen|euch)\b', q) and re.search(r'wünsch|wuensch|grüss|gruess|sag', q):
+            self.clear(scope)
+            moment = group_greeting[0]
+            if 'morgen' in moment or 'morge' in moment:
+                return 'guten Morgen zusammen! Ich wünsche euch einen schönen Start in den Tag.'
+            if 'abend' in moment or 'abig' in moment:
+                return 'guten Abend zusammen! Habt einen gemütlichen Abend und viel Spass beim Spielen.'
+            return 'hallo zusammen! Ich wünsche euch einen schönen Nachmittag.' if 'nachmittag' in moment else 'hallo zusammen! Habt einen schönen Tag.'
+        if re.search(r'\b(?:wer bist du|bisch du|was bist du|stell dich)\b', q):
+            self.clear(scope)
+            if re.search(r'genau|ausführ|ausfuehr|vorstell|stell dich', q):
+                return ('ich bin Vector, euer lokaler KI-Assistent für Minecraft und die installierten Mods. '
+                        'Ich helfe bei Spielmechaniken, Rezepten und Problemen, lese gespeicherte Statistiken frisch und kann mit euch plaudern. '
+                        'Bei fehlenden Informationen frage ich nach; manche Fragen kann ich noch nicht sicher beantworten.')
             return 'ich bin Vector, der KI-Assistent hier im Chat. Wir können kurz plaudern oder gemeinsam eine Minecraft-Frage klären.'
         if ('openpartiesandclaims' in mods and re.search(r'\bpart(?:y|ys|ies)\b', q)
                 and re.search(r'erstell|anleg|gründ|gruend', q)):
@@ -225,7 +240,10 @@ class ConversationKnowledge(DocumentationKnowledge):
             chosen = next((row for row, _, _ in self.documentation.rows if row['id'] == desired), None)
             if chosen:
                 self.remember(scope, [{'role': 'user', 'content': question[:200], 'topic': 'backpack'}])
-                return safe_answer(chosen['text'])
+                text = chosen['text']
+                if desired == 'backpack-upgrade':
+                    text += ' Welche Rucksack-Stufe möchtest du als Nächstes erreichen?'
+                return safe_answer(text)
         if 'openpartiesandclaims' in mods and (re.search(r'claim', q) and re.search(r'ander|freund|spieler|mitglied', q) and re.search(r'bau|abba|zugriff|erlaub', q)):
             chosen = next((row for row, _, _ in self.documentation.rows if row['id'] == 'claims-build-access'), None)
             if chosen:
@@ -287,3 +305,4 @@ class ConversationKnowledge(DocumentationKnowledge):
         except Exception:
             self.clear(scope)
             return 'ich bin da. Was beschäftigt dich gerade beim Spielen?'
+
