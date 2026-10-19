@@ -2,6 +2,13 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-19 — Pin existing Compose projects for assistant updates (PR #98)
+
+- Require the operator-pinned existing project name and pass it explicitly to every assistant Compose render, configuration hash, recreate and rollback operation. Retain the existing service, working-directory, image, code and configuration guards.
+- Separate explicit ranking subjects from category aliases, including usernames resembling a statistic. Reject comparisons containing unknown names after conjunctions.
+- Isolate the admission client from terminal process-group signals so Ctrl-C cannot release the shared CPU slot before detector shutdown. Cover the actual process-group signal path without a model call.
+- Record successful operator qualification of the web candidate: native normal/outage boundaries and cleanup passed, with no production activation. Reuse the resulting image for a separate guarded release rather than rebuilding it.
+
 ## 2026-10-19 — Harden recovery cleanup and preserve ranking subjects (PR #97)
 
 - Retain full private before/after fingerprints, including paused and failed runtime states. Require the existing owned release lock and remove legacy build intermediates on failures.
@@ -856,3 +863,4 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The operator observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at [private release reference]. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
+

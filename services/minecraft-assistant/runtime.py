@@ -188,6 +188,33 @@ def friendly_statistics(answer, sender):
     return value + '.'
 
 
+def explicit_subjects(question):
+    """Locate complete target tokens and their conjunction chains, without name rewriting."""
+    article = r'(?:(?:dem|der|den|die|das|meinem|unserem|einem|einer|the)\s+)?'
+    token = re.compile(article + r'(?:(?:spieler|spielerin|player)\s+)?([a-z0-9_]{1,16})\b')
+    found = {}
+    for marker in re.finditer(r'\b(?:von|für|of|for|zwischen|between)\s+', question):
+        cursor = marker.end()
+        while True:
+            candidate = token.match(question, cursor)
+            if candidate is None:
+                break
+            tail = question[cursor:]
+            # Metric/server phrases are qualifiers rather than player subjects.
+            qualifier = article + r'(?:(?:meisten?|höchsten?|laengsten?|längsten?|most)\s+)?'
+            if (re.match(article + r'(?:anzahl|number)\b', tail)
+                    or re.match(article + r'(?:minecraft|server)(?:\b|$)', tail)
+                    or any(re.match(qualifier + r'(?:' + pattern + r')(?:\b|$)', tail)
+                           for pattern in METRIC_WORDS.values())):
+                break
+            found[candidate.start(1)] = (candidate.start(1), candidate.end(1), candidate[1])
+            connector = re.match(r'\s*(?:,\s*(?:(?:und|and)\s+)?|(?:und|and|mit|with|als|than)\s+)', question[candidate.end():])
+            if connector is None:
+                break
+            cursor = candidate.end() + connector.end()
+    return [found[key] for key in sorted(found)]
+
+
 def unknown_player_target(question, people):
     """Separate named subjects from complete server and metric qualifiers."""
     known = {p['name'].casefold() for p in people}
@@ -398,13 +425,18 @@ class Assistant:
         if (getattr(self.knowledge,'personality',False) and re.search(r'grab|gräber|graves|rucksack|backpack',q)
                 and not re.search(r'wie oft|wie viele|meist|rekord|record|rang|statistik',q)):
             return None
-        # Aliases affect category recognition only; names/target guards use original text.
+        # Explicit subjects keep their identity even when a username resembles a metric.
+        subjects = explicit_subjects(q)
         category_q = q
-        if re.search(r'\btop\s*\d+\b|\brangliste\b|\bleaderboard\b', q):
-            category_q = re.sub(r'\bmonkills\b', 'mobkills', q)
+        for start, end, _ in reversed(subjects):
+            category_q = category_q[:start] + ' ' * (end - start) + category_q[end:]
+        typo_category = bool(re.search(r'\btop\s*\d+\b|\brangliste\b|\bleaderboard\b', q)
+                             and re.search(r'\bmonkills\b', category_q))
+        if typo_category:
+            category_q = re.sub(r'\bmonkills\b', 'mobkills', category_q)
         selected = [key for key, pattern in METRIC_WORDS.items() if re.search(pattern, category_q)]
         top_match = re.search(r'\btop\s*(\d+)\b', q)
-        comparison = bool(re.search(r'unterschied|differenz|vergleich|\bmehr\b.*\bals\b|\bweniger\b.*\bals\b', q))
+        comparison = bool(re.search(r'unterschied|differenz|vergleich|\bcompar(?:e|ison)\b|\bmehr\b.*\bals\b|\bweniger\b.*\bals\b', q))
         is_record = re.search(r'rekord|record', q)
         wants_ranks = bool(re.search(r'\br[äa]ng(?:e|en)?\b|\branks?\b|platzierung', q))
         best = bool(re.search(r'\bbeste[rn]?\s+(?:minecraft[ -]+)?spieler\b', q))
@@ -425,7 +457,9 @@ class Assistant:
         try:
             data = stats.snapshot(self.stats_dir, self.usercache, include_items=bool(block_category or ores))
             stats.require_complete(data)
-            people = [p for p in data['players'] if re.search(r'(?<![a-z0-9_])' + re.escape(p['name'].casefold()) + r'(?![a-z0-9_])', q)]
+            people = [p for p in data['players'] if re.search(r'(?<![a-z0-9_])' + re.escape(p['name'].casefold()) + r'(?![a-z0-9_])', q)
+                      and (p['name'].casefold() != 'monkills' or not typo_category
+                           or any(name == 'monkills' for _, _, name in subjects))]
             # Self resolution uses the authenticated game UUID, never a Discord display name.
             if self_reference and not people:
                 if principal is None:
@@ -443,7 +477,9 @@ class Assistant:
                         else 'nenne bitte den vollständigen Spielernamen für die Statistikabfrage.')
             # Never silently substitute the author for an unknown named player.
             if comparison:
-                if len(people) != 2 or len(selected) != 1:
+                if (len(people) != 2 or len(selected) != 1
+                        or any(name not in {p['name'].casefold() for p in people} for _, _, name in subjects)
+                        or len({name for _, _, name in subjects}) > 2):
                     return 'zum Vergleich brauche ich zwei vollständige Spielernamen und eine Kategorie, zum Beispiel Mobkills.'
                 metric = selected[0]
                 label, unit, *_ = stats.METRICS[metric]
@@ -557,6 +593,7 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 
 
 
