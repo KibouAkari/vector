@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-19 — Load the staged addon with an owned regular restart (PR #88)
+
+- Owner confirms PR #87 deployed mode5 at064939Z-d1f1fc with192 facts/63 mods and3 accepted native calls (981 input/25 output tokens); cached repeat0.051s, zero cloud/messages. Minecraft has not restarted; greeting addon is still pending.
+- Add a guarded same-container restart command using exact confirmed backend release and staged addon proof. Acquire existing backup/release locks, retain data/world directory identities, all configuration and welcome markers. No Compose recreation, download, backup or model request. Normal stop/start recovery targets the original ID/image only.
+- Verify healthy game, new startup registration/boot evidence, staged bytes and unchanged other services/profiles. Read Docker stdout/stderr privately; never publish logs/config/credentials. Record attempt before stop, make completed repeat read-only, and block uncertain repeats. Do not replay introduction. Source tests do not claim a live restart or real greeting test.
+- Three focused synthetic tests cover same-ID stop/start, failed/unclean-stop recovery and exact allowed snapshot difference. Update operational handoff and owner preferences, including that old StartedAt-protected rollback requires current-aware review after this restart.
+
 ## 2026-10-19 — Grounded mod context and a concise Vector character (PR #87)
 
 - Owner confirms PR #86 backend deployed at061702Z-802ac8; staged greeting addon remains for the next regular restart. No further game restart or welcome is requested.
