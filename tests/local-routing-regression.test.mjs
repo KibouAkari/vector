@@ -79,3 +79,16 @@ test('generic Minecraft explanations stay text-only and topic switches end old p
     {role:'user',content:'Schreibe eine Mail für ExampleOne'}];
   assert.equal(classifyExecution({taskText:'und für ExampleTwo?',allowServer:true,recentMessages}).requirements.server,false);
 });
+
+
+test('configured server aliases retain actual tool requirements in explicit cloud modes',()=>{
+  const old=process.env.VECTOR_MINECRAFT_SERVER_ALIASES;
+  process.env.VECTOR_MINECRAFT_SERVER_ALIASES='Example Realm,Realm[1]';
+  try {
+    for(const label of ['Example Realm','Realm[1]']) {
+      assert.equal(classifyExecution({taskText:'Welche Rekorde hat ExampleOne auf '+label+'?',allowServer:true}).requirements.server,true);
+      assert.equal(classifyExecution({taskText:'Welche Rekorde hat ExampleOne auf '+label+'?',allowServer:false}).requirements.server,false);
+    }
+    assert.equal(classifyExecution({taskText:'Schreibe eine Mail',allowServer:true,recentMessages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf Example Realm?'}]}).requirements.server,false);
+  } finally {if(old===undefined)delete process.env.VECTOR_MINECRAFT_SERVER_ALIASES;else process.env.VECTOR_MINECRAFT_SERVER_ALIASES=old;}
+});
