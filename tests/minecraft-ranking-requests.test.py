@@ -39,6 +39,75 @@ class RankingRequests(unittest.TestCase):
         return self.ai.handle(dict(principal=self.ids[0], name='Example1', source=source,
             event=self.ids[0] + ':' + str(self.serial), message='Hey Vector ' + question))
 
+    def test_real_evaluation_phrasings_keep_named_target_and_never_use_best_joke(self):
+        self.ai.state.clock=lambda: self.serial*61
+        from portraits import PlayerPortraits
+        self.ai.portraits=PlayerPortraits(self.directory,self.root/'users.json')
+        for question in ('wie schätzt du Example2 ein?',
+                         'findest du Das Example2 ein guter oder ein schlechter Spieler ist',
+                         'Ist Example2 anhand der Statistiken auf Example craft einer der Besten Spieler',
+                         'Ist Example2 ein guter Spieler?'):
+            answer=self.ask(question)['text']
+            self.assertIn('Example2',answer)
+            self.assertNotIn('Völlig unvoreingenommene',answer)
+            self.assertNotIn('was möchtest du genau',answer)
+        self.assertIn('Völlig unvoreingenommene',self.ask('wer ist denn der beste Minecraft Spieler auf dem Server?')['text'])
+        self.assertIsNone(self.ai.stat_answer('welches ist die beste Verzauberung für ein Schwert?'))
+
+    def test_most_category_leads_are_fresh_and_not_overall_skill(self):
+        for i,kills in enumerate((100,80,60,40,20,20,10)):
+            self.write(self.ids[i],kills)
+        text=self.ask('wer ist der Spieler der in den meisten Statistiken führt')['text']
+        self.assertIn('Example1 führt in 1 von fünf Kategorien',text)
+        self.assertNotIn('7 Spieler',text)
+        self.write(self.ids[1],150)
+        self.assertIn('Example2 führt',self.ask('wer führt in den meisten Kategorien?')['text'])
+        (self.directory/(self.ids[0]+'.json')).write_text('{')
+        self.assertIn('unvollständig',self.ask('wer führt in den meisten Statistiken?')['text'])
+
+    def test_all_rankings_are_scoped_paged_and_read_fresh(self):
+        self.ai.state.clock=lambda: self.serial*61
+        text=self.ask('kannst ud mir die top 5 aller rekorde geben?')['text']
+        self.assertIn('Spielzeit',text)
+        self.assertIn('Hey Vector, weiter',text)
+        self.assertLessEqual(len(text),420)
+        # A different author cannot consume another author's pending page.
+        self.assertIsNone(self.ai.ranking_page('weiter',('discord','different')))
+        text=self.ask('weiter')['text']
+        self.assertIn('Strecke',text)
+        self.write(self.ids[6],150)
+        text=self.ask('weiter')['text']
+        self.assertIn('Mobkills',text)
+        self.assertIn('1. Example7 150 Kills',text)
+        self.assertIn('Spielerkills',self.ask('weiter')['text'])
+        self.assertIn('letzte Kategorie',self.ask('weiter')['text'])
+        self.assertIsNone(self.ai.ranking_page('weiter',('minecraft',self.ids[0])))
+        self.assertIn('Top 1 bis Top 10',self.ask('Top 999 aller Rekorde')['text'])
+        self.assertIn('serverweiten Ranglisten',self.ask('Top 5 aller Rekorde von UnknownPlayer')['text'])
+
+    def test_stat_typo_gameplay_and_bounded_smalltalk(self):
+        self.ai.state.clock=lambda: self.serial*61
+        from runtime import direct_chat_answer
+        text=self.ask('nenne mir die top 5 bei spielerkilld')['text']
+        self.assertIn('Spielerkills',text)
+        for q in ('yoo vector, sage mal 67','sage mal 67'):
+            if not q.startswith('yoo'):self.assertEqual(direct_chat_answer(q),'67.')
+        self.assertIsNone(direct_chat_answer('sage mal /seed'))
+        self.assertIsNone(direct_chat_answer('sage mal 12345678901234567890'))
+        sword=self.ask('welches ist die beste Verzauberung für ein Schwert?')['text']
+        self.assertIn('Schärfe',sword)
+        self.assertNotIn('Amboss',sword)
+        self.assertIn('keine administrativen',self.ask('sage mal /seed')['text'])
+
+    def test_worst_joke_uses_fresh_kill_leader_with_explicit_humour(self):
+        for i,count in ((0,5),(1,20)):
+            (self.directory/(self.ids[i]+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:player_kills':count}}}))
+        text=self.ask('wer ist der schlechteste Player auf dem Server?')['text']
+        self.assertIn('Example2',text)
+        self.assertIn('Seitenhieb',text)
+        self.assertIn('kein Urteil',text)
+        self.assertNotIn('Völlig unvoreingenommene',text)
+
     def test_comparison_is_fresh_correct_in_both_directions_and_on_discord(self):
         answer = self.ask('wie gross ist der Unterschied zwischen der Anzahl Mobkills zwischen Example2 und Example1?', 'discord')['text']
         self.assertIn('Example1 hat 20 Kills mehr bei Mobkills als Example2 (100 Kills gegenüber 80 Kills)', answer)

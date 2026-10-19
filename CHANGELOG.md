@@ -2,6 +2,14 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-19 — Route player opinions and multi-category rankings by intent
+
+- Keep the best-player joke limited to direct global best-player questions. Normalize named good/bad evaluations and alternate portrait phrasing without changing player identity.
+- Count fresh positive first places across the five tracked categories, retaining ties and distinguishing records from subjective skill. Add a clearly playful peaceful-server roast based on the current player-kill leader rather than fabricated events.
+- Page Top-N requests across all five categories with bounded, expiring per-author continuation; read counters afresh on each page. Recognize the narrow ranking typo `spielerkilld`.
+- Answer bounded numeric smalltalk and sword-enchantment recommendations directly instead of returning unrelated anvil guidance. General enchantment effects follow the official Minecraft Help enchantments reference; modified server rules are not claimed.
+- Extend authenticated synthetic regressions for the reported question forms, identity isolation, fresh data, pagination and forbidden-request boundaries. Runtime-only installation retains game state, private character and other services; no game restart or model call is required.
+
 ## 2026-10-19 — Block leader totals and ordinal block types (PR #102)
 
 - Answer which player has the highest saved mined-block total or registry-filtered block-item use, including ties and combined server-wide requests. Placement output retains its approximation scope.
