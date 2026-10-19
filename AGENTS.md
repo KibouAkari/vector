@@ -12,3 +12,5 @@ Read VISION.md, docs/ARCHITECTURE.md, docs/SECURITY.md, docs/DESIGN_SYSTEM.md an
 8. Preserve immutable release evidence and rollback guards. Do not rewrite Git history or publish a repository without explicit authorization.
 9. Review external dependencies, licensing and security implications. Never claim success without evidence.
 10. Maintain private project-specific handoff material outside this repository. This file contains reusable engineering rules, not personal operating instructions.
+
+11. Preserve the full dated changelog and useful README sections. Extend them; generalize private references narrowly instead of deleting history. Restore verified original assets when appropriate.

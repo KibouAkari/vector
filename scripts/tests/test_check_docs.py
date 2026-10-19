@@ -28,6 +28,16 @@ class DocumentationTests(unittest.TestCase):
         _, errors = validate(self.root)
         return errors
 
+    def test_changelog_history_cannot_be_replaced_by_a_short_summary(self):
+        import json
+        index=self.root/'docs/changelog-history-index.json'
+        index.write_text(json.dumps({'schema':1,'headings':['## 2026-10-14 — Existing feature']}))
+        log=self.root/'CHANGELOG.md'
+        log.write_text('# Changelog\n\n## 2026-10-19 — New feature\n')
+        self.assertTrue(any('preserved historical entry missing' in e for e in validate(self.root)[1]))
+        log.write_text(log.read_text()+'\n## 2026-10-14 — Existing feature\n\nOriginal detail.\n')
+        self.assertFalse(validate(self.root)[1])
+
     def test_existing_markdown_link(self):
         (self.root / 'VISION.md').write_text('# Vision\n')
         self.assertFalse(
