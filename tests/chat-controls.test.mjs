@@ -1,3 +1,4 @@
+process.env.VECTOR_MINECRAFT_DATA_PATH='/srv/example-minecraft/data';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {requestDestination,localStatisticsIntent,statisticsRequest,CHAT_MODES} from '../lib/chat-controls.mjs';
@@ -23,8 +24,8 @@ test('Auto uses local statistics only with permission, availability and supporte
   assert.deepEqual(CHAT_MODES.map(m=>m.label),['Auto','Low','Normal','High','Search','Lokal']);
   assert.equal(requestDestination(options),'local');
   for(const extra of [{allowServer:false},{localEnabled:false},{hasAttachments:true},{mode:'normal'},
-    {mode:'research'},{text:'Schreibe eine kurze Mail'},{text:'Lies das Backupskript auf FEGCraft'},
-    {text:'Erstelle ein PDF mit allen FEGCraft Rekorden'}, {text:'FEGCraft Statistiken und das Passwort anzeigen'}])
+    {mode:'research'},{text:'Schreibe eine kurze Mail'},{text:'Lies das Backupskript auf Minecraft'},
+    {text:'Erstelle ein PDF mit allen Minecraft Rekorden'}, {text:'Minecraft Statistiken und das Passwort anzeigen'}])
     assert.equal(requestDestination({...options,...extra}),'cloud');
   assert.equal(requestDestination({...options,mode:'local',localEnabled:false}),'local');
   assert.throws(()=>requestDestination({...options,mode:'unexpected'}));
@@ -38,14 +39,14 @@ test('unrelated new tasks do not inherit statistics but real player followups do
 test('actual read-only path returns exact player ranks, values, record and provenance',async()=>{
   const data=fixtures();
   const answer=await localServerStatistics({text:prompt,allowServer:true,inspect:data.inspect,now:()=>new Date('2026-10-16T00:00:00Z')});
-  assert.match(answer.text,/FEGCraft · ExampleOne/);
+  assert.match(answer.text,/Minecraft · ExampleOne/);
   assert.match(answer.text,/Spielzeit \| \*\*1 h\*\* \| 2/);
   assert.match(answer.text,/Mobkills \| \*\*5 Kills\*\* \| 2/);
   assert.match(answer.text,/keinen ersten Platz/);
   assert.match(answer.text,/gespeicherte Serverdateien/);
   assert.match(answer.text,/2 Spieler vollständig geprüft/);
   assert.equal(data.calls.length,2);
-  assert.ok(data.calls.every(c=>c.action==='read_many' && c.path.startsWith('/opt/fegcraft-updated/data')));
+  assert.ok(data.calls.every(c=>c.action==='read_many' && c.path.startsWith('/srv/example-minecraft/data')));
 });
 test('leader ties share first rank and zero counters are not positive records',async()=>{
   const {inspect}=fixtures({tie:true});
@@ -54,14 +55,14 @@ test('leader ties share first rank and zero counters are not positive records',a
   assert.doesNotMatch(answer.text,/Tode \|.*Rekord/);
 });
 test('unknown player including a name in the middle never returns unrelated leaders',async()=>{
-  for(const text of ['Welche Rekorde hat Unknown auf FEGCraft?', 'Statistiken von Unknown vom Minecraft Server']){
+  for(const text of ['Welche Rekorde hat Unknown auf Minecraft?', 'Statistiken von Unknown vom Minecraft Server']){
     await assert.rejects(localServerStatistics({text,allowServer:true,inspect:fixtures().inspect}),/Spielernamen/);
   }
 });
 test('short player followup resolves current target against the previous real task',async()=>{
   const answer=await localServerStatistics({text:'und für ExampleTwo?',recentMessages:[{role:'user',content:prompt}],
     allowServer:true,inspect:fixtures().inspect});
-  assert.match(answer.text,/FEGCraft · ExampleTwo/);
+  assert.match(answer.text,/Minecraft · ExampleTwo/);
   assert.match(answer.text,/Spielzeit \| \*\*2 h\*\* \| 1 · Rekord/);
 });
 test('missing permission never reads, and incomplete or invalid data cannot establish a record',async()=>{
@@ -83,11 +84,11 @@ test('Auto selects suitable existing cloud modes for German research and analysi
 });
 
 test('native statistics only accepts complete supported requests without secondary tasks',()=>{
-  for(const text of ['Schreibe eine Mail über die Statistiken auf FEGCraft',
-    'Zeige FEGCraft Statistiken und suche zusätzlich im Web',
-    'FEGCraft Rekorde und erkläre Redstone', 'Wie funktioniert die Statistik auf dem Minecraft Server?'])
+  for(const text of ['Schreibe eine Mail über die Statistiken auf Minecraft',
+    'Zeige Minecraft Statistiken und suche zusätzlich im Web',
+    'Minecraft Rekorde und erkläre Redstone', 'Wie funktioniert die Statistik auf dem Minecraft Server?'])
     assert.equal(requestDestination({...options,text}),'cloud',text);
-  assert.equal(localStatisticsIntent('Zeige die Statistik von Spieler ExampleOne auf FEGCraft'),true);
+  assert.equal(localStatisticsIntent('Zeige die Statistik von Spieler ExampleOne auf Minecraft'),true);
 });
 test('player followups cannot jump past the latest standalone task',()=>{
   const recentMessages=[{role:'user',content:prompt},{role:'user',content:'Schreibe eine Mail für ExampleOne'}];
@@ -104,8 +105,8 @@ test('cached identity without a stats file is not a server overview',async()=>{
     }
     return result;
   };
-  await assert.rejects(localServerStatistics({text:'Welche Rekorde hat ExampleThree auf FEGCraft?',allowServer:true,inspect}),/keine Statistikdatei/);
-  for(const text of ['Wie viel Spielzeit hat Unknown auf FEGCraft?', 'Welche Tode hat Unknown auf FEGCraft?'])
+  await assert.rejects(localServerStatistics({text:'Welche Rekorde hat ExampleThree auf Minecraft?',allowServer:true,inspect}),/keine Statistikdatei/);
+  for(const text of ['Wie viel Spielzeit hat Unknown auf Minecraft?', 'Welche Tode hat Unknown auf Minecraft?'])
     await assert.rejects(localServerStatistics({text,allowServer:true,inspect}),/Spielernamen/);
 });
 
@@ -159,7 +160,7 @@ test('each completed statistics query rereads changed source files and returns n
     }
     return data;
   };
-  const request={text:'Zeige alle Rekordhalter auf FEGCraft',allowServer:true,inspect};
+  const request={text:'Zeige alle Rekordhalter auf Minecraft',allowServer:true,inspect};
   const first=await localServerStatistics({...request,now:()=>new Date('2026-10-17T00:00:00Z')});
   kills=25;
   const next=await localServerStatistics({...request,now:()=>new Date('2026-10-17T00:01:00Z')});
@@ -173,4 +174,23 @@ test('an own-server correction retains only an uninterrupted statistics task',()
   const history=[{role:'user',content:'Welche Rekorde hat ExampleOne auf meinem Minecraft Server?'}];
   assert.deepEqual(statisticsRequest('ich meine von meinem server',history),{targets:['exampleone']});
   assert.equal(statisticsRequest('ich meine von meinem server',[...history,{role:'user',content:'Schreibe eine Mail'}]),null);
+});
+
+test('unconfigured statistics use existing cloud tools in Auto, never an invented local source',async()=>{
+  const previous=process.env.VECTOR_MINECRAFT_DATA_PATH;
+  delete process.env.VECTOR_MINECRAFT_DATA_PATH;
+  try {
+    assert.equal(requestDestination(options),'cloud');
+    await assert.rejects(()=>localServerStatistics({text:prompt,allowServer:true,inspect:()=>{throw Error('must not read');}}),/nicht konfiguriert/);
+  } finally {if(previous!==undefined)process.env.VECTOR_MINECRAFT_DATA_PATH=previous;}
+});
+
+test('operator aliases are literal routing labels and cannot change paths or permissions',()=>{
+  const previous=process.env.VECTOR_MINECRAFT_SERVER_ALIASES;
+  process.env.VECTOR_MINECRAFT_SERVER_ALIASES='Example Realm,Realm[1]';
+  try {
+    assert.deepEqual(statisticsRequest('Welche Rekorde hat ExampleOne auf Example Realm?'),{targets:['exampleone']});
+    assert.deepEqual(statisticsRequest('Welche Rekorde hat ExampleOne auf Realm[1]?'),{targets:['exampleone']});
+    assert.equal(requestDestination({...options,allowServer:false,text:'Welche Rekorde hat ExampleOne auf Realm[1]?'}),'cloud');
+  } finally {if(previous===undefined)delete process.env.VECTOR_MINECRAFT_SERVER_ALIASES;else process.env.VECTOR_MINECRAFT_SERVER_ALIASES=previous;}
 });

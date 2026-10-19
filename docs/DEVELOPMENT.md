@@ -2,7 +2,7 @@
 
 ## Repository scope
 
-This sanitized repository contains the application source.
+The current source tree contains reusable application and optional integration source. Historical private Git material requires separate review before publication.
 
 It deliberately excludes production databases,
 environment secrets, runtime files and complete
@@ -36,7 +36,7 @@ Every feature, fix, security or documentation PR must update
 
 - Use chronological headings such as `## 2026-10-14`.
 - Identify the PR number once it has been assigned.
-- Add the verified merge commit after merging, when available.
+- Keep exact live image IDs and operator-specific release evidence in private operating notes.
 - Do not invent commit hashes, release dates or deployments.
 - Describe technical changes, user impact and relevant limitations.
 - Record production deployment separately from GitHub merges.

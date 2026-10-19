@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('../lib/execution-router.js',import.meta.url),'utf8');
 const {classifyExecution}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
-const recentMessages=[{role:'user',content:'Welche Rekorde hat ExampleOne auf FEGCraft?'}];
+const recentMessages=[{role:'user',content:'Welche Rekorde hat ExampleOne auf Minecraft?'}];
 const classify=taskText=>classifyExecution({taskText,allowServer:true,recentMessages});
 
 test('self-contained reset email does not inherit a Minecraft tool requirement',()=>{
@@ -23,7 +23,7 @@ test('short player follow-ups still require real data, including masked names',(
   for(const prompt of ['und für ExampleTwo?','and for ExampleTwo','für <VEC_PERSON_0123456789abcdef0123456789abcdef>?']) {
     assert.equal(classify(prompt).requirements.serverMinecraft,true);
   }
-  assert.equal(classify('Welche Rekorde hat ExampleOne auf FEGCraft?').requirements.server,true);
+  assert.equal(classify('Welche Rekorde hat ExampleOne auf Minecraft?').requirements.server,true);
 });
 
 test('actual local executor blocks unsupported live lookups before any inference',async()=>{
@@ -58,7 +58,7 @@ test('actual local executor blocks unsupported live lookups before any inference
 
 test('Minecraft statistics without a named server still require real tools',()=>{
   for(const prompt of ['Gib mir die Rekorde und besten Statistiken von ExampleOne vom Minecraft Server',
-    'Welche Rekorte hat ExampleOne auf Minecraft?', 'Welche Statistik hat ExampleOne auf FEGCraft?']) {
+    'Welche Rekorte hat ExampleOne auf Minecraft?', 'Welche Statistik hat ExampleOne auf Minecraft?']) {
     assert.equal(classify(prompt).requirements.server,true);
   }
 });
@@ -75,7 +75,21 @@ test('German own-server read requests require the existing server tool path',()=
 test('generic Minecraft explanations stay text-only and topic switches end old player context',()=>{
   for(const taskText of ['Was ist ein Rekord in Minecraft?', 'Erkläre mir Statistiken in Minecraft'])
     assert.equal(classifyExecution({taskText,allowServer:true}).requirements.server,false);
-  const recentMessages=[{role:'user',content:'Welche Rekorde hat ExampleOne auf FEGCraft?'},
+  const recentMessages=[{role:'user',content:'Welche Rekorde hat ExampleOne auf Minecraft?'},
     {role:'user',content:'Schreibe eine Mail für ExampleOne'}];
   assert.equal(classifyExecution({taskText:'und für ExampleTwo?',allowServer:true,recentMessages}).requirements.server,false);
+});
+
+
+test('configured server aliases retain actual tool requirements in explicit cloud modes',()=>{
+  const old=process.env.VECTOR_MINECRAFT_SERVER_ALIASES;
+  process.env.VECTOR_MINECRAFT_SERVER_ALIASES='Example Realm,Realm[1]';
+  try {
+    for(const label of ['Example Realm','Realm[1]']) {
+      assert.equal(classifyExecution({taskText:'Welche Rekorde hat ExampleOne auf '+label+'?',allowServer:true}).requirements.server,true);
+      assert.equal(classifyExecution({taskText:'Welche Rekorde hat ExampleOne auf '+label+'?',allowServer:false}).requirements.server,false);
+      assert.equal(classifyExecution({taskText:'und für ExampleTwo?',allowServer:true,recentMessages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf '+label+'?'}]}).requirements.server,true);
+    }
+    assert.equal(classifyExecution({taskText:'Schreibe eine Mail',allowServer:true,recentMessages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf Example Realm?'}]}).requirements.server,false);
+  } finally {if(old===undefined)delete process.env.VECTOR_MINECRAFT_SERVER_ALIASES;else process.env.VECTOR_MINECRAFT_SERVER_ALIASES=old;}
 });

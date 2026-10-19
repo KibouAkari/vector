@@ -1,96 +1,42 @@
 <div align="center">
-
 <img src="docs/assets/vector-readme-logo.svg" width="88" alt="Vector logo" />
 
 # Vector
 
-**A personal AI workbench for reliable, controlled execution.**
+**A self-hosted AI workspace for conversations, projects and controlled execution.**
 
-Self-hosted · Private development · Built with Next.js
-
-[Vision](VISION.md) &nbsp;·&nbsp; [Architecture](docs/ARCHITECTURE.md) &nbsp;·&nbsp; [Roadmap](docs/ROADMAP.md) &nbsp;·&nbsp; [Security](docs/SECURITY.md)
-
+[Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Development](docs/DEVELOPMENT.md) · [Security](docs/SECURITY.md)
 </div>
 
----
+## What works today
 
-## A workspace, not another chat wrapper
+Vector combines persistent conversations, project files, configurable providers, background jobs, usage tracking, artifact generation and permissioned server tools. The application uses Next.js 16, React 19, PostgreSQL and Redis. It is under active development; deployment and provider behavior still need environment-specific qualification.
 
-Vector brings conversations, project work, model providers and file workflows into one application. Its goal is simple: **finish useful work with predictable quality, sensible costs and clear human control.**
+The composer shows one active mode: **Auto, Low, Normal, High, Search or Lokal**. Auto uses a deterministic local path for supported, authorized Minecraft statistics and the existing provider/tool paths for other tasks. It is not a universal learned routing policy. Explicit Lokal has no cloud fallback. Its native text path retains the current request and bounds older complete conversation turns.
 
-The experience is deliberately restrained: dark surfaces, clear typography, precise interactions and no ornamental dashboards.
+**Privacy is a separate switch.** With privacy enabled, Vector reviews the outbound message and included context locally. You can cancel, use reversible placeholders, or explicitly send the reviewed text unchanged. Newly read tool evidence is separately protected with placeholders and restored locally in the answer. Original-send is not blanket approval for unknown future secrets. If inspection fails, external submission is blocked. Detection can miss private values; it is not a guarantee of anonymization. Switching privacy off does not grant server permissions or override local-only project routing.
 
-## Inside Vector
+## Execution boundaries
 
-**Conversations and projects.** Work in persistent chat threads, organize tasks in projects and inspect generated files without switching between tools.
+Simple text tasks use a direct path. File work uses artifact builders and renderers. Investigation uses authorized tools and background jobs. Ownership, project access, cost limits and privileged-action approvals remain independent of model choice.
 
-**Models and execution.** Configure providers, inspect usage and run background work. Routing, agent execution and workflow modules already exist; their advanced behavior is being benchmarked and improved.
+The optional [Minecraft integration](docs/MINECRAFT.md) is a separate service and addon with authenticated transport, local inference, fresh statistics and rate limits. Web releases must not rebuild, restart or reconfigure a running game integration. No server's player records, world, credentials or deployment diary belong in this source tree.
 
-**Control and visibility.** Privacy checks, permissions, approvals and server inspection are part of the existing application. Critical automation is designed to remain subject to owner approval.
+## Source layout
 
-The interface is under active development. The current implementation is not presented as a complete autonomous system.
+| Directory | Purpose |
+| --- | --- |
+| `app/`, `components/` | Web UI and authenticated APIs |
+| `lib/` | Routing, providers, jobs, permissions, artifacts and privacy |
+| `services/` | Separate local services, including optional privacy and Minecraft adapters |
+| `integrations/` | Optional Minecraft bridge source |
+| `tests/` | Synthetic regression and database integration fixtures |
+| `docs/` | Architecture, setup boundaries and engineering guidance |
 
-## The interface
+Start with the [development guide](docs/DEVELOPMENT.md). See [engineering checks](docs/ENGINEERING_CI.md), [deployment policy](docs/DEPLOYMENT.md), [privacy details](docs/PRIVACY_REVIEW.md) and [third-party notices](docs/THIRD_PARTY.md). Secrets and host-specific setup are operator-managed. This is not a one-command production installer.
 
-Vector includes a cinematic black-hole login, workspace dashboard, conversations, model administration and a server view. The captures below show the login and workspace dashboard.
+## Publication status
 
-<!-- SCREENSHOT_GALLERY_START -->
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="docs/screenshots/vector-login.png" alt="Vector's cinematic black-hole login screen" />
-      <p align="center"><strong>Cinematic login</strong></p>
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/screenshots/vector-dashboard.png" alt="Vector workspace dashboard with usage overview, charts and recent projects" />
-      <p align="center"><strong>Workspace dashboard</strong></p>
-    </td>
-  </tr>
-</table>
-<!-- SCREENSHOT_GALLERY_END -->
+The current source is being separated from private operating material. Historical Git commits, branches, pull requests and artifacts require a separate review before changing repository visibility. Cleaning the current tree does not erase its history. See [publication checklist](docs/PUBLICATION.md).
 
-## How Vector works
-
-Vector chooses its execution strategy based on the work, rather than running an agent team for every request.
-
-**Fast path** — a direct model call for a question, summary or rewrite.
-
-**Artifact path** — structured generation and deterministic renderers for documents and other files.
-
-**Agent path** — tools, investigation and verification for work that genuinely needs multiple steps. Privileged actions require an approval boundary.
-
-Provider quality, cost, latency, privacy and availability are intended to guide routing decisions. That advanced policy layer is still being developed and evaluated.
-
-[Technical architecture and target stack →](docs/ARCHITECTURE.md)
-
-## Technology
-
-The current source contains a **Next.js 16 / React 19** application, with **PostgreSQL**, **Redis**, and application modules for providers, background jobs, artifacts and security policies.
-
-```text
-app/          UI, pages and API routes
-components/   Interface and cinematic experience
-lib/          Providers, routing, jobs, agents and artifacts
-public/       Brand and third-party assets
-docs/         Architecture, development and security
-```
-
-This repository is a **sanitized application snapshot**, not a turnkey deployment. The production environment has configuration and services that are intentionally excluded.
-
-[Development guide](docs/DEVELOPMENT.md) · [Engineering checks](docs/ENGINEERING_CI.md)
-
-## What comes next
-
-Immediate work focuses on reliable model selection, provider fallbacks and measurable quality. Artifact editing, selective agent orchestration, curated skills and additional communication channels follow in later phases.
-
-[See the planned milestones →](docs/ROADMAP.md)
-
-## Security and acknowledgements
-
-Production changes and outgoing messages require explicit approval under Vector's intended operating policy. Deployment integrations outside this repository are **not yet fully audited**. [Read the deployment policy](docs/DEPLOYMENT.md).
-
-The cinematic black-hole experience is adapted from [Gargantua by hasnain7abbas](https://github.com/hasnain7abbas/gargantua-blackhole). Vendored libraries retain their own licensing requirements. [Credits and third-party notices](docs/THIRD_PARTY.md).
-
----
-
-<div align="center"><sub>Vector · MIT licensed · Copyright © 2026 KibouAkari · <a href="LICENSE">License</a></sub></div>
+[Vision](VISION.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)

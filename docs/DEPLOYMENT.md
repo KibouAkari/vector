@@ -1,48 +1,11 @@
-# Deployment policy and verification
+# Deployment boundary
 
-**Status: production deployment triggers have not been
-independently audited.**
+A repository merge is not a production release. CI builds and tests synthetic fixtures; it has no deployment step. Host-side automation, Git polling, image update services and third-party triggers must be audited separately before unattended deployment is considered.
 
-A repository push or pull request **must not** change the live
-Vector installation without explicit release approval.
+Before a web release, inspect the actual app and worker images, code mounts, Compose configuration and health endpoints without printing environment values or secrets. `scripts/diagnostics/web-release-readiness.py` is a read-only starting inventory. It changes no containers, databases, model state or game configuration; concurrent live changes invalidate its unchanged-state check. Source files may be absent inside a standalone Next.js image, so null source hashes are not proof of a mismatch or a matching revision.
 
-This is a policy and required control, **not** a claim that
-every external deployment mechanism has been inspected.
+Prepare a concrete release plan against that observed baseline. Pin the source and image; use locked dependencies, isolated qualification with synthetic data and a disposable database, fresh configuration backups, health checks and a rollback that verifies its own scope. Preserve listener binding on all intended interfaces. Check whether a separate worker consumes changed source before calling a change app-only.
 
-## Before enabling automated releases
+Do not migrate or restore a production database as an incidental part of a web update. Do not rebuild/restart Minecraft, its assistant, local inference, backups or private networks in a web rollout. The generic Minecraft source layout/configuration is not an automatic migration of an existing pinned installation.
 
-- Review GitHub Actions, repository webhooks and authorized
-  third-party applications.
-- Check external CI/CD systems and server-side Git polling.
-- Audit relevant systemd timers, cron jobs and deployment
-  scripts on the host.
-- Verify container image update policies and auto-updaters.
-- Confirm who can approve releases and which credentials
-  are available.
-- Test a staging deployment with a documented rollback.
-- Record verification results and the date of the audit.
-
-Until this review is complete, treat the production
-deployment boundary as **unverified**.
-
-Do not enable unattended deployment from GitHub.
-
-## Read-only production inventory — 2026-10-14
-
-The server-side preflight reported:
-
-- Vector Compose project at `/opt/vector/docker-compose.yml`.
-- Five running Vector containers: app, worker, runner, Redis and PostgreSQL.
-- Application source directory at `/opt/vector/app`; not a Git checkout.
-- `vector-host-agent.service` is enabled.
-- No matching Vector deployment timers were listed by the initial check.
-- The production application's code revision was not independently verified.
-
-These observations do not establish that automated deployment is absent.
-
-Before a release, confirm Compose build sources, application-file
-differences, persistent volumes, backup and restore procedures,
-deployment automation, and a safe rollback strategy.
-
-No database migration or production deployment was authorized
-by this documentation update.
+Keep deployed image IDs, host paths, manifests, source hashes, operator approvals and rollback records in private operating material. Never edit release evidence to bypass a rollback guard. See [security](SECURITY.md), [engineering checks](ENGINEERING_CI.md) and [Minecraft deployment boundaries](MINECRAFT.md).

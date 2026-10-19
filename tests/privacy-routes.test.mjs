@@ -1,3 +1,4 @@
+process.env.VECTOR_MINECRAFT_DATA_PATH='/srv/example-minecraft/data';
 import {boundedLocalContext} from '../lib/local-context.mjs';
 import {requestDestination} from '../lib/chat-controls.mjs';
 import {localServerStatistics} from '../lib/local-server-statistics.mjs';
@@ -149,7 +150,7 @@ test('actual chat Auto queues local statistics while explicit Normal retains clo
     for(const [mode,destination] of [['auto','local'],['normal','cloud'],['local','local']]) {
       const api=acceptedChat();
       const response=await api.POST(new Request('http://vector.test',{method:'POST',body:JSON.stringify({mode,
-        message:'Welche Rekorde hat ExampleOne auf FEGCraft?',privacyEnabled:false})}));
+        message:'Welche Rekorde hat ExampleOne auf Minecraft?',privacyEnabled:false})}));
       assert.equal(response.status,202);assert.equal(api.jobs.length,1);
       assert.equal(api.jobs[0].payload.privacyDestination,destination);
       assert.equal(api.jobs[0].payload.privacyPolicy,'bound-policy');
@@ -181,13 +182,13 @@ test('actual local executor reads fixed statistics without inference, scans or p
     failAgentJob:async()=>{},requestLocalChat:()=>{throw Error('unexpected inference')},
     withLocalWorkerSlot:()=>{throw Error('unexpected model slot')},captureProviderUsage:()=>{throw Error('unexpected usage event')}},['executeLocalPrivateJob']);
   process.env.VECTOR_LOCAL_WORKERS='1';
-  const result=await executeLocalPrivateJob({id:'job',payload:{allowServer:true,conversationId:'c',messages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf FEGCraft?'}]}},{events:[]});
+  const result=await executeLocalPrivateJob({id:'job',payload:{allowServer:true,conversationId:'c',messages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf Minecraft?'}]}},{events:[]});
   assert.match(result.text,/42 Kills/);assert.equal(result.meta.model,'vector-local-statistics');
   assert.equal(result.meta.costChf,0);assert.equal(result.meta.inputTokens,0);assert.equal(result.meta.outputTokens,0);
   assert.equal(reads.length,2);assert.equal(finished.length,1);assert.equal(writes.length,2);
   const projectResult=await executeLocalPrivateJob({id:'project-job',payload:{allowServer:true,conversationId:'c',
-    safeOriginalMessage:'Welche Rekorde hat ExampleOne auf FEGCraft?',messages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf FEGCraft? PROJECT CONTEXT: ExampleTwo und eine Mail.'}]}},{events:[]});
-  assert.match(projectResult.text,/FEGCraft · ExampleOne/);assert.doesNotMatch(projectResult.text,/ExampleTwo/);
+    safeOriginalMessage:'Welche Rekorde hat ExampleOne auf Minecraft?',messages:[{role:'user',content:'Welche Rekorde hat ExampleOne auf Minecraft? PROJECT CONTEXT: ExampleTwo und eine Mail.'}]}},{events:[]});
+  assert.match(projectResult.text,/Minecraft · ExampleOne/);assert.doesNotMatch(projectResult.text,/ExampleTwo/);
   assert.equal(reads.length,4);assert.equal(finished.length,2);
 });
 
@@ -196,7 +197,7 @@ test('Auto statistics remain available without cloud budget while external tasks
   try {
     for(const [mode,status] of [['auto',202],['normal',402]]) {
       const api=acceptedChat({budgetAllowed:false});
-      const response=await api.POST(new Request('http://vector.test',{method:'POST',body:JSON.stringify({mode,message:'Welche Rekorde hat ExampleOne auf FEGCraft?'})}));
+      const response=await api.POST(new Request('http://vector.test',{method:'POST',body:JSON.stringify({mode,message:'Welche Rekorde hat ExampleOne auf Minecraft?'})}));
       assert.equal(response.status,status);assert.equal(api.jobs.length,status===202?1:0);
     }
   } finally {if(previous===undefined)delete process.env.VECTOR_LOCAL_WORKERS;else process.env.VECTOR_LOCAL_WORKERS=previous;}
