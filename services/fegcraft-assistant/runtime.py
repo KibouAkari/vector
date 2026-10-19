@@ -298,11 +298,12 @@ class ModHelp:
 
 
 class Assistant:
-    def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None, recipes=None, mod_recipes=None):
+    def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None, recipes=None, mod_recipes=None, portraits=None):
         self.state, self.stats_dir, self.usercache = state, stats_dir, usercache
         self.mod_file, self.knowledge = mod_file, knowledge
         self.recipes = recipes
         self.mod_recipes = mod_recipes
+        self.portraits = portraits
         self.mod_help = ModHelp()
 
     def clear_knowledge(self, scope):
@@ -336,15 +337,19 @@ class Assistant:
         prefix = greeting.capitalize() + ' ' + name + ', '
         scope = (source, principal)
         if not question:
+            if self.portraits:self.portraits.clear(scope)
             self.mod_help.clear(scope)
             self.clear_knowledge(scope)
             answer = 'schön, dass du da bist. Wie läuft es bei dir gerade?' 
         elif request_forbidden(question):
+            if self.portraits:self.portraits.clear(scope)
             self.mod_help.clear(scope)
             self.clear_knowledge(scope)
             answer = 'dazu gebe ich keine administrativen oder vertraulichen Auskünfte.'
         else:
-            answer = self.mod_help.answer(question, self.mods, scope, fallback=not getattr(self.knowledge, 'broad_topics', False))
+            answer = self.portraits.answer(question,principal if source=='minecraft' else None,scope,block_items) if self.portraits else None
+            if answer is None:
+                answer = self.mod_help.answer(question, self.mods, scope, fallback=not getattr(self.knowledge, 'broad_topics', False))
             if answer is None:
                 answer = self.stat_answer(question, block_items, principal=principal if source == 'minecraft' else None)
             if answer is None and self.mod_recipes is not None:

@@ -163,7 +163,13 @@ def main():
     if mode in ('4', '5') and os.environ.get('VECTOR_FEGCRAFT_MOD_RECIPES_SHA256'):
         from modrecipes import ModRecipes
         mod_recipes = ModRecipes('/inputs/mod-recipes.json', os.environ['VECTOR_FEGCRAFT_MOD_RECIPES_SHA256'])
-    assistant = Assistant(state, '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json', knowledge, recipes, mod_recipes)
+    portraits=None
+    if os.environ.get('VECTOR_FEGCRAFT_PORTRAITS')=='1':
+        if mode!='5':raise RuntimeError('PORTRAITS_REQUIRE_GROUNDED_MODE')
+        from portraits import PlayerPortraits
+        portraits=PlayerPortraits('/inputs/stats','/inputs/usercache.json',
+            '/inputs/advancements' if os.environ.get('VECTOR_FEGCRAFT_ADVANCEMENTS')=='1' else None)
+    assistant = Assistant(state, '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json', knowledge, recipes, mod_recipes, portraits)
     with Service(('0.0.0.0', 8090), assistant, key) as service:
         service.serve_forever(poll_interval=0.5)
 

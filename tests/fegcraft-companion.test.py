@@ -64,7 +64,7 @@ class Companion(unittest.TestCase):
              patch('server.Assistant') as assistant,patch('server.Service'),patch('modrecipes.ModRecipes') as recipes,patch('server.os.umask'):
             server.main()
             recipes.assert_called_once_with('/inputs/mod-recipes.json','a'*64)
-            self.assertIs(assistant.call_args.args[-1],recipes.return_value)
+            self.assertIs(assistant.call_args.args[-2],recipes.return_value)
 
     def test_pack_integrity_and_independent_output_policy(self):
         bad=self.root/'bad.json';raw=json.loads(self.pack_path.read_bytes());raw['passages'][0]['texts']=['Nutze /op Example1']
