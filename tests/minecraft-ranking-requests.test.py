@@ -46,7 +46,9 @@ class RankingRequests(unittest.TestCase):
         for question in ('wie schätzt du Example2 ein?',
                          'findest du Das Example2 ein guter oder ein schlechter Spieler ist',
                          'Ist Example2 anhand der Statistiken auf Example craft einer der Besten Spieler',
-                         'Ist Example2 ein guter Spieler?'):
+                         'Ist Example2 ein guter Spieler?',
+                         'ist Example2 ein guter oder schlechter Spieler?',
+                         'ist Example2 ein schlechter oder ein guter Spieler?'):
             answer=self.ask(question)['text']
             self.assertIn('Example2',answer)
             self.assertNotIn('Völlig unvoreingenommene',answer)
@@ -104,8 +106,9 @@ class RankingRequests(unittest.TestCase):
             (self.directory/(self.ids[i]+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:player_kills':count}}}))
         text=self.ask('wer ist der schlechteste Player auf dem Server?')['text']
         self.assertIn('Example2',text)
-        self.assertIn('Seitenhieb',text)
-        self.assertIn('kein Urteil',text)
+        self.assertIn('Battle Royale samt Deko',text)
+        self.assertNotIn('kein Urteil',text)
+        self.assertIn('Friedensnobelpreis',text)
         self.assertNotIn('Völlig unvoreingenommene',text)
 
     def test_comparison_is_fresh_correct_in_both_directions_and_on_discord(self):
@@ -232,6 +235,23 @@ class RankingRequests(unittest.TestCase):
         self.assertIn('Block-Item-Verzeichnis',self.ai.stat_answer('wer hat die meisten Blöcke platziert?'))
         (self.directory/(self.ids[6]+'.json')).write_text('{bad')
         self.assertIn('unvollständig',self.ai.stat_answer('wer hat die meisten Blöcke abgebaut?',registry))
+
+    def test_pending_page_limit_notice_is_bounded_and_does_not_advance(self):
+        now=[1000]
+        self.ai.state.clock=lambda:now[0]
+        self.ai.knowledge.character=SimpleNamespace(decorate=lambda q,a,*args:'REPEATED '+a)
+        self.assertIn('Spielzeit',self.ask('Top 5 aller Rekorde')['text'])
+        self.assertNotIn('REPEATED',self.ask('weiter')['text'])
+        self.assertIn('Mobkills',self.ask('weiter')['text'])
+        notice=self.ask('weiter')
+        self.assertIn('Minutenlimits',notice['text'])
+        self.assertEqual(self.ask('weiter')['status'],'limited')
+        self.assertEqual(self.ask('weiter',source='discord')['status'],'limited')
+        scope=('minecraft',self.ids[0])
+        self.assertEqual(self.ai.ranking_pages[scope][1][0],'player_kills')
+        now[0]+=61
+        self.assertIn('Spielerkills',self.ask('weiter')['text'])
+        self.assertIn('letzte Kategorie',self.ask('weiter')['text'])
 
     def test_ordinary_chat_replay_and_rate_limit_remain_enforced(self):
         payload = dict(principal=self.ids[0], name='Example1', source='discord', event=self.ids[0] + ':1', message='Top 5 Mobkills')

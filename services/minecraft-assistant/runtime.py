@@ -210,6 +210,9 @@ def block_position(question):
     return 1
 
 
+PAGE_NEXT = re.compile(r'\s*(?:weiter|nächste(?:\s+(?:rangliste|kategorie))?|naechste(?:\s+(?:rangliste|kategorie))?)\s*[.!?]*', re.I)
+
+
 def positive_level(values, position):
     ordered=sorted({v for v in values if v>0},reverse=True)
     return ordered[position-1] if position<=len(ordered) else None
@@ -358,7 +361,7 @@ def portrait_question(question):
     if match:return 'was hältst du von '+match[1]
     match=re.fullmatch(r'findest\s+du\s*,?\s*(?:dass?|das)\s+(.+?)\s+(?:ein\s+)?(?:guter?|schlechter?)\s+(?:oder\s+(?:ein\s+)?(?:guter?|schlechter?)\s+)?spieler\s+ist[?.!]*',q,re.I)
     if match:return 'was hältst du von '+match[1]
-    match=re.fullmatch(r'ist\s+(.+?)\s+(?:anhand\s+der\s+statistiken\s+(?:auf\s+.+?\s+)?)?(?:einer\s+der\s+besten|ein\s+(?:guter|schlechter))\s+spieler[?.!]*',q,re.I)
+    match=re.fullmatch(r'ist\s+(.+?)\s+(?:anhand\s+der\s+statistiken\s+(?:auf\s+.+?\s+)?)?(?:einer\s+der\s+besten|ein\s+(?:guter|schlechter)(?:\s+oder\s+(?:ein\s+)?(?:guter|schlechter))?)\s+spieler[?.!]*',q,re.I)
     if match:return 'was hältst du von '+match[1]
     return q
 
@@ -385,6 +388,7 @@ class Assistant:
         self.mod_help = ModHelp()
         self.ranking_pages = OrderedDict()
         self.ranking_lock = threading.Lock()
+        self.ranking_notices = OrderedDict()
 
     def clear_knowledge(self, scope):
         if getattr(self.knowledge, 'broad_topics', False):
@@ -409,13 +413,23 @@ class Assistant:
         addressed = addressed_question(message)
         if addressed is None:
             return {'status': 'ignored'}
-        admitted = self.state.admit(principal, event)
-        if admitted != 'accepted':
-            # Silent rejection prevents reply spam from abuse/relay retries.
-            return {'status': admitted}
         greeting, question = addressed
         prefix = greeting.capitalize() + ' ' + name + ', '
         scope = (source, principal)
+        admitted = self.state.admit(principal, event)
+        if admitted != 'accepted':
+            # One bounded notice for an owned pending page; never compute the page
+            # or bypass admission. Replays and further rejected requests stay silent.
+            if admitted == 'limited' and PAGE_NEXT.fullmatch(question):
+                now=time.monotonic()
+                with self.ranking_lock:
+                    for key in list(self.ranking_notices):
+                        if self.ranking_notices[key]<=now-60:self.ranking_notices.pop(key,None)
+                    pending=self.ranking_pages.get(scope)
+                    if pending and pending[2]>now and scope not in self.ranking_notices and len(self.ranking_notices)<3:
+                        self.ranking_notices[scope]=now
+                        return {'status':'answered','text':safe_display(prefix+'kurze Pause wegen des Minutenlimits. Die nächste Rangliste bleibt bereit. Warte etwa eine Minute und schreibe dann nochmals Hey Vector, weiter.')}
+            return {'status': admitted}
         portrait_response = False
         if not question:
             if self.portraits:self.portraits.clear(scope)
@@ -468,7 +482,7 @@ class Assistant:
             answer = friendly_statistics(answer, name if source == 'minecraft' else None,
                                          variant=int(event.rsplit(':', 1)[1]) % 3)
         character=getattr(self.knowledge,'character',None)
-        if character is not None and not portrait_response:
+        if character is not None and not portrait_response and not PAGE_NEXT.fullmatch(question):
             answer=character.decorate(question,answer,scope,greeting)
         # Deterministic responses use the same presentation/command boundary.
         safe_answer(answer)
@@ -484,7 +498,7 @@ class Assistant:
         q=unicodedata.normalize('NFKC',question).casefold()
         all_top=re.search(r'\btop\s*(\d+)\b',q)
         all_top=all_top if all_top and re.search(r'\ball(?:e|er|en)\s+(?:rekorde|ranglisten|kategorien|statistiken)\b',q) else None
-        next_page=bool(re.fullmatch(r'\s*(?:weiter|nächste(?:\s+(?:rangliste|kategorie))?|naechste(?:\s+(?:rangliste|kategorie))?)\s*[.!?]*',q))
+        next_page=bool(PAGE_NEXT.fullmatch(q))
         now=time.monotonic()
         with self.ranking_lock:
             for key in list(self.ranking_pages):
@@ -570,13 +584,13 @@ class Assistant:
                     if not leaders or leaders[0]['value']<=0:return 'der schlechteste Spieler? Dafür führe ich keine ernsthafte Rangliste. Jeder bringt etwas anderes mit.'
                     names=' und '.join(p['name'] for p in leaders)
                     if len(leaders)>3:return 'zu viele teilen sich die Kill-Spitze für einen kurzen Seitenhieb. Eine echte Schlechtestenliste gibt es nicht.'
-                    return 'mein nicht ganz ernst gemeinter Kandidat: '+names+'. Auf einem friedlichen Treff- und Bauserver die Spielerkill-Liste anzuführen, ist schon eine spezielle Auslegung von Nachbarschaftshilfe. Nur ein Seitenhieb, kein Urteil über Können.'
+                    return names+'. Hat den friedlichen Bauserver wohl mit Battle Royale samt Deko verwechselt. Andere bauen Häuser, hier wird lieber die Kill-Liste ausgebaut. Für den Friedensnobelpreis reicht es jedenfalls noch nicht.'
                 counts=[(p,sum(p['values'][metric]>0 and stats.rank(data,p,metric)==1 for metric in stats.METRICS)) for p in data['players']]
                 maximum=max((count for _,count in counts),default=0)
                 if not maximum:return 'in den fünf geprüften Kategorien gibt es noch keinen positiven Rekord.'
                 winners=[p for p,count in counts if count==maximum]
                 if len(winners)>3:return 'mehr als drei Spieler teilen sich die meisten Spitzenplätze. Frage bitte nach einer Kategorie.'
-                return ' und '.join(p['name'] for p in winners)+(' führen jeweils ' if len(winners)>1 else ' führt ')+'in '+str(maximum)+' von fünf Kategorien. Geteilte Spitzenplätze zählen mit; Tode zählen nur nach Anzahl. Das ist keine Wertung, wer am besten spielt.'
+                return ' und '.join(p['name'] for p in winners)+(' führen jeweils ' if len(winners)>1 else ' führt ')+'in '+str(maximum)+' von fünf Kategorien. Geteilte Spitzenplätze zählen mit; Tode zählen nur nach Anzahl.'
             if unknown_target and not block_category:
                 return ('zum Vergleich brauche ich zwei vollständige Spielernamen und eine Kategorie, zum Beispiel Mobkills.' if comparison
                         else 'nenne bitte den vollständigen Spielernamen für die Statistikabfrage.')
