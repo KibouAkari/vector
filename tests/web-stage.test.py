@@ -4,6 +4,8 @@ import io
 import fcntl
 import subprocess
 import sys
+import os
+import time
 import json
 from pathlib import Path
 import tarfile
@@ -176,6 +178,120 @@ class Boundaries(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('operator lock', result.stderr)
             self.assertFalse((root / 'output').exists())
+
+    def test_paused_and_other_runtime_state_flags_are_observed(self):
+        original = self.row()
+        changed = json.loads(json.dumps(original))
+        changed['State']['Paused'] = True
+        current = stage.canonical_container(changed)
+        self.assertNotEqual(stage.canonical_container(original), current)
+        baseline = {'read_only': True, 'production_unchanged': True, 'app': current, 'worker': current, 'compose_sha256': 'hash'}
+        with self.assertRaisesRegex(RuntimeError, 'BASELINE_CONTAINER_NOT_READY'):
+            stage.validate_baseline(baseline, {'app': current, 'worker': current}, 'app', 'worker', 'hash')
+        for flag in ('Restarting', 'Dead', 'OOMKilled', 'ExitCode'):
+            changed = self.row()
+            changed['State'][flag] = 1
+            self.assertNotEqual(stage.canonical_container(original), stage.canonical_container(changed))
+
+    def test_typo_lock_path_is_not_created(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            command = [sys.executable, spec.origin]
+            for name in ('repo', 'source', 'compose', 'baseline', 'output', 'lock-file'):
+                command += ['--' + name, str(root / name)]
+            command += ['--revision', 'a' * 40, '--app', 'synthetic', '--worker', 'synthetic',
+                        '--native', 'synthetic', '--postgres', 'synthetic', '--native-image', 'sha256:' + 'a' * 64]
+            result = subprocess.run(command, capture_output=True, timeout=5)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse((root / 'lock-file').exists())
+            self.assertFalse((root / 'output').exists())
+
+    def test_native_watchdog_terminates_pid1_independently_of_docker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            server = Path(directory) / 'synthetic-server.py'
+            server.write_text('import time; time.sleep(30)')
+            before = time.monotonic()
+            result = subprocess.run([sys.executable, '-c', stage.native_watchdog(time.monotonic() + 2, str(server))], capture_output=True, timeout=5)
+            self.assertEqual(result.returncode, 124)
+            self.assertLess(time.monotonic() - before, 4)
+            result = subprocess.run([sys.executable, '-c', stage.native_watchdog(time.monotonic() - 1, str(server))], capture_output=True, timeout=5)
+            self.assertEqual(result.returncode, 124)
+
+    def test_daemon_failure_waits_for_watchdog_before_native_shutdown_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            instance = stage.Stage(SimpleNamespace(), Path(directory))
+            instance.native_name = 'synthetic-native'
+            instance.owned = ['synthetic-native']
+            instance.native_deadline_monotonic = 10
+            clock = [0]
+            def sleep(seconds):
+                clock[0] += seconds
+            with patch.object(stage.subprocess, 'run', side_effect=OSError('synthetic daemon unavailable')), patch.object(stage.time, 'monotonic', side_effect=lambda: clock[0]), patch.object(stage.time, 'sleep', side_effect=sleep), patch('builtins.print'):
+                with self.assertRaisesRegex(RuntimeError, 'NATIVE_SHUTDOWN_UNVERIFIED_AFTER_WATCHDOG'):
+                    instance.ensure_native_stopped()
+            self.assertGreater(clock[0], 15)
+            self.assertEqual(instance.owned, ['synthetic-native'])
+
+    def test_native_kill_is_verified_before_cleanup_can_release_admission(self):
+        with tempfile.TemporaryDirectory() as directory:
+            instance = stage.Stage(SimpleNamespace(), Path(directory))
+            instance.native_name = 'synthetic-native'
+            calls = []
+            def command(args, **kwargs):
+                calls.append(args)
+                if args[1] == 'inspect':
+                    return SimpleNamespace(returncode=0, stdout=b'[{"State":{"Running":false}}]', stderr=b'')
+                return SimpleNamespace(returncode=1 if args[1] == 'rm' else 0, stdout=b'', stderr=b'')
+            with patch.object(stage.subprocess, 'run', side_effect=command):
+                instance.ensure_native_stopped()
+            self.assertTrue(any(item[1] == 'kill' for item in calls))
+            self.assertEqual(calls[-1][1], 'inspect')
+
+    def test_before_after_evidence_is_retained_on_failed_baseline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            baseline = root / 'baseline.json'
+            baseline.write_text('{}')
+            baseline.chmod(0o600)
+            args = SimpleNamespace(revision='a' * 40, native_image='sha256:' + 'b' * 64,
+                                   repo=root, source=root, compose=root / 'compose', baseline=baseline,
+                                   output=root / 'evidence', app='synthetic', worker='synthetic')
+            fingerprint = {'containers': {}, 'compose': 'hash', 'source': 'hash'}
+            with patch.object(stage.Stage, 'fingerprint', return_value=fingerprint), patch.object(stage.Stage, 'cleanup', return_value=[]), patch('builtins.print'):
+                with self.assertRaises(SystemExit):
+                    stage.stage_main(args)
+            release = next(args.output.iterdir())
+            for name in ('before.json', 'after.json'):
+                self.assertEqual(json.loads((release / name).read_text()), fingerprint)
+            self.assertFalse(json.loads((release / 'result.json').read_text())['passed'])
+
+    def test_sigterm_raises_controlled_failure_and_unwinds(self):
+        code = """import importlib.util,os,signal
+spec=importlib.util.spec_from_file_location('stage', %r)
+m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+try:
+ with m.termination_handler():
+  try: os.kill(os.getpid(),signal.SIGTERM)
+  finally: print('UNWOUND',flush=True)
+except RuntimeError as exc:
+ print(str(exc),flush=True)
+""" % spec.origin
+        result = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout.splitlines(), ['UNWOUND', 'STAGE_TERMINATED'])
+
+    def test_build_removes_intermediate_containers_on_failure(self):
+        source = Path(spec.origin).read_text()
+        self.assertIn("stage.run('docker', 'build', '--force-rm'", source)
+
+    def test_native_shutdown_window_cannot_be_interrupted_by_ctrl_c(self):
+        import os
+        import signal
+        before = signal.getsignal(signal.SIGINT)
+        with stage.uninterrupted_cleanup():
+            os.kill(os.getpid(), signal.SIGINT)
+            self.assertEqual(signal.getsignal(signal.SIGINT), signal.SIG_IGN)
+        self.assertEqual(signal.getsignal(signal.SIGINT), before)
 
 
 if __name__ == '__main__':
