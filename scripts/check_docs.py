@@ -2,6 +2,7 @@
 """Validate repository-local documentation links, image alts and SVGs."""
 
 import argparse
+import json
 from html.parser import HTMLParser
 from pathlib import Path
 import re
@@ -163,7 +164,22 @@ def validate(root):
             check_document(root, source)
         )
 
-    assets = root / 'docs/assets'
+    history_index = root / 'docs/changelog-history-index.json'
+    if history_index.is_file():
+        try:
+            index = json.loads(history_index.read_text())
+            expected = index['headings']
+            if index.get('schema') != 1 or not isinstance(expected,list) or not expected or any(not isinstance(h,str) or not h.startswith('## ') for h in expected):
+                raise ValueError('Invalid history index')
+            changelog = (root / 'CHANGELOG.md').read_text()
+            actual = set(re.findall(r'^## .+',changelog,re.M))
+            for heading in expected:
+                if heading not in actual:
+                    errors.append('CHANGELOG.md: preserved historical entry missing: '+heading)
+        except (OSError,ValueError,KeyError,TypeError):
+            errors.append('Invalid changelog history index')
+
+    assets = root / 'docs/assets' 
 
     if assets.exists():
         for svg in assets.rglob('*.svg'):
