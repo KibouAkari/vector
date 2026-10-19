@@ -2,9 +2,12 @@
 import copy
 import importlib.util
 import json
+import os
 from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('staged_restart',ROOT/'scripts/deploy/restart-fegcraft-staged-addon.py')
@@ -54,6 +57,21 @@ class Restart(unittest.TestCase):
             changed=copy.deepcopy(after);changed[key][field]=value
             self.assertTrue(r.differences(before,changed))
         after['compose']='changed';self.assertTrue(r.differences(before,after))
+
+    def test_loading_waits_for_fresh_boot_and_reads_registration_on_stderr(self):
+        with tempfile.TemporaryDirectory() as directory:
+            control=Path(directory);instance=control/'owner-welcome-v2.instance'
+            instance.write_text('00000000-0000-0000-0000-000000000001\n');os.utime(instance,(0,0))
+            p=SimpleNamespace(safe=lambda _:None,read=lambda x:x.read_bytes())
+            game=dict(Id='same',State={'StartedAt':'1970-01-01T00:00:01Z'})
+            count=[0]
+            def logs(*args,**kwargs):
+                count[0]+=1
+                if count[0]==2:os.utime(instance,(2,2))
+                return SimpleNamespace(returncode=0,stdout=b'',stderr=r.REGISTERED)
+            with patch.object(r,'CONTROL',control),patch.object(r,'same'),patch.object(r.subprocess,'run',side_effect=logs),patch.object(r.time,'sleep'):
+                r.loaded(p,game)
+            self.assertEqual(count[0],2)
 
 
 if __name__=='__main__':unittest.main()

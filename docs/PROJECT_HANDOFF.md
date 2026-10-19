@@ -8,7 +8,7 @@ Stop --time120 with CLI180s; finally start SAME inspected ID/image (90s) and wai
 
 New ROOT/fegcraft-addon-restart.json owns a private vector-fegcraft-addon-restart release/result. Mark attempt BEFORE stop; verified matching same start makes repeat command read-only. Uncertain/changed attempt blocks instead of another automatic restart. No data/config rollback applies because nothing is replaced; recovery starts same container. Older backend/addon rollbacks protecting StartedAt may refuse after this authorized restart: preserve their evidence and use a current-aware reviewed rollback rather than altering old records or bypassing guards.
 
-Three focused synthetic tests verify only same-ID normal stop/start, recovery after failed/unclean stop without touching a replacement, and exact protected snapshot delta (only game StartedAt). Required CI passes before merge. No direct server/SSH access: server restart/load success is still unobserved until owner runs this wrapper. Changelog/preferences updated. Announcement draft is for owner posting, not sent by tools. No welcome replay; existing logo/Discord input retained.
+Four focused synthetic tests verify current-load readiness across delayed bridge startup and only same-ID normal stop/start, recovery after failed/unclean stop without touching a replacement, and exact protected snapshot delta (only game StartedAt). Required CI passes before merge. No direct server/SSH access: server restart/load success is still unobserved until owner runs this wrapper. Changelog/preferences updated. Announcement draft is for owner posting, not sent by tools. No welcome replay; existing logo/Discord input retained.
 
 ## Preserved prior source and operating history
 

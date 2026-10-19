@@ -80,6 +80,22 @@ def restart(p,game):
     return wait_ready(p,game)
 
 
+def loaded(p,game):
+    # Game health can become ready slightly before the linked bridge finishes loading.
+    instance=CONTROL/'owner-welcome-v2.instance';p.safe(instance)
+    born=datetime.fromisoformat(game['State']['StartedAt'].replace('Z','+00:00')).timestamp()
+    for attempt in range(23):
+        same(p,game)
+        logs=subprocess.run(['docker','logs','--since',game['State']['StartedAt'],'--tail','2000',game['Id']],capture_output=True,timeout=25)
+        if logs.returncode:raise RuntimeError('ADDON_RESTART_REGISTRATION_LOG_UNAVAILABLE')
+        if REGISTERED in logs.stdout+logs.stderr and instance.exists():
+            boot=p.read(instance)
+            if re.fullmatch(b'[a-f0-9-]{36}\n',boot) and instance.stat().st_mtime>=born:return
+        if attempt%5==0:print('Minecraft läuft; warte auf die Vector-Registrierung ...',flush=True)
+        if attempt<22:time.sleep(2)
+    raise RuntimeError('ADDON_RESTART_CURRENT_LOAD_NOT_OBSERVED')
+
+
 def main():
     os.umask(0o077);sys.dont_write_bytecode=True
     revision=os.environ.get('VECTOR_FEGCRAFT_REV','')
@@ -126,14 +142,7 @@ def main():
         try:
             current=restart(p,game)
             if current['State']['StartedAt']==game['State']['StartedAt']:raise RuntimeError('ADDON_RESTART_NEW_START_NOT_OBSERVED')
-            # Docker preserves stdout/stderr streams; inspect both privately.
-            logs=subprocess.run(['docker','logs','--since',current['State']['StartedAt'],'--tail','2000',game['Id']],capture_output=True,timeout=25)
-            if logs.returncode or REGISTERED not in logs.stdout+logs.stderr:raise RuntimeError('ADDON_RESTART_REGISTRATION_NOT_OBSERVED')
-            instance=CONTROL/'owner-welcome-v2.instance';p.safe(instance)
-            boot=p.read(instance)
-            born=datetime.fromisoformat(current['State']['StartedAt'].replace('Z','+00:00')).timestamp()
-            if not re.fullmatch(b'[a-f0-9-]{36}\n',boot) or instance.stat().st_mtime<born:
-                raise RuntimeError('ADDON_RESTART_CURRENT_LOAD_NOT_OBSERVED')
+            loaded(p,current)
             if differences(before,h.snapshot()) or identity!=[(x.stat().st_dev,x.stat().st_ino) for x in (DATA,DATA/'world')]:
                 raise RuntimeError('ADDON_RESTART_UNEXPECTED_SCOPE_CHANGE')
             if any((p.read(x) if x.exists() else None)!=value for x,value in files.items()):raise RuntimeError('ADDON_RESTART_CONFIG_OR_WELCOME_CHANGED')
