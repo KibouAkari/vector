@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'services/minecraft-assistant'))
 from portraits import PlayerPortraits,advancement_summary,targets
-from companion import CompanionKnowledge,KnowledgePack
+from companion import CompanionKnowledge,KnowledgePack,Character
 from documentation import DocumentationIndex,SOCIAL
 from runtime import Assistant,State
 from server import Service
@@ -58,11 +58,31 @@ class Portraits(unittest.TestCase):
         self.assertIn('Example2',self.ask('gib mir eine Einschätzung von Example2',self.users[0]['uuid']))
 
     def test_authenticated_self_own_followup_expiry_and_discord_no_impersonation(self):
-        self.assertIn('Example1',self.ask('bin ich ein guter Spieler?',self.users[0]['uuid']))
+        self.assertTrue(self.ask('bin ich ein guter Spieler?',self.users[0]['uuid']).startswith('Du? '))
         self.assertIn('Example1',self.ask('und er?'))
         self.assertIn('eindeutigen',self.ask('und er?',scope=('discord',self.users[0]['uuid'])))
         self.assertIn('Minecraft-Spielernamen',self.ask('was hältst du von mir?',scope=('discord','unlinked')))
         self.now[0]+=181;self.assertIn('eindeutigen',self.ask('und er?'))
+
+    def test_attached_names_short_questions_and_varied_evidence_based_voice(self):
+        first=self.ask('was hältst du vonExample1?')
+        second=self.ask('hältst du von Example1?')
+        self.assertIn('Example1',first);self.assertIn('Example1',second)
+        self.assertNotEqual(first,second)
+        for text in (first,second):
+            self.assertIn("1'000",text);self.assertIn('200',text)
+            self.assertNotIn('Mein Spieleindruck:',text)
+            self.assertLessEqual(len(text),390)
+        self.assertIn('eindeutigen',self.ask('hältst du von UnknownPlayer?'))
+
+    def test_portrait_voice_is_not_wrapped_in_stock_casual_prefix(self):
+        mods=self.root/'mods.json';mods.write_text('[]')
+        ai=Assistant(SimpleNamespace(admit=lambda *args:'accepted'),self.stats,self.cache,mods,
+            knowledge=SimpleNamespace(character=Character(),friendly_statistics=True),portraits=self.portraits)
+        text=ai.handle(dict(principal=self.users[0]['uuid'],name='Example1',source='minecraft',
+            event=self.users[0]['uuid']+':1',message='Yoo Vector was hältst du von Example2?',block_items=['minecraft:stone']))['text']
+        self.assertNotIn('Klar:',text);self.assertIn('Respawn',text)
+        self.assertLessEqual(len(text),420)
 
     def test_unknown_or_partial_data_never_fabricates_portraits_or_victims(self):
         self.assertIn('eindeutigen',self.ask('bewerte UnknownName'))
@@ -74,7 +94,8 @@ class Portraits(unittest.TestCase):
         path=self.adv/(self.users[2]['uuid']+'.json');value=json.loads(path.read_bytes())
         value['examplemod:recipes/test']={'done':True,'criteria':{}};path.write_text(json.dumps(value))
         self.assertEqual(advancement_summary(self.adv,self.users[2]['uuid'])['count'],1)
-        answer=self.ask('bewerte Example3');self.assertIn('Sniper-Duell',answer);self.assertIn('30 Bogennutzungen',answer)
+        answer=self.ask('bewerte Example3 mit seinem Bogen');self.assertIn('30 Bogennutzungen',answer)
+        self.assertIn('Sniper-Duell',self.ask('bewerte Example3 nach Fortschritten'))
         self.assertNotIn('Bogenkills',answer);self.assertIn('keine Bogenkills',self.ask('wer hat die meisten Bogenkills?'))
         path=self.adv/(self.users[2]['uuid']+'.json');path.write_text('{bad')
         self.assertIsNone(advancement_summary(self.adv,self.users[2]['uuid']))
@@ -85,3 +106,4 @@ class Portraits(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+

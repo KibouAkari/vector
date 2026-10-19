@@ -2,6 +2,13 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-19 — Give fresh player portraits a more natural voice (PR #100)
+
+- Combine multiple observed strengths into short, varied player impressions instead of a statistics list followed by a fixed label. Keep descriptions grounded in fresh counters and advancements; never invent victims, weapon kills or personal character traits.
+- Recognize attached target names and shortened portrait questions. Retain unique-name clarification, authenticated self identity, per-author context expiry and incomplete-data refusal.
+- Vary concise single-statistic wording while retaining exact values, ranks and identities. Include the earlier comparison/Top-N corrections in the independent assistant update.
+- Allow an explicitly pinned portrait module alongside the runtime in the guarded updater. Qualify both in network-disabled fixtures and preserve every other installed module, state, image and service. No game restart, welcome or model call is introduced.
+
 ## 2026-10-19 — Apply an already qualified web image (PR #99)
 
 - Reuse the exact successful stage image/source without rebuilding or repeating detector qualification. Require unchanged app/worker generations and source/configuration; snapshot other services afresh and preserve them during release.

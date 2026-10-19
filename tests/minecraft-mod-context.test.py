@@ -86,7 +86,9 @@ class ModContext(TestCase):
         app.stat_answer=lambda *args,**kwargs:'ExampleOne: Spielerkills 50 Kills; Rang 2. Stand: gespeicherte Spielerdateien.'
         result=app.handle(dict(principal='00000000-0000-0000-0000-000000000001',name='ExampleOne',source='discord',event='00000000-0000-0000-0000-000000000001:1',message='hey vector welchen Rang hat ExampleOne bei Spielerkills?'))
         self.assertNotIn('du hast',result['text'])
-        self.assertIn('ExampleOne hat',result['text'])
+        self.assertIn('ExampleOne',result['text'])
+        self.assertIn('50 Kills',result['text'])
+        self.assertRegex(result['text'],r'(?:Rang|Platz) 2')
 
 
 

@@ -221,6 +221,12 @@ class Guards(unittest.TestCase):
         config.write_text(json.dumps(value))
         config.chmod(0o600)
         self.assertEqual(updater.read_config(config), value)
+        portrait=dict(value, expected_portraits_sha256='e' * 64)
+        config.write_text(json.dumps(portrait))
+        self.assertEqual(updater.read_config(config), portrait)
+        config.write_text(json.dumps(dict(portrait, expected_portraits_sha256='bad')))
+        with self.assertRaisesRegex(RuntimeError, 'INVALID_OPERATOR_PIN'):
+            updater.read_config(config)
         for project in ('', 'Foreign', '-foreign', 'bad/project', 'bad project', 'a' * 64):
             config.write_text(json.dumps(dict(value, expected_project_name=project)))
             with self.assertRaisesRegex(RuntimeError, 'INVALID_COMPOSE_PROJECT_NAME'):
@@ -237,4 +243,5 @@ class Guards(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 
