@@ -127,6 +127,43 @@ class RankingRequests(unittest.TestCase):
         path.write_text(json.dumps(data))
         self.assertIn('zu lang',self.ai.stat_answer('welchen Block habe ich am meisten abgebaut?',principal=self.ids[0]))
 
+    def test_second_block_type_uses_next_distinct_value_and_preserves_ties(self):
+        path=self.directory/(self.ids[0]+'.json');data=json.loads(path.read_bytes())
+        data['stats']['minecraft:mined']={'minecraft:stone':40,'minecraft:dirt':40,'minecraft:oak_planks':10}
+        data['stats']['minecraft:used']={'minecraft:stone':15,'minecraft:dirt':7,'minecraft:bow':900}
+        path.write_text(json.dumps(data));registry=('minecraft:stone','minecraft:dirt')
+        for phrasing in ('am 2. meisten','am zweitmeisten','am zweithäufigsten','am zweit meisten'):
+            text=self.ai.stat_answer('welchen Block habe ich '+phrasing+' abgebaut?',principal=self.ids[0])
+            self.assertIn('10 Mal',text);self.assertNotIn('40 Mal',text)
+        self.assertIn('7 Mal',self.ai.stat_answer('welchen Block habe ich am 2. meisten platziert?',registry,principal=self.ids[0]))
+        self.assertIn('kein 3.',self.ai.stat_answer('welchen Block habe ich am 3. meisten abgebaut?',principal=self.ids[0]))
+        for rank in (0,11):
+            self.assertIn('ersten bis zehnten',self.ai.stat_answer(f'welchen Block habe ich am {rank}. meisten abgebaut?',principal=self.ids[0]))
+        self.assertIn('40 Mal',self.ai.stat_answer('welchen Block habe ich am meisten abgebaut?',principal=self.ids[0]))
+
+    def test_player_block_leaders_totals_filter_items_read_fresh_and_keep_ties(self):
+        def blocks(index,mined,used):
+            path=self.directory/(self.ids[index]+'.json');data=json.loads(path.read_bytes())
+            data['stats']['minecraft:mined']={'minecraft:stone':mined}
+            data['stats']['minecraft:used']={'minecraft:stone':used,'minecraft:bow':9999}
+            path.write_text(json.dumps(data))
+        blocks(0,30,10);blocks(1,80,20);registry=('minecraft:stone',)
+        for question in ('wer hat die meisten Blöcke abgebaut?','welcher Spieler hat die meisten Blöcke abgebaut?'):
+            text=self.ai.stat_answer(question,registry)
+            self.assertIn('Example2',text);self.assertIn('80 Blöcke',text)
+        placed=self.ai.stat_answer('wer hat die meisten Blöcke platziert?',registry)
+        self.assertIn('Example2',placed);self.assertIn('20 Block-Items',placed);self.assertNotIn('9999',placed)
+        self.assertIn('Näherung',placed)
+        both=self.ai.stat_answer('wer hat die meisten Blöcke abgebaut und platziert?',registry)
+        self.assertIn('80 Blöcke',both);self.assertIn('20 Block-Items',both)
+        blocks(2,80,50)
+        tied=self.ai.stat_answer('wer hat die meisten Blöcke abgebaut?',registry)
+        self.assertIn('Example2 und Example3',tied)
+        self.assertIn('Example3',self.ai.stat_answer('wer hat die meisten Blöcke platziert?',registry))
+        self.assertIn('Block-Item-Verzeichnis',self.ai.stat_answer('wer hat die meisten Blöcke platziert?'))
+        (self.directory/(self.ids[6]+'.json')).write_text('{bad')
+        self.assertIn('unvollständig',self.ai.stat_answer('wer hat die meisten Blöcke abgebaut?',registry))
+
     def test_ordinary_chat_replay_and_rate_limit_remain_enforced(self):
         payload = dict(principal=self.ids[0], name='Example1', source='discord', event=self.ids[0] + ':1', message='Top 5 Mobkills')
         self.assertEqual(self.ai.handle(payload)['status'], 'ignored')

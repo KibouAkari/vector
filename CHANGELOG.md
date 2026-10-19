@@ -2,6 +2,12 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-19 — Block leader totals and ordinal block types (PR #102)
+
+- Answer which player has the highest saved mined-block total or registry-filtered block-item use, including ties and combined server-wide requests. Placement output retains its approximation scope.
+- Respect numeric and common written ordinals for personal block types instead of silently returning the most frequent type. Equal counters share a level; a second level means the next lower distinct positive value. Unsupported or absent levels are explicit.
+- Preserve personal identity, complete-data checks, missing-registry refusal, reply bounds and the independent assistant-only rollout boundary. These deterministic questions introduce no model requests.
+
 ## 2026-10-19 — Personal block statistics and weapon-style impressions (PR #101)
 
 - Answer personal saved block totals and most-used/mined block types, including ties and authenticated self identity. Filter placement approximations through the current block-item registry; do not count food or tools as placed blocks.

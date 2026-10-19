@@ -195,6 +195,26 @@ def friendly_statistics(answer, sender, variant=0):
     return value + '.'
 
 
+def block_position(question):
+    """Ordinal refers to distinct positive counter values; equal values share a place."""
+    numeric=re.search(r'\bam\s+(\d+)\.?\s*(?:meisten|häufigsten|haeufigsten)\b',question)
+    if numeric:
+        value=int(numeric[1]);return value if 1<=value<=10 else None
+    ordinal=(re.search(r'\b(zweit|dritt|viert|fünft|fuenft|sechst|siebt|acht|neunt|zehnt)[ -]+(?:meist\w*|häufigst\w*|haeufigst\w*)\b',question)
+             or re.search(r'\b([a-zäöüß]+?)(?:meist\w*|häufigst\w*|haeufigst\w*)\b',question))
+    if ordinal:
+        prefix=ordinal[1]
+        if prefix=='aller':return 1
+        return {'zweit':2,'dritt':3,'viert':4,'fünft':5,'fuenft':5,'sechst':6,
+                'siebt':7,'acht':8,'neunt':9,'zehnt':10}.get(prefix)
+    return 1
+
+
+def positive_level(values, position):
+    ordered=sorted({v for v in values if v>0},reverse=True)
+    return ordered[position-1] if position<=len(ordered) else None
+
+
 def explicit_subjects(question):
     """Locate complete target tokens and their conjunction chains, without name rewriting."""
     article = r'(?:(?:dem|der|den|die|das|meinem|unserem|einem|einer|the)\s+)?'
@@ -527,12 +547,37 @@ class Assistant:
             elif population:
                 return 'in den vollständig gelesenen Statistiken sind ' + str(len(data['players'])) + ' Spieler erfasst. Frühere Spieler ohne gespeicherte Statistik sind darin nicht nachweisbar.'
             elif block_category:
-                if re.search(r'abgebaut|abgebau|mined',q) and re.search(r'platzi|plazi|gesetzt|placed',q):
-                    return 'meinst du abgebaute oder platzierte Blöcke? Frage bitte nach einer der beiden Zählungen.'
+                both=bool(re.search(r'abgebaut|abgebau|mined',q) and re.search(r'platzi|plazi|gesetzt|placed',q))
+                position=block_position(q)
+                if position is None:return 'frage bitte nach dem ersten bis zehnten höchsten Blockzählwert.'
+                player_leader=bool(re.search(r'\bwer\b|\bwelcher?\s+spieler\b',q) and re.search(r'meist|häufigst|haeufigst|rekord|spitzenreiter',q))
                 if unknown_target:
                     return 'welchen Minecraft-Spieler meinst du? Nenne bitte einen eindeutigen Namen für die Blockstatistik.'
-                if block_category == 'used' and not block_items:
+                if both and not player_leader:
+                    return 'meinst du abgebaute oder platzierte Blöcke? Frage bitte nach einer der beiden Zählungen.'
+                if (block_category=='used' or both) and not block_items:
                     return 'für Platzierungen fehlt gerade das aktuelle Block-Item-Verzeichnis. Ich möchte Werkzeuge und Essen nicht als Blöcke mitzählen.'
+                if player_leader:
+                    if people or self_reference:return 'meinst du den serverweiten Spitzenreiter oder die Werte eines bestimmten Spielers?'
+                    answers=[]
+                    for category in (('mined','used') if both else (block_category,)):
+                        allowed=set(block_items)
+                        counts=[(p['name'],sum(v for k,v in p[category].items() if category=='mined' or k in allowed)) for p in data['players']]
+                        level=positive_level((v for _,v in counts),position)
+                        if level is None:
+                            answers.append(('Abbau' if category=='mined' else 'Platzierungen')+': kein '+str(position)+'. positiver Zählwert erfasst.')
+                            continue
+                        winners=sorted(n for n,v in counts if v==level)
+                        if len(winners)>3:return 'mehr als drei Spieler teilen sich diesen Blockzählwert. Bitte grenze die Frage ein.'
+                        names=' und '.join(winners)
+                        if position==1:
+                            answers.append(names+(' hat' if len(winners)==1 else ' haben jeweils')+' bisher '+number(level,'Blöcke' if category=='mined' else 'Block-Items')+' '+('abgebaut' if category=='mined' else 'verwendet')+' und '+('liegt' if len(winners)==1 else 'liegen')+' damit vorne.')
+                        else:
+                            answers.append(names+': '+str(position)+'. höchster Zählwert mit '+number(level,'Blöcken' if category=='mined' else 'Block-Items')+'.')
+                    result=' '.join(answers)
+                    if block_category=='used' or both:result+=' Platzierungen sind eine Näherung.'
+                    if len(result)>340:return 'die Blockrangliste ist für eine Chatantwort zu lang. Frage bitte getrennt nach Abbau oder Platzierungen.'
+                    return result
                 from recipes import label
                 if people:
                     person=people[0]
@@ -541,12 +586,12 @@ class Assistant:
                     who='du' if own else person['name']
                     most=bool(re.search(r'meist|häufigst|haeufigst|most',q))
                     if most:
-                        highest=max(counters.values(),default=0)
-                        if not highest:return 'dafür ist bei '+person['name']+' noch kein positiver gespeicherter Blockzähler vorhanden.'
+                        highest=positive_level(counters.values(),position)
+                        if highest is None:return 'bei '+person['name']+' ist kein '+str(position)+'. höchster positiver Blockzählwert erfasst.'
                         top=sorted(k for k,v in counters.items() if v==highest)
                         if len(top)>3:return 'bei '+person['name']+' teilen sich mehr als drei Blockarten den Spitzenplatz mit je '+number(highest,'Mal')+'. Nenne bitte eine Blockart zum Eingrenzen.'
                         names=', '.join(label(k) for k in top)
-                        result=('am häufigsten '+('hast du' if own else 'hat '+who)+' '+names+' '+('abgebaut' if block_category=='mined' else 'als Block-Item verwendet')+': '+number(highest,'Mal')+'.')
+                        result=(('am häufigsten ' if position==1 else 'am '+str(position)+'. häufigsten ')+('hast du' if own else 'hat '+who)+' '+names+' '+('abgebaut' if block_category=='mined' else 'als Block-Item verwendet')+': '+number(highest,'Mal')+'.')
                     else:
                         result=(who+(' hast' if own else ' hat')+' bisher '+number(sum(counters.values()),'Blöcke' if block_category=='mined' else 'Block-Items')+' '+('abgebaut.' if block_category=='mined' else 'verwendet.'))
                     if block_category=='used':result+=' Das ist eine Näherung für Platzierungen aus den Nutzungszählern.'
@@ -556,6 +601,7 @@ class Assistant:
                     return 'nenne bitte einen eindeutigen Namen für die persönliche Blockstatistik.'
                 if not re.search(r'meist|häufigst|haeufigst|most',q):
                     return 'meinst du deinen eigenen Wert oder die häufigste Blockart auf dem ganzen Server? Nenne sonst den Spielernamen.'
+                if position!=1:return 'meinst du die '+str(position)+'. häufigste Blockart eines Spielers? Nenne bitte den Spielernamen.'
                 top = stats.block_leaders(data, block_category, block_items)
                 if not top:
                     return 'dafür ist kein positiver gespeicherter Blockzähler vorhanden.'
