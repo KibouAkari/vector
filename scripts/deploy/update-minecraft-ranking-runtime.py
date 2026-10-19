@@ -59,11 +59,38 @@ def read_config(path):
     return value
 
 
+COMMAND_EVIDENCE = None
+COMMAND_INDEX = 0
+
+
+def command_phase(args):
+    if list(args[:2]) == ['docker', 'compose']:
+        return 'compose-hash' if '--hash' in args else 'compose-render' if 'config' in args else 'assistant-recreate'
+    if list(args[:2]) == ['docker', 'run']:return 'isolated-qualification'
+    if list(args[:3]) == ['docker', 'image', 'inspect']:return 'image-inspect'
+    if list(args[:2]) == ['docker', 'inspect']:return 'container-inspect'
+    if list(args[:2]) == ['docker', 'ps']:return 'container-inventory'
+    return 'guarded-command'
+
+
 def run(args, timeout=25):
-    result = subprocess.run(args, capture_output=True, timeout=timeout)
-    if result.returncode:
-        raise RuntimeError('GUARDED_COMMAND_FAILED')
-    return result.stdout
+    global COMMAND_INDEX
+    COMMAND_INDEX += 1
+    phase=command_phase(args)
+    try:
+        result = subprocess.run(args, capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        code,stderr=-1,error.stderr or b''
+    else:
+        if not result.returncode:return result.stdout
+        code,stderr=result.returncode,result.stderr
+    if COMMAND_EVIDENCE is not None:
+        stem=str(COMMAND_INDEX)+'-'+phase
+        write_private(COMMAND_EVIDENCE/(stem+'.stderr'),stderr)
+        write_private(COMMAND_EVIDENCE/(stem+'.json'),canonical({'phase':phase,'exit_code':code}))
+    # Command arguments, resolved Compose and stderr can contain private values.
+    # Keep those off terminal output while making the failing phase actionable.
+    raise RuntimeError('GUARDED_COMMAND_FAILED '+phase+'; private evidence: '+str(COMMAND_EVIDENCE))
 
 
 def inventory():
@@ -366,6 +393,7 @@ def rollback(release, *, allow_missing=False):
 
 
 def main():
+    global COMMAND_EVIDENCE
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=Path)
     parser.add_argument('--source-root', type=Path)
@@ -387,6 +415,9 @@ def main():
         raise RuntimeError('EXISTING_OWNED_RELEASE_LOCK_REQUIRED')
     with os.fdopen(descriptor, 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        COMMAND_EVIDENCE=args.release_root/('minecraft-runtime-diagnostic-'+uuid.uuid4().hex)
+        COMMAND_EVIDENCE.mkdir(mode=0o700)
+        print('Private command diagnostics: '+str(COMMAND_EVIDENCE),flush=True)
         if args.rollback:
             return rollback(args.rollback)
         if args.config is None or args.source_root is None:

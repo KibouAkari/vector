@@ -84,6 +84,30 @@ class Portraits(unittest.TestCase):
         self.assertNotIn('Klar:',text);self.assertIn('Respawn',text)
         self.assertLessEqual(len(text),420)
 
+    def test_combat_style_tracks_weapon_use_fresh_and_never_claims_accuracy(self):
+        for identifier,label in [('minecraft:bow','Scharfschützen'),('minecraft:diamond_sword','Samurai'),
+                ('minecraft:mace','Grobe'),('examplemod:iron_spear','Speerkämpfer')]:
+            path=self.stats/(self.users[0]['uuid']+'.json')
+            value=json.loads(path.read_bytes());value['stats']['minecraft:used']={identifier:250}
+            path.write_text(json.dumps(value))
+            text=self.ask('wie ist mein fighting style?',self.users[0]['uuid'])
+            self.assertIn('250',text)
+            self.assertIn(label.casefold(),text.casefold())
+            self.assertIn('keine Trefferquote',text)
+            self.assertLessEqual(len(text),350)
+        value['stats']['minecraft:used']={'minecraft:bow':250,'minecraft:iron_sword':250}
+        path.write_text(json.dumps(value))
+        self.assertIn('gleichauf',self.ask('Kampfstil von Example1'))
+        value['stats']['minecraft:used']={};path.write_text(json.dumps(value))
+        self.assertIn('fehlen',self.ask('Kampfstil von Example1'))
+        self.assertIn('Minecraft-Spielernamen',self.ask('mein Kampfstil?',scope=('discord','unlinked')))
+
+    def test_unique_transposition_and_common_question_typo_keep_identity(self):
+        people=[dict(name='ExampleOne',uuid='a'),dict(name='DifferentTwo',uuid='b')]
+        self.assertEqual(targets('was hälst du von ExampelOne?',people),[people[0]])
+        self.assertIn('Example1',self.ask('was hälst du von Example1?'))
+        self.assertIn('eindeutigen',self.ask('was hälst du von UnknownPlayer?'))
+
     def test_unknown_or_partial_data_never_fabricates_portraits_or_victims(self):
         self.assertIn('eindeutigen',self.ask('bewerte UnknownName'))
         death=self.ask('bewerte Example2');self.assertNotIn('Example1',death);self.assertNotIn('zum Opfer',death)

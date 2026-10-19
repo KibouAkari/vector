@@ -8,8 +8,9 @@ import time
 import unicodedata
 import stats
 
-INTENT=re.compile(r'einschätz|einschaetz|beurteil|bewert|\b(?:bin ich|ist \w+) (?:ein |eine |wirklich |eigentlich )?gut\w* spieler|(?:was )?(?:hältst|haltest|denkst|meinst|findest) du (?:eigentlich |so )?(?:von|über|ueber)|wie findest du|beschreib\w* (?:mich|den spieler)|spielerportr|spielertyp|was bin ich für ein spieler',re.I)
-SELF=re.compile(r'\b(?:bin ich|mich|von mir|über mich|ueber mich|mein(?:e[rmns]?)? (?:spielstil|profil|spieler))\b',re.I)
+INTENT=re.compile(r'einschätz|einschaetz|beurteil|bewert|\b(?:bin ich|ist \w+) (?:ein |eine |wirklich |eigentlich )?gut\w* spieler|(?:was )?(?:hältst|hälst|haltest|halst|denkst|meinst|findest) du (?:eigentlich |so )?(?:von|über|ueber)|wie findest du|beschreib\w* (?:mich|den spieler)|spielerportr|spielertyp|was bin ich für ein spieler',re.I)
+COMBAT=re.compile(r'kampfstil|kampfstyle|fighting\s*style|combat\s*style|(?:welche|meine|bevorzugte)\s+waff|(?:bogen|schwert|mace|streitkolben|speer|scharfschütz|scharfschuetz).*(?:typ|kämpfer|kaempfer|nutz|benutz)',re.I)
+SELF=re.compile(r'\b(?:bin ich|mich|von mir|über mich|ueber mich|mein(?:e[rmns]?)? (?:spielstil|profil|spieler|kampfstil|kampfstyle|fighting\s*style|waff\w*))\b',re.I)
 KNOWN_ADVANCEMENTS={'minecraft:adventure/sniper_duel':'Sniper-Duell','minecraft:adventure/kill_all_mobs':'Monsterjäger',
  'minecraft:adventure/adventuring_time':'Abenteurer','minecraft:nether/explore_nether':'Nether-Erkundung',
  'minecraft:end/kill_dragon':'Drachensieg','minecraft:husbandry/bred_all_animals':'Tierzüchter'}
@@ -21,7 +22,9 @@ def normalized(value):
 
 def distance_one(a,b):
     if abs(len(a)-len(b))>1:return False
-    if len(a)==len(b):return sum(x!=y for x,y in zip(a,b))<=1
+    if len(a)==len(b):
+        different=[i for i,(x,y) in enumerate(zip(a,b)) if x!=y]
+        return len(different)<=1 or (len(different)==2 and different[1]==different[0]+1 and a[different[0]]==b[different[1]] and a[different[1]]==b[different[0]])
     if len(a)>len(b):a,b=b,a
     return any(a==b[:i]+b[i+1:] for i in range(len(b)))
 
@@ -75,7 +78,8 @@ class PlayerPortraits:
             self.clear(scope)
             return 'Bogennutzungen und einzelne Fortschritte kann ich einordnen, aber daraus keine Bogenkills zählen. Dafür fehlt mir ein geprüfter Ereigniszähler.'
         followup=bool(re.fullmatch(r'\s*und (?:er|sie|der|die|was ist mit (?:ihm|ihr))\s*[?.!]*',question,re.I))
-        if not INTENT.search(question) and not followup:self.clear(scope);return None
+        combat=bool(COMBAT.search(question))
+        if not INTENT.search(question) and not combat and not followup:self.clear(scope);return None
         try:
             data=stats.snapshot(self.stats_dir,self.usercache,include_items=True);stats.require_complete(data)
         except (OSError,ValueError,KeyError,TypeError):
@@ -83,7 +87,8 @@ class PlayerPortraits:
         matches=targets(question,data['players'])
         if not matches and not SELF.search(question) and re.search(r'\b(?:minecraft|redstone|vector|mods?|backpack|rucksack|claims?|partys)\b',question,re.I):
             self.clear(scope);return None
-        if SELF.search(question):
+        self_intent=bool(SELF.search(question) or combat and re.search(r'\b(?:ich|mir|mein\w*)\b',question,re.I))
+        if self_intent:
             if principal is None:self.clear(scope);return 'welchen Minecraft-Spielernamen meinst du? Dein Discord-Anzeigename ist keine bestätigte Minecraft-Verknüpfung.'
             matches=[p for p in data['players'] if p['uuid']==principal]
         if not matches and followup:
@@ -92,7 +97,32 @@ class PlayerPortraits:
                 if prior and prior[1]>self.clock():matches=[p for p in data['players'] if p['uuid']==prior[0]]
         if len(matches)!=1:
             self.clear(scope);return 'nenne bitte einen eindeutigen Minecraft-Spielernamen, dann gebe ich dir ein kurzes Spielerporträt aus seinen Spielwerten.'
-        p=matches[0];v=p['values'];rank=lambda metric:stats.rank(data,p,metric)
+        p=matches[0]
+        if combat:
+            counters=p['used'];groups={
+                'Bogen':('bow',), 'Armbrust':('crossbow',),
+                'Schwert':('sword',), 'Streitkolben':('mace',),
+                'Speer':('spear',), 'Dreizack':('trident',)}
+            counts={label:sum(value for identifier,value in counters.items()
+                if any(identifier.split(':',1)[1]==kind or identifier.split(':',1)[1].endswith('_'+kind) for kind in kinds))
+                for label,kinds in groups.items()}
+            highest=max(counts.values(),default=0)
+            if not highest:return 'für einen Waffenstil fehlen mir noch passende gespeicherte Nutzungszähler. Aus Mobkills allein mache ich niemanden zum Scharfschützen.'
+            favorites=[label for label,count in counts.items() if count==highest]
+            n=lambda x:f'{int(x):,}'.replace(',',"'")
+            own=principal==p['uuid'];who='du' if own else p['name']
+            if len(favorites)>1:
+                return ('bei dir' if own else 'bei '+who)+' liegen '+', '.join(favorites)+' gleichauf: je '+n(highest)+' Nutzungen. Klingt nach einem flexiblen Allrounder; Treffer oder Siege kann ich daraus nicht ablesen.'
+            weapon=favorites[0]
+            styles={'Bogen':'Fernkämpfer mit Scharfschützen-Ambitionen', 'Armbrust':'geduldiger Fernkämpfer mit Armbrust',
+                'Schwert':'Schwertkämpfer, irgendwo zwischen Samurai und Kreuzritter',
+                'Streitkolben':'Nahkämpfer mit einer Vorliebe fürs Grobe',
+                'Speer':'Speerkämpfer mit Sinn für Abstand', 'Dreizack':'Dreizack-Kämpfer mit Meeresflair'}
+            text=(('du wirkst' if own else who+' wirkt')+' auf mich wie ein '+styles[weapon]+'. '
+                  +weapon+': '+n(highest)+' gespeicherte Nutzungen, '+('deine' if own else 'die')+' häufigste erfasste Waffenart.')
+            return text+' Das zeigt eine Vorliebe, keine Trefferquote.'
+        v=p['values'];rank=lambda metric:stats.rank(data,p,metric)
+
         key=(scope,p['uuid']);now=self.clock()
         with self.lock:
             for old in list(self.variants):
@@ -114,7 +144,7 @@ class PlayerPortraits:
             add(1.5,'hunter',f"Mit {n(v['mob_kills'])} Mobkills (Rang {rank('mob_kills')}) sieht die Nachbarschaft für Monster ziemlich ungemütlich aus.")
         blocks=sum(p['used'].get(k,0) for k in set(block_items))
         if blocks>=500:
-            add(1.3,'builder',f"{n(blocks)} platzierte Blöcke sprechen für ordentlich Baulust.")
+            add(1.3,'builder',f"{n(blocks)} Block-Item-Nutzungen deuten auf ordentlich Baulust hin.")
         if v['distance']>=1 and rank('distance')<=3:
             add(1.25,'traveler',f"{v['distance']:,.1f} km Strecke (Rang {rank('distance')}) – Stillstehen scheint nicht die Lieblingsbeschäftigung zu sein.".replace(',',"'"))
         bow=p['used'].get('minecraft:bow',0)
@@ -168,7 +198,7 @@ class PlayerPortraits:
             lead=intro+' '+' '.join(text for _,_,text in chosen)
         if len(lead)>350:lead=intro+' '+chosen[0][2]
         if chosen and previous%2:
-            lead=lead.replace('sprechen für ordentlich Baulust.', '– da wächst vermutlich mehr als nur eine kleine Hütte.').replace('sieht die Nachbarschaft für Monster ziemlich ungemütlich aus.', 'dürften Monster selten freiwillig Hallo sagen.').replace('friedliche Verhandlungen sind offenbar nicht immer die erste Wahl.', 'das sieht nach etwas Duell-Erfahrung aus, auch wenn Zahlen nicht jeden Kampf erklären.').replace('kennt der Respawn-Punkt vermutlich schon die Lieblingsposition.', 'wäre eine Treuekarte am Respawn-Punkt langsam angemessen.')
+            lead=lead.replace('deuten auf ordentlich Baulust hin.', '– da wächst vermutlich mehr als nur eine kleine Hütte.').replace('sieht die Nachbarschaft für Monster ziemlich ungemütlich aus.', 'dürften Monster selten freiwillig Hallo sagen.').replace('friedliche Verhandlungen sind offenbar nicht immer die erste Wahl.', 'das sieht nach etwas Duell-Erfahrung aus, auch wenn Zahlen nicht jeden Kampf erklären.').replace('kennt der Respawn-Punkt vermutlich schon die Lieblingsposition.', 'wäre eine Treuekarte am Respawn-Punkt langsam angemessen.')
         if len(lead)>350 and chosen:lead=intro+' '+chosen[0][2]
         with self.lock:
             for key in list(self.context):
