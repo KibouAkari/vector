@@ -2,6 +2,13 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-19 — Qualify a fresh web recovery image before release (PR #95)
+
+- Add a stage-only build and native API qualification against an operator-owned readiness baseline. Pin existing local base/runtime images, bound resources and retain candidate/evidence without changing production source or Compose.
+- Use synthetic users and disposable PostgreSQL, an offline detector and an internal temporary network. Preserve all production container/configuration fingerprints and clean owned test objects and synthetic secrets.
+- Check original-send with separately signed tool masking through the built HTTP API, including exact reviewed text and rejection of altered preferences. No worker job or cloud call is executed by this matrix.
+- Require a later separately guarded live release; successful source tests are not a production fix. Minecraft, its assistant, local inference, backups and welcome state are not deployed by this stage.
+
 ## 2026-10-19 — Restore documentation depth and complete history (PR #94)
 
 - Restore all 62 earlier dated sections and their technical paragraphs with narrowly generalized private references.
@@ -48,7 +55,7 @@ The complete dated history is retained below. Historical scripts and paths descr
 
 - Operator confirms PR89 deployed at [private release reference], only assistant recreated, Minecraft/current addon unchanged and saved advancements available. No new restart/welcome required.
 - Actual isolated qualification passed:1 local social call,177 input/33 output tokens,14.260s; seven synthetic deterministic cases0.045–0.070s. Unknown usage/cloud/API fees/messages0. These measurements do not claim live latency or a real-channel portrait test.
-- Update authoritative handoff with Minecraft-portraits.json, exact release/verifier/rollback and remaining manual chat verification. Documentation only; no runtime changes, server action, model test or message.
+- Update authoritative handoff with minecraft-portraits.json, exact release/verifier/rollback and remaining manual chat verification. Documentation only; no runtime changes, server action, model test or message.
 
 ## 2026-10-19 — Fresh player portraits and natural smalltalk routing (PR #89)
 
@@ -88,7 +95,7 @@ The complete dated history is retained below. Historical scripts and paths descr
 - Operator diagnostic confirms the failed identity release rolled back before recreation: same original game healthy, old addon restored, Discord input/avatar/head still disabled. The only committed-image config mismatch is container User empty string versus omitted/null image User; parent layers, OS and architecture match. Operator then successfully deployed PR #84 at [private release reference] with84 reviewed passages/63 mods, installed Backpack11.3.2 recipes and zero native/cloud calls or messages. Minecraft remained unchanged.
 - Normalize ONLY None/empty User as an unspecified user during private stopped-container preservation and verify the never-started reference container resolves to that same setting. Explicit root, numeric IDs and groups remain distinct; Env/order, launch fields, labels, layers, bounded private tar content/metadata and mounted-world exclusion checks remain strict. OCI ImageConfig.User is an optional omitempty string; see https://github.com/opencontainers/image-spec/blob/main/specs-go/v1/config.go and Docker user defaults https://docs.docker.com/engine/containers/run/#user.
 - Identity installer now uses the immutable PR #84 verifier and exact observed release, checking runtime source equality, pointer/profile/manifest/catalog/recipe digest and accepted zero-call stage before any stop. Retain qualified addon/assets, role/image/current backend, all world/backup/HTTPS/rollback guards and native once-only welcome at least15s after confirmed readiness. No backend recreation, new model tests or game cutover performed here.
-- Extend scoped installer tests for both unspecified User representations, every explicit user pair, strict unrelated fields and backend provenance rejection. Existing Docker CI proof checks real commit, never-started reference User and private content preservation with mounted data excluded. New operator retry uses current/vector-Minecraft-chat-identity-install-v4.py; do not rerun v3 or the backend updater. Real Discord input/avatar/head/welcome delivery still needs operator observation after successful cutover.
+- Extend scoped installer tests for both unspecified User representations, every explicit user pair, strict unrelated fields and backend provenance rejection. Existing Docker CI proof checks real commit, never-started reference User and private content preservation with mounted data excluded. New operator retry uses current/vector-minecraft-chat-identity-install-v4.py; do not rerun v3 or the backend updater. Real Discord input/avatar/head/welcome delivery still needs operator observation after successful cutover.
 
 ## 2026-10-18 — Expand public mod guidance and installed backpack recipes; hold game recreation (PR #84)
 
