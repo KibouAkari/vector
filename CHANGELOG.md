@@ -2,6 +2,13 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-19 — Apply an already qualified web image (PR #99)
+
+- Reuse the exact successful stage image/source without rebuilding or repeating detector qualification. Require unchanged app/worker generations and source/configuration; snapshot other services afresh and preserve them during release.
+- Pin the existing Compose project and change only the app image and listener. Preserve source/configuration backups and provide guarded, generation-aware rollback with durable private progress.
+- Check idle jobs read-only before replacement and verify app interfaces plus local/public HTTPS health. These checks do not claim an atomic worker drain or provider execution.
+- Keep Minecraft assistant updates separate. Synthetic release/recovery tests and CI verify source boundaries; production application remains an operator-run step.
+
 ## 2026-10-19 — Pin existing Compose projects for assistant updates (PR #98)
 
 - Require the operator-pinned existing project name and pass it explicitly to every assistant Compose render, configuration hash, recreate and rollback operation. Retain the existing service, working-directory, image, code and configuration guards.
