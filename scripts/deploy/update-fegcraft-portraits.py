@@ -194,7 +194,7 @@ def main():
         print(json.dumps(dict(deployed=True,only_assistant_recreated=True,minecraft_container_unchanged=True,
               knowledge_mode='grounded-fact-composition-with-character',fresh_player_portraits=True,advancements_available=bool(advancements),
               qualification=result,model_calls=1,cloud_calls=0,messages_sent=0,
-              pending_greeting_addon_retained=True,welcome_replayed=False,
+              current_addon_retained=True,welcome_replayed=False,
               rollback=str(directory/'rollback.sh')),indent=2))
 
 
