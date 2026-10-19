@@ -2,6 +2,14 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-19 — Fresh comparisons and bounded Minecraft leaderboards (PR #96)
+
+- Compare one saved statistic for exactly two known players with the actual counts, direction, difference and ties. Read fresh data for each request.
+- Answer Top 1–10 queries with competition ranks and cutoff ties. Recognize the narrow ranking typo `monkills`; ambiguous or incomplete inputs do not become server totals.
+- Recognize the best Minecraft player phrasing while retaining all-category ranks and independent policy, identity, replay and rate limits.
+- Provide a separately guarded assistant-runtime-only updater. Preserve installed companion/server code, private configured character, image, environment, state and secret bindings. A synthetic network-disabled check must pass before activation; no Minecraft restart, welcome, model or cloud call.
+- Focused ranking and updater tests pass locally. Actual operator Docker qualification and game/Discord responses remain separate evidence.
+
 ## 2026-10-19 — Qualify a fresh web recovery image before release (PR #95)
 
 - Add a stage-only build and native API qualification against an operator-owned readiness baseline. Pin existing local base/runtime images, bound resources and retain candidate/evidence without changing production source or Compose.
