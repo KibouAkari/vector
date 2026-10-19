@@ -351,6 +351,30 @@ class ModHelp:
                 'und ' + noun + ' rechts anklicken. Zum Absetzen rechtsklicken. Bei Problemen sag mir, was passiert.')
 
 
+def portrait_question(question):
+    """Normalize evaluation phrasing only, leaving target text intact."""
+    q=unicodedata.normalize('NFKC',question).strip()
+    match=re.fullmatch(r'wie\s+sch[äa]tzt\s+du\s+(.+?)\s+ein[?.!]*',q,re.I)
+    if match:return 'was hältst du von '+match[1]
+    match=re.fullmatch(r'findest\s+du\s*,?\s*(?:dass?|das)\s+(.+?)\s+(?:ein\s+)?(?:guter?|schlechter?)\s+(?:oder\s+(?:ein\s+)?(?:guter?|schlechter?)\s+)?spieler\s+ist[?.!]*',q,re.I)
+    if match:return 'was hältst du von '+match[1]
+    match=re.fullmatch(r'ist\s+(.+?)\s+(?:anhand\s+der\s+statistiken\s+(?:auf\s+.+?\s+)?)?(?:einer\s+der\s+besten|ein\s+(?:guter|schlechter))\s+spieler[?.!]*',q,re.I)
+    if match:return 'was hältst du von '+match[1]
+    return q
+
+
+def direct_chat_answer(question):
+    q=unicodedata.normalize('NFKC',question).casefold().strip()
+    repeat=re.fullmatch(r'(?:sag|sage)\s+(?:mal\s+)?([0-9]{1,6})[.!?]*',q)
+    if repeat:return repeat[1]+'.'
+    # General gameplay guidance, not a claim about modified server rules.
+    if re.search(r'schwert|sword',q) and re.search(r'verzauber|enchant',q) and re.search(r'best|empfiehl|welche|sinnvoll',q):
+        if re.search(r'untot|zombie|skelett',q):
+            return 'gegen Untote ist Bann gezielter als Schärfe. Für den Alltag ist Schärfe vielseitiger. Haltbarkeit und Reparatur helfen, dein Schwert länger zu behalten; Mod-Anpassungen kann ich daraus nicht bestätigen.'
+        return 'für ein vielseitiges Schwert würde ich Schärfe wählen. Plünderung hilft bei Mob-Beute, Haltbarkeit und Reparatur schonen das Schwert. Gegen Untote ist Bann die spezialisierte Wahl. Das ist allgemeine Spielhilfe, keine Prüfung eurer Mod-Regeln.'
+    return None
+
+
 class Assistant:
     def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None, recipes=None, mod_recipes=None, portraits=None):
         self.state, self.stats_dir, self.usercache = state, stats_dir, usercache
@@ -359,6 +383,8 @@ class Assistant:
         self.mod_recipes = mod_recipes
         self.portraits = portraits
         self.mod_help = ModHelp()
+        self.ranking_pages = OrderedDict()
+        self.ranking_lock = threading.Lock()
 
     def clear_knowledge(self, scope):
         if getattr(self.knowledge, 'broad_topics', False):
@@ -402,8 +428,12 @@ class Assistant:
             self.clear_knowledge(scope)
             answer = 'dazu gebe ich keine administrativen oder vertraulichen Auskünfte.'
         else:
-            answer = self.portraits.answer(question,principal if source=='minecraft' else None,scope,block_items) if self.portraits else None
-            portrait_response = answer is not None
+            answer = self.ranking_page(question,scope)
+            if answer is None:answer = direct_chat_answer(question)
+            portrait_answer = (self.portraits.answer(portrait_question(question),principal if source=='minecraft' else None,scope,block_items)
+                               if answer is None and self.portraits else None)
+            portrait_response = portrait_answer is not None
+            if portrait_response:answer = portrait_answer
             if answer is None:
                 answer = self.mod_help.answer(question, self.mods, scope, fallback=not getattr(self.knowledge, 'broad_topics', False))
             if answer is None:
@@ -450,6 +480,31 @@ class Assistant:
             raise ValueError('INVALID_MOD_INVENTORY')
         return sorted(set(value))
 
+    def ranking_page(self, question, scope):
+        q=unicodedata.normalize('NFKC',question).casefold()
+        all_top=re.search(r'\btop\s*(\d+)\b',q)
+        all_top=all_top if all_top and re.search(r'\ball(?:e|er|en)\s+(?:rekorde|ranglisten|kategorien|statistiken)\b',q) else None
+        next_page=bool(re.fullmatch(r'\s*(?:weiter|nächste(?:\s+(?:rangliste|kategorie))?|naechste(?:\s+(?:rangliste|kategorie))?)\s*[.!?]*',q))
+        now=time.monotonic()
+        with self.ranking_lock:
+            for key in list(self.ranking_pages):
+                if self.ranking_pages[key][2]<=now:self.ranking_pages.pop(key,None)
+            prior=self.ranking_pages.pop(scope,None)
+            if all_top:
+                limit=int(all_top[1])
+                if not 1<=limit<=10:return 'frage bitte nach Top 1 bis Top 10.'
+                remaining=list(stats.METRICS)
+            elif next_page and prior:
+                limit,remaining,_=prior
+            else:return None
+            metric=remaining[0];remaining=remaining[1:]
+            if remaining:
+                self.ranking_pages[scope]=(limit,remaining,now+180)
+                while len(self.ranking_pages)>256:self.ranking_pages.popitem(last=False)
+        text=self.stat_answer('Top '+str(limit)+' '+stats.METRICS[metric][0])
+        text=text.removesuffix(' Stand: gespeicherte Spielerdateien.')
+        return text+(' Für die nächste Kategorie: Hey Vector, weiter.' if remaining else ' Das war die letzte Kategorie.')
+
     def stat_answer(self, question, block_items=(), *, principal=None):
         q = unicodedata.normalize('NFKC', question).casefold()
         if (getattr(self.knowledge,'personality',False) and re.search(r'grab|gräber|graves|rucksack|backpack',q)
@@ -464,6 +519,8 @@ class Assistant:
                              and re.search(r'\bmonkills\b', category_q))
         if typo_category:
             category_q = re.sub(r'\bmonkills\b', 'mobkills', category_q)
+        if re.search(r'\btop\s*\d+\b|rangliste|leaderboard',q):
+            category_q = re.sub(r'\bspielerkilld\b', 'spielerkills', category_q)
         selected = [key for key, pattern in METRIC_WORDS.items() if re.search(pattern, category_q)]
         top_match = re.search(r'\btop\s*(\d+)\b', q)
         comparison = bool(re.search(r'unterschied|differenz|vergleich|\bcompar(?:e|ison)\b|\bmehr\b.*\bals\b|\bweniger\b.*\bals\b', q))
@@ -471,7 +528,10 @@ class Assistant:
         wants_ranks = bool(re.search(r'\br[äa]ng(?:e|en)?\b|\branks?\b|platzierung', q))
         best = bool(re.search(r'\bbeste[rn]?\s+(?:minecraft[ -]+)?spieler\b', q))
         self_reference = bool(re.search(r'\b(?:ich|von mir|für mich|fuer mich|mein(?:e[rmns]?)?|my)\b(?!\s+(?:server|minecraft))', q))
-        if best and not selected:
+        direct_best=bool(best and re.search(r'^\s*wer\s+ist\b',q) and not re.search(r'anhand|statistik|\beiner\b|\boder\b',q))
+        most_titles=bool(re.search(r'\bwer\b',q) and re.search(r'meisten\s+(?:statistiken|kategorien|rekorden?)',q) and re.search(r'führt|fuehrt|erster|spitze',q))
+        worst=bool(re.search(r'^\s*wer\s+ist\b.*\bschlechteste[rn]?\s+(?:minecraft[ -]+)?(?:spieler|player)\b',q))
+        if direct_best and not selected:
             if getattr(self.knowledge,'personality',False):
                 return 'Du natürlich, wer denn sonst? Völlig unvoreingenommene Vector-Meinung.'
             return 'einen objektiv besten Spieler gibt es nicht. Meinst du Mobkills, Spielerkills, Spielzeit oder einen anderen Rekord?'
@@ -482,7 +542,7 @@ class Assistant:
                           and not re.search(r'claim|part(?:y|ys|ies)|gleichzeitig|online|gerade|aktuell|momentan|können|koennen|dürfen|duerfen|limit|kill|getötet|getoetet|besiegt|gestorben|erlegt', q))
         blocks = bool(re.search(r'\bblocks?\b|blöck|bloeck|blök|bloek|\bbloks?\b', q))
         block_category = ('used' if re.search(r'platzi|plazi|gesetzt|placed', q) else 'mined' if re.search(r'abgebaut|abgebau|gebaut.*ab|mined', q) else None) if blocks else None
-        if not selected and not is_record and not block_category and not ores and not population and not wants_ranks and not re.search(r'statistik|statistic|\bstats\b|rangliste|leaderboard', q):
+        if not selected and not is_record and not block_category and not ores and not population and not wants_ranks and not most_titles and not worst and not re.search(r'statistik|statistic|\bstats\b|rangliste|leaderboard', q):
             return None
         try:
             data = stats.snapshot(self.stats_dir, self.usercache, include_items=bool(block_category or ores))
@@ -502,6 +562,20 @@ class Assistant:
                 # Pronouns may occupy the target position, but arbitrary names still cannot.
                 resolved = re.sub(r'\b(?:mir|mich|mein(?:e[rmns]?)?)\b', people[0]['name'].casefold() if people else '', q)
                 unknown_target = unknown_player_target(resolved, people)
+            if most_titles or worst:
+                if people or self_reference:return 'meinst du eine Person oder den serverweiten Vergleich?'
+                if worst:
+                    leaders=stats.leaders(data,'player_kills')
+                    if not leaders or leaders[0]['value']<=0:return 'der schlechteste Spieler? Dafür führe ich keine ernsthafte Rangliste. Jeder bringt etwas anderes mit.'
+                    names=' und '.join(p['name'] for p in leaders)
+                    if len(leaders)>3:return 'zu viele teilen sich die Kill-Spitze für einen kurzen Seitenhieb. Eine echte Schlechtestenliste gibt es nicht.'
+                    return 'mein nicht ganz ernst gemeinter Kandidat: '+names+'. Auf einem friedlichen Treff- und Bauserver die Spielerkill-Liste anzuführen, ist schon eine spezielle Auslegung von Nachbarschaftshilfe. Nur ein Seitenhieb, kein Urteil über Können.'
+                counts=[(p,sum(p['values'][metric]>0 and stats.rank(data,p,metric)==1 for metric in stats.METRICS)) for p in data['players']]
+                maximum=max((count for _,count in counts),default=0)
+                if not maximum:return 'in den fünf geprüften Kategorien gibt es noch keinen positiven Rekord.'
+                winners=[p for p,count in counts if count==maximum]
+                if len(winners)>3:return 'mehr als drei Spieler teilen sich die meisten Spitzenplätze. Frage bitte nach einer Kategorie.'
+                return ' und '.join(p['name'] for p in winners)+' führt '+('jeweils ' if len(winners)>1 else '')+'in '+str(maximum)+' von fünf Kategorien. Geteilte Spitzenplätze zählen mit; Tode zählen nur nach Anzahl. Das ist keine Wertung, wer am besten spielt.'
             if unknown_target and not block_category:
                 return ('zum Vergleich brauche ich zwei vollständige Spielernamen und eine Kategorie, zum Beispiel Mobkills.' if comparison
                         else 'nenne bitte den vollständigen Spielernamen für die Statistikabfrage.')
