@@ -420,7 +420,7 @@ class Assistant:
         if admitted != 'accepted':
             # One bounded notice for an owned pending page; never compute the page
             # or bypass admission. Replays and further rejected requests stay silent.
-            if admitted == 'limited' and PAGE_NEXT.fullmatch(question):
+            if admitted == 'limited' and PAGE_NEXT.fullmatch(unicodedata.normalize('NFKC',question).casefold()):
                 now=time.monotonic()
                 with self.ranking_lock:
                     for key in list(self.ranking_notices):
@@ -428,6 +428,7 @@ class Assistant:
                     pending=self.ranking_pages.get(scope)
                     if pending and pending[2]>now and scope not in self.ranking_notices and len(self.ranking_notices)<3:
                         self.ranking_notices[scope]=now
+                        self.ranking_pages[scope]=(pending[0],pending[1],now+180)
                         return {'status':'answered','text':safe_display(prefix+'kurze Pause wegen des Minutenlimits. Die nächste Rangliste bleibt bereit. Warte etwa eine Minute und schreibe dann nochmals Hey Vector, weiter.')}
             return {'status': admitted}
         portrait_response = False
@@ -482,7 +483,7 @@ class Assistant:
             answer = friendly_statistics(answer, name if source == 'minecraft' else None,
                                          variant=int(event.rsplit(':', 1)[1]) % 3)
         character=getattr(self.knowledge,'character',None)
-        if character is not None and not portrait_response and not PAGE_NEXT.fullmatch(question):
+        if character is not None and not portrait_response and not PAGE_NEXT.fullmatch(unicodedata.normalize('NFKC',question).casefold()):
             answer=character.decorate(question,answer,scope,greeting)
         # Deterministic responses use the same presentation/command boundary.
         safe_answer(answer)
@@ -762,6 +763,7 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 
 
 

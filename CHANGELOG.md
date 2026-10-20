@@ -7,7 +7,7 @@ The complete dated history is retained below. Historical scripts and paths descr
 - Give the peaceful-server player-kill-leader joke a shorter, sharper voice without a defensive closing disclaimer. Keep it confined to gameplay and derive its target from fresh counters.
 - Recognize named good-or-bad player questions, including the exact alternate phrasing reported from live chat.
 - Keep the existing question and replay limits. A rate-limited continuation of an owned, unexpired ranking gets one brief pause notice per minute, capped at three notices globally. Do not compute, consume or advance the rejected page; unrelated and repeated rejected messages remain silent.
-- Avoid repetition-related character decoration when requesting the next ranking page. Extend authenticated regressions for the live wording and the real three-answer pause/resume sequence.
+- Normalize Unicode consistently in continuation guards and refresh a paused page's expiry through the advertised wait without consuming it. Avoid repetition-related character decoration when requesting the next ranking page. Extend authenticated regressions for the live wording and the real three-answer pause/resume sequence.
 
 ## 2026-10-19 — Route player opinions and multi-category rankings by intent
 

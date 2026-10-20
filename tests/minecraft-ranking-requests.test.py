@@ -236,6 +236,28 @@ class RankingRequests(unittest.TestCase):
         (self.directory/(self.ids[6]+'.json')).write_text('{bad')
         self.assertIn('unvollständig',self.ai.stat_answer('wer hat die meisten Blöcke abgebaut?',registry))
 
+    def test_decomposed_next_page_and_late_limit_notice_keep_continuation(self):
+        now=[1000.0]
+        self.ai.state.clock=lambda:now[0]
+        self.ai.knowledge.character=SimpleNamespace(decorate=lambda q,a,*args:'REPEATED '+a)
+        scope=('minecraft',self.ids[0])
+        with patch('runtime.time.monotonic',side_effect=lambda:now[0]):
+            self.ask('Top 5 aller Rekorde')
+            self.assertNotIn('REPEATED',self.ask('na\u0308chste')['text'])
+            self.ask('weiter')
+            self.ai.ranking_pages[scope]=(5,['player_kills','deaths'],1180.0)
+            now[0]=1150.0
+            # Simulate a global-limit rejection near the original expiry.
+            with patch.object(self.ai.state,'admit',return_value='limited'):
+                answer=self.ask('na\u0308chste')['text']
+            self.assertIn('Minutenlimits',answer)
+            self.assertEqual(self.ai.ranking_pages[scope][1],['player_kills','deaths'])
+            self.assertGreater(self.ai.ranking_pages[scope][2],1211.0)
+            now[0]=1211.0
+            answer=self.ask('na\u0308chste')['text']
+            self.assertIn('Spielerkills',answer)
+            self.assertNotIn('REPEATED',answer)
+
     def test_pending_page_limit_notice_is_bounded_and_does_not_advance(self):
         now=[1000]
         self.ai.state.clock=lambda:now[0]
@@ -266,5 +288,6 @@ class RankingRequests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 
 
