@@ -11,11 +11,54 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import stat
 import sys
 import time
 import uuid
+
+
+def preserve_slot_binding(installed, candidate, mounts):
+    """Keep the verified service's secret identity without broadening its ACL."""
+    def binding(source):
+        tree = ast.parse(source)
+        factories = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'knowledge_for']
+        if len(factories) != 1:
+            raise RuntimeError('UNIQUE_SLOT_FACTORY_REQUIRED')
+        factory = factories[0]
+        defaults = dict(zip([a.arg for a in factory.args.args][-len(factory.args.defaults):], factory.args.defaults))
+        path = defaults.get('dsn_path')
+        roles = [n.comparators[0] for n in ast.walk(factory)
+                 if isinstance(n, ast.Compare) and isinstance(n.left, ast.Attribute)
+                 and isinstance(n.left.value, ast.Name) and n.left.value.id == 'value'
+                 and n.left.attr == 'username' and len(n.ops) == 1
+                 and isinstance(n.ops[0], ast.NotEq) and len(n.comparators) == 1]
+        if not isinstance(path, ast.Constant) or not isinstance(path.value, str) or len(roles) != 1:
+            raise RuntimeError('UNIQUE_SLOT_BINDING_REQUIRED')
+        role = roles[0]
+        if (not isinstance(role, ast.Constant) or not isinstance(role.value, str)
+                or not re.fullmatch(r'/run/secrets/[a-zA-Z0-9_.-]+', path.value)
+                or not re.fullmatch(r'[a-z_][a-z0-9_]{0,62}', role.value)):
+            raise RuntimeError('INVALID_SLOT_BINDING')
+        return path, role
+
+    old, new = binding(installed), binding(candidate)
+    matching = [m for m in mounts if m.get('Destination') == old[0].value]
+    if len(matching) != 1 or matching[0].get('RW') is not False:
+        raise RuntimeError('READ_ONLY_EXISTING_SLOT_MOUNT_REQUIRED')
+    raw = candidate.encode()
+    lines = raw.splitlines(keepends=True)
+    edits = []
+    for previous, target in zip(old, new):
+        start = sum(map(len, lines[:target.lineno-1])) + target.col_offset
+        end = sum(map(len, lines[:target.end_lineno-1])) + target.end_col_offset
+        edits.append((start, end, repr(previous.value).encode()))
+    for start, end, value in sorted(edits, reverse=True):
+        raw = raw[:start] + value + raw[end:]
+    result = raw.decode()
+    ast.parse(result)
+    return result
 
 
 INNER = r'''
@@ -194,6 +237,7 @@ def main():
                 old = (code/name).read_text()
                 text = guard.preserve_joke(old, guard.preserve_server_literals(old,text)).decode()
             if name == 'server.py':
+                text=preserve_slot_binding((code/name).read_text(),text,row['Mounts'])
                 old_tree=ast.parse((code/name).read_text())
                 new_tree=ast.parse(text)
                 swaps=[]

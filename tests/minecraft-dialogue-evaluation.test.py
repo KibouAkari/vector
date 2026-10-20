@@ -1,5 +1,6 @@
 """Own-child cancellation and release-lock boundaries; no Docker or model calls."""
 import importlib.util
+import ast
 import json
 from pathlib import Path
 import subprocess
@@ -15,6 +16,36 @@ spec.loader.exec_module(module)
 
 
 class Evaluation(unittest.TestCase):
+    def test_existing_private_slot_binding_is_retained_without_reading_secret(self):
+        installed = (ROOT/'services/minecraft-assistant/server.py').read_text().replace(
+            '/run/secrets/vector_minecraft_slot_dsn', '/run/secrets/operator_slot').replace(
+            "value.username != 'vector_minecraft_slot'", "value.username != 'operator_slot'")
+        candidate = (ROOT/'services/minecraft-assistant/server.py').read_text()
+        result = module.preserve_slot_binding(installed, candidate, [
+            {'Destination': '/run/secrets/operator_slot', 'RW': False}])
+        self.assertEqual(result, candidate.replace(
+            '/run/secrets/vector_minecraft_slot_dsn', '/run/secrets/operator_slot').replace(
+            "value.username != 'vector_minecraft_slot'", "value.username != 'operator_slot'"))
+        ast.parse(result)
+        self.assertIn("stat.S_IMODE(meta.st_mode) != 0o400", result)
+        self.assertIn("meta.st_uid != os.getuid()", result)
+
+    def test_missing_writable_or_ambiguous_slot_mount_is_rejected(self):
+        source = (ROOT/'services/minecraft-assistant/server.py').read_text()
+        mount = {'Destination': '/run/secrets/vector_minecraft_slot_dsn', 'RW': False}
+        for mounts in ([], [dict(mount, RW=True)], [mount, mount]):
+            with self.subTest(mounts=mounts), self.assertRaisesRegex(RuntimeError, 'READ_ONLY_EXISTING_SLOT_MOUNT_REQUIRED'):
+                module.preserve_slot_binding(source, source, mounts)
+
+    def test_changed_factory_or_unsafe_binding_is_rejected(self):
+        source = (ROOT/'services/minecraft-assistant/server.py').read_text()
+        mounts = [{'Destination': '/run/secrets/vector_minecraft_slot_dsn', 'RW': False}]
+        for invalid in (source.replace('def knowledge_for(', 'def renamed('),
+                        source.replace('/run/secrets/vector_minecraft_slot_dsn', '/tmp/slot'),
+                        source.replace("value.username != 'vector_minecraft_slot'", "value.username == 'vector_minecraft_slot'")):
+            with self.subTest(), self.assertRaises(RuntimeError):
+                module.preserve_slot_binding(invalid, source, mounts)
+
     def test_watchdog_reaps_only_its_own_child(self):
         foreign = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])
         try:
