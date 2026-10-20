@@ -290,6 +290,9 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
     mods=root/'mods.json';mods.write_bytes(Path('/inputs/mods.json').read_bytes())
     ai=Assistant(state,directory,cache,mods,knowledge=provider,portraits=PlayerPortraits(directory,cache))
     dialogue=GroundedDialogue(provider)
+    # Native diagnostics intentionally bypass the direct clock capability.
+    # Normal qualification measures the actual hybrid user-facing route.
+    if payload.get('profile_only') or payload.get('diagnose_rejection'):dialogue.allow_direct=False
     scope=('minecraft',ids[0])
     facts=lambda:PublicObservations(ai,scope,ids[0],timezone='Europe/Zurich',wall_clock=lambda:datetime(2026,10,20,12,34,tzinfo=ZoneInfo('Europe/Zurich')))
     cases=[('clock','Wie spät haben wir es eigentlich?'),
@@ -308,14 +311,21 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
         print(json.dumps({'case_started':key}),flush=True)
         try:
             answer=dialogue.answer(question,scope,facts())
+            origin=dialogue.provenance(scope) if callable(getattr(dialogue,'provenance',None)) else 'unreported'
             checks=case_checks(key,answer)
+            if not payload.get('profile_only') and not payload.get('diagnose_rejection') and origin!='unreported':
+                if key=='clock':checks['direct_without_model']=origin=='direct-clock' and len(usage)==before
+                if key=='player-opinion':checks['trusted_portrait']=origin=='tool-portrait'
+                if key=='own-context':checks['trusted_fresh_statistics']=origin=='tool-statistics'
             passed=all(checks.values());error=None;code=None
         except Exception as exc:
-            answer=None;passed=False;checks={};error=type(exc).__name__;code=error_code(exc)
-        results.append(dict(id=key,passed=passed,checks=checks,seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,synthetic_answer=answer,error=error,error_code=code,native=native[native_before:]))
+            answer=None;passed=False;checks={};error=type(exc).__name__;code=error_code(exc);origin='failed'
+        results.append(dict(id=key,passed=passed,checks=checks,reply_origin=origin,seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,synthetic_answer=answer,error=error,error_code=code,native=native[native_before:]))
         if payload.get('diagnose_rejection'):results[-1]['rejections']=rejections[rejection_before:]
         print(json.dumps({'case':results[-1]},ensure_ascii=False),flush=True)
-        if error=='TimeoutError':break
+        # A useful reviewed fallback must not hide a stalled native request or
+        # trigger more probes while backend cancellation is still uncertain.
+        if error=='TimeoutError' or any(row.get('error')=='TimeoutError' for row in native[native_before:]):break
     result=dict(passed=len(results)==len(cases) and all(c['passed'] for c in results),cases=results,usage=usage,
         expected_cases=len(cases),completed_cases=len(results),
         model_calls=len(usage),input_tokens=None if any(c['input_tokens'] is None for c in usage) else sum(c['input_tokens'] for c in usage),
@@ -327,6 +337,7 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
         production_ledger_writes=False,temporary_state_only=True,
         native_semantics_require_manual_review=True,eligible_for_activation=False)
     result['preload']=preload_result
+    result['reply_origins']={origin:sum(c['reply_origin']==origin for c in results) for origin in sorted({c['reply_origin'] for c in results})}
     if payload.get('profile_only'):
         result.update(passed=False,evaluation_scope='single-request-stream-profile',diagnostic_completed=True)
     if payload.get('diagnose_rejection'):

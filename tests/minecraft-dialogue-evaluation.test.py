@@ -138,6 +138,32 @@ class Evaluation(unittest.TestCase):
         self.assertFalse(result['passed'])
         self.assertFalse(result['eligible_for_activation'])
 
+    def test_reviewed_fallback_cannot_hide_native_timeout_and_start_more_probes(self):
+        fake={name:ModuleType(name) for name in ('runtime','portraits','dialogue','server')}
+        fake['runtime'].State=lambda *args:object()
+        fake['runtime'].Assistant=lambda *args,**kwargs:object()
+        fake['portraits'].PlayerPortraits=lambda *args:object()
+        fake['dialogue'].MODEL='synthetic-model'
+        provider=SimpleNamespace(model='synthetic-model');calls=[]
+        class Fallback:
+            def __init__(self,*args):pass
+            def answer(self,*args):
+                calls.append(1);provider.diagnostic({'error':'TimeoutError'})
+                return 'Es ist 12:34 Uhr.'
+        fake['dialogue'].GroundedDialogue=Fallback
+        fake['dialogue'].PublicObservations=lambda *args,**kwargs:object()
+        fake['server'].knowledge_for=lambda *args:provider
+        output=io.StringIO();original=Path.read_bytes;old_path=list(sys.path)
+        try:
+            with patch.dict(sys.modules,fake),patch.object(sys,'stdin',io.StringIO('{"files":{}}')), \
+                    patch.object(Path,'read_bytes',lambda path:b'[]' if str(path)=='/inputs/mods.json' else original(path)),redirect_stdout(output):
+                exec(compile(module.INNER,'synthetic-evaluation','exec'),{})
+        finally:sys.path[:]=old_path
+        result=json.loads(next(line.split('=',1)[1] for line in output.getvalue().splitlines() if line.startswith('VECTOR_DIALOGUE_RESULT=')))
+        self.assertEqual(calls,[1])
+        self.assertEqual(result['completed_cases'],1)
+        self.assertFalse(result['passed'])
+
     def test_existing_private_slot_binding_is_retained_without_reading_secret(self):
         installed = (ROOT/'services/minecraft-assistant/server.py').read_text().replace(
             '/run/secrets/vector_minecraft_slot_dsn', '/run/secrets/operator_slot').replace(
