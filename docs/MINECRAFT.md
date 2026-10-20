@@ -43,3 +43,9 @@ The default only qualifies. Explicit `--activate` changes the read-only code bin
 
 
 The runtime updater requires `expected_project_name` in its private operator JSON. Obtain it from the running container's Compose project label and render the baseline using the same explicit project name. Deriving a project from the release directory can select a different Compose project; a failed identity guard must not be bypassed.
+
+## Experimental local dialogue qualification
+
+Mode `6` is an opt-in conversational candidate, not an automatic upgrade to an installed assistant. It generates short local answers and may request one allowlisted public lookup followed by a final answer. A single-key answer-or-tool envelope limits output overhead; the shared policy, authenticated identity, restricted CPU role and existing deadlines still apply. Own recent context is scoped by authenticated source and author. Available tools do not expose private inventories, commands, secrets or arbitrary files.
+
+`scripts/deploy/evaluate-minecraft-dialogue.py` preserves the exact confirmed installation and uses synthetic temporary state. Native metadata excludes prompts and generated text; synthetic test answers are reported separately. Evaluation stops after the first timeout, and incomplete coverage cannot pass. Unknown token usage is reported as unknown. Smaller prompts, schema validation and successful mocked tests do not establish semantic correctness, good latency or eligibility for a production rollout. Review native evidence before any separate guarded activation.

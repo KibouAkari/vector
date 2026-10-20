@@ -39,13 +39,13 @@ class DialogueTests(unittest.TestCase):
         self.addCleanup(patch.stopall)
         patch('dialogue.local_slot', return_value=nullcontext()).start()
     def test_unlisted_question_reaches_generation_with_clock_observation(self):
-        p = Provider([{'answer': 'Es ist 12:34 Uhr.', 'tool': 'none', 'query': ''}])
+        p = Provider([{'answer': 'Es ist 12:34 Uhr.'}])
         ai = GroundedDialogue(p)
         self.assertEqual(ai.answer('Wie spät haben wir es denn?', ('minecraft', 'a'), Observations()), 'Es ist 12:34 Uhr.')
         self.assertIn('12:34:00', p.calls[0][-1]['content'])
         self.assertEqual(len(p.calls), 1)
     def test_tool_loop_rewrites_query_and_generates_from_real_tool_result(self):
-        p = Provider([{'answer': '', 'tool': 'statistics', 'query': 'Mobkills von ExampleOne'},
+        p = Provider([{'statistics': 'Mobkills von ExampleOne'},
                       {'answer': 'ExampleOne hat 25 Mobkills und liegt auf Rang 2.'}])
         facts = Observations()
         ai = GroundedDialogue(p)
@@ -61,18 +61,18 @@ class DialogueTests(unittest.TestCase):
             self.assertEqual(p.calls, [])
         for tool, query in (('shell', 'ls'), ('statistics', '/seed')):
             facts = Observations()
-            p = Provider([{'answer': '', 'tool': tool, 'query': query}])
+            p = Provider([{tool: query}])
             with self.assertRaises(ValueError):
                 GroundedDialogue(p).answer('Wie läuft es?', ('minecraft', 'a'), facts)
             self.assertEqual(facts.calls, [])
     def test_unsupported_record_number_and_command_output_fail(self):
         for answer in ('ExampleOne hat 999 Mobkills.', 'Nutze /give ExampleOne stone.'):
-            p = Provider([{'answer': '', 'tool': 'statistics', 'query': 'Mobkills ExampleOne'}, {'answer': answer}])
+            p = Provider([{'statistics': 'Mobkills ExampleOne'}, {'answer': answer}])
             with self.assertRaises(ValueError):
                 GroundedDialogue(p).answer('Monsterkonto ExampleOne?', ('minecraft', 'a'), Observations())
     def test_only_own_recent_context_is_kept_and_expires(self):
         now = [0]
-        p = Provider([{'answer': a, 'tool': 'none', 'query': ''} for a in ('Gern.', 'Passt.', 'Ja.', 'Okay.')])
+        p = Provider([{'answer': a} for a in ('Gern.', 'Passt.', 'Ja.', 'Okay.')])
         ai = GroundedDialogue(p, clock=lambda: now[0])
         ai.answer('Erstes eigenes Thema', ('minecraft', 'a'), Observations())
         ai.answer('Und danach?', ('minecraft', 'a'), Observations())
@@ -96,7 +96,7 @@ class DialogueTests(unittest.TestCase):
             (folder/(uid+'.json')).write_text(json.dumps({'stats':{}}))
             cache=root/'users.json';cache.write_text(json.dumps([dict(uuid=uid,name='ExampleOne')]))
             mods=root/'mods.json';mods.write_text('[]')
-            provider=Provider([{'answer':'Ich bin dabei.','tool':'none','query':''}])
+            provider=Provider([{'answer':'Ich bin dabei.'}])
             ai=Assistant(State(root/'state.sqlite',b'q'*32),folder,cache,mods,
                          dialogue=GroundedDialogue(provider),dialogue_timezone='Europe/Zurich')
             payload=dict(principal=uid,name='ExampleOne',event=uid+':1',message='Hey Vector und, was meinst du dazu?',source='minecraft')
@@ -109,7 +109,7 @@ class DialogueTests(unittest.TestCase):
     def test_equivalent_apostrophe_grouping_preserves_other_number_formats(self):
         facts=Observations()
         facts.lookup=lambda tool,query:"ExampleOne hat 1'000 Mobkills; Rang 2."
-        provider=Provider([{'answer':'','tool':'statistics','query':'Mobkills von ExampleOne'},
+        provider=Provider([{'statistics':'Mobkills von ExampleOne'},
                            {'answer':'ExampleOne hat 1000 Mobkills.'}])
         self.assertIn('1000',GroundedDialogue(provider).answer('Monsterkonto?',('minecraft','a'),facts))
         self.assertEqual(numeric_tokens("1'000 1’000"),{'1000'})
@@ -119,6 +119,26 @@ class DialogueTests(unittest.TestCase):
     def test_model_destination_is_pinned(self):
         with self.assertRaises(ValueError):
             GroundedDialogue(SimpleNamespace(model='cloud-provider'))
+
+    def test_compact_protocol_does_not_execute_ambiguous_or_unknown_actions(self):
+        for value in ({}, {'answer':'Ja.','statistics':'Mobkills'}, {'http':'https://example.invalid'},
+                      {'statistics':42}, {'statistics':''}):
+            provider=Provider([value]);facts=Observations()
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                GroundedDialogue(provider).answer('Wie läuft es?',('minecraft','a'),facts)
+            self.assertEqual(facts.calls,[])
+
+    def test_compact_prompt_has_stable_prefix_and_bounded_prediction(self):
+        from dialogue import SYSTEM
+        self.assertLess(len(SYSTEM),1100)
+        provider=Provider([{'answer':'Hallo.'}]);observations=Observations()
+        original=provider.request
+        budgets=[]
+        provider.request=lambda schema,messages,predict,deadline,validator:(
+            budgets.append(predict) or original(schema,messages,predict,deadline,validator))
+        GroundedDialogue(provider).answer('Hallo!',('minecraft','a'),observations)
+        self.assertEqual(budgets,[80])
+        self.assertNotIn('wording_variant',provider.calls[0][-1]['content'])
 
 
 if __name__ == '__main__':

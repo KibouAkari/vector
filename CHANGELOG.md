@@ -2,6 +2,13 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-20 — Reduce conversational request overhead and expose bounded timing evidence
+
+- Keep the experimental local dialogue mode opt-in. Replace the three-field planning envelope with one validated answer-or-tool field, shorten the common instruction prefix, remove the per-request random nonce, and keep unrelated global leaders out of every initial prompt. Fresh statistics remain available through the existing allowlisted lookup. Documentation snippets are bounded and explicitly marked when shortened.
+- Reduce candidate prediction ceilings from 112/96 to 80 tokens without increasing the 20-second native timeout, 24-second computation deadline, CPU threads or model/context size. These are source-level reductions, not proof that native latency or answer quality passes.
+- Add opt-in prompt-size, prediction, token-count and native timing metadata without prompt text, generated prose, exception messages or secrets. Stop the evaluation after the first timeout and report incomplete coverage as failed. Unknown token totals remain unknown rather than displaying measured zero.
+- Twenty-eight targeted local dialogue, evaluator, metrics and factory tests pass. Existing production modes and deployment profiles are not activated or changed by this source update; native qualification remains required.
+
 ## 2026-10-20 — Preserve the installed slot identity during dialogue evaluation
 
 - Keep the existing service's restricted database role and read-only secret mount when evaluating a generic conversational candidate. The evaluator previously used the generic secret filename and could fail before the first model question on an existing private installation.

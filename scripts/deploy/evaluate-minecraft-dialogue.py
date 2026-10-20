@@ -83,6 +83,8 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
     if provider.model!=MODEL:raise RuntimeError('QUALIFIED_MODEL_REQUIRED')
     usage=[]
     provider.usage=lambda model,inp,out,accepted:usage.append(dict(model=model,input_tokens=inp,output_tokens=out,accepted=accepted))
+    native=[]
+    provider.diagnostic=lambda row:native.append(row)
     directory=root/'stats';directory.mkdir()
     ids=['10000000-0000-0000-0000-'+str(i).zfill(12) for i in (1,2)]
     names=['ExampleOne','ExampleTwo']
@@ -100,18 +102,22 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
            ('own-context','Und wie viele habe dann ich?',lambda a:'25' in a and any(w in a.casefold() for w in ('du','dein','exampleone')))]
     results=[]
     for key,question,check in cases:
-        before=len(usage);start=time.monotonic()
+        before=len(usage);native_before=len(native);start=time.monotonic()
         print(json.dumps({'case_started':key}),flush=True)
         try:
             answer=dialogue.answer(question,scope,facts())
             passed=bool(check(answer));error=None
         except Exception as exc:
             answer=None;passed=False;error=type(exc).__name__
-        results.append(dict(id=key,passed=passed,seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,synthetic_answer=answer,error=error))
+        results.append(dict(id=key,passed=passed,seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,synthetic_answer=answer,error=error,native=native[native_before:]))
         print(json.dumps({'case':results[-1]},ensure_ascii=False),flush=True)
-    result=dict(passed=all(c['passed'] for c in results),cases=results,usage=usage,
-        model_calls=len(usage),input_tokens=sum(c['input_tokens'] or 0 for c in usage),
-        output_tokens=sum(c['output_tokens'] or 0 for c in usage),
+        if error=='TimeoutError':break
+    result=dict(passed=len(results)==len(cases) and all(c['passed'] for c in results),cases=results,usage=usage,
+        expected_cases=len(cases),completed_cases=len(results),
+        model_calls=len(usage),input_tokens=None if any(c['input_tokens'] is None for c in usage) else sum(c['input_tokens'] for c in usage),
+        output_tokens=None if any(c['output_tokens'] is None for c in usage) else sum(c['output_tokens'] for c in usage),
+        known_input_tokens=sum(c['input_tokens'] or 0 for c in usage),
+        known_output_tokens=sum(c['output_tokens'] or 0 for c in usage),
         unknown_usage_calls=sum(c['input_tokens'] is None or c['output_tokens'] is None for c in usage),
         model=MODEL,cloud_calls=0,api_cost_chf=0,messages_sent=0,production_activated=False,
         production_ledger_writes=False,temporary_state_only=True,
