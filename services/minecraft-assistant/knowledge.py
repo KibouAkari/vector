@@ -87,7 +87,9 @@ class GeneralKnowledge(LocalKnowledge):
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self,*args):return None
         opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
-        value=None;ok=False;error=None;started=time.monotonic()
+        value=None;ok=False;error=None
+        diagnostic=getattr(self,'diagnostic',None)
+        started=time.monotonic() if callable(diagnostic) else None
         try:
             req=urllib.request.Request(self.endpoint+'/api/chat',json.dumps(payload).encode(),{'Content-Type':'application/json'})
             with opener.open(req,timeout=min(getattr(self, 'native_timeout', 16 if predict==24 else 12),remaining)) as response:raw=response.read(32769)
@@ -107,7 +109,6 @@ class GeneralKnowledge(LocalKnowledge):
                     n=value.get(key) if isinstance(value,dict) else None
                     return n if type(n) is int and n>=0 else None
                 self.usage(self.model,count('prompt_eval_count'),count('eval_count'),ok)
-            diagnostic=getattr(self,'diagnostic',None)
             if callable(diagnostic):
                 # Opt-in evaluation metadata only. Never include messages or model prose.
                 report=dict(prompt_characters=sum(len(m.get('content','')) for m in messages),
