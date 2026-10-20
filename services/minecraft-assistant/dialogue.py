@@ -19,7 +19,7 @@ MODEL = 'vector-qwen3-instruct2507:4b-q4km'
 TOOLS = ('none', 'statistics', 'portrait', 'documentation', 'recipe', 'mods')
 SYSTEM = (
     'Du bist Vector, ein schlagfertiger lokaler Chatbegleiter. Verstehe die aktuelle Frage, '
-    'antworte konkret und natürlich auf Deutsch, höchstens 220 Zeichen. Leicht den Schreibstil '
+    'antworte konkret und natürlich auf Deutsch, höchstens 160 Zeichen. Leicht den Schreibstil '
     'aufnehmen, trockener auch bissiger Spielhumor, aber keine erfundenen persönlichen Vorwürfe. '
     'Keine Begrüssung, Emojis, Links oder Befehle. Keine Standardrückfrage bei verständlicher Frage. '
     'Nur bei echter Mehrdeutigkeit gezielt nachfragen. Formuliere selbst statt Textbausteine zu kopieren. '
@@ -137,7 +137,7 @@ class GroundedDialogue:
                         'observations': facts, 'wording_variant': secrets.randbelow(1000000)
                     }, ensure_ascii=False)}]
         schema = {'type': 'object', 'properties': {
-            'answer': {'type': 'string', 'maxLength': 220},
+            'answer': {'type': 'string', 'maxLength': 160},
             'tool': {'type': 'string', 'enum': list(TOOLS)},
             'query': {'type': 'string', 'maxLength': 180}},
             'required': ['answer', 'tool', 'query'], 'additionalProperties': False}
@@ -167,7 +167,7 @@ class GroundedDialogue:
                         'instruction': 'Beantworte die ursprüngliche Frage kurz aus diesem Befund. Keine neuen Serverzahlen.'
                     }, ensure_ascii=False)})
                     final_schema = {'type': 'object', 'properties': {'answer': {
-                        'type': 'string', 'minLength': 1, 'maxLength': 220}},
+                        'type': 'string', 'minLength': 1, 'maxLength': 160}},
                         'required': ['answer'], 'additionalProperties': False}
 
                     def final(value):
@@ -195,7 +195,7 @@ class GroundedDialogue:
 
     @staticmethod
     def validate_answer(value):
-        if not isinstance(value, str) or not 1 <= len(value.strip()) <= 220:
+        if not isinstance(value, str) or not 1 <= len(value.strip()) <= 160:
             raise ValueError('INVALID_DIALOGUE_ANSWER')
         value = safe_answer(value)
         if request_forbidden(value):
