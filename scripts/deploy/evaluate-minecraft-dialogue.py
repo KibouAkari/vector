@@ -201,12 +201,31 @@ def install_stream_profile(provider):
 
 
 INNER = r'''
-import hashlib,json,os,sys,tempfile,time
+import hashlib,json,os,re,sys,tempfile,time
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 payload=json.load(sys.stdin)
+
+def case_checks(key, answer):
+    # Targeted semantic regressions, not a claim of universal correctness.
+    q=answer.casefold()
+    checks={'complete_sentence':bool(re.search(r'[.!?][\"»”)]*$',answer))}
+    if key=='clock':
+        checks['provided_clock']='12:34' in answer
+    elif key=='unlisted-gameplay':
+        checks['sand_to_glass_in_furnace']=all(w in q for w in ('sand','glas','ofen')) and 'schmelz' in q
+        checks['no_invented_temperature']=not re.search(r'\d|°|temperatur|grad\b',answer,re.I)
+    elif key=='player-opinion':
+        checks['correct_player_and_count']='ExampleTwo' in answer and '90' in answer
+        checks['game_based_interpretation']=bool(re.search(r'wirk|schein|offenbar|wohl|für mich|wie ein|monsterjäger|jagd|albtraum|schreck|schlächter',q))
+        checks['no_false_missing_kills']=not re.search(r'kein\w*[^.!?]{0,35}(?:spielerkill|spielersterb|tode)',q)
+    elif key=='own-context':
+        checks['fresh_own_count']='31' in answer and not re.search(r'\b(?:25|90)\b',answer)
+        checks['authenticated_self']=bool(re.search(r'\b(?:du|dein\w*|exampleone)\b',q))
+    return checks
+
 with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get('temporary_parent')) as temporary:
     root=Path(temporary)
     for name,content in payload['files'].items():
@@ -246,22 +265,26 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
     dialogue=GroundedDialogue(provider)
     scope=('minecraft',ids[0])
     facts=lambda:PublicObservations(ai,scope,ids[0],timezone='Europe/Zurich',wall_clock=lambda:datetime(2026,10,20,12,34,tzinfo=ZoneInfo('Europe/Zurich')))
-    cases=[('clock','Wie spät haben wir es eigentlich?',lambda a:'12:34' in a),
-           ('unlisted-gameplay','Wie wird Sand zu Glas?',lambda a:'sand' in a.casefold() and any(w in a.casefold() for w in ('ofen','schmelz'))),
-           ('player-opinion','Roaste ExampleTwo kurz anhand seines Monsterkontos.',lambda a:'ExampleTwo' in a and '90' in a),
-           ('own-context','Und wie viele habe dann ich?',lambda a:'25' in a and any(w in a.casefold() for w in ('du','dein','exampleone')))]
+    cases=[('clock','Wie spät haben wir es eigentlich?'),
+           ('unlisted-gameplay','Wie wird Sand zu Glas?'),
+           ('player-opinion','Roaste ExampleTwo kurz anhand seines Monsterkontos.'),
+           ('own-context','Und wie viele habe dann ich?')]
     if payload.get('profile_only'):cases=cases[:1]
     results=[]
-    for key,question,check in cases:
+    for key,question in cases:
         if preload_result is not None and not preload_result['completed']:break
+        if key=='own-context':
+            # A remembered answer must not replace freshly read game counters.
+            (directory/(ids[0]+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':31,'minecraft:player_kills':2}}}))
         before=len(usage);native_before=len(native);start=time.monotonic()
         print(json.dumps({'case_started':key}),flush=True)
         try:
             answer=dialogue.answer(question,scope,facts())
-            passed=bool(check(answer));error=None
+            checks=case_checks(key,answer)
+            passed=all(checks.values());error=None
         except Exception as exc:
-            answer=None;passed=False;error=type(exc).__name__
-        results.append(dict(id=key,passed=passed,seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,synthetic_answer=answer,error=error,native=native[native_before:]))
+            answer=None;passed=False;checks={};error=type(exc).__name__
+        results.append(dict(id=key,passed=passed,checks=checks,seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,synthetic_answer=answer,error=error,native=native[native_before:]))
         print(json.dumps({'case':results[-1]},ensure_ascii=False),flush=True)
         if error=='TimeoutError':break
     result=dict(passed=len(results)==len(cases) and all(c['passed'] for c in results),cases=results,usage=usage,

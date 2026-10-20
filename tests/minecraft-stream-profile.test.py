@@ -100,7 +100,7 @@ class Profile(unittest.TestCase):
         fake['portraits'].PlayerPortraits=lambda *args:object()
         fake['dialogue'].MODEL='synthetic-model'
         calls=[]
-        def answer(*args):calls.append(1);return '12:34 Uhr'
+        def answer(*args):calls.append(1);return 'Es ist 12:34 Uhr.'
         fake['dialogue'].GroundedDialogue=lambda *args:SimpleNamespace(answer=answer)
         fake['dialogue'].PublicObservations=lambda *args,**kwargs:object()
         fake['server'].knowledge_for=lambda *args:SimpleNamespace(model='synthetic-model')

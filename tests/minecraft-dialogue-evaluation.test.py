@@ -19,6 +19,29 @@ spec.loader.exec_module(module)
 
 
 class Evaluation(unittest.TestCase):
+    def test_quality_checks_reject_previous_native_regressions(self):
+        import re
+        tree=ast.parse(module.INNER)
+        function=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='case_checks')
+        namespace={'re':re}
+        exec(compile(ast.Module(body=[function],type_ignores=[]),'case-checks','exec'),namespace)
+        check=namespace['case_checks']
+        rejected=(
+            ('unlisted-gameplay','Sand wird im Ofen zu Glas bei 1500 Grad.'),
+            ('unlisted-gameplay','Sand im Ofen schmelzen, das Ergebnis ist,'),
+            ('player-opinion','ExampleTwo hat 90 Monster getötet. Keine Spielersterbe aufgezeichnet.'),
+            ('player-opinion','ExampleTwo hat 90 Mobkills.'),
+            ('own-context','Du hast 25 Mobkills.'),
+            ('own-context','ExampleTwo hat 90 Mobkills.'))
+        for key,answer in rejected:
+            with self.subTest(key=key,answer=answer):self.assertFalse(all(check(key,answer).values()))
+        accepted=(
+            ('unlisted-gameplay','Sand mit Brennstoff im Ofen schmelzen, dann erhältst du Glas.'),
+            ('player-opinion','ExampleTwo wirkt mit 90 Mobkills wie der Albtraum der Monster.'),
+            ('own-context','Du hast inzwischen 31 Mobkills.'))
+        for key,answer in accepted:
+            with self.subTest(key=key,answer=answer):self.assertTrue(all(check(key,answer).values()))
+
     def test_first_native_timeout_stops_remaining_cases_without_claiming_full_pass(self):
         fake={name:ModuleType(name) for name in ('runtime','portraits','dialogue','server')}
         fake['runtime'].State=lambda *args:object()

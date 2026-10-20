@@ -6,8 +6,8 @@ Merging this code does not activate it. The default service mode remains `0`.
 
 Instead of matching a social expression or selecting a canned passage, the
 candidate sends every admitted, permitted question to the existing qualified
-local instruction model. One structured call may answer from general game
-knowledge and fresh public observations, or request one allowlisted lookup.
+local instruction model. One structured call may answer from reviewed game evidence,
+fresh public observations and conversational context, or request one allowlisted lookup.
 A lookup is followed by at most one answer call within the same 24-second
 computation deadline and shared CPU-slot lease.
 
@@ -22,11 +22,19 @@ shell, arbitrary-file or web tool exists.
 The candidate uses a 4096-token model context; legacy modes retain 2048 tokens.
 The model writes its own short answer. It sees at most two recent exchanges
 from the same authenticated author and source, expires them after three
-minutes, and retains at most 256 scopes in RAM. The prior answer and a changing
-wording hint encourage variation; variation is not guaranteed. Existing replay,
+minutes, and retains at most 256 scopes in RAM. Recent exchanges use native user/assistant roles. First-person references
+add fresh counters only for the authenticated game UUID; third-person
+references can carry their own recent subject. Old replies never replace
+fresh reads. Variation is encouraged but is not guaranteed. Existing replay,
 rate, input and output policy boundaries apply before and after generation.
 
-Structured output and numeric checks do not prove factual correctness. General
+Answers target one complete, brief sentence (ideally under 180 characters).
+The JSON string may use up to 320 characters so a forced 160-character grammar
+limit does not cut a sentence short. The prediction limit stays 80 tokens;
+length-stopped output is still rejected. Complete reviewed passages are kept
+rather than cut mid-sentence. Novel numeric tokens are rejected on the first
+answer as well as after lookups. Visibly unfinished sentences are rejected.
+These checks do not prove factual correctness. General
 model knowledge can still be wrong; reviewed facts do not cover every mod or
 server setting. Never claim universal accuracy. Do not activate merely because
 mocked transport tests pass. Short native semantic and latency checks must pass
@@ -37,7 +45,10 @@ improvement, not a silently relaxed safety gate.
 `scripts/deploy/evaluate-minecraft-dialogue.py` uses the confirmed operator
 release as its baseline, preserves the installed private catalog pins and
 server aliases in a temporary candidate, and runs four synthetic questions in
-a separate exec process. Existing service code, profiles, game, channels and
+a separate exec process. It records individual regression checks, including
+unsupported temperatures, a missing game-based interpretation and fresh
+self statistics changed between turns. Semantic review of actual answers
+is still required even when these checks pass. Existing service code, profiles, game, channels and
 production event state remain unchanged. Only temporary fixture state and a
 private qualification report are written. Local token usage is reported in
 that evidence, not written to the production usage ledger; no API fee applies.
