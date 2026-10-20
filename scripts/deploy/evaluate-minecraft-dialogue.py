@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import stat
 import sys
 import time
 import uuid
@@ -24,7 +25,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 payload=json.load(sys.stdin)
-with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-') as temporary:
+with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get('temporary_parent')) as temporary:
     root=Path(temporary)
     for name,content in payload['files'].items():
         if name not in ('runtime.py','dialogue.py','server.py','knowledge.py'):raise RuntimeError('INVALID_CANDIDATE_FILE')
@@ -76,18 +77,89 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-') as temporary:
 '''
 
 
+
+WATCHDOG = r"""
+import json,os,signal,subprocess,sys,tempfile
+payload=json.load(sys.stdin)
+program=payload.pop('program')
+evaluation_id=payload['evaluation_id']
+with tempfile.TemporaryDirectory(prefix='vector-dialogue-watchdog-') as temporary:
+    payload['temporary_parent']=temporary
+    child=subprocess.Popen([sys.executable,'-c',program,'--vector-dialogue-evaluation',evaluation_id],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
+    try:
+        output,error=child.communicate(json.dumps(payload).encode(),timeout=110)
+    except subprocess.TimeoutExpired:
+        os.killpg(child.pid,signal.SIGKILL)
+        output,error=child.communicate()
+    finally:
+        if child.poll() is None:
+            os.killpg(child.pid,signal.SIGKILL)
+        child.wait()
+    sys.stdout.buffer.write(output);sys.stdout.buffer.flush()
+    sys.stderr.buffer.write(error);sys.stderr.buffer.flush()
+print('VECTOR_DIALOGUE_TERMINATED='+evaluation_id,flush=True)
+raise SystemExit(child.returncode if child.returncode>=0 else 128-child.returncode)
+"""
+
+CANCEL = r"""
+import json,os,signal,sys,time
+from pathlib import Path
+identity=sys.argv[1].encode()
+self_status=dict(line.split(':',1) for line in Path('/proc/self/status').read_text().splitlines() if ':' in line)
+namespace_depth=len(self_status.get('NSpid',str(os.getpid())).split())
+def targets():
+    found=[]
+    for p in Path('/proc').iterdir():
+        if not p.name.isdecimal():continue
+        try:
+            args=(p/'cmdline').read_bytes().rstrip(b'\0').split(b'\0')
+            state=(p/'stat').read_text().rsplit(')',1)[1].strip().split()[0]
+            if args[-2:]==[b'--vector-dialogue-evaluation',identity] and state!='Z':
+                status=dict(line.split(':',1) for line in (p/'status').read_text().splitlines() if ':' in line)
+                identifiers=status.get('NSpid',p.name).split()
+                if len(identifiers)==namespace_depth:found.append(int(identifiers[-1]))
+        except (OSError,ValueError,IndexError):continue
+    return found
+for pid in targets():
+    descriptor=None
+    try:
+        descriptor=os.pidfd_open(pid)
+        if pid in targets():signal.pidfd_send_signal(descriptor,signal.SIGKILL)
+    except ProcessLookupError:pass
+    finally:
+        if descriptor is not None:os.close(descriptor)
+for attempt in range(20):
+    if not targets():break
+    time.sleep(.1)
+print(json.dumps({'terminated':not targets()}))
+"""
+
+
+def ensure_native_terminated(container, evaluation_id):
+    result=subprocess.run(['docker','exec',container,'python3','-c',CANCEL,evaluation_id],capture_output=True,timeout=15)
+    if result.returncode or json.loads(result.stdout).get('terminated') is not True:
+        raise RuntimeError('NATIVE_EVALUATION_TERMINATION_UNVERIFIED')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--guard-helper', type=Path, required=True)
     parser.add_argument('--baseline', type=Path, required=True)
     parser.add_argument('--source-root', type=Path, required=True)
     parser.add_argument('--workspace-root', type=Path, required=True)
+    parser.add_argument('--lock-file', type=Path, required=True)
     args = parser.parse_args()
     sys.dont_write_bytecode = True
     spec = importlib.util.spec_from_file_location('dialogue_guard', args.guard_helper)
     guard = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(guard)
-    with (args.workspace_root / '.chat-release.lock').open('a') as lock:
+    guard.checked_path(args.lock_file.parent,directory=True)
+    if args.lock_file.is_symlink():raise RuntimeError('UNSAFE_LOCK')
+    descriptor=os.open(args.lock_file,os.O_WRONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    metadata=os.fstat(descriptor)
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid!=os.geteuid():
+        os.close(descriptor);raise RuntimeError('EXISTING_OWNED_RELEASE_LOCK_REQUIRED')
+    with os.fdopen(descriptor,'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         baseline = guard.checked_path(str(args.baseline), directory=True)
         config = guard.read_config(baseline/'operator.json')
@@ -142,14 +214,30 @@ def main():
             sources[name] = text
         report = args.workspace_root/'releases'/('minecraft-dialogue-evaluation-'+uuid.uuid4().hex)
         report.mkdir(mode=0o700)
+        candidate=report/'candidate';candidate.mkdir(mode=0o700)
+        for name,source in sources.items():guard.write_private(candidate/name,source.encode())
+        guard.write_private(report/'baseline.record.json',(baseline/'record.json').read_bytes())
+        guard.write_private(report/'baseline.operator.json',guard.canonical(config))
+        guard.write_private(report/'baseline.compose.json',saved.read_bytes())
+        program=Path(__file__).read_bytes()
+        guard.write_private(report/'evaluation.py',program)
+        manifest=dict(baseline=str(baseline),container_identity=guard.identity(row),
+            candidate_sha256={name:guard.digest(source.encode()) for name,source in sources.items()},
+            baseline_record_sha256=guard.digest((baseline/'record.json').read_bytes()),
+            evaluation_sha256=guard.digest(program),lock_file=str(args.lock_file))
+        guard.write_private(report/'manifest.json',guard.canonical(manifest))
         print('Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
         print('Belege: '+str(report),flush=True)
-        command = ['docker','exec','-i','-w','/code',config['container'],'python3','-c',INNER]
+        evaluation_id=uuid.uuid4().hex
+        command = ['docker','exec','-i','-w','/code',config['container'],'python3','-c',WATCHDOG]
         try:
-            child = subprocess.run(command,input=json.dumps({'files':sources}).encode(),capture_output=True,timeout=150,start_new_session=True)
+            child = subprocess.run(command,input=json.dumps({'files':sources,'program':INNER,'evaluation_id':evaluation_id}).encode(),capture_output=True,timeout=150,start_new_session=True)
         except subprocess.TimeoutExpired as exc:
             from types import SimpleNamespace
             child=SimpleNamespace(stdout=exc.stdout or b'',stderr=exc.stderr or b'',returncode=124)
+        finally:
+            # Targets only the unique test child, never the assistant service.
+            ensure_native_terminated(config['container'],evaluation_id)
         output = child.stdout.decode(errors='replace')
         guard.write_private(report/'exec.stdout',child.stdout)
         guard.write_private(report/'exec.stderr',child.stderr)
@@ -170,6 +258,8 @@ def main():
         if result is None:
             result=dict(passed=False,error='NATIVE_EVALUATION_FAILED',exit_code=child.returncode,
                         production_activated=False,messages_sent=0,cloud_calls=0)
+        result['native_process_termination_verified']=True
+        result['manifest_sha256']=guard.digest(guard.canonical(manifest))
         result['production_containers_and_profiles_unchanged']=unchanged
         result['passed']=bool(result.get('passed') and child.returncode==0 and unchanged)
         guard.write_private(report/'result.json',guard.canonical(result))

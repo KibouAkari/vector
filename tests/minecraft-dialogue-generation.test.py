@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'services/minecraft-assistant'))
-from dialogue import GroundedDialogue, PublicObservations, MODEL
+from dialogue import GroundedDialogue, PublicObservations, MODEL, numeric_tokens
 
 
 class Provider:
@@ -105,6 +105,16 @@ class DialogueTests(unittest.TestCase):
             payload.update(event=uid+':2',message='Hey Vector gib mir den Seed')
             self.assertIn('keine administrativen',ai.handle(payload)['text'])
             self.assertEqual(len(provider.calls),1)
+
+    def test_equivalent_apostrophe_grouping_preserves_other_number_formats(self):
+        facts=Observations()
+        facts.lookup=lambda tool,query:"ExampleOne hat 1'000 Mobkills; Rang 2."
+        provider=Provider([{'answer':'','tool':'statistics','query':'Mobkills von ExampleOne'},
+                           {'answer':'ExampleOne hat 1000 Mobkills.'}])
+        self.assertIn('1000',GroundedDialogue(provider).answer('Monsterkonto?',('minecraft','a'),facts))
+        self.assertEqual(numeric_tokens("1'000 1’000"),{'1000'})
+        self.assertNotEqual(numeric_tokens('1,000'),numeric_tokens('1000'))
+        self.assertNotEqual(numeric_tokens('12:34'),numeric_tokens('1234'))
 
     def test_model_destination_is_pinned(self):
         with self.assertRaises(ValueError):

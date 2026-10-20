@@ -15,6 +15,15 @@ from zoneinfo import ZoneInfo
 from runtime import local_slot, request_forbidden, safe_answer
 import stats
 
+def numeric_tokens(text):
+    result=set()
+    for value in re.findall(r"\d+(?:['’.,:]\d+)*", text):
+        if re.fullmatch(r"\d{1,3}(?:['’]\d{3})+(?:\.\d+)?", value):
+            value=value.replace("'",'').replace('’','')
+        result.add(value)
+    return result
+
+
 MODEL = 'vector-qwen3-instruct2507:4b-q4km'
 TOOLS = ('none', 'statistics', 'portrait', 'documentation', 'recipe', 'mods')
 SYSTEM = (
@@ -71,7 +80,8 @@ class PublicObservations:
             for key, (label, unit, *_) in stats.METRICS.items():
                 top = stats.leaders(data, key)
                 leaders[label] = {'players': [{'player': p['name'], 'value': p['value'], 'unit': unit} for p in top[:3]],
-                                  'additional_tied_players': max(0,len(top)-3)}
+                                  'additional_tied_players': max(0,len(top)-3),
+                                  'total_holders': len(top), 'truncated': len(top)>3}
             facts['leaders'] = leaders
             mentioned = [p for p in data['players'] if re.search(
                 r'(?<![a-z0-9_])' + re.escape(p['name']) + r'(?![a-z0-9_])', question, re.I)]
@@ -181,8 +191,8 @@ class GroundedDialogue:
                         answer = self.validate_answer(value['answer'])
                         if tool in ('statistics', 'portrait'):
                             # A useful extra guard, not a proof of semantic truth.
-                            numbers = set(re.findall(r"\d+(?:['.,:]\d+)*", answer))
-                            known = set(re.findall(r"\d+(?:['.,:]\d+)*", json.dumps(evidence, ensure_ascii=False)))
+                            numbers = numeric_tokens(answer)
+                            known = numeric_tokens(json.dumps(evidence, ensure_ascii=False))
                             if not numbers <= known:
                                 raise ValueError('UNSUPPORTED_DIALOGUE_NUMBER')
                         return answer

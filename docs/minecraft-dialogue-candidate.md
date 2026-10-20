@@ -43,3 +43,12 @@ private qualification report are written. Local token usage is reported in
 that evidence, not written to the production usage ledger; no API fee applies.
 The production constructor still uses its normal usage ledger callback if a
 future guarded rollout opts in. No automatic activation follows evaluation.
+
+Evaluation takes an explicit existing owned release-lock file. It saves the
+transformed candidate sources, baseline record/profile, evaluator and a hash
+manifest before execution. An in-container watchdog reaps its own process
+group; host cleanup targets only the nonce-marked child via a PID descriptor
+and verifies termination before leaving the release guard. No service is
+stopped. Bounded leader observations explicitly mark omitted tied holders.
+Apostrophe digit grouping is normalized for numeric checks; ambiguous decimal
+and clock formats remain distinct.
