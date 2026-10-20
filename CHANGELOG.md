@@ -2,6 +2,12 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-20 — Preserve the installed slot identity during dialogue evaluation
+
+- Keep the existing service's restricted database role and read-only secret mount when evaluating a generic conversational candidate. The evaluator previously used the generic secret filename and could fail before the first model question on an existing private installation.
+- Require one matching read-only mount, one factory default and one exact role comparison. File ownership, mode, destination, CPU-slot and model checks remain enforced; no credentials are printed or copied into the repository.
+- Six evaluator boundary tests pass locally, including own-child cancellation and rejection of missing, writable or ambiguous mounts. Native dialogue quality remains unqualified; this change does not activate a service or restart the game.
+
 ## 2026-10-20 — Prepare an opt-in local conversational assistant
 
 - Add an experimental mode 6 with self-written local answers instead of social-expression matching or canned fact selection. Existing modes and the default-off constructor retain their behavior; no deployment enables the candidate automatically.
