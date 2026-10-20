@@ -38,7 +38,7 @@ SYSTEM = (
 
 # Reference resolution, not a question/answer phrase table. Values are always
 # reread; only the authenticated UUID can resolve a first-person reference.
-SELF_REFERENCE = re.compile(r'\b(?:ich|mir|mich|mein\w*|i|me|my)\b', re.I)
+SELF_REFERENCE = re.compile(r'\b(?:ich|mir|mich|mein(?:e|er|es|em|en)?|i|me|my)\b', re.I)
 BACK_REFERENCE = re.compile(r'^\s*(?:und|aber|also)\b|\b(?:er|ihm|ihn|sein\w*|diese[rsnm]?|davon|damit|dazu|das)\b', re.I)
 
 

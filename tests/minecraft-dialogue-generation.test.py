@@ -228,6 +228,7 @@ class DialogueTests(unittest.TestCase):
             old=[{'question':'Was hältst du von ExampleTwo?','answer':'ExampleTwo hat 90 Mobkills.'}]
             self.assertEqual(observations.initial('Und er?',old)['players'][0]['player'],'ExampleTwo')
             self.assertEqual(observations.initial('Wie spät ist es?',old)['players'],[])
+            self.assertEqual(observations.initial('Was ist deine Meinung dazu?')['players'],[])
             observations.initial('Und wie viele habe ich?')
             with self.assertRaisesRegex(ValueError,'DIALOGUE_SELF_TARGET_CHANGED'):
                 observations.lookup('statistics','Mobkills von ExampleTwo')
