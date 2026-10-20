@@ -2,6 +2,12 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-20 — Profile one native dialogue request without activating it
+
+- Add an explicit `--profile-only` evaluator mode for one synthetic clock question. It retains the existing model, schema, context, two CPU threads and 20-second deadline while reading streamed chunks, so headers, first content/thinking arrival, output size and final native counters can be distinguished from an undifferentiated timeout.
+- Keep the destination fixed and allow at most one request. Bound line/total/text sizes, reject partial or truncated output, close the transport and retain the existing shared-slot, watchdog, release-baseline and native-child termination guards. Metadata contains no prompts, generated prose or exception messages.
+- Record measurement completion separately from qualification: the profile never passes the full dialogue quality gate and cannot authorize activation. Five mocked stream-profile tests and seven evaluator boundary tests pass locally. Native results remain pending; no runtime code, production profile, game service or model configuration is changed by this source update.
+
 ## 2026-10-20 — Reduce conversational request overhead and expose bounded timing evidence
 
 - Keep the experimental local dialogue mode opt-in. Replace the three-field planning envelope with one validated answer-or-tool field, shorten the common instruction prefix, remove the per-request random nonce, and keep unrelated global leaders out of every initial prompt. Fresh statistics remain available through the existing allowlisted lookup. Documentation snippets are bounded and explicitly marked when shortened.

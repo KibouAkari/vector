@@ -61,6 +61,96 @@ def preserve_slot_binding(installed, candidate, mounts):
     return result
 
 
+STREAM_PROFILE = r'''
+def install_stream_profile(provider):
+    import http.client
+    import json
+    import re
+    import time
+    if provider.endpoint != 'http://vector-local-inference:11434' or provider.model != 'vector-qwen3-instruct2507:4b-q4km':
+        raise ValueError('PROFILE_LOCAL_DESTINATION_REQUIRED')
+    calls = []
+    def request(schema, messages, predict, deadline, validator):
+        if calls:raise ValueError('PROFILE_ONE_CALL_LIMIT')
+        calls.append(1)
+        started=time.monotonic()
+        end=min(deadline,started+20)
+        remaining=end-time.monotonic()
+        if remaining<=0:raise TimeoutError('PROFILE_DEADLINE')
+        payload={'model':provider.model,'stream':True,'keep_alive':'5m','format':schema,
+                 'messages':messages,'options':{'temperature':0.7,'top_p':0.8,'top_k':20,
+                 'min_p':0,'seed':17,'num_ctx':getattr(provider,'context_tokens',2048),
+                 'num_predict':predict,'num_thread':2}}
+        report=dict(profile='single-request-stream',prompt_characters=sum(len(m['content']) for m in messages),
+                    schema_bytes=len(json.dumps(schema).encode()),num_predict=predict,
+                    context_tokens=payload['options']['num_ctx'],chunks=0,content_characters=0,
+                    thinking_characters=0,headers_seconds=None,first_content_seconds=None,
+                    first_thinking_seconds=None)
+        connection=http.client.HTTPConnection('vector-local-inference',11434,timeout=remaining)
+        final=None;parts=[];ok=False;error=None;received=0
+        try:
+            connection.request('POST','/api/chat',json.dumps(payload).encode(),{'Content-Type':'application/json'})
+            sock=connection.sock
+            if sock is None:raise ValueError('PROFILE_SOCKET_MISSING')
+            sock.settimeout(max(.001,end-time.monotonic()))
+            response=connection.getresponse()
+            report['headers_seconds']=round(time.monotonic()-started,3)
+            report['http_status']=response.status
+            if response.status!=200:raise ValueError('PROFILE_HTTP_STATUS')
+            while True:
+                remaining=end-time.monotonic()
+                if remaining<=0:raise TimeoutError('PROFILE_DEADLINE')
+                sock.settimeout(remaining)
+                line=response.readline(16385)
+                if time.monotonic()>end:raise TimeoutError('PROFILE_DEADLINE')
+                if not line:raise ValueError('PROFILE_STREAM_INCOMPLETE')
+                received+=len(line)
+                if len(line)>16384 or received>131072:raise ValueError('PROFILE_RESPONSE_LIMIT')
+                value=json.loads(line)
+                if not isinstance(value,dict) or value.get('model')!=provider.model:
+                    raise ValueError('PROFILE_RESPONSE_MODEL')
+                report['chunks']+=1
+                message=value.get('message',{})
+                if not isinstance(message,dict):raise ValueError('PROFILE_MESSAGE_SHAPE')
+                for key,stamp in (('content','first_content_seconds'),('thinking','first_thinking_seconds')):
+                    text=message.get(key,'')
+                    if not isinstance(text,str):raise ValueError('PROFILE_MESSAGE_SHAPE')
+                    report[key+'_characters']+=len(text)
+                    if text and report[stamp] is None:report[stamp]=round(time.monotonic()-started,3)
+                    if key=='content':parts.append(text)
+                if report['content_characters']+report['thinking_characters']>32768:
+                    raise ValueError('PROFILE_TEXT_LIMIT')
+                if value.get('done') is True:
+                    final=value
+                    if final.get('done_reason')!='stop':raise ValueError('INCOMPLETE_MODEL_RESPONSE')
+                    result=validator(json.loads(''.join(parts)))
+                    if time.monotonic()>end:raise TimeoutError('PROFILE_DEADLINE')
+                    ok=True
+                    return result
+        except Exception as exc:
+            error=type(exc).__name__
+            raise
+        finally:
+            connection.close()
+            report['transport_seconds']=round(time.monotonic()-started,3)
+            report['error']=error
+            text=''.join(parts)
+            report['answer_key_occurrences']=len(re.findall(r'"answer"\s*:',text))
+            try:json.loads(text);report['partial_json_complete']=True
+            except (ValueError,TypeError):report['partial_json_complete']=False
+            def count(key):
+                value=final.get(key) if isinstance(final,dict) else None
+                return value if type(value) is int and value>=0 else None
+            for key in ('prompt_eval_count','eval_count','load_duration','prompt_eval_duration','eval_duration'):
+                report[key]=count(key)
+            reason=final.get('done_reason') if isinstance(final,dict) else None
+            report['done_reason']=reason if reason in ('stop','length') else None
+            if provider.usage:provider.usage(provider.model,count('prompt_eval_count'),count('eval_count'),ok)
+            provider.diagnostic(report)
+    provider.request=request
+'''
+
+
 INNER = r'''
 import hashlib,json,os,sys,tempfile,time
 from pathlib import Path
@@ -85,6 +175,9 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
     provider.usage=lambda model,inp,out,accepted:usage.append(dict(model=model,input_tokens=inp,output_tokens=out,accepted=accepted))
     native=[]
     provider.diagnostic=lambda row:native.append(row)
+    if payload.get('profile_only'):
+        exec(payload['stream_profile'],globals())
+        install_stream_profile(provider)
     directory=root/'stats';directory.mkdir()
     ids=['10000000-0000-0000-0000-'+str(i).zfill(12) for i in (1,2)]
     names=['ExampleOne','ExampleTwo']
@@ -100,6 +193,7 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
            ('unlisted-gameplay','Wie wird Sand zu Glas?',lambda a:'sand' in a.casefold() and any(w in a.casefold() for w in ('ofen','schmelz'))),
            ('player-opinion','Roaste ExampleTwo kurz anhand seines Monsterkontos.',lambda a:'ExampleTwo' in a and '90' in a),
            ('own-context','Und wie viele habe dann ich?',lambda a:'25' in a and any(w in a.casefold() for w in ('du','dein','exampleone')))]
+    if payload.get('profile_only'):cases=cases[:1]
     results=[]
     for key,question,check in cases:
         before=len(usage);native_before=len(native);start=time.monotonic()
@@ -122,6 +216,8 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
         model=MODEL,cloud_calls=0,api_cost_chf=0,messages_sent=0,production_activated=False,
         production_ledger_writes=False,temporary_state_only=True,
         native_semantics_require_manual_review=True,eligible_for_activation=False)
+    if payload.get('profile_only'):
+        result.update(passed=False,evaluation_scope='single-request-stream-profile',diagnostic_completed=True)
     print('VECTOR_DIALOGUE_RESULT='+json.dumps(result,ensure_ascii=False),flush=True)
 '''
 
@@ -197,6 +293,7 @@ def main():
     parser.add_argument('--source-root', type=Path, required=True)
     parser.add_argument('--workspace-root', type=Path, required=True)
     parser.add_argument('--lock-file', type=Path, required=True)
+    parser.add_argument('--profile-only', action='store_true')
     args = parser.parse_args()
     sys.dont_write_bytecode = True
     spec = importlib.util.spec_from_file_location('dialogue_guard', args.guard_helper)
@@ -274,14 +371,14 @@ def main():
         manifest=dict(baseline=str(baseline),container_identity=guard.identity(row),
             candidate_sha256={name:guard.digest(source.encode()) for name,source in sources.items()},
             baseline_record_sha256=guard.digest((baseline/'record.json').read_bytes()),
-            evaluation_sha256=guard.digest(program),lock_file=str(args.lock_file))
+            evaluation_sha256=guard.digest(program),lock_file=str(args.lock_file),profile_only=args.profile_only)
         guard.write_private(report/'manifest.json',guard.canonical(manifest))
-        print('Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
+        print('Eine synthetische Streaming-Messung, keine Aktivierung.' if args.profile_only else 'Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
         print('Belege: '+str(report),flush=True)
         evaluation_id=uuid.uuid4().hex
         command = ['docker','exec','-i','-w','/code',config['container'],'python3','-c',WATCHDOG]
         try:
-            child = subprocess.run(command,input=json.dumps({'files':sources,'program':INNER,'evaluation_id':evaluation_id}).encode(),capture_output=True,timeout=150,start_new_session=True)
+            child = subprocess.run(command,input=json.dumps({'files':sources,'program':INNER,'evaluation_id':evaluation_id,'profile_only':args.profile_only,'stream_profile':STREAM_PROFILE if args.profile_only else None}).encode(),capture_output=True,timeout=150,start_new_session=True)
         except subprocess.TimeoutExpired as exc:
             from types import SimpleNamespace
             child=SimpleNamespace(stdout=exc.stdout or b'',stderr=exc.stderr or b'',returncode=124)
@@ -312,12 +409,16 @@ def main():
         result['manifest_sha256']=guard.digest(guard.canonical(manifest))
         result['production_containers_and_profiles_unchanged']=unchanged
         result['passed']=bool(result.get('passed') and child.returncode==0 and unchanged)
+        if args.profile_only:
+            result['passed']=False
+            result['diagnostic_completed']=bool(result.get('diagnostic_completed') and child.returncode==0 and unchanged)
         guard.write_private(report/'result.json',guard.canonical(result))
         print(json.dumps(result,indent=2,ensure_ascii=False),flush=True)
         print('Kein automatischer Rollout. Echte Modellqualität und Antwortzeiten vor Aktivierung prüfen.',flush=True)
-        if not result['passed']:
+        if not (result.get('diagnostic_completed') if args.profile_only else result['passed']):
             raise SystemExit(1)
 
 
 if __name__ == '__main__':
     main()
+
