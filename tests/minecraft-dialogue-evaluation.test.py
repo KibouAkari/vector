@@ -28,6 +28,8 @@ class Evaluation(unittest.TestCase):
         exec(compile(ast.Module(body=[function],type_ignores=[]),'case-checks','exec'),namespace)
         check=namespace['case_checks']
         rejected=(
+            ('smalltalk','Was möchtest du genau wissen? Beschreibe kurz dein Ziel.'),
+            ('smalltalk','Ich bin gerade nicht verfügbar, versuche es später.'),
             ('unlisted-gameplay','Sand wird im Ofen zu Glas bei 1500 Grad.'),
             ('unlisted-gameplay','Sand im Ofen schmelzen, das Ergebnis ist,'),
             ('player-opinion','ExampleTwo hat 90 Monster getötet. Keine Spielersterbe aufgezeichnet.'),
@@ -38,6 +40,7 @@ class Evaluation(unittest.TestCase):
         for key,answer in rejected:
             with self.subTest(key=key,answer=answer):self.assertFalse(all(check(key,answer).values()))
         accepted=(
+            ('smalltalk','Mir geht es gut, bereit fürs nächste Abenteuer!'),
             ('unlisted-gameplay','Sand mit Brennstoff im Ofen schmelzen, dann erhältst du Glas.'),
             ('player-opinion','ExampleTwo wirkt mit 90 Mobkills wie der Albtraum der Monster.'),
             ('own-context','Du hast inzwischen 31 Mobkills.'))
@@ -137,6 +140,32 @@ class Evaluation(unittest.TestCase):
         self.assertEqual(result['completed_cases'],1)
         self.assertFalse(result['passed'])
         self.assertFalse(result['eligible_for_activation'])
+
+    def test_reviewed_fallback_cannot_hide_native_timeout_and_start_more_probes(self):
+        fake={name:ModuleType(name) for name in ('runtime','portraits','dialogue','server')}
+        fake['runtime'].State=lambda *args:object()
+        fake['runtime'].Assistant=lambda *args,**kwargs:object()
+        fake['portraits'].PlayerPortraits=lambda *args:object()
+        fake['dialogue'].MODEL='synthetic-model'
+        provider=SimpleNamespace(model='synthetic-model');calls=[]
+        class Fallback:
+            def __init__(self,*args):pass
+            def answer(self,*args):
+                calls.append(1);provider.diagnostic({'error':'TimeoutError'})
+                return 'Es ist 12:34 Uhr.'
+        fake['dialogue'].GroundedDialogue=Fallback
+        fake['dialogue'].PublicObservations=lambda *args,**kwargs:object()
+        fake['server'].knowledge_for=lambda *args:provider
+        output=io.StringIO();original=Path.read_bytes;old_path=list(sys.path)
+        try:
+            with patch.dict(sys.modules,fake),patch.object(sys,'stdin',io.StringIO('{"files":{}}')), \
+                    patch.object(Path,'read_bytes',lambda path:b'[]' if str(path)=='/inputs/mods.json' else original(path)),redirect_stdout(output):
+                exec(compile(module.INNER,'synthetic-evaluation','exec'),{})
+        finally:sys.path[:]=old_path
+        result=json.loads(next(line.split('=',1)[1] for line in output.getvalue().splitlines() if line.startswith('VECTOR_DIALOGUE_RESULT=')))
+        self.assertEqual(calls,[1])
+        self.assertEqual(result['completed_cases'],1)
+        self.assertFalse(result['passed'])
 
     def test_existing_private_slot_binding_is_retained_without_reading_secret(self):
         installed = (ROOT/'services/minecraft-assistant/server.py').read_text().replace(

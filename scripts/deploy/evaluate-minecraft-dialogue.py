@@ -238,6 +238,10 @@ def case_checks(key, answer):
     checks={'complete_sentence':bool(re.search(r'[.!?][\"»”)]*$',answer))}
     if key=='clock':
         checks['provided_clock']='12:34' in answer
+    elif key=='smalltalk':
+        checks['conversational_self_reply']=bool(re.search(r'\b(?:mir|ich|bereit|geht|läuft|laeuft)\b',q))
+        checks['not_generic_fallback']=not any(t in q for t in ('was möchtest du genau','beschreibe kurz dein ziel','nicht verfügbar','versuche es später','welche mod'))
+        checks['brief']=len(answer)<=240
     elif key=='unlisted-gameplay':
         checks['sand_to_glass_in_furnace']=all(w in q for w in ('sand','glas','ofen')) and 'schmelz' in q
         checks['no_invented_temperature']=not re.search(r'\d|°|temperatur|grad\b',answer,re.I)
@@ -290,12 +294,26 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
     mods=root/'mods.json';mods.write_bytes(Path('/inputs/mods.json').read_bytes())
     ai=Assistant(state,directory,cache,mods,knowledge=provider,portraits=PlayerPortraits(directory,cache))
     dialogue=GroundedDialogue(provider)
+    # Native diagnostics intentionally bypass the direct clock capability.
+    # Normal qualification measures the actual hybrid user-facing route.
+    if payload.get('profile_only') or payload.get('diagnose_rejection'):dialogue.allow_direct=False
     scope=('minecraft',ids[0])
     facts=lambda:PublicObservations(ai,scope,ids[0],timezone='Europe/Zurich',wall_clock=lambda:datetime(2026,10,20,12,34,tzinfo=ZoneInfo('Europe/Zurich')))
     cases=[('clock','Wie spät haben wir es eigentlich?'),
            ('unlisted-gameplay','Wie wird Sand zu Glas?'),
            ('player-opinion','Roaste ExampleTwo kurz anhand seines Monsterkontos.'),
            ('own-context','Und wie viele habe dann ich?')]
+    direct_clock=None
+    if not payload.get('profile_only') and not payload.get('diagnose_rejection'):
+        # Still qualify actual generated conversation, not only direct/tool reads.
+        cases[0]=('smalltalk','Wie geht es dir heute, Vector?')
+        if callable(getattr(dialogue,'provenance',None)):
+            before=len(usage);start=time.monotonic()
+            answer=dialogue.answer('Wie spät haben wir es eigentlich?',scope,facts())
+            direct_clock=dict(passed='12:34' in answer and len(usage)==before and dialogue.provenance(scope)=='direct-clock',
+                seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,text=answer)
+            dialogue.clear(scope)
+            print(json.dumps({'direct_clock_check':direct_clock},ensure_ascii=False),flush=True)
     if payload.get('profile_only'):cases=cases[:1]
     if payload.get('diagnose_rejection'):cases=cases[:2]
     results=[]
@@ -308,15 +326,23 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
         print(json.dumps({'case_started':key}),flush=True)
         try:
             answer=dialogue.answer(question,scope,facts())
+            origin=dialogue.provenance(scope) if callable(getattr(dialogue,'provenance',None)) else 'unreported'
             checks=case_checks(key,answer)
+            if not payload.get('profile_only') and not payload.get('diagnose_rejection') and origin!='unreported':
+                if key=='clock':checks['direct_without_model']=origin=='direct-clock' and len(usage)==before
+                if key=='smalltalk':checks['generated_conversation']=origin=='generated' and len(usage)-before==1
+                if key=='player-opinion':checks['trusted_portrait']=origin=='tool-portrait'
+                if key=='own-context':checks['trusted_fresh_statistics']=origin=='tool-statistics'
             passed=all(checks.values());error=None;code=None
         except Exception as exc:
-            answer=None;passed=False;checks={};error=type(exc).__name__;code=error_code(exc)
-        results.append(dict(id=key,passed=passed,checks=checks,seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,synthetic_answer=answer,error=error,error_code=code,native=native[native_before:]))
+            answer=None;passed=False;checks={};error=type(exc).__name__;code=error_code(exc);origin='failed'
+        results.append(dict(id=key,passed=passed,checks=checks,reply_origin=origin,seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,synthetic_answer=answer,error=error,error_code=code,native=native[native_before:]))
         if payload.get('diagnose_rejection'):results[-1]['rejections']=rejections[rejection_before:]
         print(json.dumps({'case':results[-1]},ensure_ascii=False),flush=True)
-        if error=='TimeoutError':break
-    result=dict(passed=len(results)==len(cases) and all(c['passed'] for c in results),cases=results,usage=usage,
+        # A useful reviewed fallback must not hide a stalled native request or
+        # trigger more probes while backend cancellation is still uncertain.
+        if error=='TimeoutError' or any(row.get('error')=='TimeoutError' for row in native[native_before:]):break
+    result=dict(passed=len(results)==len(cases) and all(c['passed'] for c in results) and (direct_clock is None or direct_clock['passed']),cases=results,usage=usage,
         expected_cases=len(cases),completed_cases=len(results),
         model_calls=len(usage),input_tokens=None if any(c['input_tokens'] is None for c in usage) else sum(c['input_tokens'] for c in usage),
         output_tokens=None if any(c['output_tokens'] is None for c in usage) else sum(c['output_tokens'] for c in usage),
@@ -327,6 +353,8 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
         production_ledger_writes=False,temporary_state_only=True,
         native_semantics_require_manual_review=True,eligible_for_activation=False)
     result['preload']=preload_result
+    result['direct_clock_check']=direct_clock
+    result['reply_origins']={origin:sum(c['reply_origin']==origin for c in results) for origin in sorted({c['reply_origin'] for c in results})}
     if payload.get('profile_only'):
         result.update(passed=False,evaluation_scope='single-request-stream-profile',diagnostic_completed=True)
     if payload.get('diagnose_rejection'):

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-20 — Evidence-first local conversation candidate
+
+- Add a direct configured-zone clock path and retain existing reviewed simple replies without acquiring the model CPU slot. A single reviewed passage can answer directly only when its subject coverage and requested answer form match; weak matches still use the model.
+- Limit remaining conversational requests to one local model call. The model may resolve a standalone allowlisted lookup; trusted statistics, portraits, recipes and mod inventory are rendered directly instead of being rewritten by a second model call.
+- Route explicit player count and assessment requests through their backend. Ordinary first-person smalltalk remains conversational. Authenticated self-only tool queries cannot silently switch to another known player, and unlinked identities receive a specific clarification.
+- A rejected or timed-out draft may use one complete, policy-safe reviewed passage. Ambiguous/truncated evidence and unsafe output do not use that recovery. Generated prose can still be factually wrong; lexical coverage and numeric guards are not semantic proofs.
+- Qualify actual generated smalltalk, game help, a player portrait and an own-player follow-up, plus a separate direct clock check without inference. Report direct, generated, tool and reviewed-fallback reply origins in native evidence. Stop evaluation after a native timeout even if a reviewed fallback produced a useful reply. Native profiling intentionally bypasses direct routes.
+- Source/boundary tests only: no production activation, game restart, real message, model change or verified native latency improvement is claimed.
+
+
 ## 2026-10-20 — Diagnose rejected synthetic conversation answers
 
 - Add an opt-in, two-question rejection diagnostic to the isolated local conversation evaluator. It records bounded error codes and only policy-safe rejected synthetic answer text; normal evaluation and production providers do not capture rejected prose.
