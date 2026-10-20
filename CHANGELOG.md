@@ -2,6 +2,12 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-20 — Separate diagnostic model loading from response latency
+
+- Add explicit `--preload --profile-only` qualification diagnostics. Send one empty local chat preload under the existing restricted CPU slot, bounded to 45 seconds with no prompt, schema or user context; retain the pinned model, 4096 context, two threads and five-minute keep-alive. Reject unexpected generated text/tokens and record loading metadata separately.
+- Release preload admission before the one synthetic streaming question receives its original 20-second transport and 24-second computation budgets. Skip that question when loading fails. Existing process watchdog, baseline/secret/role guards and non-activation policy remain; ordinary evaluation does not preload.
+- Seventeen local preload, streaming and evaluator tests pass, including lock release and skipped generation after preload failure. Startup latency is a hypothesis, not a verified diagnosis; native evidence remains required. No service, model configuration, game restart or real channel delivery is performed by this source change.
+
 ## 2026-10-20 — Profile one native dialogue request without activating it
 
 - Add an explicit `--profile-only` evaluator mode for one synthetic clock question. It retains the existing model, schema, context, two CPU threads and 20-second deadline while reading streamed chunks, so headers, first content/thinking arrival, output size and final native counters can be distinguished from an undifferentiated timeout.
