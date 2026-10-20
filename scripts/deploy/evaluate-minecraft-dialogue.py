@@ -62,6 +62,55 @@ def preserve_slot_binding(installed, candidate, mounts):
 
 
 STREAM_PROFILE = r'''
+def preload_profile_model(provider):
+    import http.client
+    import json
+    import time
+    if provider.endpoint != 'http://vector-local-inference:11434' or provider.model != 'vector-qwen3-instruct2507:4b-q4km':
+        raise ValueError('PROFILE_LOCAL_DESTINATION_REQUIRED')
+    started=time.monotonic();end=started+45
+    report=dict(completed=False,request_attempted=False,limit_seconds=45)
+    connection=http.client.HTTPConnection('vector-local-inference',11434,timeout=45)
+    try:
+        payload={'model':provider.model,'messages':[],'stream':False,'keep_alive':'5m',
+                 'options':{'num_ctx':4096,'num_thread':2}}
+        report['request_attempted']=True
+        connection.request('POST','/api/chat',json.dumps(payload).encode(),{'Content-Type':'application/json'})
+        sock=connection.sock
+        if sock is None:raise ValueError('PRELOAD_SOCKET_MISSING')
+        sock.settimeout(max(.001,end-time.monotonic()))
+        response=connection.getresponse();report['http_status']=response.status
+        if response.status!=200:raise ValueError('PRELOAD_HTTP_STATUS')
+        raw=bytearray()
+        while True:
+            remaining=end-time.monotonic()
+            if remaining<=0:raise TimeoutError('PRELOAD_DEADLINE')
+            sock.settimeout(remaining)
+            part=response.read1(min(4096,16385-len(raw)))
+            if time.monotonic()>end:raise TimeoutError('PRELOAD_DEADLINE')
+            raw.extend(part)
+            if len(raw)>16384:raise ValueError('PRELOAD_RESPONSE_LIMIT')
+            if not part:break
+        value=json.loads(raw)
+        if not isinstance(value,dict) or value.get('model')!=provider.model or value.get('done') is not True:
+            raise ValueError('PRELOAD_RESPONSE_INVALID')
+        message=value.get('message',{})
+        if (not isinstance(message,dict) or message.get('content','') or message.get('thinking','')
+                or value.get('done_reason') not in (None,'load','stop')):
+            raise ValueError('PRELOAD_UNEXPECTED_GENERATION')
+        for key in ('prompt_eval_count','eval_count','load_duration','total_duration'):
+            number=value.get(key)
+            if number is not None and (type(number) is not int or number<0):raise ValueError('PRELOAD_COUNTER_INVALID')
+            report[key]=number
+        if value.get('prompt_eval_count',0) not in (None,0) or value.get('eval_count',0) not in (None,0):
+            raise ValueError('PRELOAD_UNEXPECTED_GENERATION')
+        report['completed']=True
+    except Exception as exc:report['error']=type(exc).__name__
+    finally:
+        connection.close();report['elapsed_seconds']=round(time.monotonic()-started,3)
+    return report
+
+
 def install_stream_profile(provider):
     import http.client
     import json
@@ -178,6 +227,14 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
     if payload.get('profile_only'):
         exec(payload['stream_profile'],globals())
         install_stream_profile(provider)
+    preload_result=None
+    if payload.get('preload'):
+        print(json.dumps({'preload_started':True,'limit_seconds':45}),flush=True)
+        try:
+            from runtime import local_slot
+            with local_slot(provider.dsn):preload_result=preload_profile_model(provider)
+        except Exception as exc:preload_result=dict(completed=False,request_attempted=False,error=type(exc).__name__)
+        print(json.dumps({'preload':preload_result}),flush=True)
     directory=root/'stats';directory.mkdir()
     ids=['10000000-0000-0000-0000-'+str(i).zfill(12) for i in (1,2)]
     names=['ExampleOne','ExampleTwo']
@@ -196,6 +253,7 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
     if payload.get('profile_only'):cases=cases[:1]
     results=[]
     for key,question,check in cases:
+        if preload_result is not None and not preload_result['completed']:break
         before=len(usage);native_before=len(native);start=time.monotonic()
         print(json.dumps({'case_started':key}),flush=True)
         try:
@@ -216,6 +274,7 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
         model=MODEL,cloud_calls=0,api_cost_chf=0,messages_sent=0,production_activated=False,
         production_ledger_writes=False,temporary_state_only=True,
         native_semantics_require_manual_review=True,eligible_for_activation=False)
+    result['preload']=preload_result
     if payload.get('profile_only'):
         result.update(passed=False,evaluation_scope='single-request-stream-profile',diagnostic_completed=True)
     print('VECTOR_DIALOGUE_RESULT='+json.dumps(result,ensure_ascii=False),flush=True)
@@ -294,7 +353,9 @@ def main():
     parser.add_argument('--workspace-root', type=Path, required=True)
     parser.add_argument('--lock-file', type=Path, required=True)
     parser.add_argument('--profile-only', action='store_true')
+    parser.add_argument('--preload', action='store_true')
     args = parser.parse_args()
+    if args.preload and not args.profile_only:parser.error('--preload requires --profile-only')
     sys.dont_write_bytecode = True
     spec = importlib.util.spec_from_file_location('dialogue_guard', args.guard_helper)
     guard = importlib.util.module_from_spec(spec)
@@ -371,14 +432,14 @@ def main():
         manifest=dict(baseline=str(baseline),container_identity=guard.identity(row),
             candidate_sha256={name:guard.digest(source.encode()) for name,source in sources.items()},
             baseline_record_sha256=guard.digest((baseline/'record.json').read_bytes()),
-            evaluation_sha256=guard.digest(program),lock_file=str(args.lock_file),profile_only=args.profile_only)
+            evaluation_sha256=guard.digest(program),lock_file=str(args.lock_file),profile_only=args.profile_only,preload=args.preload)
         guard.write_private(report/'manifest.json',guard.canonical(manifest))
-        print('Eine synthetische Streaming-Messung, keine Aktivierung.' if args.profile_only else 'Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
+        print('Begrenzte Ladepruefung (45 s), danach eine Streaming-Messung (20 s). Kein Rollout.' if args.preload else 'Eine synthetische Streaming-Messung, keine Aktivierung.' if args.profile_only else 'Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
         print('Belege: '+str(report),flush=True)
         evaluation_id=uuid.uuid4().hex
         command = ['docker','exec','-i','-w','/code',config['container'],'python3','-c',WATCHDOG]
         try:
-            child = subprocess.run(command,input=json.dumps({'files':sources,'program':INNER,'evaluation_id':evaluation_id,'profile_only':args.profile_only,'stream_profile':STREAM_PROFILE if args.profile_only else None}).encode(),capture_output=True,timeout=150,start_new_session=True)
+            child = subprocess.run(command,input=json.dumps({'files':sources,'program':INNER,'evaluation_id':evaluation_id,'profile_only':args.profile_only,'preload':args.preload,'stream_profile':STREAM_PROFILE if args.profile_only else None}).encode(),capture_output=True,timeout=150,start_new_session=True)
         except subprocess.TimeoutExpired as exc:
             from types import SimpleNamespace
             child=SimpleNamespace(stdout=exc.stdout or b'',stderr=exc.stderr or b'',returncode=124)
