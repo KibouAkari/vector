@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-20 — Grounded conversational context candidate
+
+- Pass recent, author-scoped exchanges as native chat roles and reread the authenticated player's public counters for first-person follow-ups. Named third-person references can reuse their own recent subject; no cross-user or cross-channel memory is introduced.
+- Keep complete bounded documentation passages and explicit German metric labels. Generated first-call and tool answers reject unsupported numeric tokens and visibly unfinished sentences; these guards do not prove semantic correctness.
+- Give short answers room to finish rather than constraining JSON strings to 160 characters. The target stays one brief sentence; the hard limit is 320 characters, with the same model, 80-token prediction limit, CPU admission and computation deadline.
+- Strengthen the four-question native evaluator against invented temperatures, factual-list-only portraits and stale own-player values. Mocked checks do not qualify real local model quality or latency.
+- Source and boundary tests only. Experimental mode 6 remains unactivated; no game restart, live messages, cloud calls or production profile changes accompany this change.
+
+
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
 ## 2026-10-20 — Reduce the fixed context before the first conversational token

@@ -28,7 +28,7 @@ class Provider:
 class Observations:
     def __init__(self):
         self.calls = []
-    def initial(self, question):
+    def initial(self, question, history=()):
         return {'clock': '2026-10-20 12:34:00 CEST', 'self_player': None}
     def lookup(self, tool, query):
         self.calls.append((tool, query))
@@ -77,7 +77,8 @@ class DialogueTests(unittest.TestCase):
         ai = GroundedDialogue(p, clock=lambda: now[0])
         ai.answer('Erstes eigenes Thema', ('minecraft', 'a'), Observations())
         ai.answer('Und danach?', ('minecraft', 'a'), Observations())
-        self.assertIn('Erstes eigenes Thema', p.calls[1][-1]['content'])
+        self.assertEqual(p.calls[1][1], {'role':'user','content':'Erstes eigenes Thema'})
+        self.assertEqual(p.calls[1][2]['role'], 'assistant')
         ai.answer('Und danach?', ('discord', 'a'), Observations())
         self.assertNotIn('Erstes eigenes Thema', p.calls[2][-1]['content'])
         now[0] = 181
@@ -131,7 +132,7 @@ class DialogueTests(unittest.TestCase):
 
     def test_compact_prompt_has_stable_prefix_and_bounded_prediction(self):
         from dialogue import SYSTEM
-        self.assertLess(len(SYSTEM),520)
+        self.assertLess(len(SYSTEM),620)
         provider=Provider([{'answer':'Hallo.'}]);observations=Observations()
         original=provider.request
         budgets=[]
@@ -160,7 +161,7 @@ class DialogueTests(unittest.TestCase):
             provider=Provider([{'answer':'Es ist 12:34 Uhr.'}])
             GroundedDialogue(provider).answer('Wie spät haben wir es eigentlich?',('minecraft',uid),observations)
             size=sum(len(m['content']) for m in provider.calls[0])
-            self.assertLess(size,900)
+            self.assertLess(size,1020)
             self.assertIn('25',observations.lookup('statistics','Wie viele Mobkills hat ExampleOne?'))
             path.write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':31}}}))
             self.assertIn('31',observations.lookup('statistics','Wie viele Mobkills hat ExampleOne?'))
@@ -173,8 +174,61 @@ class DialogueTests(unittest.TestCase):
         observations=PublicObservations(ai,('minecraft','a'),None)
         docs=observations.documentation('Wie geht das?')
         self.assertEqual(len(docs),2)
-        self.assertTrue(all(len(row['text'])==240 and row['truncated'] for row in docs))
+        self.assertTrue(all(len(row['text'])==300 and not row['truncated'] for row in docs))
         self.assertEqual(observations.lookup('statistics','Wer ist der beste Spieler?'),'SYNTHETIC_OPERATOR_GAME_JOKE')
+
+    def test_first_answer_rejects_hallucinated_numbers_and_dangling_sentences(self):
+        for answer in ('Sand braucht im Ofen 1500 Grad.', 'Das Ergebnis ist,',
+                       'Das Ergebnis ist.', 'Sand wird im Ofen geschmolzen,'):
+            provider=Provider([{'answer':answer}])
+            with self.subTest(answer=answer), self.assertRaises(ValueError):
+                GroundedDialogue(provider).answer('Wie wird Sand zu Glas?',('minecraft','a'),Observations())
+
+    def test_complete_answer_is_not_grammar_clipped_at_160_characters(self):
+        answer=('Mit Brennstoff im normalen Ofen wird aus Sand Glas; '+
+                'für besondere Glasvarianten oder Änderungen durch eine Mod bräuchte ich '+
+                'den genauen Gegenstand, den du herstellen möchtest.')
+        self.assertGreater(len(answer),160)
+        self.assertEqual(GroundedDialogue.validate_answer(answer),answer)
+
+    def test_self_followup_rereads_authenticated_player_and_ignores_old_values(self):
+        from runtime import Assistant,State
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);folder=root/'stats';folder.mkdir()
+            ids=['10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002']
+            for uid,value in zip(ids,(25,90)):
+                (folder/(uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':value}}}))
+            cache=root/'users.json';cache.write_text(json.dumps([dict(uuid=u,name=n) for u,n in zip(ids,('ExampleOne','ExampleTwo'))]))
+            mods=root/'mods.json';mods.write_text('[]')
+            ai=Assistant(State(root/'state.sqlite',b'q'*32),folder,cache,mods)
+            observations=PublicObservations(ai,('minecraft',ids[0]),ids[0])
+            provider=Provider([{'answer':'ExampleTwo hat 90 Mobkills.'},{'answer':'Du hast 31 Mobkills.'}])
+            dialogue=GroundedDialogue(provider)
+            dialogue.answer('Wie sieht ExampleTwo aus?',('minecraft',ids[0]),observations)
+            (folder/(ids[0]+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':31}}}))
+            self.assertEqual(dialogue.answer('Und wie viele habe dann ich?',('minecraft',ids[0]),observations),'Du hast 31 Mobkills.')
+            packet=json.loads(provider.calls[1][-1]['content'])
+            self.assertEqual(packet['facts']['players'],[{'player':'ExampleOne','values':{
+                'Spielstunden':0.0,'Strecke_km':0.0,'Mobkills':31,'Spielerkills':0,'Tode':0}}])
+            self.assertEqual(provider.calls[1][1]['content'],'Wie sieht ExampleTwo aus?')
+            unknown=PublicObservations(ai,('discord','unlinked'),'unlinked')
+            self.assertIsNone(unknown.initial('Wie viele habe ich?')['self_player'])
+            self.assertEqual(unknown.initial('Wie viele habe ich?')['players'],[])
+            old=[{'question':'Was hältst du von ExampleTwo?','answer':'ExampleTwo hat 90 Mobkills.'}]
+            self.assertEqual(observations.initial('Und er?',old)['players'][0]['player'],'ExampleTwo')
+            self.assertEqual(observations.initial('Wie spät ist es?',old)['players'],[])
+
+    def test_initial_documentation_keeps_verified_complete_glass_fact(self):
+        import hashlib
+        from companion import KnowledgePack
+        path=ROOT/'services/minecraft-assistant/knowledge-pack.json'
+        pack=KnowledgePack(path,hashlib.sha256(path.read_bytes()).hexdigest())
+        ai=SimpleNamespace(knowledge=SimpleNamespace(pack=pack),mods=lambda:[])
+        docs=PublicObservations(ai,('minecraft','a'),None).documentation('Wie wird Sand zu Glas?')
+        self.assertTrue(docs)
+        self.assertIn('Ofen',docs[0]['text'])
+        self.assertNotIn('1500',docs[0]['text'])
+        self.assertTrue(docs[0]['text'].endswith('.'))
 
 
 if __name__ == '__main__':
