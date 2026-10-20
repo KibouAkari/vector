@@ -43,7 +43,7 @@ class ReviewedService(unittest.TestCase):
 
     def test_default_off_needs_no_role_driver_catalog_or_model(self):
         self.assertIsNone(server.knowledge_for('0',self.state,'/missing','/missing'))
-        for mode in ('auto','6','',None):
+        for mode in ('auto','7','',None):
             with self.assertRaisesRegex(RuntimeError,'INVALID_KNOWLEDGE_MODE'):server.knowledge_for(mode,self.state)
 
     def test_mode4_retains_restricted_construction_and_adds_local_social_class(self):
@@ -136,4 +136,5 @@ class ReviewedService(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
 

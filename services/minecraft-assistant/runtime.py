@@ -379,12 +379,14 @@ def direct_chat_answer(question):
 
 
 class Assistant:
-    def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None, recipes=None, mod_recipes=None, portraits=None):
+    def __init__(self, state, stats_dir, usercache, mod_file, knowledge=None, recipes=None, mod_recipes=None, portraits=None, dialogue=None, dialogue_timezone='UTC'):
         self.state, self.stats_dir, self.usercache = state, stats_dir, usercache
         self.mod_file, self.knowledge = mod_file, knowledge
         self.recipes = recipes
         self.mod_recipes = mod_recipes
         self.portraits = portraits
+        self.dialogue = dialogue
+        self.dialogue_timezone = dialogue_timezone
         self.mod_help = ModHelp()
         self.ranking_pages = OrderedDict()
         self.ranking_lock = threading.Lock()
@@ -434,14 +436,26 @@ class Assistant:
         portrait_response = False
         if not question:
             if self.portraits:self.portraits.clear(scope)
+            if self.dialogue:self.dialogue.clear(scope)
             self.mod_help.clear(scope)
             self.clear_knowledge(scope)
             answer = 'schön, dass du da bist. Wie läuft es bei dir gerade?' 
         elif request_forbidden(question):
             if self.portraits:self.portraits.clear(scope)
+            if self.dialogue:self.dialogue.clear(scope)
             self.mod_help.clear(scope)
             self.clear_knowledge(scope)
             answer = 'dazu gebe ich keine administrativen oder vertraulichen Auskünfte.'
+        elif self.dialogue is not None:
+            from dialogue import PublicObservations
+            try:
+                answer = self.dialogue.answer(question, scope, PublicObservations(
+                    self, scope, principal if source == 'minecraft' else None, block_items,
+                    timezone=self.dialogue_timezone))
+            except Exception:
+                self.dialogue.clear(scope)
+                answer = 'ich konnte gerade keine verlässliche lokale Antwort erzeugen. Bitte versuche es gleich nochmals.'
+            portrait_response = True
         else:
             answer = self.ranking_page(question,scope)
             if answer is None:answer = direct_chat_answer(question)
@@ -479,7 +493,7 @@ class Assistant:
                     answer = 'welche Aktion oder welcher Gegenstand macht dir Probleme? Nenne bitte die Mod oder beschreibe kurz, was du versucht hast.'
                 else:
                     answer = 'bleiben wir bitte bei Minecraft. Welche Frage zum Spiel oder zu einer Mod hast du?'
-        if getattr(self.knowledge, 'friendly_statistics', False):
+        if self.dialogue is None and getattr(self.knowledge, 'friendly_statistics', False):
             answer = friendly_statistics(answer, name if source == 'minecraft' else None,
                                          variant=int(event.rsplit(':', 1)[1]) % 3)
         character=getattr(self.knowledge,'character',None)
@@ -763,6 +777,7 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 
 
 

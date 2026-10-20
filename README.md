@@ -133,3 +133,8 @@ The cinematic black-hole experience is adapted from [Gargantua by hasnain7abbas]
 ---
 
 <div align="center"><sub>Vector · MIT licensed · Copyright © 2026 KibouAkari · <a href="LICENSE">License</a></sub></div>
+
+
+### Experimental local Minecraft conversations
+
+An opt-in conversational candidate can generate short local answers from public observations and bounded tools instead of selecting fixed reply text. It is inactive by default and requires native accuracy and latency qualification before a separate guarded rollout. See [the candidate architecture and evaluation boundary](docs/minecraft-dialogue-candidate.md).

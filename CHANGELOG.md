@@ -2,6 +2,14 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-20 — Prepare an opt-in local conversational assistant
+
+- Add an experimental mode 6 with self-written local answers instead of social-expression matching or canned fact selection. Existing modes and the default-off constructor retain their behavior; no deployment enables the candidate automatically.
+- Supply fresh public observations, configured-zone time and reviewed documentation. Permit one bounded lookup for statistics, portraits, recipes, documentation or installed mods; retain the same local model destination, CPU admission, usage callback and request deadline. There is no command, arbitrary-file or web tool.
+- Keep short per-author/source conversational context in bounded RAM, encourage wording variation and retain independent input/output restrictions. Schema and numeric checks are explicitly not a factuality guarantee.
+- Add structural, identity, tool and policy tests plus an operator-pinned four-question native evaluation. The evaluation preserves installed catalog pins and private aliases, uses synthetic player files and temporary state, and performs no activation, game restart, channel delivery or production usage-ledger write.
+- Native semantic accuracy and latency remain unqualified until the actual host report is reviewed. Preserve the README and complete historical changelog; document the candidate separately.
+
 ## 2026-10-19 — Sharpen playful banter and explain paused ranking pages
 
 - Give the peaceful-server player-kill-leader joke a shorter, sharper voice without a defensive closing disclaimer. Keep it confined to gameplay and derive its target from fresh counters.

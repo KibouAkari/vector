@@ -20,11 +20,11 @@ DOCUMENTATION_SHA256 = '074462abb97ae7a1a91c884e776fd6826ecf27c9f82288cd9c0fc8f3
 
 def knowledge_for(mode, state, dsn_path='/run/secrets/vector_minecraft_slot_dsn',
                   documentation_path='/inputs/documentation.json', knowledge_pack_path='/inputs/knowledge-pack.json'):
-    if mode not in ('0', '1', '2', '3', '4', '5'):
+    if mode not in ('0', '1', '2', '3', '4', '5', '6'):
         raise RuntimeError('INVALID_KNOWLEDGE_MODE')
     if mode == '0':
         return None
-    if mode in ('3', '4', '5'):
+    if mode in ('3', '4', '5', '6'):
         fd = os.open(dsn_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(fd, 'rb') as handle:
             meta = os.fstat(handle.fileno())
@@ -42,7 +42,7 @@ def knowledge_for(mode, state, dsn_path='/run/secrets/vector_minecraft_slot_dsn'
             raise RuntimeError('RESTRICTED_LOCAL_SLOT_REQUIRED')
         from documentation import DocumentationIndex, DocumentationKnowledge, ConversationKnowledge
         index = DocumentationIndex(documentation_path, DOCUMENTATION_SHA256)
-        if mode == '5':
+        if mode in ('5', '6'):
             from companion import CompanionKnowledge, KnowledgePack
             return CompanionKnowledge(dsn,documentation=index,pack=KnowledgePack(knowledge_pack_path,KNOWLEDGE_PACK_SHA256),usage=state.model_usage)
         kind = ConversationKnowledge if mode == '4' else DocumentationKnowledge
@@ -160,20 +160,29 @@ def main():
     # mounted. Missing/unsupported recipes must never go to the small model.
     recipes = RecipeBook.load('/inputs/recipes.json') if os.environ.get('VECTOR_MINECRAFT_RECIPES') == '1' else RecipeBook()
     mod_recipes = None
-    if mode in ('4', '5') and os.environ.get('VECTOR_MINECRAFT_MOD_RECIPES_SHA256'):
+    if mode in ('4', '5', '6') and os.environ.get('VECTOR_MINECRAFT_MOD_RECIPES_SHA256'):
         from modrecipes import ModRecipes
         mod_recipes = ModRecipes('/inputs/mod-recipes.json', os.environ['VECTOR_MINECRAFT_MOD_RECIPES_SHA256'])
     portraits=None
     if os.environ.get('VECTOR_MINECRAFT_PORTRAITS')=='1':
-        if mode!='5':raise RuntimeError('PORTRAITS_REQUIRE_GROUNDED_MODE')
+        if mode not in ('5','6'):raise RuntimeError('PORTRAITS_REQUIRE_GROUNDED_MODE')
         from portraits import PlayerPortraits
         portraits=PlayerPortraits('/inputs/stats','/inputs/usercache.json',
             '/inputs/advancements' if os.environ.get('VECTOR_MINECRAFT_ADVANCEMENTS')=='1' else None)
-    assistant = Assistant(state, '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json', knowledge, recipes, mod_recipes, portraits)
+    dialogue = None
+    timezone = os.environ.get('VECTOR_MINECRAFT_TIMEZONE', 'UTC')
+    if mode == '6':
+        from dialogue import GroundedDialogue
+        from zoneinfo import ZoneInfo
+        ZoneInfo(timezone)
+        dialogue = GroundedDialogue(knowledge)
+    assistant = Assistant(state, '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json',
+                          knowledge, recipes, mod_recipes, portraits, dialogue=dialogue, dialogue_timezone=timezone)
     with Service(('0.0.0.0', 8090), assistant, key) as service:
         service.serve_forever(poll_interval=0.5)
 
 
 if __name__ == '__main__':
     main()
+
 
