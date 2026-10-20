@@ -13,6 +13,7 @@ from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'services/minecraft-assistant'))
 spec = importlib.util.spec_from_file_location('dialogue_evaluation', ROOT/'scripts/deploy/evaluate-minecraft-dialogue.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
@@ -32,6 +33,7 @@ class Evaluation(unittest.TestCase):
             ('player-opinion','ExampleTwo hat 90 Monster getötet. Keine Spielersterbe aufgezeichnet.'),
             ('player-opinion','ExampleTwo hat 90 Mobkills.'),
             ('own-context','Du hast 25 Mobkills.'),
+            ('own-context','Du hast 31 Monsterkilling erzielt, aber noch keine Tode, also kein Ende der Spielzeit!'),
             ('own-context','ExampleTwo hat 90 Mobkills.'))
         for key,answer in rejected:
             with self.subTest(key=key,answer=answer):self.assertFalse(all(check(key,answer).values()))
@@ -41,6 +43,71 @@ class Evaluation(unittest.TestCase):
             ('own-context','Du hast inzwischen 31 Mobkills.'))
         for key,answer in accepted:
             with self.subTest(key=key,answer=answer):self.assertTrue(all(check(key,answer).values()))
+
+    def test_rejection_capture_is_bounded_synthetic_and_never_accepts_rejected_output(self):
+        import re
+        from runtime import safe_answer,request_forbidden
+        tree=ast.parse(module.INNER)
+        functions=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name in ('error_code','install_rejection_capture')]
+        namespace={'re':re}
+        exec(compile(ast.Module(body=functions,type_ignores=[]),'rejection-capture','exec'),namespace)
+        self.assertIsNone(namespace['error_code'](ValueError('a private message /some/path')))
+        for text,visible in (('Sand braucht 1500 Grad.',True),('Nutze /op ExampleOne.',False),
+                             ('x'*321,False),('secret\nvalue',False)):
+            rejected=[]
+            def native(schema,messages,predict,deadline,validator):
+                return validator({'answer':text})
+            provider=SimpleNamespace(request=native)
+            namespace['install_rejection_capture'](provider,rejected)
+            def deny(value):raise ValueError('UNSUPPORTED_DIALOGUE_NUMBER')
+            with self.subTest(text=text),self.assertRaisesRegex(ValueError,'UNSUPPORTED_DIALOGUE_NUMBER'):
+                provider.request({},[],80,100,deny)
+            self.assertEqual(rejected[0]['code'],'UNSUPPORTED_DIALOGUE_NUMBER')
+            self.assertEqual('rejected_synthetic_answer' in rejected[0],visible)
+
+    def test_rejection_diagnostic_cannot_combine_with_profile(self):
+        with patch.object(sys,'argv',['evaluation','--guard-helper','unused','--baseline','unused',
+                '--source-root','unused','--workspace-root','unused','--lock-file','unused',
+                '--profile-only','--diagnose-rejection']),self.assertRaises(SystemExit):
+            with redirect_stdout(io.StringIO()):module.main()
+
+    def test_two_case_diagnostic_captures_rejection_but_never_qualifies(self):
+        fake={name:ModuleType(name) for name in ('runtime','portraits','dialogue','server')}
+        fake['runtime'].State=lambda *args:object()
+        fake['runtime'].Assistant=lambda *args,**kwargs:object()
+        fake['runtime'].safe_answer=lambda text:text
+        fake['runtime'].request_forbidden=lambda text:False
+        fake['portraits'].PlayerPortraits=lambda *args:object()
+        fake['dialogue'].MODEL='synthetic-model'
+        values=iter(('Es ist 12:34 Uhr.','Sand braucht 1500 Grad.'));calls=[]
+        def native(schema,messages,predict,deadline,validator):
+            calls.append(1);return validator({'answer':next(values)})
+        provider=SimpleNamespace(model='synthetic-model',request=native)
+        class Dialogue:
+            def __init__(self,provider):self.provider=provider
+            def answer(self,question,*args):
+                def validate(value):
+                    if '1500' in value['answer']:raise ValueError('UNSUPPORTED_DIALOGUE_NUMBER')
+                    return value['answer']
+                return self.provider.request({},[],80,100,validate)
+        fake['dialogue'].GroundedDialogue=Dialogue
+        fake['dialogue'].PublicObservations=lambda *args,**kwargs:object()
+        fake['server'].knowledge_for=lambda *args:provider
+        output=io.StringIO();original=Path.read_bytes;old_path=list(sys.path)
+        try:
+            with patch.dict(sys.modules,fake),patch.object(sys,'stdin',io.StringIO('{"files":{},"diagnose_rejection":true}')), \
+                    patch.object(Path,'read_bytes',lambda path:b'[]' if str(path)=='/inputs/mods.json' else original(path)),redirect_stdout(output):
+                exec(compile(module.INNER,'synthetic-evaluation','exec'),{})
+        finally:sys.path[:]=old_path
+        result=json.loads(next(line.split('=',1)[1] for line in output.getvalue().splitlines() if line.startswith('VECTOR_DIALOGUE_RESULT=')))
+        self.assertEqual(len(calls),2)
+        self.assertEqual(result['expected_cases'],2)
+        self.assertTrue(result['diagnostic_completed'])
+        self.assertFalse(result['passed'])
+        self.assertFalse(result['eligible_for_activation'])
+        rejected=result['cases'][1]
+        self.assertEqual(rejected['error_code'],'UNSUPPORTED_DIALOGUE_NUMBER')
+        self.assertEqual(rejected['rejections'][0]['rejected_synthetic_answer'],'Sand braucht 1500 Grad.')
 
     def test_first_native_timeout_stops_remaining_cases_without_claiming_full_pass(self):
         fake={name:ModuleType(name) for name in ('runtime','portraits','dialogue','server')}

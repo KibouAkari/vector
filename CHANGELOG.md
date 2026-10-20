@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-20 — Diagnose rejected synthetic conversation answers
+
+- Add an opt-in, two-question rejection diagnostic to the isolated local conversation evaluator. It records bounded error codes and only policy-safe rejected synthetic answer text; normal evaluation and production providers do not capture rejected prose.
+- Diagnostics retain the same candidate, model, deadlines, shared CPU slot, immutable baseline evidence and cleanup guards. Completion is not a quality pass or activation permission. Profiling and rejection diagnostics cannot be combined.
+- Reject the observed unrelated death/playtime conclusion in the own-count regression as well as in the monster-account portrait. Correct numeric self resolution alone does not establish answer quality.
+- Native evidence still shows poor conversational quality; no production activation, game restart or real message is part of this source change.
+
+
 ## 2026-10-20 — Grounded conversational context candidate
 
 - Pass recent, author-scoped exchanges as native chat roles and reread the authenticated player's public counters for first-person follow-ups. Named third-person references can reuse their own recent subject; no cross-user or cross-channel memory is introduced.

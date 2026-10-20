@@ -208,6 +208,30 @@ from zoneinfo import ZoneInfo
 
 payload=json.load(sys.stdin)
 
+def error_code(error):
+    text=str(error)
+    return text if re.fullmatch(r'[A-Z][A-Z0-9_]{2,79}',text) else None
+
+def install_rejection_capture(provider,rejected):
+    # Opt-in only, inside the isolated synthetic evaluator. Never production logs.
+    native_request=provider.request
+    def request(schema,messages,predict,deadline,validator):
+        def inspect(value):
+            try:return validator(value)
+            except ValueError as exc:
+                detail={'code':error_code(exc)}
+                answer=value.get('answer') if isinstance(value,dict) else None
+                if isinstance(answer,str) and 1<=len(answer)<=320:
+                    from runtime import safe_answer,request_forbidden
+                    try:
+                        safe_answer(answer)
+                        if not request_forbidden(answer):detail['rejected_synthetic_answer']=answer
+                    except ValueError:pass
+                rejected.append(detail)
+                raise
+        return native_request(schema,messages,predict,deadline,inspect)
+    provider.request=request
+
 def case_checks(key, answer):
     # Targeted semantic regressions, not a claim of universal correctness.
     q=answer.casefold()
@@ -220,10 +244,11 @@ def case_checks(key, answer):
     elif key=='player-opinion':
         checks['correct_player_and_count']='ExampleTwo' in answer and '90' in answer
         checks['game_based_interpretation']=bool(re.search(r'wirk|schein|offenbar|wohl|für mich|wie ein|monsterjäger|jagd|albtraum|schreck|schlächter',q))
-        checks['no_false_missing_kills']=not re.search(r'kein\w*[^.!?]{0,35}(?:spielerkill|spielersterb|tode)',q)
+        checks['stays_on_monster_question']=not re.search(r'\b(?:tode|spielzeit|gestorben|spielersterbe)\b',q)
     elif key=='own-context':
         checks['fresh_own_count']='31' in answer and not re.search(r'\b(?:25|90)\b',answer)
         checks['authenticated_self']=bool(re.search(r'\b(?:du|dein\w*|exampleone)\b',q))
+        checks['stays_on_monster_question']=not re.search(r'\b(?:tode|spielzeit|gestorben|spielersterbe)\b',q)
     return checks
 
 with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get('temporary_parent')) as temporary:
@@ -243,6 +268,8 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
     provider.usage=lambda model,inp,out,accepted:usage.append(dict(model=model,input_tokens=inp,output_tokens=out,accepted=accepted))
     native=[]
     provider.diagnostic=lambda row:native.append(row)
+    rejections=[]
+    if payload.get('diagnose_rejection'):install_rejection_capture(provider,rejections)
     if payload.get('profile_only'):
         exec(payload['stream_profile'],globals())
         install_stream_profile(provider)
@@ -270,21 +297,23 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
            ('player-opinion','Roaste ExampleTwo kurz anhand seines Monsterkontos.'),
            ('own-context','Und wie viele habe dann ich?')]
     if payload.get('profile_only'):cases=cases[:1]
+    if payload.get('diagnose_rejection'):cases=cases[:2]
     results=[]
     for key,question in cases:
         if preload_result is not None and not preload_result['completed']:break
         if key=='own-context':
             # A remembered answer must not replace freshly read game counters.
             (directory/(ids[0]+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':31,'minecraft:player_kills':2}}}))
-        before=len(usage);native_before=len(native);start=time.monotonic()
+        before=len(usage);native_before=len(native);rejection_before=len(rejections);start=time.monotonic()
         print(json.dumps({'case_started':key}),flush=True)
         try:
             answer=dialogue.answer(question,scope,facts())
             checks=case_checks(key,answer)
-            passed=all(checks.values());error=None
+            passed=all(checks.values());error=None;code=None
         except Exception as exc:
-            answer=None;passed=False;checks={};error=type(exc).__name__
-        results.append(dict(id=key,passed=passed,checks=checks,seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,synthetic_answer=answer,error=error,native=native[native_before:]))
+            answer=None;passed=False;checks={};error=type(exc).__name__;code=error_code(exc)
+        results.append(dict(id=key,passed=passed,checks=checks,seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,synthetic_answer=answer,error=error,error_code=code,native=native[native_before:]))
+        if payload.get('diagnose_rejection'):results[-1]['rejections']=rejections[rejection_before:]
         print(json.dumps({'case':results[-1]},ensure_ascii=False),flush=True)
         if error=='TimeoutError':break
     result=dict(passed=len(results)==len(cases) and all(c['passed'] for c in results),cases=results,usage=usage,
@@ -300,6 +329,9 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
     result['preload']=preload_result
     if payload.get('profile_only'):
         result.update(passed=False,evaluation_scope='single-request-stream-profile',diagnostic_completed=True)
+    if payload.get('diagnose_rejection'):
+        result.update(passed=False,evaluation_scope='rejected-synthetic-answer-diagnostic',
+            diagnostic_completed=len(results)==len(cases) and not any(c['error']=='TimeoutError' for c in results))
     print('VECTOR_DIALOGUE_RESULT='+json.dumps(result,ensure_ascii=False),flush=True)
 '''
 
@@ -375,7 +407,9 @@ def main():
     parser.add_argument('--source-root', type=Path, required=True)
     parser.add_argument('--workspace-root', type=Path, required=True)
     parser.add_argument('--lock-file', type=Path, required=True)
-    parser.add_argument('--profile-only', action='store_true')
+    diagnostic=parser.add_mutually_exclusive_group()
+    diagnostic.add_argument('--profile-only', action='store_true')
+    diagnostic.add_argument('--diagnose-rejection', action='store_true')
     parser.add_argument('--preload', action='store_true')
     args = parser.parse_args()
     if args.preload and not args.profile_only:parser.error('--preload requires --profile-only')
@@ -455,14 +489,14 @@ def main():
         manifest=dict(baseline=str(baseline),container_identity=guard.identity(row),
             candidate_sha256={name:guard.digest(source.encode()) for name,source in sources.items()},
             baseline_record_sha256=guard.digest((baseline/'record.json').read_bytes()),
-            evaluation_sha256=guard.digest(program),lock_file=str(args.lock_file),profile_only=args.profile_only,preload=args.preload)
+            evaluation_sha256=guard.digest(program),lock_file=str(args.lock_file),profile_only=args.profile_only,preload=args.preload,diagnose_rejection=args.diagnose_rejection)
         guard.write_private(report/'manifest.json',guard.canonical(manifest))
-        print('Begrenzte Ladepruefung (45 s), danach eine Streaming-Messung (20 s). Kein Rollout.' if args.preload else 'Eine synthetische Streaming-Messung, keine Aktivierung.' if args.profile_only else 'Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
+        print('Zwei synthetische Fragen mit Ablehnungsdiagnose. Keine Aktivierung.' if args.diagnose_rejection else 'Begrenzte Ladepruefung (45 s), danach eine Streaming-Messung (20 s). Kein Rollout.' if args.preload else 'Eine synthetische Streaming-Messung, keine Aktivierung.' if args.profile_only else 'Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
         print('Belege: '+str(report),flush=True)
         evaluation_id=uuid.uuid4().hex
         command = ['docker','exec','-i','-w','/code',config['container'],'python3','-c',WATCHDOG]
         try:
-            child = subprocess.run(command,input=json.dumps({'files':sources,'program':INNER,'evaluation_id':evaluation_id,'profile_only':args.profile_only,'preload':args.preload,'stream_profile':STREAM_PROFILE if args.profile_only else None}).encode(),capture_output=True,timeout=150,start_new_session=True)
+            child = subprocess.run(command,input=json.dumps({'files':sources,'program':INNER,'evaluation_id':evaluation_id,'profile_only':args.profile_only,'preload':args.preload,'diagnose_rejection':args.diagnose_rejection,'stream_profile':STREAM_PROFILE if args.profile_only else None}).encode(),capture_output=True,timeout=150,start_new_session=True)
         except subprocess.TimeoutExpired as exc:
             from types import SimpleNamespace
             child=SimpleNamespace(stdout=exc.stdout or b'',stderr=exc.stderr or b'',returncode=124)
@@ -493,13 +527,13 @@ def main():
         result['manifest_sha256']=guard.digest(guard.canonical(manifest))
         result['production_containers_and_profiles_unchanged']=unchanged
         result['passed']=bool(result.get('passed') and child.returncode==0 and unchanged)
-        if args.profile_only:
+        if args.profile_only or args.diagnose_rejection:
             result['passed']=False
             result['diagnostic_completed']=bool(result.get('diagnostic_completed') and child.returncode==0 and unchanged)
         guard.write_private(report/'result.json',guard.canonical(result))
         print(json.dumps(result,indent=2,ensure_ascii=False),flush=True)
         print('Kein automatischer Rollout. Echte Modellqualität und Antwortzeiten vor Aktivierung prüfen.',flush=True)
-        if not (result.get('diagnostic_completed') if args.profile_only else result['passed']):
+        if not (result.get('diagnostic_completed') if args.profile_only or args.diagnose_rejection else result['passed']):
             raise SystemExit(1)
 
 

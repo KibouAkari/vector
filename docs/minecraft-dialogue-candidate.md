@@ -63,3 +63,13 @@ and verifies termination before leaving the release guard. No service is
 stopped. Bounded leader observations explicitly mark omitted tied holders.
 Apostrophe digit grouping is normalized for numeric checks; ambiguous decimal
 and clock formats remain distinct.
+
+## Rejected-answer diagnosis
+
+`--diagnose-rejection` repeats only the synthetic clock and glass questions.
+It uses the same candidate and limits and optionally records a rejected,
+policy-safe synthetic answer of at most 320 characters with a bounded error
+code. Unsafe output is omitted. No production conversation is captured.
+Normal qualification does not log rejected prose. The mode cannot be combined
+with streaming profiling; its completed diagnostic never sets a quality pass
+or eligibility for activation. Semantic review remains required.
