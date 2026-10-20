@@ -23,6 +23,8 @@ SYSTEM = (
     'aufnehmen, trockener auch bissiger Spielhumor, aber keine erfundenen persönlichen Vorwürfe. '
     'Keine Begrüssung, Emojis, Links oder Befehle. Keine Standardrückfrage bei verständlicher Frage. '
     'Nur bei echter Mehrdeutigkeit gezielt nachfragen. Formuliere selbst statt Textbausteine zu kopieren. '
+    'Bei der globalen Bestenfrage den hinterlegten Spielwitz aufnehmen, bei benannten Bewertungen die Werte beurteilen. '
+    'Bei einer Schlechtestenfrage den Spielerkill-Spitzenreiter kurz und bissig aufziehen, nur spielbezogen. '
     'Allgemeines Minecraftwissen und kurze Alltagsgespräche sind erlaubt; bei Unsicherheit ehrlich bleiben. '
     'Aktuelle Uhrzeit und Serverangaben nur aus Beobachtungen/Werkzeugen. Fehlende Spielerwerte, '
     'Events, Berechtigungen und Mod-Einstellungen niemals erfinden. Waffennutzung ist keine Trefferquote. '
@@ -59,6 +61,7 @@ class PublicObservations:
     def initial(self, question):
         now = self.wall_clock().astimezone(self.zone)
         facts = {'clock': now.strftime('%Y-%m-%d %H:%M:%S %Z'), 'timezone': self.zone.key,
+                 'best_player_game_joke': self.assistant.stat_answer('wer ist der beste Spieler auf dem Server?'),
                  'documentation': self.documentation(question)}
         try:
             data = stats.snapshot(self.assistant.stats_dir, self.assistant.usercache)
@@ -67,7 +70,8 @@ class PublicObservations:
             leaders = {}
             for key, (label, unit, *_) in stats.METRICS.items():
                 top = stats.leaders(data, key)
-                leaders[label] = [{'player': p['name'], 'value': p['value'], 'unit': unit} for p in top[:3]]
+                leaders[label] = {'players': [{'player': p['name'], 'value': p['value'], 'unit': unit} for p in top[:3]],
+                                  'additional_tied_players': max(0,len(top)-3)}
             facts['leaders'] = leaders
             mentioned = [p for p in data['players'] if re.search(
                 r'(?<![a-z0-9_])' + re.escape(p['name']) + r'(?![a-z0-9_])', question, re.I)]
@@ -113,6 +117,7 @@ class GroundedDialogue:
         if getattr(provider, 'model', None) != MODEL:
             raise ValueError('UNQUALIFIED_DIALOGUE_MODEL')
         self.provider, self.clock = provider, clock
+        self.provider.context_tokens = 4096
         self.context = OrderedDict()
         self.lock = threading.Lock()
 

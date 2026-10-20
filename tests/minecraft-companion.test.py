@@ -74,6 +74,7 @@ class Companion(unittest.TestCase):
         self.assertIsInstance(kind,CompanionKnowledge)
         dialogue=GroundedDialogue(kind)
         self.assertIs(dialogue.provider,kind)
+        self.assertEqual(kind.context_tokens,4096)
         self.assertEqual(kind.usage,state.model_usage)
         import server
         with patch.dict(os.environ,{'VECTOR_MINECRAFT_KNOWLEDGE':'6','VECTOR_MINECRAFT_TIMEZONE':'Europe/Zurich'}), \

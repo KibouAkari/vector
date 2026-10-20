@@ -19,6 +19,7 @@ a verified Minecraft identity. Lookup types are statistics, portraits, reviewed
 documentation, recipes and the public installed-mod inventory. No command,
 shell, arbitrary-file or web tool exists.
 
+The candidate uses a 4096-token model context; legacy modes retain 2048 tokens.
 The model writes its own short answer. It sees at most two recent exchanges
 from the same authenticated author and source, expires them after three
 minutes, and retains at most 256 scopes in RAM. The prior answer and a changing

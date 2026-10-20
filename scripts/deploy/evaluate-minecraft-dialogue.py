@@ -27,7 +27,7 @@ payload=json.load(sys.stdin)
 with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-') as temporary:
     root=Path(temporary)
     for name,content in payload['files'].items():
-        if name not in ('runtime.py','dialogue.py','server.py'):raise RuntimeError('INVALID_CANDIDATE_FILE')
+        if name not in ('runtime.py','dialogue.py','server.py','knowledge.py'):raise RuntimeError('INVALID_CANDIDATE_FILE')
         (root/name).write_text(content)
     sys.path[:0]=[str(root),'/code']
     from runtime import Assistant,State
@@ -114,7 +114,7 @@ def main():
         expected['expected_profile_sha256'] = guard.digest(guard.canonical(profile))
         guard.validate_live(expected, before, profile)
         sources = {}
-        for name in ('runtime.py','dialogue.py','server.py'):
+        for name in ('runtime.py','dialogue.py','server.py','knowledge.py'):
             path = guard.checked_path(str(args.source_root/'services/minecraft-assistant'/name))
             text = path.read_text()
             ast.parse(text)
