@@ -87,7 +87,9 @@ class GeneralKnowledge(LocalKnowledge):
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self,*args):return None
         opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
-        value=None;ok=False
+        value=None;ok=False;error=None
+        diagnostic=getattr(self,'diagnostic',None)
+        started=time.monotonic() if callable(diagnostic) else None
         try:
             req=urllib.request.Request(self.endpoint+'/api/chat',json.dumps(payload).encode(),{'Content-Type':'application/json'})
             with opener.open(req,timeout=min(getattr(self, 'native_timeout', 16 if predict==24 else 12),remaining)) as response:raw=response.read(32769)
@@ -98,12 +100,29 @@ class GeneralKnowledge(LocalKnowledge):
                 raise ValueError('INCOMPLETE_MODEL_RESPONSE')
             content=json.loads(value['message']['content'])
             result=validator(content);ok=True;return result
+        except Exception as exc:
+            error=type(exc).__name__
+            raise
         finally:
             if self.usage:
                 def count(key):
                     n=value.get(key) if isinstance(value,dict) else None
                     return n if type(n) is int and n>=0 else None
                 self.usage(self.model,count('prompt_eval_count'),count('eval_count'),ok)
+            if callable(diagnostic):
+                # Opt-in evaluation metadata only. Never include messages or model prose.
+                report=dict(prompt_characters=sum(len(m.get('content','')) for m in messages),
+                            schema_bytes=len(json.dumps(schema).encode()),num_predict=predict,
+                            context_tokens=payload['options']['num_ctx'],
+                            transport_seconds=round(time.monotonic()-started,3),error=error)
+                if isinstance(value,dict):
+                    for key in ('prompt_eval_count','eval_count','load_duration','prompt_eval_duration','eval_duration'):
+                        number=value.get(key)
+                        report[key]=number if type(number) is int and number>=0 else None
+                    reason=value.get('done_reason')
+                    report['done_reason']=reason if reason in ('stop','length') else None
+                try:diagnostic(report)
+                except Exception:pass
     def answer_scoped(self,question,mods,scope):
         if not isinstance(question,str) or len(question)>1200:raise ValueError('LOCAL_QUESTION_LIMIT')
         if not isinstance(mods,list) or len(mods)>200 or any(not isinstance(x,str) or not re.fullmatch(r'[a-z0-9_.-]{1,64}',x) for x in mods) or len(', '.join(mods))>2400:
