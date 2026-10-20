@@ -7,6 +7,7 @@ import sys
 import json
 import tempfile
 import unittest
+from zoneinfo import ZoneInfo
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -130,7 +131,7 @@ class DialogueTests(unittest.TestCase):
 
     def test_compact_prompt_has_stable_prefix_and_bounded_prediction(self):
         from dialogue import SYSTEM
-        self.assertLess(len(SYSTEM),1100)
+        self.assertLess(len(SYSTEM),520)
         provider=Provider([{'answer':'Hallo.'}]);observations=Observations()
         original=provider.request
         budgets=[]
@@ -140,6 +141,42 @@ class DialogueTests(unittest.TestCase):
         self.assertEqual(budgets,[80])
         self.assertNotIn('wording_variant',provider.calls[0][-1]['content'])
 
+    def test_clock_prompt_omits_unrequested_self_counters_but_retains_verified_identity(self):
+        from runtime import Assistant,State
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);folder=root/'stats';folder.mkdir()
+            uid='10000000-0000-0000-0000-000000000001'
+            path=folder/(uid+'.json')
+            path.write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':25}}}))
+            cache=root/'users.json';cache.write_text(json.dumps([dict(uuid=uid,name='ExampleOne')]))
+            mods=root/'mods.json';mods.write_text('[]')
+            ai=Assistant(State(root/'state.sqlite',b'q'*32),folder,cache,mods)
+            observations=PublicObservations(ai,('minecraft',uid),uid,timezone='Europe/Zurich',
+                wall_clock=lambda:datetime(2026,10,20,12,34,tzinfo=ZoneInfo('Europe/Zurich')))
+            facts=observations.initial('Wie spät haben wir es eigentlich?')
+            self.assertEqual(facts['players'],[])
+            self.assertEqual(facts['self_player'],'ExampleOne')
+            self.assertNotIn('best_player_game_joke',facts)
+            provider=Provider([{'answer':'Es ist 12:34 Uhr.'}])
+            GroundedDialogue(provider).answer('Wie spät haben wir es eigentlich?',('minecraft',uid),observations)
+            size=sum(len(m['content']) for m in provider.calls[0])
+            self.assertLess(size,900)
+            self.assertIn('25',observations.lookup('statistics','Wie viele Mobkills hat ExampleOne?'))
+            path.write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':31}}}))
+            self.assertIn('31',observations.lookup('statistics','Wie viele Mobkills hat ExampleOne?'))
+
+    def test_private_game_joke_remains_a_backend_lookup_and_docs_are_bounded(self):
+        from unittest.mock import Mock
+        ai=SimpleNamespace(stat_answer=Mock(return_value='SYNTHETIC_OPERATOR_GAME_JOKE'),
+            knowledge=SimpleNamespace(pack=None,documentation=SimpleNamespace(search=lambda *args:[
+                {'id':str(i),'text':'x'*300} for i in range(3)])),mods=lambda:[])
+        observations=PublicObservations(ai,('minecraft','a'),None)
+        docs=observations.documentation('Wie geht das?')
+        self.assertEqual(len(docs),2)
+        self.assertTrue(all(len(row['text'])==240 and row['truncated'] for row in docs))
+        self.assertEqual(observations.lookup('statistics','Wer ist der beste Spieler?'),'SYNTHETIC_OPERATOR_GAME_JOKE')
+
 
 if __name__ == '__main__':
     unittest.main()
+

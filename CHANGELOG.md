@@ -2,6 +2,12 @@
 
 The complete dated history is retained below. Historical scripts and paths describe their original change, not current installation instructions. Private server labels, operating paths and release identifiers are generalized in this copy; exact evidence remains in the private archive and immutable Git history. New entries extend the history rather than replacing it.
 
+## 2026-10-20 — Reduce the fixed context before the first conversational token
+
+- Keep the experimental local mode gated. Shorten its fixed instruction text from 831 to 475 characters using concise internal English instructions while still requiring German replies; use compact JSON envelopes. Backend policy, tool permissions, identity checks, output validation and deadlines remain unchanged.
+- Stop attaching own-player counters and the configured game joke to unrelated initial questions. Authenticated self identity remains explicit, named-player evidence remains available, and fresh counters/operator jokes are still fetched through the existing public statistics lookup. Bound both documentation-index and knowledge-pack snippets to two rows.
+- Thirteen dialogue tests pass locally, including a synthetic clock prompt below 900 characters, preserved verified identity, fresh changed counters and retained operator-joke lookup. Seventeen preload/stream/evaluator guard tests also pass. These checks prove smaller source payloads and retained boundaries, not native speed or universal answer quality; no service activation or game restart.
+
 ## 2026-10-20 — Separate diagnostic model loading from response latency
 
 - Add explicit `--preload --profile-only` qualification diagnostics. Send one empty local chat preload under the existing restricted CPU slot, bounded to 45 seconds with no prompt, schema or user context; retain the pinned model, 4096 context, two threads and five-minute keep-alive. Reject unexpected generated text/tokens and record loading metadata separately.
