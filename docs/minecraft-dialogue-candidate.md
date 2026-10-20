@@ -59,7 +59,9 @@ improvement, not a silently relaxed safety gate.
 `scripts/deploy/evaluate-minecraft-dialogue.py` uses the confirmed operator
 release as its baseline, preserves the installed private catalog pins and
 server aliases in a temporary candidate, and runs four synthetic questions in
-a separate exec process. It records individual regression checks, including
+a separate exec process: generated smalltalk, game help, a player portrait and
+an own-player follow-up. A separate direct clock check uses no inference and
+is cleared from conversational context before the four questions. It records individual regression checks, including
 unsupported temperatures, a missing game-based interpretation and fresh
 self statistics changed between turns. Semantic review of actual answers
 is still required even when these checks pass. Reply origins and their totals

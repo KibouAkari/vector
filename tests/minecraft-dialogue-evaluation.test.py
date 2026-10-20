@@ -28,6 +28,8 @@ class Evaluation(unittest.TestCase):
         exec(compile(ast.Module(body=[function],type_ignores=[]),'case-checks','exec'),namespace)
         check=namespace['case_checks']
         rejected=(
+            ('smalltalk','Was möchtest du genau wissen? Beschreibe kurz dein Ziel.'),
+            ('smalltalk','Ich bin gerade nicht verfügbar, versuche es später.'),
             ('unlisted-gameplay','Sand wird im Ofen zu Glas bei 1500 Grad.'),
             ('unlisted-gameplay','Sand im Ofen schmelzen, das Ergebnis ist,'),
             ('player-opinion','ExampleTwo hat 90 Monster getötet. Keine Spielersterbe aufgezeichnet.'),
@@ -38,6 +40,7 @@ class Evaluation(unittest.TestCase):
         for key,answer in rejected:
             with self.subTest(key=key,answer=answer):self.assertFalse(all(check(key,answer).values()))
         accepted=(
+            ('smalltalk','Mir geht es gut, bereit fürs nächste Abenteuer!'),
             ('unlisted-gameplay','Sand mit Brennstoff im Ofen schmelzen, dann erhältst du Glas.'),
             ('player-opinion','ExampleTwo wirkt mit 90 Mobkills wie der Albtraum der Monster.'),
             ('own-context','Du hast inzwischen 31 Mobkills.'))
