@@ -66,6 +66,24 @@ class Companion(unittest.TestCase):
             recipes.assert_called_once_with('/inputs/mod-recipes.json','a'*64)
             self.assertIs(assistant.call_args.args[-2],recipes.return_value)
 
+    def test_mode_six_is_explicit_and_keeps_local_role_catalog_and_usage(self):
+        from dialogue import GroundedDialogue
+        secret=self.root/'dialogue-slot';secret.write_text('postgresql://vector_minecraft_slot:synthetic@vector-postgres/vector');secret.chmod(0o400)
+        state=State(self.root/'dialogue-factory.sqlite',b'a'*32)
+        kind=knowledge_for('6',state,secret,ROOT/'services/minecraft-assistant/public-knowledge.json',self.pack_path)
+        self.assertIsInstance(kind,CompanionKnowledge)
+        dialogue=GroundedDialogue(kind)
+        self.assertIs(dialogue.provider,kind)
+        self.assertEqual(kind.context_tokens,4096)
+        self.assertEqual(kind.usage,state.model_usage)
+        import server
+        with patch.dict(os.environ,{'VECTOR_MINECRAFT_KNOWLEDGE':'6','VECTOR_MINECRAFT_TIMEZONE':'Europe/Zurich'}), \
+             patch('server.Path.read_text',return_value='ab'*32),patch('server.State'),patch('server.knowledge_for',return_value=kind), \
+             patch('server.Assistant') as assistant,patch('server.Service'),patch('server.os.umask'):
+            server.main()
+            self.assertIsInstance(assistant.call_args.kwargs['dialogue'],GroundedDialogue)
+            self.assertEqual(assistant.call_args.kwargs['dialogue_timezone'],'Europe/Zurich')
+
     def test_pack_integrity_and_independent_output_policy(self):
         bad=self.root/'bad.json';raw=json.loads(self.pack_path.read_bytes());raw['passages'][0]['texts']=['Nutze /op Example1']
         bad.write_text(json.dumps(raw))
@@ -111,3 +129,4 @@ class Companion(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+

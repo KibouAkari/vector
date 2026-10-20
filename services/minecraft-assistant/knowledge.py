@@ -82,7 +82,7 @@ class GeneralKnowledge(LocalKnowledge):
         if remaining<=0:raise TimeoutError('LOCAL_DEADLINE')
         payload={'model':self.model,'stream':False,'keep_alive':'5m','format':schema,
           'options':{'temperature':0.7,'top_p':0.8,'top_k':20,'min_p':0,'seed':17,
-                     'num_ctx':2048,'num_predict':predict,'num_thread':2},'messages':messages}
+                     'num_ctx':getattr(self,'context_tokens',2048),'num_predict':predict,'num_thread':2},'messages':messages}
         if MODEL_THINKING[self.model] is not None:payload['think']=MODEL_THINKING[self.model]
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self,*args):return None
@@ -154,5 +154,6 @@ class GeneralKnowledge(LocalKnowledge):
                 return answer
         except Exception:
             self.clear(scope);raise
+
 
 
