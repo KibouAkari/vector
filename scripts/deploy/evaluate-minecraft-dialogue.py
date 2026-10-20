@@ -53,7 +53,7 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-') as temporary:
     cases=[('clock','Wie spät haben wir es eigentlich?',lambda a:'12:34' in a),
            ('unlisted-gameplay','Wie wird Sand zu Glas?',lambda a:'sand' in a.casefold() and any(w in a.casefold() for w in ('ofen','schmelz'))),
            ('player-opinion','Roaste ExampleTwo kurz anhand seines Monsterkontos.',lambda a:'ExampleTwo' in a and '90' in a),
-           ('own-context','Und wie viele habe dann ich?',lambda a:'25' in a and '90' not in a)]
+           ('own-context','Und wie viele habe dann ich?',lambda a:'25' in a and any(w in a.casefold() for w in ('du','dein','exampleone')))]
     results=[]
     for key,question,check in cases:
         before=len(usage);start=time.monotonic()
@@ -70,7 +70,8 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-') as temporary:
         output_tokens=sum(c['output_tokens'] or 0 for c in usage),
         unknown_usage_calls=sum(c['input_tokens'] is None or c['output_tokens'] is None for c in usage),
         model=MODEL,cloud_calls=0,api_cost_chf=0,messages_sent=0,production_activated=False,
-        production_ledger_writes=False,temporary_state_only=True)
+        production_ledger_writes=False,temporary_state_only=True,
+        native_semantics_require_manual_review=True,eligible_for_activation=False)
     print('VECTOR_DIALOGUE_RESULT='+json.dumps(result,ensure_ascii=False),flush=True)
 '''
 
@@ -159,8 +160,11 @@ def main():
             elif line.startswith('{'):
                 print(line,flush=True)
         after = guard.inventory()
-        unchanged = ({name:guard.identity(value) for name,value in before.items()} ==
-                     {name:guard.identity(value) for name,value in after.items()}
+        def observed(value):
+            state=value['State']
+            return (*guard.identity(value),state.get('Running'),state.get('OOMKilled'),state.get('Health',{}).get('Status'))
+        unchanged = ({name:observed(value) for name,value in before.items()} ==
+                     {name:observed(value) for name,value in after.items()}
                      and active.read_bytes() == saved.read_bytes()
                      and guard.tree_files(code) == record['candidate_files'])
         if result is None:
