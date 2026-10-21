@@ -53,11 +53,11 @@ Vector includes a cinematic black-hole login, workspace dashboard, conversations
 
 Vector chooses its execution strategy based on the work, rather than running an agent team for every request.
 
-**Fast path** — a direct model call for a question, summary or rewrite.
+**Fast path** - a direct model call for a question, summary or rewrite.
 
-**Artifact path** — structured generation and deterministic renderers for documents and other files.
+**Artifact path** - structured generation and deterministic renderers for documents and other files.
 
-**Agent path** — tools, investigation and verification for work that genuinely needs multiple steps. Privileged actions require an approval boundary.
+**Agent path** - tools, investigation and verification for work that genuinely needs multiple steps. Privileged actions require an approval boundary.
 
 Provider quality, cost, latency, privacy and availability are intended to guide routing decisions. That advanced policy layer is still being developed and evaluated.
 
