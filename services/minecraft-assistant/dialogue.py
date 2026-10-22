@@ -262,7 +262,7 @@ class PublicObservations:
         if page is not None:
             if isinstance(page,tuple):
                 metric,page,self.statistics_success=page
-                self.metric_topic=(metric,)
+                self.metric_topic=metric if isinstance(metric,tuple) else (metric,)
             return page
         if (re.search(r'^\s*wer\s+ist\b',question,re.I)
                 and re.search(r'\bbeste[rn]?\s+(?:minecraft[ -]+)?spieler\b|\bschlechteste[rn]?\s+(?:minecraft[ -]+)?(?:spieler|player)\b',question,re.I)
@@ -483,4 +483,5 @@ class GroundedDialogue:
         if not re.search(r'[.!?][\"»”)]*$', value) or re.search(r'\b(?:und|oder|weil|dass|ist|sind)\s*[.!?]$', value, re.I):
             raise ValueError('INCOMPLETE_DIALOGUE_SENTENCE')
         return value
+
 

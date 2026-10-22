@@ -534,10 +534,47 @@ class Assistant:
             raise ValueError('INVALID_MOD_INVENTORY')
         return sorted(set(value))
 
+    def all_category_leaders(self):
+        """Read server-wide leaders structurally, without player-name parsing."""
+        try:
+            data=stats.snapshot(self.stats_dir,self.usercache)
+            stats.require_complete(data)
+            details=[]
+            for metric,(label,unit,*_) in stats.METRICS.items():
+                leaders=stats.leaders(data,metric)
+                details.append(label+': '+('/'.join(p['name'] for p in leaders)+' '+number(leaders[0]['value'],unit)
+                    if leaders[0]['value']>0 else 'noch kein positiver Rekord'))
+            text='; '.join(details)+'.'
+            # None requests complete category pages, never a truncated summary.
+            return (text,True) if len(text)<=320 else (None,False)
+        except (OSError,ValueError,TypeError,KeyError):
+            return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.',False
+
+    def category_leaders(self,metric,limit):
+        """Structured server-wide page; category words can also be usernames."""
+        try:
+            data=stats.snapshot(self.stats_dir,self.usercache)
+            stats.require_complete(data)
+            leaders=stats.leaders(data,metric,limit)
+            if len(leaders)>10:
+                return 'es gibt mehr als zehn gleichplatzierte Spieler. Bitte grenze die Frage ein.',False
+            label,unit,*_=stats.METRICS[metric]
+            text=label+': '+'; '.join(str(1+sum(other['value']>p['value'] for other in leaders))+'. '+p['name']+' '+number(p['value'],unit) for p in leaders)+'.'
+            if len(text)>320:
+                return 'die Liste ist für eine Chatantwort zu lang. Bitte frage nach einer kleineren Rangliste.',False
+            return text,True
+        except (OSError,ValueError,TypeError,KeyError):
+            return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.',False
+
     def ranking_page(self, question, scope, *, with_metric=False, with_outcome=False):
-        q=unicodedata.normalize('NFKC',question).casefold()
+        q=ranking_numbers(unicodedata.normalize('NFKC',question).casefold())
+        q=re.sub(r'(\ball(?:e|er|en)\s+)kathegorien\b',r'\1kategorien',q)
         all_top=re.search(r'\btop\s*(\d+)\b',q)
         all_top=all_top if all_top and re.search(r'\ball(?:e|er|en)\s+(?:rekorde|ranglisten|kategorien|statistiken)\b',q) else None
+        if all_top and re.search(r'\btop\s*\d+[.,]\d',q):
+            return 'frage bitte nach einer ganzen Top-Zahl von 1 bis 10.'
+        if all_top and re.search(r'\b(?:heute|gestern|morgen|seit|täglich|taeglich|wöchentlich|monatlich|jährlich)\b|\b(?:tag(?:e[n]?)?|woche[n]?|monat(?:e[n]?)?|jahr(?:e[n]?)?)\b',q):
+            return 'Ich habe nur gespeicherte Gesamtzähler, keine Aufteilung nach diesem Zeitraum. Für diesen Zeitraum kann ich daher keinen Wert nennen.'
         next_page=bool(PAGE_NEXT.fullmatch(q))
         now=time.monotonic()
         with self.ranking_lock:
@@ -545,9 +582,16 @@ class Assistant:
                 if self.ranking_pages[key][2]<=now:self.ranking_pages.pop(key,None)
             prior=self.ranking_pages.pop(scope,None)
             if all_top:
-                if explicit_subjects(q):return 'meinst du die serverweiten Ranglisten oder die Werte eines bestimmten Spielers?'
+                scope_q=re.sub(r'\bmein(?:e[rmns]?)?\s+(?:minecraft[ -]+)?server\b','server',q)
+                if explicit_subjects(q) or re.search(r'\bmein(?:e[rmns]?)?\b|\b(?:von|bei)\s+mir\b',scope_q):return 'meinst du die serverweiten Ranglisten oder die Werte eines bestimmten Spielers?'
                 limit=int(all_top[1])
                 if not 1<=limit<=10:return 'frage bitte nach Top 1 bis Top 10.'
+                if limit==1:
+                    summary,success=self.all_category_leaders()
+                    if summary is not None:
+                        metrics=tuple(stats.METRICS) if success else ()
+                        if with_metric and with_outcome:return metrics,summary,success
+                        return (metrics,summary) if with_metric else summary
                 remaining=list(stats.METRICS)
             elif next_page and prior:
                 limit,remaining,_=prior
@@ -556,12 +600,10 @@ class Assistant:
             if remaining:
                 self.ranking_pages[scope]=(limit,remaining,now+180)
                 while len(self.ranking_pages)>256:self.ranking_pages.popitem(last=False)
-        outcome={}
-        text=self.stat_answer('Top '+str(limit)+' '+stats.METRICS[metric][0],outcome=outcome)
-        text=text.removesuffix(' Stand: gespeicherte Spielerdateien.')
+        text,success=self.category_leaders(metric,limit)
         notice=(' Weiter?' if remaining else ' Letzte Kategorie.') if with_metric else (' Für die nächste Kategorie: Hey Vector, weiter.' if remaining else ' Das war die letzte Kategorie.')
         text=text+notice
-        if with_metric and with_outcome:return metric,text,outcome.get('success') is True
+        if with_metric and with_outcome:return metric,text,success
         return (metric,text) if with_metric else text
 
     def stat_answer(self, question, block_items=(), *, principal=None, outcome=None):
@@ -822,6 +864,7 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 
 
 
