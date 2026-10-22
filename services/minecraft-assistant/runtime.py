@@ -535,9 +535,12 @@ class Assistant:
         return sorted(set(value))
 
     def ranking_page(self, question, scope, *, with_metric=False, with_outcome=False):
-        q=unicodedata.normalize('NFKC',question).casefold()
+        q=ranking_numbers(unicodedata.normalize('NFKC',question).casefold())
+        q=re.sub(r'(\ball(?:e|er|en)\s+)kathegorien\b',r'\1kategorien',q)
         all_top=re.search(r'\btop\s*(\d+)\b',q)
         all_top=all_top if all_top and re.search(r'\ball(?:e|er|en)\s+(?:rekorde|ranglisten|kategorien|statistiken)\b',q) else None
+        if all_top and re.search(r'\bheute\b|\bgestern\b|\bdiese[rnms]?\s+(?:woche|monat|jahr)\b',q):
+            return 'Ich habe nur gespeicherte Gesamtzähler, keine Aufteilung nach diesem Zeitraum. Für diesen Zeitraum kann ich daher keinen Wert nennen.'
         next_page=bool(PAGE_NEXT.fullmatch(q))
         now=time.monotonic()
         with self.ranking_lock:
@@ -545,9 +548,16 @@ class Assistant:
                 if self.ranking_pages[key][2]<=now:self.ranking_pages.pop(key,None)
             prior=self.ranking_pages.pop(scope,None)
             if all_top:
-                if explicit_subjects(q):return 'meinst du die serverweiten Ranglisten oder die Werte eines bestimmten Spielers?'
+                if explicit_subjects(q) or re.search(r'\b(?:ich|mein\w*|von mir|für mich)\b',q):return 'meinst du die serverweiten Ranglisten oder die Werte eines bestimmten Spielers?'
                 limit=int(all_top[1])
                 if not 1<=limit<=10:return 'frage bitte nach Top 1 bis Top 10.'
+                if limit==1:
+                    summary_outcome={}
+                    summary=self.stat_answer('alle Rekorde',outcome=summary_outcome)
+                    summary=summary.removesuffix(' Stand: gespeicherte Spielerdateien.')
+                    if summary_outcome.get('success') is True:
+                        if with_metric and with_outcome:return tuple(stats.METRICS),summary,True
+                        return (tuple(stats.METRICS),summary) if with_metric else summary
                 remaining=list(stats.METRICS)
             elif next_page and prior:
                 limit,remaining,_=prior
@@ -822,6 +832,7 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 
 
 

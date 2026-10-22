@@ -108,6 +108,51 @@ class Transport(unittest.TestCase):
                 (('play_time','distance','mob_kills','player_kills','deaths')[index],))
         self.assertEqual(self.provider.calls,[])
 
+    def test_top_one_all_categories_accepts_punctuation_and_spelling_without_inference(self):
+        for question in ('Kannst du mir die top 1. in allen kathegorien geben?',
+                'Zeige mir Top eins in allen Kategorien', 'Top 1 aller Rekorde'):
+            self.now[0]+=61
+            text=self.ask(question)
+            for label in ('Spielzeit:','Strecke:','Mobkills:','Spielerkills:','Tode:'):
+                self.assertIn(label,text)
+            self.assertIn('ExampleTwo 90 Kills',text)
+            self.assertNotIn('Weiter?',text)
+            self.assertNotIn('2 Spieler;',text)
+            self.assertLessEqual(len(text),420)
+            self.assertEqual(self.dialogue.context[('minecraft',self.ids[0])][1][-1]['metrics'],
+                ('play_time','distance','mob_kills','player_kills','deaths'))
+        self.assertEqual(self.provider.calls,[])
+
+    def test_all_category_summary_keeps_ties_fresh_values_and_rejects_timeframes(self):
+        self.write(0,90,9)
+        text=self.ask('Top 1 in allen Kategorien')
+        self.assertIn('ExampleOne/ExampleTwo 90 Kills',text)
+        self.write(0,105,9)
+        text=self.ask('Top 1 in allen Kategorien')
+        self.assertIn('ExampleOne 105 Kills',text)
+        self.assertNotIn('ExampleOne/ExampleTwo 90 Kills',text)
+        self.assertIn('keine Aufteilung',self.ask('Top 1 in allen Kategorien heute'))
+        self.assertFalse(self.dialogue.context[('minecraft',self.ids[0])][1][-1]['statistics_success'])
+        self.assertEqual(self.provider.calls,[])
+
+    def test_long_all_category_summary_falls_back_to_complete_pages(self):
+        names=['Player'+str(i).zfill(10) for i in range(10)]
+        ids=['10000000-0000-0000-0000-'+str(i+1).zfill(12) for i in range(10)]
+        self.cache.write_text(json.dumps([dict(uuid=uid,name=name) for uid,name in zip(ids,names)]))
+        for i,uid in enumerate(ids):
+            (self.stats/(uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{
+                'minecraft:play_time':72000*(i+1),'minecraft:mob_kills':30,
+                'minecraft:deaths':100+i,'minecraft:player_kills':40+i,'minecraft:walk_one_cm':100000*(i+1)}}}))
+        text=self.ask('Top 1 in allen Kategorien')
+        self.assertIn('Spielzeit:',text);self.assertIn('Weiter?',text)
+        self.assertNotIn('Mobkills:',text)
+        self.assertEqual(self.dialogue.context[('minecraft',self.ids[0])][1][-1]['metrics'],('play_time',))
+        self.assertIn('Strecke:',self.ask('weiter'))
+        text=self.ask('weiter')
+        for name in names:self.assertIn(name,text)
+        self.assertIn('Mobkills:',text)
+        self.assertEqual(self.provider.calls,[])
+
     def test_pages_cannot_be_read_by_another_source_or_player(self):
         self.ask('Gib mir die Top 5 aller Rekorde')
         self.assertIsNone(self.ai.ranking_page('weiter',('discord',self.ids[0]),with_metric=True))
@@ -306,3 +351,4 @@ class Transport(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
