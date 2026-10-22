@@ -45,7 +45,7 @@ def personal_reference(question):
     """A request beneficiary ('gib mir') does not select personal counters."""
     question=re.sub(r'\bich\s+(?:möchte|moechte|will|hätte|haette)\b',' ',question,flags=re.I)
     question=re.sub(r'\bmein(?:e[rmns]?)?\s+(?:minecraft[ -]+)?server\b','server',question,flags=re.I)
-    return bool(re.search(r'\b(?:ich|mich|mein(?:e|er|es|em|en)?|i|me|my)\b|\bvon\s+mir\b',question,re.I))
+    return bool(re.search(r'\b(?:ich|mich|mein(?:e|er|es|em|en)?|i|me|my)\b|\b(?:von|bei)\s+mir\b',question,re.I))
 
 
 def saved_statistic_form(question,roster):
@@ -241,6 +241,8 @@ class PublicObservations:
             elif not mentioned and reference and not self.ranking_reference:
                 previous=set(history[-1].get('subjects',()))
                 mentioned = named(reference) or [p for p in data['players'] if p['name'] in previous]
+            if not (self.metric_topic or structured_player_request(question) or reference and history[-1].get('origin','').startswith('tool-')):
+                mentioned=[]
             labels = {'play_time': 'Spielstunden', 'distance': 'Strecke_km',
                       'mob_kills': 'Mobkills', 'player_kills': 'Spielerkills', 'deaths': 'Tode'}
             facts['players'] = [{'player': p['name'], 'values': {

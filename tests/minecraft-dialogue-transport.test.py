@@ -112,7 +112,15 @@ class Transport(unittest.TestCase):
         self.assertIn('keine bestätigte Spielerverknüpfung',self.ask('Welche Ränge habe ich?',source='discord'))
         self.assertEqual(self.provider.calls,[])
 
+    def test_locative_self_reference_keeps_authenticated_player_binding(self):
+        self.assertIn('25 Mobkills',self.ask('Wie viele Mobkills sind bei mir?'))
+        text=self.ask('Wie viele Mobkills sind bei mir?',source='discord')
+        self.assertIn('keine bestätigte Spielerverknüpfung',text)
+        self.assertNotIn('25',text)
+        self.assertEqual(self.provider.calls,[])
+
     def test_casual_conversation_keeps_one_own_exchange_without_unneeded_counters(self):
+        self.cache.write_text(json.dumps([dict(uuid=uid,name=name) for uid,name in zip(self.ids,('ExampleOne','Heute'))]))
         self.provider.outputs=[{'answer':'Mach eine Pause, selbst dein Sofa will mal Erfahrung sammeln!'},
             {'answer':'Dein Akku verdient eine Pause, die Welt wartet kurz.'},
             {'answer':'Erstmal durchatmen, der Tag rennt nicht weg.'}]
