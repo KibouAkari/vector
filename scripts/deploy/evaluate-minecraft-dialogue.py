@@ -246,6 +246,12 @@ def case_checks(key, answer):
         # language/meaning classifier or a production output policy.
         checks['no_unprompted_death_claim']=not re.search(r'\b(?:umgekommen|gestorben|tot|sterben)\b',q)
         checks['not_addressing_itself']=not re.search(r'^\s*(?:hey|hallo|hi|yoo)\s+vector\b',q)
+    elif key in ('character-rest','character-followup'):
+        checks['brief']=len(answer)<=240
+        checks['german_address']=bool(re.search(r'\b(?:du|dir|dein\w*|dich|ich|mir|mal)\b',q))
+        checks['rest_context']=bool(re.search(r'pause|akku|energie|müd|mued|platt|ruh|bett|sofa|kaffee|schlaf|entspann|erhol|auszeit|ausruhen',q))
+        checks['not_generic_fallback']=not any(t in q for t in ('was möchtest du genau','beschreibe kurz dein ziel','nicht verfügbar','versuche es später','welche mod'))
+        checks['not_addressing_itself']=not re.search(r'^\s*(?:hey|hallo|hi|yoo)\s+vector\b',q)
     elif key=='unlisted-gameplay':
         checks['sand_to_glass_in_furnace']=all(w in q for w in ('sand','glas','ofen')) and 'schmelz' in q
         checks['no_invented_temperature']=not re.search(r'\d|°|temperatur|grad\b',answer,re.I)
@@ -318,6 +324,10 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
                 seconds=round(time.monotonic()-start,3),model_calls=len(usage)-before,text=answer)
             dialogue.clear(scope)
             print(json.dumps({'direct_clock_check':direct_clock},ensure_ascii=False),flush=True)
+    if payload.get('character_only'):
+        dialogue.clear(scope)
+        cases=[('character-rest','Ich bin heute völlig platt. Muntere mich mit einem kurzen, frechen Spruch auf.'),
+               ('character-followup','Und wie sieht dein Plan für meine Pause aus?')]
     if payload.get('profile_only'):cases=cases[:1]
     if payload.get('diagnose_rejection'):cases=cases[:2]
     results=[]
@@ -333,6 +343,7 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
             origin=dialogue.provenance(scope) if callable(getattr(dialogue,'provenance',None)) else 'unreported'
             checks=case_checks(key,answer)
             if not payload.get('profile_only') and not payload.get('diagnose_rejection') and origin!='unreported':
+                if key in ('character-rest','character-followup'):checks['generated_conversation']=origin=='generated' and len(usage)-before==1
                 if key=='clock':checks['direct_without_model']=origin=='direct-clock' and len(usage)==before
                 if key=='smalltalk':checks['generated_conversation']=origin=='generated' and len(usage)-before==1
                 if key=='player-opinion':
@@ -349,7 +360,7 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
         print(json.dumps({'case':results[-1]},ensure_ascii=False),flush=True)
         # A useful reviewed fallback must not hide a stalled native request or
         # trigger more probes while backend cancellation is still uncertain.
-        if error=='TimeoutError' or any(row.get('error')=='TimeoutError' for row in native[native_before:]):break
+        if error=='TimeoutError' or any(row.get('error')=='TimeoutError' for row in native[native_before:]) or payload.get('character_only') and not passed:break
     result=dict(passed=len(results)==len(cases) and all(c['passed'] for c in results) and (direct_clock is None or direct_clock['passed']),cases=results,usage=usage,
         expected_cases=len(cases),completed_cases=len(results),
         model_calls=len(usage),input_tokens=None if any(c['input_tokens'] is None for c in usage) else sum(c['input_tokens'] for c in usage),
@@ -360,6 +371,9 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
         model=MODEL,cloud_calls=0,api_cost_chf=0,messages_sent=0,production_activated=False,
         production_ledger_writes=False,temporary_state_only=True,
         native_semantics_require_manual_review=True,eligible_for_activation=False)
+    if payload.get('character_only'):
+        result['evaluation_scope']='local-character-and-conversational-reference'
+        result['humor_requires_manual_review']=True
     result['preload']=preload_result
     result['direct_clock_check']=direct_clock
     result['reply_origins']={origin:sum(c['reply_origin']==origin for c in results) for origin in sorted({c['reply_origin'] for c in results})}
@@ -446,6 +460,7 @@ def main():
     diagnostic=parser.add_mutually_exclusive_group()
     diagnostic.add_argument('--profile-only', action='store_true')
     diagnostic.add_argument('--diagnose-rejection', action='store_true')
+    diagnostic.add_argument('--character-only', action='store_true')
     parser.add_argument('--preload', action='store_true')
     args = parser.parse_args()
     if args.preload and not args.profile_only:parser.error('--preload requires --profile-only')
@@ -525,14 +540,14 @@ def main():
         manifest=dict(baseline=str(baseline),container_identity=guard.identity(row),
             candidate_sha256={name:guard.digest(source.encode()) for name,source in sources.items()},
             baseline_record_sha256=guard.digest((baseline/'record.json').read_bytes()),
-            evaluation_sha256=guard.digest(program),lock_file=str(args.lock_file),profile_only=args.profile_only,preload=args.preload,diagnose_rejection=args.diagnose_rejection)
+            evaluation_sha256=guard.digest(program),lock_file=str(args.lock_file),profile_only=args.profile_only,preload=args.preload,diagnose_rejection=args.diagnose_rejection,character_only=args.character_only)
         guard.write_private(report/'manifest.json',guard.canonical(manifest))
-        print('Zwei synthetische Fragen mit Ablehnungsdiagnose. Keine Aktivierung.' if args.diagnose_rejection else 'Begrenzte Ladepruefung (45 s), danach eine Streaming-Messung (20 s). Kein Rollout.' if args.preload else 'Eine synthetische Streaming-Messung, keine Aktivierung.' if args.profile_only else 'Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
+        print('Zwei kurze synthetische Charakterfragen mit Gesprächsbezug. Keine Aktivierung.' if args.character_only else 'Zwei synthetische Fragen mit Ablehnungsdiagnose. Keine Aktivierung.' if args.diagnose_rejection else 'Begrenzte Ladepruefung (45 s), danach eine Streaming-Messung (20 s). Kein Rollout.' if args.preload else 'Eine synthetische Streaming-Messung, keine Aktivierung.' if args.profile_only else 'Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
         print('Belege: '+str(report),flush=True)
         evaluation_id=uuid.uuid4().hex
         command = ['docker','exec','-i','-w','/code',config['container'],'python3','-c',WATCHDOG]
         try:
-            child = subprocess.run(command,input=json.dumps({'files':sources,'program':INNER,'evaluation_id':evaluation_id,'profile_only':args.profile_only,'preload':args.preload,'diagnose_rejection':args.diagnose_rejection,'stream_profile':STREAM_PROFILE if args.profile_only else None}).encode(),capture_output=True,timeout=150,start_new_session=True)
+            child = subprocess.run(command,input=json.dumps({'files':sources,'program':INNER,'evaluation_id':evaluation_id,'profile_only':args.profile_only,'character_only':args.character_only,'preload':args.preload,'diagnose_rejection':args.diagnose_rejection,'stream_profile':STREAM_PROFILE if args.profile_only else None}).encode(),capture_output=True,timeout=150,start_new_session=True)
         except subprocess.TimeoutExpired as exc:
             from types import SimpleNamespace
             child=SimpleNamespace(stdout=exc.stdout or b'',stderr=exc.stderr or b'',returncode=124)
@@ -575,4 +590,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 

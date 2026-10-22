@@ -49,6 +49,35 @@ class Portraits(unittest.TestCase):
         self.assertIn('800',self.ask('was hältst du von Example1?'));self.assertNotIn("1'000",self.ask('was hältst du von Example1?'))
         self.assertTrue(all('Example' not in str(x) for x in self.portraits.context.values()))
 
+    def test_playtime_lead_survives_rich_profiles_and_repeated_portraits(self):
+        path=self.stats/(self.users[2]['uuid']+'.json');data=json.loads(path.read_bytes())
+        data['stats']['minecraft:custom'].update({'minecraft:play_time':int(362.6*72000),
+            'minecraft:walk_one_cm':222450000})
+        data['stats']['minecraft:used'].update({'minecraft:stone':80000,'minecraft:bow':7300})
+        path.write_text(json.dumps(data))
+        replies=[]
+        for _ in range(6):
+            replies.append(self.ask('was hältst du von Example3?'))
+            self.now[0]+=181
+        for text in replies:
+            self.assertIn('362.6 h Spielzeit (Rang 1)',text)
+            self.assertIn("80'000",text)
+            self.assertLessEqual(len(text),350)
+        self.assertEqual(len(set(replies)),6)
+        data['stats']['minecraft:custom']['minecraft:play_time']=int(364.1*72000)
+        path.write_text(json.dumps(data))
+        self.assertIn('364.1 h',self.ask('was hältst du von Example3?'))
+
+    def test_new_player_does_not_get_a_second_home_or_veteran_claim(self):
+        path=self.stats/(self.users[2]['uuid']+'.json')
+        path.write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:play_time':int(3.5*72000)},'minecraft:used':{}}}))
+        for text in (self.ask('was hältst du von Example3?'),
+                self.portraits.answer('bewerte Example3',None,self.scope,metrics=('play_time',))):
+            self.assertIn('3.5 h',text)
+            self.assertNotIn('zweites Zuhause',text)
+            self.assertNotIn('Dauerkarte',text)
+            self.assertNotIn('Gold',text)
+
     def test_ambiguous_names_clarify_and_aliases_are_unique_not_guessed_accounts(self):
         people=[dict(name='Fighter123',uuid='a'),dict(name='Builder909',uuid='b')]
         self.assertEqual(targets('was hältst du von fighter?',people),[people[0]])
@@ -149,4 +178,5 @@ class Portraits(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
 

@@ -51,6 +51,21 @@ class Evaluation(unittest.TestCase):
         for key,answer in accepted:
             with self.subTest(key=key,answer=answer):self.assertTrue(all(check(key,answer).values()))
 
+    def test_character_screen_checks_context_but_does_not_claim_to_rate_humor(self):
+        import re
+        tree=ast.parse(module.INNER)
+        function=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='case_checks')
+        namespace={'re':re}
+        exec(compile(ast.Module(body=[function],type_ignores=[]),'character-checks','exec'),namespace)
+        checks=namespace['case_checks']
+        for key in ('character-rest','character-followup'):
+            self.assertTrue(all(checks(key,'Gönn dir eine Pause, dein Sofa will auch Erfahrung sammeln!').values()))
+            for answer in ('Was möchtest du genau wissen?','You should take a break.',
+                    'Öffne die Claim-Einstellungen und erlaube Bauen.'):
+                self.assertFalse(all(checks(key,answer).values()))
+        self.assertIn("result['humor_requires_manual_review']=True",module.INNER)
+        self.assertIn("'character-followup'",module.INNER)
+
     def test_qualifier_stages_portrait_candidate_instead_of_importing_installed_backend(self):
         outer=ast.parse(Path(module.__file__).read_text())
         inner=ast.parse(module.INNER)
@@ -254,3 +269,4 @@ class Evaluation(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
