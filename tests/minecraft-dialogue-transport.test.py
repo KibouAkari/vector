@@ -97,6 +97,45 @@ class Transport(unittest.TestCase):
         self.assertIn('65',text);self.assertIn('Mobkills',text)
         self.assertEqual(self.provider.calls,[])
 
+    def test_polite_statistics_requests_are_not_personalized_by_beneficiary_mir(self):
+        text=self.ask('Kannst du mir die top 5 in mobkills geben?')
+        self.assertIn('1. ExampleTwo 90 Kills',text)
+        self.assertIn('2. ExampleOne 25 Kills',text)
+        text=self.ask('Welche Ränge habe ich?')
+        self.assertIn('Spielzeit Rang 2',text)
+        self.assertIn('Mobkills Rang 2',text)
+        text=self.ask('Kannst du mir die Top 5 in Mobkills geben?',source='discord')
+        self.assertIn('ExampleTwo 90 Kills',text)
+        self.assertEqual(self.provider.calls,[])
+        self.now[0]+=61
+        self.assertIn('ExampleTwo 90 Kills',self.ask('Ich möchte bitte die Top 5 in Mobkills sehen.'))
+        self.assertIn('keine bestätigte Spielerverknüpfung',self.ask('Welche Ränge habe ich?',source='discord'))
+        self.assertEqual(self.provider.calls,[])
+
+    def test_locative_self_reference_keeps_authenticated_player_binding(self):
+        self.assertIn('25 Mobkills',self.ask('Wie viele Mobkills sind bei mir?'))
+        text=self.ask('Wie viele Mobkills sind bei mir?',source='discord')
+        self.assertIn('keine bestätigte Spielerverknüpfung',text)
+        self.assertNotIn('25',text)
+        self.assertEqual(self.provider.calls,[])
+
+    def test_casual_conversation_keeps_one_own_exchange_without_unneeded_counters(self):
+        self.cache.write_text(json.dumps([dict(uuid=uid,name=name) for uid,name in zip(self.ids,('ExampleOne','Heute'))]))
+        self.provider.outputs=[{'answer':'Mach eine Pause, selbst dein Sofa will mal Erfahrung sammeln!'},
+            {'answer':'Dein Akku verdient eine Pause, die Welt wartet kurz.'},
+            {'answer':'Erstmal durchatmen, der Tag rennt nicht weg.'}]
+        self.ask('Ich bin heute völlig platt, muntere mich auf.')
+        first=json.loads(self.provider.calls[0][-1]['content'])
+        self.assertEqual(first['facts']['players'],[])
+        self.ask('Und erzähl mir etwas Lustiges für meine Pause.')
+        messages=self.provider.calls[1]
+        self.assertEqual(json.loads(messages[-1]['content'])['facts']['players'],[])
+        self.assertEqual(len(messages),4)
+        self.assertIn('Sofa',messages[2]['content'])
+        self.ask('Erzähl mir etwas Lustiges.',source='discord')
+        self.assertEqual(len(self.provider.calls[2]),2)
+        self.assertNotIn('Sofa',str(self.provider.calls[2]))
+
     def test_native_pages_keep_their_category_until_the_last_page(self):
         for index,label in enumerate(('Spielzeit','Strecke','Mobkills','Spielerkills','Tode')):
             self.now[0]+=61
@@ -382,4 +421,5 @@ class Transport(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
 

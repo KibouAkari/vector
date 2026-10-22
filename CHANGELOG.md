@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-22 — Prepare grounded character and conversational smalltalk
+
+- Route polite statistics requests and authenticated all-rank questions directly; distinguish request beneficiaries from personal-counter subjects.
+- Preserve leading play-time evidence in generic portraits, fit up to three complete fresh traits, vary phrasing across more turns and avoid veteran/second-home claims for new players. No permanent player judgements or hardcoded identities.
+- Prepare a concise German conversational instruction with dry humor and bounded own-author generated history. Keep unnecessary player counters out of casual-chat prompts and retain policy, tool and numeric-evidence checks.
+- Add an isolated two-turn character qualification mode that stops after a failure and reports humor as requiring human review. This changes the model instruction contract and is not production-qualified by source tests or prior native reports.
+- Synthetic source checks cover routing, identity boundaries, leading-record retention, fresh values, voice variation, novice wording, conversational isolation and evaluator checks. No live deployment or native model quality claimed.
+
 ## 2026-10-22 — Summarize all-category leaders without generation
 
 - Accept punctuated and written top counts and the bounded “kathegorien” spelling in all-category ranking requests.

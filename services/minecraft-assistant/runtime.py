@@ -324,6 +324,7 @@ class ModHelp:
 
     def answer(self, question, mods, scope, *, fallback=True):
         q = ranking_numbers(unicodedata.normalize('NFKC', question).casefold())
+        q = re.sub(r'^\s*ich\s+(?:möchte|moechte|will|hätte|haette)\s+', '', q)
         if MOD_INVENTORY.search(q) or re.search(r'\b(?:craft\w*|rezept\w*|recipe\w*|herstell\w*)', q):
             self.clear(scope)
             return None
@@ -608,6 +609,7 @@ class Assistant:
 
     def stat_answer(self, question, block_items=(), *, principal=None, outcome=None):
         q = ranking_numbers(unicodedata.normalize('NFKC', question).casefold())
+        q = re.sub(r'^\s*ich\s+(?:möchte|moechte|will|hätte|haette)\s+', '', q)
         if (getattr(self.knowledge,'personality',False) and re.search(r'grab|gräber|graves|rucksack|backpack',q)
                 and not re.search(r'wie oft|wie viele|meist|rekord|record|rang|statistik',q)):
             return None
@@ -864,6 +866,7 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 
 
 

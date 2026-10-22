@@ -1,4 +1,5 @@
 """Profile bounds and interrupted opt-in recovery; no Docker or real services."""
+import ast
 import copy
 import hashlib
 import importlib.util
@@ -83,7 +84,11 @@ class Release(unittest.TestCase):
     def test_native_model_and_instruction_contracts_are_comparable_without_execution(self):
         source=(ROOT/'services/minecraft-assistant/dialogue.py').read_text()
         self.assertEqual(release.constant(source,'MODEL'),'vector-qwen3-instruct2507:4b-q4km')
-        self.assertNotEqual(release.constant(source,'SYSTEM'),release.constant(source.replace('Du bist Vector.','Du bist anders.'),'SYSTEM'))
+        changed=ast.parse(source)
+        instruction=next(node for node in changed.body if isinstance(node,ast.Assign)
+            and any(isinstance(target,ast.Name) and target.id=='SYSTEM' for target in node.targets))
+        instruction.value=ast.Constant(value='Synthetic changed instruction contract.')
+        self.assertNotEqual(release.constant(source,'SYSTEM'),release.constant(ast.unparse(changed),'SYSTEM'))
         with self.assertRaises(RuntimeError):release.constant('pass','MODEL')
 
     def test_start_failure_and_interrupt_restore_original_profile(self):
@@ -153,3 +158,4 @@ class Release(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
