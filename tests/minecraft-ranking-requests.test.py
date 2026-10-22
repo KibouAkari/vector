@@ -106,7 +106,8 @@ class RankingRequests(unittest.TestCase):
             (self.directory/(self.ids[i]+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:player_kills':count}}}))
         text=self.ask('wer ist der schlechteste Player auf dem Server?')['text']
         self.assertIn('Example2',text)
-        self.assertIn('Battle Royale samt Deko',text)
+        self.assertIn('friedlichen Bauserver',text)
+        self.assertNotIn('Deko',text)
         self.assertNotIn('kein Urteil',text)
         self.assertIn('Friedensnobelpreis',text)
         self.assertNotIn('Völlig unvoreingenommene',text)

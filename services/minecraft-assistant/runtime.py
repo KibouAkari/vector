@@ -607,7 +607,7 @@ class Assistant:
                     if not leaders or leaders[0]['value']<=0:return 'der schlechteste Spieler? Dafür führe ich keine ernsthafte Rangliste. Jeder bringt etwas anderes mit.'
                     names=' und '.join(p['name'] for p in leaders)
                     if len(leaders)>3:return 'zu viele teilen sich die Kill-Spitze für einen kurzen Seitenhieb. Eine echte Schlechtestenliste gibt es nicht.'
-                    return names+'. Hat den friedlichen Bauserver wohl mit Battle Royale samt Deko verwechselt. Andere bauen Häuser, hier wird lieber die Kill-Liste ausgebaut. Für den Friedensnobelpreis reicht es jedenfalls noch nicht.'
+                    return names+'. Auf einem friedlichen Bauserver offenbar fürs falsche Spiel angemeldet. Andere bauen ein Dorf, hier wird lieber die Nachbarschaft dezimiert. Für den Friedensnobelpreis wird das jedenfalls nichts.'
                 counts=[(p,sum(p['values'][metric]>0 and stats.rank(data,p,metric)==1 for metric in stats.METRICS)) for p in data['players']]
                 maximum=max((count for _,count in counts),default=0)
                 if not maximum:return 'in den fünf geprüften Kategorien gibt es noch keinen positiven Rekord.'

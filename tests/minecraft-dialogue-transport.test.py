@@ -150,6 +150,14 @@ class Transport(unittest.TestCase):
         self.assertIn('bereit fürs nächste Abenteuer',self.ask('Wie fühlst du dich heute?'))
         self.assertEqual(len(self.provider.calls),1)
 
+    def test_existing_character_easter_eggs_keep_the_backend_and_private_override(self):
+        self.provider.personality=True
+        best=self.ask('Wer ist der beste Minecraft Spieler?')
+        self.assertIn('Völlig unvoreingenommene Vector-Meinung',best)
+        worst=self.ask('Wer ist der schlechteste Spieler?')
+        self.assertIn('ExampleTwo',worst);self.assertNotIn('Deko',worst)
+        self.assertEqual(self.provider.calls,[])
+
     def test_service_main_constructs_the_dialogue_mode_and_keeps_safe_defaults(self):
         captured={}
         tree=ast.parse(inspect.getsource(server.main))

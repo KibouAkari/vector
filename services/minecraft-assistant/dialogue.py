@@ -252,6 +252,10 @@ class PublicObservations:
                 metric,page=page
                 self.metric_topic=(metric,)
             return page
+        if (re.search(r'^\s*wer\s+ist\b',question,re.I)
+                and re.search(r'\bbeste[rn]?\s+(?:minecraft[ -]+)?spieler\b|\bschlechteste[rn]?\s+(?:minecraft[ -]+)?(?:spieler|player)\b',question,re.I)
+                and not re.search(r'anhand|statistik|\beiner\b|\boder\b',question,re.I)):
+            return self.lookup('statistics',question)
         if not self.metric_topic:
             return None
         without_period=re.sub(r'\b(?:heute|gestern|diese woche|diesen monat)\b',' ',question,flags=re.I)

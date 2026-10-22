@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-22 — Retain private character overrides in conversational routing
+
+- Route the narrowly recognized best/worst-player jokes through their existing backend in conversation mode, preserving the installed private best-player override instead of allowing a generic generated answer to replace it. Explicit statistical or named-player assessments retain their own paths.
+- Keep the game-only worst-player joke tied to fresh player-kill leaders and remove the decoration comparison. Verify signed chat routing without inference, private override compatibility and existing ranking boundaries locally. This does not activate a service or establish general model quality.
+
 ## 2026-10-22 — Correct conversational rankings and add a guarded assistant opt-in
 
 - Recognize inflected death counters, natural count-based top lists and explicit first-place questions. Distinguish competition ranks from second-highest distinct values, retain ties and clarify absent ranks.
