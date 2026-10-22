@@ -3,6 +3,7 @@
 ## 2026-10-22 — Resolve written ranking counts and scoped rank follow-ups
 
 - Normalize written top-list counts from one to ten before statistics routing and backend parsing.
+- Mark successful statistics outcomes explicitly so rejected time windows, unreadable counters and clarification replies cannot establish ranking context.
 - Resolve bounded second/third-place follow-ups from the last successful statistics category, retaining fresh reads and source/author isolation. Ranking follow-ups do not inherit a named player.
 - Support numeric dotted and written competition ranks without changing tied-rank semantics or distinct-counter queries.
 - Permit guarded mode-six refreshes only from an immutable successful release and its original qualified transport capsule; retain model contracts, private bindings, recovery and isolated signed HTTP checks.

@@ -224,7 +224,7 @@ class Transport(unittest.TestCase):
     def test_written_list_counts_and_rank_backreferences_use_fresh_statistics(self):
         self.death_roster([226,222,96,17,3])
         for question in ('Wer sind die fünf mit den meisten Toden?',
-                'Nenne die Top fünf bei den Toden', 'Top fünf Tode', 'Wer sind die fuenf mit den meisten Toden?'):
+                'Nenne die Top fünf bei den Toden', 'Nenne die fünf mit den meisten Toden', 'Top fünf Tode', 'Wer sind die fuenf mit den meisten Toden?'):
             self.now[0]+=61
             text=self.ask(question)
             for name in ('ExampleOne','ExampleTwo','Example3','Example4','Example5'):
@@ -233,12 +233,28 @@ class Transport(unittest.TestCase):
         self.assertIn('ExampleOne 226',self.ask('Wer hat die meisten Tode?'))
         self.death_roster([226,223,96,17,3])
         self.assertIn('ExampleTwo 223',self.ask('Und wer ist 2.?'))
-        self.assertIn('Example3 96',self.ask('Und wer ist dritter?'))
+        self.assertIn('Example3 96',self.ask('Aber wer ist dritter?'))
         self.now[0]+=61
-        self.assertIn('ExampleTwo 223',self.ask('Und wer ist zweiter?'))
+        self.assertIn('ExampleTwo 223',self.ask('Also wer ist zweiter?'))
         self.now[0]+=61
         self.assertIn('Rang 1 bis Rang 10',self.ask('Wer hat Rang 0 bei Toden?'))
         self.assertEqual(self.provider.calls,[])
+
+    def test_rejected_statistics_do_not_establish_a_rank_category(self):
+        self.death_roster([226,222,96,17,3])
+        text=self.ask('Wer hat Rang 1 bei Mobkills heute?')
+        self.assertIn('keine Aufteilung',text)
+        self.assertFalse(self.dialogue.context[('minecraft',self.ids[0])][1][-1]['statistics_success'])
+        self.provider.outputs=[{'answer':'Welche Rangliste meinst du?'}]
+        self.assertIn('Welche Rangliste',self.ask('Und wer ist zweiter?'))
+        self.assertEqual(len(self.provider.calls),1)
+        self.now[0]+=61
+        self.assertIn('Rang 1 bis Rang 10',self.ask('Wer hat Rang 0 bei Toden?'))
+        self.provider.outputs=[{'answer':'Welche Rangliste meinst du?'}]
+        self.assertIn('Welche Rangliste',self.ask('Und wer ist 2.?'))
+        self.now[0]+=61
+        self.ask('Gib mir die Top 5 aller Rekorde')
+        self.assertTrue(self.dialogue.context[('minecraft',self.ids[0])][1][-1]['statistics_success'])
 
     def test_rank_followup_does_not_inherit_a_named_subject_or_other_scope(self):
         self.death_roster([226,222,96,17,3])

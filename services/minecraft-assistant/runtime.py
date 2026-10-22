@@ -534,7 +534,7 @@ class Assistant:
             raise ValueError('INVALID_MOD_INVENTORY')
         return sorted(set(value))
 
-    def ranking_page(self, question, scope, *, with_metric=False):
+    def ranking_page(self, question, scope, *, with_metric=False, with_outcome=False):
         q=unicodedata.normalize('NFKC',question).casefold()
         all_top=re.search(r'\btop\s*(\d+)\b',q)
         all_top=all_top if all_top and re.search(r'\ball(?:e|er|en)\s+(?:rekorde|ranglisten|kategorien|statistiken)\b',q) else None
@@ -556,13 +556,15 @@ class Assistant:
             if remaining:
                 self.ranking_pages[scope]=(limit,remaining,now+180)
                 while len(self.ranking_pages)>256:self.ranking_pages.popitem(last=False)
-        text=self.stat_answer('Top '+str(limit)+' '+stats.METRICS[metric][0])
+        outcome={}
+        text=self.stat_answer('Top '+str(limit)+' '+stats.METRICS[metric][0],outcome=outcome)
         text=text.removesuffix(' Stand: gespeicherte Spielerdateien.')
         notice=(' Weiter?' if remaining else ' Letzte Kategorie.') if with_metric else (' Für die nächste Kategorie: Hey Vector, weiter.' if remaining else ' Das war die letzte Kategorie.')
         text=text+notice
+        if with_metric and with_outcome:return metric,text,outcome.get('success') is True
         return (metric,text) if with_metric else text
 
-    def stat_answer(self, question, block_items=(), *, principal=None):
+    def stat_answer(self, question, block_items=(), *, principal=None, outcome=None):
         q = ranking_numbers(unicodedata.normalize('NFKC', question).casefold())
         if (getattr(self.knowledge,'personality',False) and re.search(r'grab|gräber|graves|rucksack|backpack',q)
                 and not re.search(r'wie oft|wie viele|meist|rekord|record|rang|statistik',q)):
@@ -797,6 +799,7 @@ class Assistant:
                         if len(matches)>10:return 'mehr als zehn Spieler teilen sich diesen Rang. Bitte grenze die Frage ein.'
                         text=label+': '+'; '.join(p['name']+' '+number(p['values'][metric],unit) for p in sorted(matches,key=lambda p:p['name'].casefold()))
                         if dense:text+=' ('+str(position)+'. höchster Zählwert)'
+                        if outcome is not None:outcome['success']=True
                         return text+'.'
                     if not re.search(r'\bwer\b|\bwho\b|meist|längst|höchst|top\s*\d+|rangliste|leaderboard', q):
                         return 'nenne bitte den vollständigen Spielernamen oder frage nach dem Spitzenreiter.'
@@ -815,6 +818,7 @@ class Assistant:
                 return 'frage bitte nach einer einzelnen Kategorie.'
             if len(text) > 320:
                 return 'die Liste ist für eine Chatantwort zu lang. Bitte frage nach einer kleineren Rangliste.'
+            if outcome is not None:outcome['success']=True
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
