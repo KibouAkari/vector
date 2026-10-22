@@ -18,6 +18,18 @@ The backend still rereads the statistics. Multiple subjects, unresolved names,
 unlinked first-person identity and ordinary counter questions do not take this
 shortcut. This reduces routing errors; it is not general semantic understanding.
 
+A category-focused portrait keeps the requested metric even when a different
+metric ranks higher. Small and zero counters are included rather than silently
+replaced by a stronger achievement. A successful structured lookup retains its
+metric identifiers with the recent author/source-scoped turn, independently of
+the answer wording. An unambiguous referential own-count follow-up can reuse
+that category and read the authenticated player's fresh counters without
+inference. Explicit categories override history; multiple inherited categories
+need clarification. New objects, unrelated turns, expired contexts and other
+authors/sources do not inherit the category. Generated tool queries cannot
+change a bound category. This is bounded reference resolution, not persistent
+player memory or a claim of general understanding.
+
 Other admitted questions make at most one call to the existing local model.
 It can write a short answer or resolve one standalone allowlisted tool query.
 Trusted tool results are rendered directly; no second model call rewrites their
@@ -77,6 +89,12 @@ self statistics changed between turns. Semantic review of actual answers
 is still required even when these checks pass. Reply origins and their totals
 separate direct clock, reviewed, generated, tool and fallback responses. Clock
 qualification expects no model call; player cases require trusted backends.
+Both player cases also require zero redundant inference, and their checks
+reject player-kill figures substituted for requested mob kills. The temporary
+candidate includes the portrait module itself, alongside the four service
+modules, so qualification exercises the proposed backend rather than the
+installed older version. These source changes have not by themselves passed
+the native qualification or activated a production service.
 A native timeout stops subsequent probes even when a reviewed fallback was
 available. Client/process cleanup does not prove that the inference backend
 has already cancelled all internal work. Existing service code, profiles, game, channels and

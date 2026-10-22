@@ -73,7 +73,9 @@ class PlayerPortraits:
     def clear(self,scope):
         with self.lock:self.context.pop(scope,None)
 
-    def answer(self,question,principal,scope,block_items=()):
+    def answer(self,question,principal,scope,block_items=(),*,metrics=()):
+        if any(metric not in stats.METRICS for metric in metrics):
+            raise ValueError('INVALID_PORTRAIT_METRIC')
         if re.search(r'bogen|\bbow\b',question,re.I) and re.search(r'kills|töt|toet|getötet',question,re.I):
             self.clear(scope)
             return 'Bogennutzungen und einzelne Fortschritte kann ich einordnen, aber daraus keine Bogenkills zählen. Dafür fehlt mir ein geprüfter Ereigniszähler.'
@@ -134,6 +136,23 @@ class PlayerPortraits:
         own=principal==p['uuid']
         subject='Du' if own else p['name']
         has='hast' if own else 'hat'
+        if metrics:
+            # A focused assessment must not substitute an unrelated stronger
+            # achievement. Zero and small counts are still meaningful evidence.
+            metric_text=[]
+            for metric in dict.fromkeys(metrics):
+                label,unit,_,_=stats.METRICS[metric]
+                amount=f'{v[metric]:.1f}' if unit in ('h','km') else n(v[metric])
+                metric_text.append(f'{label}: {amount} {unit}, Rang {rank(metric)}')
+            lines={
+                'mob_kills':('Monster haben hier wohl keine ruhige Nachbarschaft.', 'Das Monsterkonto wächst offenbar; zum Endgegner ernenne ich deshalb noch niemanden.', 'Die Monster warten offenbar noch auf die erste Begegnung.'),
+                'player_kills':('Das wirkt kampflustig; wie die Kämpfe abliefen, verraten die Zahlen nicht.', 'Ein paar Spielerkills im Gepäck, aber noch kein Beweis für einen unbesiegbaren Samurai.', 'Ein friedliches Kill-Konto; Können im Duell bleibt damit offen.'),
+                'play_time':('Klingt nach einem zweiten Zuhause auf dem Server.', 'Noch mitten im Abenteuer; die Stammgastkarte hat Zeit.', 'Das Abenteuerbuch ist hier noch ziemlich leer.'),
+                'distance':('Stillstehen scheint nicht die Lieblingsbeschäftigung zu sein.', 'Ein bisschen Fernweh ist schon erkennbar.', 'Die grosse Weltreise steht wohl noch bevor.'),
+                'deaths':('Der Respawn-Punkt dürfte den Namen langsam kennen.', 'Ein paar unfreiwillige Rückreisen gehören offenbar dazu.', 'Noch keine unfreiwillige Rückreise im Zähler.')}
+            metric=metrics[0];value=v[metric]
+            comment=lines[metric][2 if value==0 else 0 if rank(metric)==1 else 1]
+            return subject+' – '+'; '.join(metric_text)+'. '+comment
         # Describe multiple observable strengths, not a permanent label. Every
         # clause is tied to this fresh snapshot; no invented victims or weapon kills.
         traits=[]

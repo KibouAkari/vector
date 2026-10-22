@@ -252,17 +252,17 @@ def case_checks(key, answer):
     elif key=='player-opinion':
         checks['correct_player_and_count']='ExampleTwo' in answer and '90' in answer
         checks['game_based_interpretation']=bool(re.search(r'wirk|schein|offenbar|wohl|für mich|wie ein|monsterjäger|jagd|albtraum|schreck|schlächter',q))
-        checks['stays_on_monster_question']=not re.search(r'\b(?:tode|spielzeit|gestorben|spielersterbe)\b',q)
+        checks['stays_on_monster_question']='mobkills' in q and not re.search(r'\b(?:tode|spielzeit|gestorben|spielersterbe|spielerkills)\b',q)
     elif key=='own-context':
         checks['fresh_own_count']='31' in answer and not re.search(r'\b(?:25|90)\b',answer)
         checks['authenticated_self']=bool(re.search(r'\b(?:du|dein\w*|exampleone)\b',q))
-        checks['stays_on_monster_question']=not re.search(r'\b(?:tode|spielzeit|gestorben|spielersterbe)\b',q)
+        checks['stays_on_monster_question']='mobkills' in q and not re.search(r'\b(?:tode|spielzeit|gestorben|spielersterbe|spielerkills)\b',q)
     return checks
 
 with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get('temporary_parent')) as temporary:
     root=Path(temporary)
     for name,content in payload['files'].items():
-        if name not in ('runtime.py','dialogue.py','server.py','knowledge.py'):raise RuntimeError('INVALID_CANDIDATE_FILE')
+        if name not in ('runtime.py','dialogue.py','server.py','knowledge.py','portraits.py'):raise RuntimeError('INVALID_CANDIDATE_FILE')
         (root/name).write_text(content)
     sys.path[:0]=[str(root),'/code']
     from runtime import Assistant,State
@@ -338,7 +338,9 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
                 if key=='player-opinion':
                     checks['trusted_portrait']=origin=='tool-portrait'
                     checks['no_redundant_inference']=len(usage)==before
-                if key=='own-context':checks['trusted_fresh_statistics']=origin=='tool-statistics'
+                if key=='own-context':
+                    checks['trusted_fresh_statistics']=origin=='tool-statistics'
+                    checks['no_redundant_inference']=len(usage)==before
             passed=all(checks.values());error=None;code=None
         except Exception as exc:
             answer=None;passed=False;checks={};error=type(exc).__name__;code=error_code(exc);origin='failed'
@@ -484,7 +486,7 @@ def main():
         expected['expected_profile_sha256'] = guard.digest(guard.canonical(profile))
         guard.validate_live(expected, before, profile)
         sources = {}
-        for name in ('runtime.py','dialogue.py','server.py','knowledge.py'):
+        for name in ('runtime.py','dialogue.py','server.py','knowledge.py','portraits.py'):
             path = guard.checked_path(str(args.source_root/'services/minecraft-assistant'/name))
             text = path.read_text()
             ast.parse(text)
