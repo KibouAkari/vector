@@ -199,6 +199,7 @@ class PublicObservations:
         now = self.wall_clock().astimezone(self.zone)
         docs = self.documentation(question)
         reference = history[-1]['question'] if history and BACK_REFERENCE.search(question) else ''
+        player_reference=bool(reference and (history[-1].get('origin','').startswith('tool-') or structured_player_request(reference)))
         if not docs and reference:
             docs = self.documentation(reference + ' ' + question)
         facts = {'clock': now.strftime('%Y-%m-%d %H:%M:%S %Z'), 'timezone': self.zone.key,
@@ -234,14 +235,14 @@ class PublicObservations:
             self.self_only=bool(personal_reference(question) and not any(p['uuid']!=self.principal for p in mentioned))
             facts['self_player'] = next((p['name'] for p in data['players'] if p['uuid'] == self.principal), None)
             self.self_name=facts['self_player']
-            if personal_reference(question) and (self.metric_topic or structured_player_request(question) or reference and history[-1].get('origin','').startswith('tool-')):
+            if personal_reference(question) and (self.metric_topic or structured_player_request(question) or player_reference):
                 own = next((p for p in data['players'] if p['uuid'] == self.principal), None)
                 if own is not None and own not in mentioned:
                     mentioned.insert(0, own)
             elif not mentioned and reference and not self.ranking_reference:
                 previous=set(history[-1].get('subjects',()))
                 mentioned = named(reference) or [p for p in data['players'] if p['name'] in previous]
-            if not (self.metric_topic or structured_player_request(question) or reference and history[-1].get('origin','').startswith('tool-')):
+            if not (self.metric_topic or structured_player_request(question) or player_reference):
                 mentioned=[]
             labels = {'play_time': 'Spielstunden', 'distance': 'Strecke_km',
                       'mob_kills': 'Mobkills', 'player_kills': 'Spielerkills', 'deaths': 'Tode'}
