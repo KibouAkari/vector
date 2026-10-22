@@ -110,7 +110,9 @@ class Transport(unittest.TestCase):
 
     def test_top_one_all_categories_accepts_punctuation_and_spelling_without_inference(self):
         for question in ('Kannst du mir die top 1. in allen kathegorien geben?',
-                'Zeige mir Top eins in allen Kategorien', 'Top 1 aller Rekorde'):
+                'Zeige mir Top eins in allen Kategorien', 'Top 1 aller Rekorde',
+                'Ich möchte die Top 1 in allen Kategorien sehen',
+                'Top 1 in allen Kategorien auf meinem Server'):
             self.now[0]+=61
             text=self.ask(question)
             for label in ('Spielzeit:','Strecke:','Mobkills:','Spielerkills:','Tode:'):
@@ -135,14 +137,43 @@ class Transport(unittest.TestCase):
         self.assertFalse(self.dialogue.context[('minecraft',self.ids[0])][1][-1]['statistics_success'])
         self.assertEqual(self.provider.calls,[])
 
+    def test_aggregate_requests_do_not_drop_personal_time_or_fractional_scope(self):
+        for question,expected in (
+                ('Meine Top 1 in allen Kategorien','serverweiten Ranglisten'),
+                ('Top 1 in allen Kategorien letzte Woche','keine Aufteilung'),
+                ('Top 1 in allen Kategorien seit Januar','keine Aufteilung'),
+                ('Top 1.5 in allen Kategorien','ganzen Top-Zahl')):
+            self.now[0]+=61
+            self.assertIn(expected,self.ask(question))
+            self.assertFalse(self.dialogue.context[('minecraft',self.ids[0])][1][-1]['statistics_success'])
+        self.assertEqual(self.provider.calls,[])
+
+    def test_aggregate_leaders_ignore_synthetic_query_username_collisions(self):
+        for collision in ('Alle','Rekorde'):
+            self.now[0]+=61
+            self.cache.write_text(json.dumps([dict(uuid=uid,name=name) for uid,name in zip(self.ids,(collision,'ExampleTwo'))]))
+            text=self.ask('Top 1 in allen Kategorien')
+            self.assertIn('ExampleTwo 90 Kills',text)
+            self.assertIn('ExampleTwo 9 Kills',text)
+            self.assertNotIn('hält in den fünf',text)
+            for label in ('Spielzeit:','Strecke:','Mobkills:','Spielerkills:','Tode:'):
+                self.assertIn(label,text)
+        (self.stats/(self.ids[1]+'.json')).write_text('{')
+        self.now[0]+=61
+        self.assertIn('unvollständig',self.ask('Top 1 in allen Kategorien'))
+        self.assertFalse(self.dialogue.context[('minecraft',self.ids[0])][1][-1]['statistics_success'])
+        self.assertEqual(self.provider.calls,[])
+
     def test_long_all_category_summary_falls_back_to_complete_pages(self):
         names=['Player'+str(i).zfill(10) for i in range(10)]
+        names[0]='Top';names[1]='Spielzeit'
         ids=['10000000-0000-0000-0000-'+str(i+1).zfill(12) for i in range(10)]
         self.cache.write_text(json.dumps([dict(uuid=uid,name=name) for uid,name in zip(ids,names)]))
         for i,uid in enumerate(ids):
             (self.stats/(uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{
-                'minecraft:play_time':72000*(i+1),'minecraft:mob_kills':30,
-                'minecraft:deaths':100+i,'minecraft:player_kills':40+i,'minecraft:walk_one_cm':100000*(i+1)}}}))
+                'minecraft:play_time':72000*(i+100000),'minecraft:mob_kills':30,
+                'minecraft:deaths':100000+i,'minecraft:player_kills':400000+i,'minecraft:walk_one_cm':100000*(i+100000)}}}))
+        self.assertIsNone(self.ai.all_category_leaders()[0])
         text=self.ask('Top 1 in allen Kategorien')
         self.assertIn('Spielzeit:',text);self.assertIn('Weiter?',text)
         self.assertNotIn('Mobkills:',text)

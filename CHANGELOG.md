@@ -4,6 +4,7 @@
 
 - Accept punctuated and written top counts and the bounded “kathegorien” spelling in all-category ranking requests.
 - Return all five standard category leaders in one bounded, fresh summary for Top 1, preserving tied leaders and explicit absence of positive records. Fall back to complete category pages when the combined result is too long.
+- Read aggregate leaders and fallback category pages through structured server-wide queries, bypassing player-name parsing even when usernames match category or query words. Accept first-person request phrasing and server possessives while retaining personal-statistics scope checks.
 - Retain multi-category context metadata instead of pretending that the combined answer has one category. Reject unsupported time-window and personal-scope requests rather than silently substituting server-wide lifetime leaders.
 - Cover signed HTTP routing, tie/freshness behavior and complete pagination fallback with synthetic inputs and no native model calls.
 
