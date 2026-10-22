@@ -12,7 +12,7 @@ import time
 import unicodedata
 from zoneinfo import ZoneInfo
 
-from runtime import local_slot, request_forbidden, safe_answer, friendly_statistics, direct_chat_answer, METRIC_WORDS
+from runtime import local_slot, request_forbidden, safe_answer, friendly_statistics, direct_chat_answer, METRIC_WORDS, ranking_numbers, ranking_position
 import stats
 
 def numeric_tokens(text):
@@ -43,6 +43,7 @@ BACK_REFERENCE = re.compile(r'^\s*(?:und|aber|also)\b|\b(?:er|ihm|ihn|sein\w*|di
 
 def saved_statistic_form(question,roster):
     """Conservative fast-path grammar; unfamiliar qualifiers go to the planner."""
+    question=ranking_numbers(question)
     for player in roster:
         question=re.sub(r'(?<![a-z0-9_])'+re.escape(player['name'])+r'(?![a-z0-9_])',' ',question,flags=re.I)
     if re.search(r'\btop\s*\d+\b|rangliste|leaderboard',question,re.I):
@@ -50,7 +51,7 @@ def saved_statistic_form(question,roster):
         question=re.sub(r'\bspielerkilld\b','spielerkills',question,flags=re.I)
     for pattern in METRIC_WORDS.values():question=re.sub(pattern,' ',question,flags=re.I)
     question=re.sub(r'\btop(\d+)\b',r'top \1',question,flags=re.I)
-    allowed=set('wer wie welche welcher welchen viele viel vielen oft lange weit gross groß unterschied differenz vergleich zwischen und mit zu von bei im in den dem der die das des ein eine einer einem einen haben habe hab hat hast ich mir mich mein meine meinen meinem er sie ihm ihn sein seine seinen seinem sind ist du bitte nenne gib sage sag zeige mir top rang ränge raenge rangliste leaderboard platz ersten erste erster zweiten zweite drittmeisten zweitmeisten am meisten dann schon bisher insgesamt an führt fuehrt fuhrt'.split())
+    allowed=set('aber also wer wie welche welcher welchen viele viel vielen oft lange weit gross groß unterschied differenz vergleich zwischen und mit zu von bei im in den dem der die das des ein eine einer einem einen haben habe hab hat hast ich mir mich mein meine meinen meinem er sie ihm ihn sein seine seinen seinem sind ist du bitte nenne gib sage sag zeige mir top rang ränge raenge rangliste leaderboard platz ersten erste erster zweiten zweite zweiter dritten dritte dritter drittmeisten zweitmeisten am meisten dann schon bisher insgesamt an führt fuehrt fuhrt'.split())
     return all(word.isdecimal() or word in allowed for word in re.findall(r'\w+',question.casefold()))
 
 
@@ -182,6 +183,8 @@ class PublicObservations:
 
     def initial(self, question, history=()):
         self.metric_topic=()
+        self.ranking_reference=False
+        self.statistics_success=False
         self.inherited_metric=False
         self.self_name=None
         self.self_only=bool(SELF_REFERENCE.search(question))
@@ -205,6 +208,14 @@ class PublicObservations:
                 mentioned=targets(question,data['players'])
             self.roster=[{'name':p['name'],'uuid':p['uuid']} for p in data['players']]
             self.metric_topic=requested_metrics(question,self.roster)
+            # Resolve only a bounded rank backreference to the last successful
+            # statistics category. Never inherit from prose or player opinions.
+            if (not self.metric_topic and reference and history[-1].get('statistics_success') is True
+                    and len(history[-1].get('metrics',()))==1
+                    and ranking_position(question) is not None
+                    and re.fullmatch(r'\s*(?:(?:und|aber|also)\s+)?wer\s+ist\s+(?:der\s+)?(?:\d+\s*\.|erste[rn]?|zweite[rn]?|dritte[rn]?)\s*[.!?]*\s*',question,re.I)):
+                self.metric_topic=tuple(history[-1]['metrics'])
+                self.ranking_reference=True
             # Only an explicit referential count request may inherit a category.
             # Never derive the category from the wording of an earlier answer.
             if (not self.metric_topic and reference and SELF_REFERENCE.search(question)
@@ -220,7 +231,7 @@ class PublicObservations:
                 own = next((p for p in data['players'] if p['uuid'] == self.principal), None)
                 if own is not None and own not in mentioned:
                     mentioned.insert(0, own)
-            elif not mentioned and reference:
+            elif not mentioned and reference and not self.ranking_reference:
                 previous=set(history[-1].get('subjects',()))
                 mentioned = named(reference) or [p for p in data['players'] if p['name'] in previous]
             labels = {'play_time': 'Spielstunden', 'distance': 'Strecke_km',
@@ -245,11 +256,12 @@ class PublicObservations:
         """Keep supported native counters and scoped pages off the model path."""
         if portrait_request(question):
             return None
+        question=ranking_numbers(question)
         pager=getattr(self.assistant,'ranking_page',None)
-        page=pager(question,self.scope,with_metric=True) if callable(pager) else None
+        page=pager(question,self.scope,with_metric=True,with_outcome=True) if callable(pager) else None
         if page is not None:
             if isinstance(page,tuple):
-                metric,page=page
+                metric,page,self.statistics_success=page
                 self.metric_topic=(metric,)
             return page
         if (re.search(r'^\s*wer\s+ist\b',question,re.I)
@@ -263,7 +275,7 @@ class PublicObservations:
                 and structured_player_request(question)):
             return 'Ich habe nur gespeicherte Gesamtzähler, keine Aufteilung nach diesem Zeitraum. Für diesen Zeitraum kann ich daher keinen Wert nennen.'
         if not saved_statistic_form(question,self.roster):return None
-        ranked=bool(re.search(r'\btop\s*\d+\b|\bwer\b|\bam\s+\d+|unterschied|differenz|vergleich',question,re.I))
+        ranked=bool(re.search(r'\btop\s*\d+\b|\b(?:die|den)\s+\d+\s+(?:spieler\s+)?(?:mit\s+(?:den\s+)?)?meisten\b|\bwer\b|\bam\s+\d+|unterschied|differenz|vergleich',question,re.I))
         own_or_named=bool((facts.get('players') or self.self_only) and structured_player_request(question))
         if not ranked and not own_or_named:
             return None
@@ -272,7 +284,7 @@ class PublicObservations:
             players=facts['players']
             if len(players)!=1 or not re.search(r'\b(?:er|sie|ihm|ihn)\b',question,re.I):return None
             question=re.sub(r'\b(?:er|sie|ihm|ihn)\b',players[0]['player'],question,flags=re.I)
-        return self.lookup('statistics',question)
+        return self.lookup('statistics',ranking_numbers(question))
 
     def requires_player_lookup(self,question,facts):
         return bool(facts.get('players') and (portrait_request(question) or
@@ -297,7 +309,9 @@ class PublicObservations:
             if not any(p['uuid']==self.principal for p in targets(query,self.roster)):
                 query+=' von '+self.self_name
         if tool == 'statistics':
-            value = ai.stat_answer(query, self.block_items, principal=self.principal)
+            outcome={}
+            value = ai.stat_answer(query, self.block_items, principal=self.principal,outcome=outcome)
+            self.statistics_success=outcome.get('success') is True
             if isinstance(value,str):value=friendly_statistics(value,self.self_name)
         elif tool == 'portrait':
             value = ai.portraits.answer('Was hältst du von '+query, self.principal, self.scope, self.block_items,
@@ -342,12 +356,12 @@ class GroundedDialogue:
             turns=self.context.get(scope,(0,[]))[1]
             return turns[-1].get('origin','unreported') if turns else 'unreported'
 
-    def remember(self,scope,history,question,answer,origin,metrics=(),subjects=()):
+    def remember(self,scope,history,question,answer,origin,metrics=(),subjects=(),statistics_success=False):
         answer=safe_answer(answer)
         with self.lock:
             self.context.pop(scope,None)
             self.context[scope]=(self.clock()+180,[*history[-2:],{
-                'question':question[:240],'answer':answer,'origin':origin,'metrics':tuple(metrics),'subjects':tuple(subjects)}][-2:])
+                'question':question[:240],'answer':answer,'origin':origin,'metrics':tuple(metrics),'subjects':tuple(subjects),'statistics_success':statistics_success}][-2:])
             while len(self.context)>256:self.context.popitem(last=False)
         return answer
 
@@ -379,11 +393,11 @@ class GroundedDialogue:
         if self.allow_direct and callable(getattr(observations,'direct_followup',None)):
             followup=observations.direct_followup(question)
             if followup is not None:
-                return self.remember(scope,history,question,render_evidence(followup),'tool-statistics',metrics,subjects)
+                return self.remember(scope,history,question,render_evidence(followup),'tool-statistics',metrics,subjects,getattr(observations,'statistics_success',False))
         if self.allow_direct and callable(getattr(observations,'direct_statistics',None)):
             statistics=observations.direct_statistics(question,facts)
             if statistics is not None:
-                return self.remember(scope,history,question,render_evidence(statistics),'tool-statistics',observations.metric_topic,subjects)
+                return self.remember(scope,history,question,render_evidence(statistics),'tool-statistics',observations.metric_topic,subjects,getattr(observations,'statistics_success',False))
         if self.allow_direct and callable(getattr(observations,'direct_portrait',None)):
             portrait=observations.direct_portrait(question,facts)
             if portrait is not None:
@@ -445,7 +459,7 @@ class GroundedDialogue:
                     evidence = observations.lookup(tool, query)
                     result=render_evidence(evidence)
                     origin='tool-'+tool
-            return self.remember(scope,history,question,result,origin,metrics if origin.startswith('tool-') else (),subjects)
+            return self.remember(scope,history,question,result,origin,metrics if origin.startswith('tool-') else (),subjects,origin=='tool-statistics' and getattr(observations,'statistics_success',False))
         except (ValueError,TimeoutError) as exc:
             recoverable=isinstance(exc,TimeoutError) or str(exc) in (
                 'UNSUPPORTED_DIALOGUE_NUMBER','INCOMPLETE_DIALOGUE_SENTENCE',
