@@ -12,7 +12,7 @@ import time
 import unicodedata
 from zoneinfo import ZoneInfo
 
-from runtime import local_slot, request_forbidden, safe_answer, friendly_statistics, direct_chat_answer, METRIC_WORDS
+from runtime import local_slot, request_forbidden, safe_answer, friendly_statistics, direct_chat_answer, METRIC_WORDS, ranking_numbers, ranking_position
 import stats
 
 def numeric_tokens(text):
@@ -43,6 +43,7 @@ BACK_REFERENCE = re.compile(r'^\s*(?:und|aber|also)\b|\b(?:er|ihm|ihn|sein\w*|di
 
 def saved_statistic_form(question,roster):
     """Conservative fast-path grammar; unfamiliar qualifiers go to the planner."""
+    question=ranking_numbers(question)
     for player in roster:
         question=re.sub(r'(?<![a-z0-9_])'+re.escape(player['name'])+r'(?![a-z0-9_])',' ',question,flags=re.I)
     if re.search(r'\btop\s*\d+\b|rangliste|leaderboard',question,re.I):
@@ -50,7 +51,7 @@ def saved_statistic_form(question,roster):
         question=re.sub(r'\bspielerkilld\b','spielerkills',question,flags=re.I)
     for pattern in METRIC_WORDS.values():question=re.sub(pattern,' ',question,flags=re.I)
     question=re.sub(r'\btop(\d+)\b',r'top \1',question,flags=re.I)
-    allowed=set('wer wie welche welcher welchen viele viel vielen oft lange weit gross groß unterschied differenz vergleich zwischen und mit zu von bei im in den dem der die das des ein eine einer einem einen haben habe hab hat hast ich mir mich mein meine meinen meinem er sie ihm ihn sein seine seinen seinem sind ist du bitte nenne gib sage sag zeige mir top rang ränge raenge rangliste leaderboard platz ersten erste erster zweiten zweite drittmeisten zweitmeisten am meisten dann schon bisher insgesamt an führt fuehrt fuhrt'.split())
+    allowed=set('wer wie welche welcher welchen viele viel vielen oft lange weit gross groß unterschied differenz vergleich zwischen und mit zu von bei im in den dem der die das des ein eine einer einem einen haben habe hab hat hast ich mir mich mein meine meinen meinem er sie ihm ihn sein seine seinen seinem sind ist du bitte nenne gib sage sag zeige mir top rang ränge raenge rangliste leaderboard platz ersten erste erster zweiten zweite zweiter dritten dritte dritter drittmeisten zweitmeisten am meisten dann schon bisher insgesamt an führt fuehrt fuhrt'.split())
     return all(word.isdecimal() or word in allowed for word in re.findall(r'\w+',question.casefold()))
 
 
@@ -182,6 +183,7 @@ class PublicObservations:
 
     def initial(self, question, history=()):
         self.metric_topic=()
+        self.ranking_reference=False
         self.inherited_metric=False
         self.self_name=None
         self.self_only=bool(SELF_REFERENCE.search(question))
@@ -205,6 +207,14 @@ class PublicObservations:
                 mentioned=targets(question,data['players'])
             self.roster=[{'name':p['name'],'uuid':p['uuid']} for p in data['players']]
             self.metric_topic=requested_metrics(question,self.roster)
+            # Resolve only a bounded rank backreference to the last successful
+            # statistics category. Never inherit from prose or player opinions.
+            if (not self.metric_topic and reference and history[-1].get('origin')=='tool-statistics'
+                    and len(history[-1].get('metrics',()))==1
+                    and ranking_position(question) is not None
+                    and re.fullmatch(r'\s*(?:(?:und|aber|also)\s+)?wer\s+ist\s+(?:der\s+)?(?:\d+\s*\.|erste[rn]?|zweite[rn]?|dritte[rn]?)\s*[.!?]*\s*',question,re.I)):
+                self.metric_topic=tuple(history[-1]['metrics'])
+                self.ranking_reference=True
             # Only an explicit referential count request may inherit a category.
             # Never derive the category from the wording of an earlier answer.
             if (not self.metric_topic and reference and SELF_REFERENCE.search(question)
@@ -220,7 +230,7 @@ class PublicObservations:
                 own = next((p for p in data['players'] if p['uuid'] == self.principal), None)
                 if own is not None and own not in mentioned:
                     mentioned.insert(0, own)
-            elif not mentioned and reference:
+            elif not mentioned and reference and not self.ranking_reference:
                 previous=set(history[-1].get('subjects',()))
                 mentioned = named(reference) or [p for p in data['players'] if p['name'] in previous]
             labels = {'play_time': 'Spielstunden', 'distance': 'Strecke_km',
@@ -245,6 +255,7 @@ class PublicObservations:
         """Keep supported native counters and scoped pages off the model path."""
         if portrait_request(question):
             return None
+        question=ranking_numbers(question)
         pager=getattr(self.assistant,'ranking_page',None)
         page=pager(question,self.scope,with_metric=True) if callable(pager) else None
         if page is not None:
@@ -272,7 +283,7 @@ class PublicObservations:
             players=facts['players']
             if len(players)!=1 or not re.search(r'\b(?:er|sie|ihm|ihn)\b',question,re.I):return None
             question=re.sub(r'\b(?:er|sie|ihm|ihn)\b',players[0]['player'],question,flags=re.I)
-        return self.lookup('statistics',question)
+        return self.lookup('statistics',ranking_numbers(question))
 
     def requires_player_lookup(self,question,facts):
         return bool(facts.get('players') and (portrait_request(question) or

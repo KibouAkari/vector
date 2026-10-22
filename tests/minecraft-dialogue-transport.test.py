@@ -221,6 +221,40 @@ class Transport(unittest.TestCase):
         self.assertIn('Example3 96',self.ask('Und am 2 meisten Tode?'))
         self.assertEqual(self.provider.calls,[])
 
+    def test_written_list_counts_and_rank_backreferences_use_fresh_statistics(self):
+        self.death_roster([226,222,96,17,3])
+        for question in ('Wer sind die fünf mit den meisten Toden?',
+                'Nenne die Top fünf bei den Toden', 'Top fünf Tode', 'Wer sind die fuenf mit den meisten Toden?'):
+            self.now[0]+=61
+            text=self.ask(question)
+            for name in ('ExampleOne','ExampleTwo','Example3','Example4','Example5'):
+                self.assertIn(name,text)
+        self.now[0]+=61
+        self.assertIn('ExampleOne 226',self.ask('Wer hat die meisten Tode?'))
+        self.death_roster([226,223,96,17,3])
+        self.assertIn('ExampleTwo 223',self.ask('Und wer ist 2.?'))
+        self.assertIn('Example3 96',self.ask('Und wer ist dritter?'))
+        self.now[0]+=61
+        self.assertIn('ExampleTwo 223',self.ask('Und wer ist zweiter?'))
+        self.now[0]+=61
+        self.assertIn('Rang 1 bis Rang 10',self.ask('Wer hat Rang 0 bei Toden?'))
+        self.assertEqual(self.provider.calls,[])
+
+    def test_rank_followup_does_not_inherit_a_named_subject_or_other_scope(self):
+        self.death_roster([226,222,96,17,3])
+        self.ask('Welchen Rang hat Example3 bei Toden?')
+        self.assertIn('ExampleTwo 222',self.ask('Und wer ist 2.?'))
+        self.provider.outputs=[{'answer':'Welche Rangliste meinst du?'}]
+        self.assertIn('Welche Rangliste',self.ask('Und wer ist zweiter?',index=1))
+        self.assertEqual(len(self.provider.calls),1)
+        self.provider.outputs=[{'answer':'Welche Rangliste meinst du?'}]
+        self.assertIn('Welche Rangliste',self.ask('Und wer ist zweiter?',source='discord'))
+        self.now[0]+=61
+        self.ask('Wer hat die meisten Tode?')
+        self.dialogue.clock=lambda:10**15
+        self.provider.outputs=[{'answer':'Welche Rangliste meinst du?'}]
+        self.assertIn('Welche Rangliste',self.ask('Und wer ist zweiter?'))
+
     def test_third_person_followup_keeps_fresh_subject_across_repeated_references(self):
         self.death_roster([8,23])
         self.ask('Was hältst du von ExampleTwo?')

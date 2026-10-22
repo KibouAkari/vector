@@ -25,6 +25,27 @@ METRIC_WORDS = {
     'distance': r'strecke|distanz|kilometer|gelaufen|gereist',
     'deaths': r'\btod(?:e[nrs]?|esfälle[n]?)?\b|gestorben|\bstarb\b|\bstarben\b|\bsterben\b|\bstirbt\b|\bdied\b|\bdeaths?\b',
 }
+def ranking_numbers(question):
+    """Normalize bounded written list counts without rewriting player names."""
+    counts={'eins':1,'zwei':2,'drei':3,'vier':4,'fünf':5,'fuenf':5,
+            'sechs':6,'sieben':7,'acht':8,'neun':9,'zehn':10}
+    for word,number in counts.items():
+        question=re.sub(r'(\btop\s+)'+word+r'\b',
+            lambda m:m[1]+str(number),question,flags=re.I)
+        question=re.sub(r'(\b(?:die|den)\s+)'+word+r'\b(?=\s+(?:spieler\s+)?(?:mit\s+(?:den\s+)?)?meisten\b)',
+            lambda m:m[1]+str(number),question,flags=re.I)
+    return question
+
+
+def ranking_position(question):
+    """Competition rank, distinct from the second-highest counter value."""
+    match=re.search(r'\b(?:rang|platz)\s*(\d+)\b|\b(erste[rn]?|zweite[rn]?|dritte[rn]?)\s+platz\b|\bwer\s+ist\s+(?:der\s+)?(\d+)\s*\.(?!\d)|\bwer\s+ist\s+(?:der\s+)?(erste[rn]?|zweite[rn]?|dritte[rn]?)\b',question,re.I)
+    if not match:return None
+    if match[1] or match[3]:return int(match[1] or match[3])
+    word=(match[2] or match[4]).casefold()
+    return 1 if word.startswith('erste') else 2 if word.startswith('zweite') else 3
+
+
 ORE_WORDS = {
     'Diamanterz-Blöcke': (r'\b(?:diamant(?:en|erz(?:e)?)?|diamonds?|diamond ore)\b', ('minecraft:diamond_ore', 'minecraft:deepslate_diamond_ore')),
     'Eisenerz-Blöcke': (r'\b(?:eisen(?:erz(?:e)?)?|iron(?: ore)?)\b', ('minecraft:iron_ore', 'minecraft:deepslate_iron_ore')),
@@ -302,7 +323,7 @@ class ModHelp:
                 self.context.popitem(last=False)
 
     def answer(self, question, mods, scope, *, fallback=True):
-        q = unicodedata.normalize('NFKC', question).casefold()
+        q = ranking_numbers(unicodedata.normalize('NFKC', question).casefold())
         if MOD_INVENTORY.search(q) or re.search(r'\b(?:craft\w*|rezept\w*|recipe\w*|herstell\w*)', q):
             self.clear(scope)
             return None
@@ -542,7 +563,7 @@ class Assistant:
         return (metric,text) if with_metric else text
 
     def stat_answer(self, question, block_items=(), *, principal=None):
-        q = unicodedata.normalize('NFKC', question).casefold()
+        q = ranking_numbers(unicodedata.normalize('NFKC', question).casefold())
         if (getattr(self.knowledge,'personality',False) and re.search(r'grab|gräber|graves|rucksack|backpack',q)
                 and not re.search(r'wie oft|wie viele|meist|rekord|record|rang|statistik',q)):
             return None
@@ -765,10 +786,10 @@ class Assistant:
                     if metric == 'deaths':
                         text += ' nach Anzahl'
                 else:
-                    ordinal=re.search(r'\b(?:rang|platz)\s*(\d+)\b|\b(erste[rn]?|zweite[rn]?|dritte[rn]?)\s+platz\b',q)
+                    ordinal=ranking_position(q)
                     dense=block_position(q) if re.search(r'\bam\s+\d+\.?\s*meisten\b|zweitmeist|drittmeist',q) else None
-                    if ordinal or dense:
-                        position=(int(ordinal[1]) if ordinal[1] else 1 if ordinal[2].startswith('erste') else 2 if ordinal[2].startswith('zweite') else 3) if ordinal else dense
+                    if ordinal is not None or dense:
+                        position=ordinal if ordinal is not None else dense
                         if not 1<=position<=10:return 'frage bitte nach Rang 1 bis Rang 10.'
                         levels=sorted({p['values'][metric] for p in data['players']},reverse=True)
                         matches=[p for p in data['players'] if ((p['values'][metric]==levels[position-1]) if dense and position<=len(levels) else (stats.rank(data,p,metric)==position if not dense else False))]

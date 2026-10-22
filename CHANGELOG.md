@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-22 — Resolve written ranking counts and scoped rank follow-ups
+
+- Normalize written top-list counts from one to ten before statistics routing and backend parsing.
+- Resolve bounded second/third-place follow-ups from the last successful statistics category, retaining fresh reads and source/author isolation. Ranking follow-ups do not inherit a named player.
+- Support numeric dotted and written competition ranks without changing tied-rank semantics or distinct-counter queries.
+- Permit guarded mode-six refreshes only from an immutable successful release and its original qualified transport capsule; retain model contracts, private bindings, recovery and isolated signed HTTP checks.
+- Add regression coverage for written counts, fresh rank follow-ups, expiry, independent scopes and release evidence integrity.
+
 ## 2026-10-22 — Retain private character overrides in conversational routing
 
 - Route the narrowly recognized best/worst-player jokes through their existing backend in conversation mode, preserving the installed private best-player override instead of allowing a generic generated answer to replace it. Explicit statistical or named-player assessments retain their own paths.

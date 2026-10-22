@@ -47,17 +47,40 @@ def capsule(guard,transport,path,pin):
     return manifest,code
 
 
-def profile_for_dialogue(guard,transport,profile,service,code,timezone):
+def profile_for_dialogue(guard,transport,profile,service,code,timezone,*,expected_mode='5'):
     ZoneInfo(timezone)
     _,bindings=transport.service_bindings((code/'server.py').read_text())
     if not {'KNOWLEDGE','TIMEZONE'}<=set(bindings):raise RuntimeError('BOUND_DIALOGUE_ENV_REQUIRED')
     mode=bindings['KNOWLEDGE'][0].value;zone=bindings['TIMEZONE'][0].value
     environment=profile['services'][service].get('environment')
-    if not isinstance(environment,dict) or environment.get(mode)!='5':
+    if not isinstance(environment,dict) or environment.get(mode)!=expected_mode:
         raise RuntimeError('CONFIRMED_REVIEWED_MODE_REQUIRED')
     candidate=guard.changed_profile(profile,service,code)
     candidate['services'][service]['environment'].update({mode:'6',zone:timezone})
     return candidate
+
+
+def previous_release(guard,transport,path,captured,pin):
+    """Use an immutable successful mode6 release as the next baseline."""
+    record=json.loads(transport.read_private(guard,path/'record.json'))
+    result=json.loads(transport.read_private(guard,path/'result.json'))
+    for key in ('deployed','only_assistant_recreated','other_services_unchanged','native_model_contract_retained'):
+        if result.get(key) is not True:raise RuntimeError('SUCCESSFUL_DIALOGUE_RELEASE_REQUIRED')
+    if (result.get('game_restart') is not False or result.get('knowledge_mode')!='grounded-conversation'
+            or any(result.get(k)!=0 for k in ('model_calls','cloud_calls','messages_sent'))
+            or result.get('release')!=str(path)):
+        raise RuntimeError('SUCCESSFUL_DIALOGUE_RELEASE_REQUIRED')
+    if record.get('transport_capsule')!=str(captured) or record.get('transport_manifest_sha256')!=pin:
+        raise RuntimeError('PREVIOUS_RELEASE_CAPSULE_MISMATCH')
+    if not isinstance(record.get('deployed_identity'),list) or len(record['deployed_identity'])!=3:
+        raise RuntimeError('DEPLOYED_GENERATION_REQUIRED')
+    raw=transport.read_private(guard,path/'compose.candidate.json')
+    if guard.digest(raw)!=record['candidate_compose_sha256']:
+        raise RuntimeError('PREVIOUS_RELEASE_PROFILE_CHANGED')
+    code=guard.checked_path(record['candidate_code'],directory=True)
+    if code!=path/'code' or guard.tree_files(code)!=record['candidate_files']:
+        raise RuntimeError('PREVIOUS_RELEASE_CODE_CHANGED')
+    return guard.read_config(path/'operator.json'),record,raw
 
 
 def activate(guard,config,release,record,candidate_raw,original):
@@ -104,6 +127,7 @@ def main():
     parser.add_argument('--capsule',type=Path)
     parser.add_argument('--expected-capsule-manifest')
     parser.add_argument('--source-root',type=Path)
+    parser.add_argument('--previous-release',type=Path)
     parser.add_argument('--release-root',type=Path,required=True)
     parser.add_argument('--lock-file',type=Path,required=True)
     parser.add_argument('--timezone',default='UTC')
@@ -125,13 +149,20 @@ def main():
         transport=module(args.transport_helper,'dialogue_transport_guard')
         captured=guard.checked_path(str(args.capsule),directory=True)
         proof,captured_code=capsule(guard,transport,captured,args.expected_capsule_manifest)
-        config=guard.read_config(captured/'operator.json')
-        baseline=json.loads(transport.read_private(guard,captured/'baseline.record.json'))
+        if args.previous_release:
+            previous=guard.checked_path(str(args.previous_release),directory=True)
+            config,baseline,confirmed_profile=previous_release(guard,transport,previous,captured,args.expected_capsule_manifest)
+            confirmed_identity=baseline['deployed_identity']
+        else:
+            config=guard.read_config(captured/'operator.json')
+            baseline=json.loads(transport.read_private(guard,captured/'baseline.record.json'))
+            confirmed_profile=transport.read_private(guard,captured/'baseline.compose.json')
+            confirmed_identity=proof['container_identity']
         active=guard.checked_path(config['compose']);original=active.read_bytes()
-        if original!=transport.read_private(guard,captured/'baseline.compose.json'):
+        if original!=confirmed_profile:
             raise RuntimeError('CONFIRMED_PROFILE_CHANGED')
         before=guard.inventory();row=before[config['container']]
-        if list(guard.identity(row))!=proof['container_identity']:
+        if list(guard.identity(row))!=confirmed_identity:
             raise RuntimeError('CONFIRMED_ASSISTANT_GENERATION_CHANGED')
         profile=guard.compose(config,active);old_code=guard.code_source(profile,config['service'])
         original_files=guard.tree_files(old_code)
@@ -162,7 +193,7 @@ def main():
         allowed={'runtime.py','dialogue.py','portraits.py'}
         if {k:v for k,v in candidate_files.items() if k not in allowed}!={k:v for k,v in proof['candidate_sha256'].items() if k not in allowed}:
             raise RuntimeError('UNQUALIFIED_SUPPORT_MODULE_CHANGE')
-        candidate=profile_for_dialogue(guard,transport,profile,config['service'],candidate_code,args.timezone)
+        candidate=profile_for_dialogue(guard,transport,profile,config['service'],candidate_code,args.timezone,expected_mode='6' if args.previous_release else '5')
         candidate_raw=json.dumps(candidate,indent=2).replace('$','$$').encode()+b'\n'
         guard.write_private(release/'compose.candidate.json',candidate_raw)
         if guard.compose(config,release/'compose.candidate.json')!=candidate:

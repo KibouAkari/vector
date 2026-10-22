@@ -43,6 +43,43 @@ class Release(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError,'CONFIRMED_REVIEWED_MODE_REQUIRED'):
                     release.profile_for_dialogue(guard,transport,profile,'assistant',new,'Europe/Zurich')
 
+    def test_mode6_refresh_requires_explicit_mode_and_preserves_environment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);code=root/'code';code.mkdir()
+            (code/'server.py').write_text((ROOT/'services/minecraft-assistant/server.py').read_text())
+            profile={'services':{'assistant':{'environment':{'VECTOR_MINECRAFT_KNOWLEDGE':'6',
+                'VECTOR_MINECRAFT_TIMEZONE':'Europe/Zurich'},'volumes':[{'type':'bind','source':str(code),
+                'target':'/code','read_only':True}]}}}
+            result=release.profile_for_dialogue(guard,transport,profile,'assistant',code,'Europe/Zurich',expected_mode='6')
+            self.assertEqual(result,profile)
+            with self.assertRaises(RuntimeError):
+                release.profile_for_dialogue(guard,transport,profile,'assistant',code,'Europe/Zurich')
+
+    def test_previous_release_requires_success_original_capsule_and_unmodified_code(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);code=root/'code';code.mkdir();(code/'runtime.py').write_text('pass\n')
+            raw=b'{}';record={'candidate_code':str(code),'candidate_files':guard.tree_files(code),
+                'candidate_compose_sha256':guard.digest(raw),'deployed_identity':['id','image','start'],
+                'transport_capsule':str(root/'capsule'),'transport_manifest_sha256':'a'*64}
+            result={'deployed':True,'only_assistant_recreated':True,'other_services_unchanged':True,
+                'native_model_contract_retained':True,'game_restart':False,'knowledge_mode':'grounded-conversation',
+                'model_calls':0,'cloud_calls':0,'messages_sent':0,'release':str(root)}
+            for name,data in (('record.json',record),('result.json',result)):
+                (root/name).write_bytes(guard.canonical(data));(root/name).chmod(0o600)
+            (root/'compose.candidate.json').write_bytes(raw);(root/'compose.candidate.json').chmod(0o600)
+            with patch.object(guard,'read_config',return_value={'pinned':True}):
+                self.assertEqual(release.previous_release(guard,transport,root,root/'capsule','a'*64)[0],{'pinned':True})
+                with self.assertRaisesRegex(RuntimeError,'CAPSULE_MISMATCH'):
+                    release.previous_release(guard,transport,root,root/'capsule','b'*64)
+                for field,value in (('deployed',False),('game_restart',True),('model_calls',1)):
+                    (root/'result.json').write_bytes(guard.canonical(dict(result,**{field:value})))
+                    with self.assertRaisesRegex(RuntimeError,'SUCCESSFUL_DIALOGUE_RELEASE_REQUIRED'):
+                        release.previous_release(guard,transport,root,root/'capsule','a'*64)
+                (root/'result.json').write_bytes(guard.canonical(result))
+                (code/'runtime.py').write_text('changed\n')
+                with self.assertRaisesRegex(RuntimeError,'CODE_CHANGED'):
+                    release.previous_release(guard,transport,root,root/'capsule','a'*64)
+
     def test_native_model_and_instruction_contracts_are_comparable_without_execution(self):
         source=(ROOT/'services/minecraft-assistant/dialogue.py').read_text()
         self.assertEqual(release.constant(source,'MODEL'),'vector-qwen3-instruct2507:4b-q4km')
