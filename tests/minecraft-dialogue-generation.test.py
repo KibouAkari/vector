@@ -107,6 +107,17 @@ class DialogueTests(unittest.TestCase):
         now[0] = 181
         ai.answer('Und danach?', ('minecraft', 'a'), Observations())
         self.assertNotIn('Erstes eigenes Thema', p.calls[3][-1]['content'])
+
+    def test_independent_questions_drop_transcript_and_tool_history_has_no_stale_figures(self):
+        provider=Provider([{'statistics':'Mobkills ExampleOne'},{'answer':'Guten Morgen!'}, {'answer':'Wir haben über Monster gesprochen.'}])
+        dialogue=GroundedDialogue(provider);scope=('minecraft','a');facts=Observations()
+        dialogue.answer('Was sagt das Monsterkonto?',scope,facts)
+        dialogue.answer('Guten Morgen!',scope,facts)
+        self.assertEqual(len(provider.calls[1]),2)
+        dialogue.remember(scope,[],'Mobkills ExampleOne','ExampleOne hat 999 Mobkills.','tool-statistics',('mob_kills',),('ExampleOne',))
+        dialogue.answer('Und was meinst du dazu?',scope,facts)
+        self.assertNotIn('999',json.dumps(provider.calls[-1]))
+        self.assertIn('ExampleOne',provider.calls[-1][2]['content'])
     def test_public_backend_has_no_arbitrary_path_or_command_tool(self):
         ai = SimpleNamespace()
         facts = PublicObservations(ai, ('minecraft', 'a'), None)
@@ -378,7 +389,8 @@ class DialogueTests(unittest.TestCase):
                 answer=dialogue.answer('Wie schätzt du ExampleTwo ein?',scope,observations)
                 self.assertIn('99',answer);self.assertNotIn('90',answer)
                 answer=dialogue.answer('Roaste mich kurz.',scope,observations)
-                self.assertIn('Du',answer);self.assertIn('2 Spielerkills',answer);self.assertNotIn('99',answer)
+                self.assertIn('Du',answer);self.assertNotIn('99',answer)
+                self.assertNotIn('Endgegner',answer)
             self.assertEqual(provider.calls,[])
             self.assertEqual(dialogue.provenance(scope),'tool-portrait')
             with self.assertRaises(ValueError):
@@ -446,10 +458,11 @@ class DialogueTests(unittest.TestCase):
             dialogue.answer('Roaste ExampleTwo anhand seines Monsterkontos.',scope,observations)
             now[0]=181
             provider.values=iter([{'answer':'Welche Kategorie meinst du genau?'}])
-            with self.assertRaisesRegex(ValueError,'STRUCTURED_PLAYER_LOOKUP_REQUIRED'):
-                dialogue.answer('Und wie viele habe ich?',scope,observations)
+            text=dialogue.answer('Und wie viele habe ich?',scope,observations)
+            self.assertIn('Welche Kategorie',text)
+            self.assertNotIn('31',text)
             self.assertFalse(observations.inherited_metric)
-            self.assertNotIn(scope,dialogue.context)
+            self.assertEqual(dialogue.context[scope][1][-1]['metrics'],())
 
     def test_ambiguous_followup_clarifies_and_new_object_does_not_inherit_metric(self):
         with self.player_fixture() as (ai,ids):

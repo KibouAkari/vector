@@ -130,7 +130,9 @@ class PlayerPortraits:
             for old in list(self.variants):
                 if self.variants[old][1]<=now:self.variants.pop(old,None)
             previous=self.variants.pop(key,(0,0))[0]
-            self.variants[key]=(previous+1,now+180)
+            # A bounded style counter may outlive conversational context. No
+            # chat text or player judgement is retained in this counter.
+            self.variants[key]=(previous+1,now+86400)
             while len(self.variants)>256:self.variants.popitem(last=False)
         n=lambda x:f'{int(x):,}'.replace(',',"'")
         own=principal==p['uuid']
@@ -157,15 +159,18 @@ class PlayerPortraits:
         # clause is tied to this fresh snapshot; no invented victims or weapon kills.
         traits=[]
         def add(score,kind,text):traits.append((score,kind,text))
-        if v['player_kills']>0 and rank('player_kills')<=2:
-            add(1.55,'fighter',f"{subject} {has} {n(v['player_kills'])} Spielerkills (Rang {rank('player_kills')}) – friedliche Verhandlungen sind offenbar nicht immer die erste Wahl.")
+        if v['player_kills']>=10 and rank('player_kills')<=2:
+            peak=max(x['values']['player_kills'] for x in data['players'])
+            add(.6+.95*v['player_kills']/peak,'fighter',f"{subject} {has} {n(v['player_kills'])} Spielerkills (Rang {rank('player_kills')}) – friedliche Verhandlungen sind offenbar nicht immer die erste Wahl.")
         if v['mob_kills']>=100 and rank('mob_kills')<=3:
             add(1.5,'hunter',f"Mit {n(v['mob_kills'])} Mobkills (Rang {rank('mob_kills')}) sieht die Nachbarschaft für Monster ziemlich ungemütlich aus.")
         blocks=sum(p['used'].get(k,0) for k in set(block_items))
         if blocks>=500:
-            add(1.3,'builder',f"{n(blocks)} Block-Item-Nutzungen deuten auf ordentlich Baulust hin.")
+            peak=max(sum(x['used'].get(k,0) for k in set(block_items)) for x in data['players'])
+            add(.65+.9*blocks/peak,'builder',f"{n(blocks)} Block-Item-Nutzungen deuten auf ordentlich Baulust hin.")
         if v['distance']>=1 and rank('distance')<=3:
-            add(1.25,'traveler',f"{v['distance']:,.1f} km Strecke (Rang {rank('distance')}) – Stillstehen scheint nicht die Lieblingsbeschäftigung zu sein.".replace(',',"'"))
+            peak=max(x['values']['distance'] for x in data['players'])
+            add(.85+.6*v['distance']/peak,'traveler',f"{v['distance']:,.1f} km Strecke (Rang {rank('distance')}) – Stillstehen scheint nicht die Lieblingsbeschäftigung zu sein.".replace(',',"'"))
         bow=p['used'].get('minecraft:bow',0)
         if bow>0 and bow==max(x['used'].get('minecraft:bow',0) for x in data['players']):
             add(1.05,'archer',f"Dazu {n(bow)} Bogennutzungen (Rang 1): Der Bogen liegt wohl selten nur zur Dekoration herum.")

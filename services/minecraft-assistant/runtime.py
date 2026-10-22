@@ -23,7 +23,7 @@ METRIC_WORDS = {
     'mob_kills': r'mob.?kills|monster|mobs|getötete.*(?:kreaturen|monster)',
     'play_time': r'spielzeit|spielstunden|play.?time|(?:längsten|meisten).*gespielt',
     'distance': r'strecke|distanz|kilometer|gelaufen|gereist',
-    'deaths': r'\btod(?:e|esfälle)?\b|gestorben|\bstarb\b|\bstarben\b|\bsterben\b|\bstirbt\b|\bdied\b|\bdeaths?\b',
+    'deaths': r'\btod(?:e[nrs]?|esfälle[n]?)?\b|gestorben|\bstarb\b|\bstarben\b|\bsterben\b|\bstirbt\b|\bdied\b|\bdeaths?\b',
 }
 ORE_WORDS = {
     'Diamanterz-Blöcke': (r'\b(?:diamant(?:en|erz(?:e)?)?|diamonds?|diamond ore)\b', ('minecraft:diamond_ore', 'minecraft:deepslate_diamond_ore')),
@@ -422,16 +422,20 @@ class Assistant:
         if admitted != 'accepted':
             # One bounded notice for an owned pending page; never compute the page
             # or bypass admission. Replays and further rejected requests stay silent.
-            if admitted == 'limited' and PAGE_NEXT.fullmatch(unicodedata.normalize('NFKC',question).casefold()):
+            if admitted == 'limited' and (self.dialogue is not None or PAGE_NEXT.fullmatch(unicodedata.normalize('NFKC',question).casefold())):
                 now=time.monotonic()
                 with self.ranking_lock:
                     for key in list(self.ranking_notices):
                         if self.ranking_notices[key]<=now-60:self.ranking_notices.pop(key,None)
                     pending=self.ranking_pages.get(scope)
-                    if pending and pending[2]>now and scope not in self.ranking_notices and len(self.ranking_notices)<3:
+                    if (self.dialogue is not None or pending and pending[2]>now) and scope not in self.ranking_notices and len(self.ranking_notices)<3:
                         self.ranking_notices[scope]=now
-                        self.ranking_pages[scope]=(pending[0],pending[1],now+180)
-                        return {'status':'answered','text':safe_display(prefix+'kurze Pause wegen des Minutenlimits. Die nächste Rangliste bleibt bereit. Warte etwa eine Minute und schreibe dann nochmals Hey Vector, weiter.')}
+                        if pending and pending[2]>now and PAGE_NEXT.fullmatch(unicodedata.normalize('NFKC',question).casefold()):
+                            self.ranking_pages[scope]=(pending[0],pending[1],now+180)
+                            notice='kurze Pause wegen des Minutenlimits. Die nächste Rangliste bleibt bereit. Warte etwa eine Minute und schreibe dann nochmals Hey Vector, weiter.'
+                        else:
+                            notice='kurze Pause: Das Minutenlimit ist erreicht. Warte etwa eine Minute und stelle deine Frage dann nochmals.'
+                        return {'status':'answered','text':safe_display(prefix+notice)}
             return {'status': admitted}
         portrait_response = False
         if not question:
@@ -533,7 +537,8 @@ class Assistant:
                 while len(self.ranking_pages)>256:self.ranking_pages.popitem(last=False)
         text=self.stat_answer('Top '+str(limit)+' '+stats.METRICS[metric][0])
         text=text.removesuffix(' Stand: gespeicherte Spielerdateien.')
-        text=text+(' Für die nächste Kategorie: Hey Vector, weiter.' if remaining else ' Das war die letzte Kategorie.')
+        notice=(' Weiter?' if remaining else ' Letzte Kategorie.') if with_metric else (' Für die nächste Kategorie: Hey Vector, weiter.' if remaining else ' Das war die letzte Kategorie.')
+        text=text+notice
         return (metric,text) if with_metric else text
 
     def stat_answer(self, question, block_items=(), *, principal=None):
@@ -554,6 +559,8 @@ class Assistant:
             category_q = re.sub(r'\bspielerkilld\b', 'spielerkills', category_q)
         selected = [key for key, pattern in METRIC_WORDS.items() if re.search(pattern, category_q)]
         top_match = re.search(r'\btop\s*(\d+)\b', q)
+        if top_match is None:
+            top_match=re.search(r'\b(?:die|den)\s+(\d+)\s+(?:spieler\s+)?(?:mit\s+(?:den\s+)?)?meisten\b',q)
         comparison = bool(re.search(r'unterschied|differenz|vergleich|\bcompar(?:e|ison)\b|\bmehr\b.*\bals\b|\bweniger\b.*\bals\b', q))
         is_record = re.search(r'rekord|record', q)
         wants_ranks = bool(re.search(r'\br[äa]ng(?:e|en)?\b|\branks?\b|platzierung', q))
@@ -758,6 +765,18 @@ class Assistant:
                     if metric == 'deaths':
                         text += ' nach Anzahl'
                 else:
+                    ordinal=re.search(r'\b(?:rang|platz)\s*(\d+)\b|\b(erste[rn]?|zweite[rn]?|dritte[rn]?)\s+platz\b',q)
+                    dense=block_position(q) if re.search(r'\bam\s+\d+\.?\s*meisten\b|zweitmeist|drittmeist',q) else None
+                    if ordinal or dense:
+                        position=(int(ordinal[1]) if ordinal[1] else 1 if ordinal[2].startswith('erste') else 2 if ordinal[2].startswith('zweite') else 3) if ordinal else dense
+                        if not 1<=position<=10:return 'frage bitte nach Rang 1 bis Rang 10.'
+                        levels=sorted({p['values'][metric] for p in data['players']},reverse=True)
+                        matches=[p for p in data['players'] if ((p['values'][metric]==levels[position-1]) if dense and position<=len(levels) else (stats.rank(data,p,metric)==position if not dense else False))]
+                        if not matches:return 'bei '+label+' ist dieser Rang nicht belegt. Gleiche Werte teilen sich einen Rang.'
+                        if len(matches)>10:return 'mehr als zehn Spieler teilen sich diesen Rang. Bitte grenze die Frage ein.'
+                        text=label+': '+'; '.join(p['name']+' '+number(p['values'][metric],unit) for p in sorted(matches,key=lambda p:p['name'].casefold()))
+                        if dense:text+=' ('+str(position)+'. höchster Zählwert)'
+                        return text+'.'
                     if not re.search(r'\bwer\b|\bwho\b|meist|längst|höchst|top\s*\d+|rangliste|leaderboard', q):
                         return 'nenne bitte den vollständigen Spielernamen oder frage nach dem Spitzenreiter.'
                     limit = int(top_match[1]) if top_match else 1

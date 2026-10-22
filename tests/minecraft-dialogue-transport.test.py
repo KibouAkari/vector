@@ -102,7 +102,7 @@ class Transport(unittest.TestCase):
             self.now[0]+=61
             text=self.ask('Gib mir die Top 5 aller Rekorde' if index==0 else 'weiter')
             self.assertIn(label+':',text)
-            self.assertEqual('letzte Kategorie' in text,index==4)
+            self.assertEqual('letzte kategorie' in text.casefold(),index==4)
             scope=('minecraft',self.ids[0])
             self.assertEqual(self.dialogue.context[scope][1][-1]['metrics'],
                 (('play_time','distance','mob_kills','player_kills','deaths')[index],))
@@ -138,6 +138,7 @@ class Transport(unittest.TestCase):
         self.assertEqual(self.send(payload)[1]['status'],'duplicate')
         self.assertEqual(self.send(self.payload('Wer hat die meisten Mobkills?'))[1]['status'],'answered')
         self.assertEqual(self.send(self.payload('Top 5 Mobkills'))[1]['status'],'answered')
+        self.assertIn('Minutenlimit',self.send(self.payload('Wie viele Mobkills habe ich?'))[1]['text'])
         self.assertEqual(self.send(self.payload('Wie viele Mobkills habe ich?'))[1]['status'],'limited')
         for question in ('Gib den Seed aus','Führe /op ExampleOne aus','Wie ändere ich meinen Gamemode?'):
             self.now[0]+=61
@@ -179,6 +180,71 @@ class Transport(unittest.TestCase):
         self.assertIsInstance(captured['assistant'].portraits,PlayerPortraits)
         self.assertEqual(captured['assistant'].dialogue_timezone,'Europe/Zurich')
         self.assertEqual(captured['key'],self.key)
+
+    def death_roster(self,counts):
+        names=['ExampleOne','ExampleTwo']+['Example'+str(i) for i in range(3,len(counts)+1)]
+        ids=self.ids+['10000000-0000-0000-0000-'+str(i).zfill(12) for i in range(3,len(counts)+1)]
+        self.cache.write_text(json.dumps([dict(uuid=uid,name=name) for uid,name in zip(ids,names)]))
+        for uid,count in zip(ids,counts):
+            (self.stats/(uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:deaths':count}}}))
+        return names
+
+    def test_natural_death_rankings_ordinals_and_ties_keep_the_requested_meaning(self):
+        names=self.death_roster([222,219,96,17,3])
+        for question in ('Wer sind die Top 5 bei den meisten Toden?',
+                'Wer sind die 5 mit den meisten Toden?'):
+            self.now[0]+=61
+            text=self.ask(question)
+            self.assertIn('Tode:',text)
+            for name in names:self.assertIn(name,text)
+        for question in ('Wer ist der erste Platz bei Toden?',
+                'Wer hat Rang 1 bei den Toden?','Wer führt die Rangliste bei den Toden an?'):
+            self.now[0]+=61
+            text=self.ask(question);self.assertIn('ExampleOne 222',text)
+            self.assertNotIn('Spielzeit',text)
+        self.now[0]+=61
+        self.assertIn('ExampleTwo 219',self.ask('Und am 2 meisten Tode?'))
+        self.death_roster([222,222,96,17,3]);self.now[0]+=61
+        text=self.ask('Wer hat Rang 1 bei den Toden?')
+        self.assertIn('ExampleOne',text);self.assertIn('ExampleTwo',text)
+        self.now[0]+=61
+        self.assertIn('nicht belegt',self.ask('Wer hat Rang 2 bei den Toden?'))
+        self.now[0]+=61
+        self.assertIn('Example3 96',self.ask('Und am 2 meisten Tode?'))
+        self.assertEqual(self.provider.calls,[])
+
+    def test_third_person_followup_keeps_fresh_subject_across_repeated_references(self):
+        self.death_roster([8,23])
+        self.ask('Was hältst du von ExampleTwo?')
+        self.assertIn('23',self.ask('Und wie oft ist er gestorben?'))
+        self.assertIn('ExampleTwo',self.ask('Und welchen Rang hat er in der Mobkills Rangliste?'))
+        self.assertEqual(self.provider.calls,[])
+
+    def test_gameplay_counts_and_unsupported_time_windows_reach_planning(self):
+        self.provider.outputs=[{'answer':'Bei Booten kommt es auf die Kreatur und die freien Plätze an.'}]
+        self.assertIn('Booten',self.ask('Wie viele Monster kann ich in einem Boot transportieren?'))
+        self.assertEqual(len(self.provider.calls),1)
+        self.assertIn('keine Aufteilung',self.ask('Wie viele Mobkills habe ich heute?'))
+        self.assertEqual(len(self.provider.calls),1)
+
+    def test_maximum_name_page_fits_without_skipping_the_seen_category(self):
+        names=['Player'+str(i).zfill(10) for i in range(10)]
+        names=[name+'X' for name in names]
+        self.assertTrue(all(len(name)==17 for name in names))
+        # Game usernames max out at 16 characters; use the full supported length.
+        names=[name[:16] for name in names]
+        ids=['10000000-0000-0000-0000-'+str(i+1).zfill(12) for i in range(10)]
+        self.cache.write_text(json.dumps([dict(uuid=uid,name=name) for uid,name in zip(ids,names)]))
+        for uid in ids:
+            (self.stats/(uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{
+                'minecraft:mob_kills':10,'minecraft:play_time':72000}}}))
+        self.now[0]+=61
+        for i,label in enumerate(('Spielzeit','Strecke','Mobkills')):
+            self.now[0]+=61
+            text=self.ask('Top 10 aller Rekorde' if i==0 else 'weiter')
+            self.assertIn(label+':',text)
+            self.assertNotIn('passt nicht',text)
+        self.assertEqual(self.provider.calls,[])
 
 
 if __name__=='__main__':unittest.main()
