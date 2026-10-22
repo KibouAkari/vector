@@ -45,6 +45,9 @@ def requested_metrics(question, roster=()):
     # Names are data, even when someone happens to be called MonsterHunter.
     for player in roster:
         question=re.sub(r'(?<![a-z0-9_])'+re.escape(player['name'])+r'(?![a-z0-9_])',' ',question,flags=re.I)
+    if re.search(r'\btop\s*\d+\b|rangliste|leaderboard',question,re.I):
+        question=re.sub(r'\bmonkills\b','mobkills',question,flags=re.I)
+        question=re.sub(r'\bspielerkilld\b','spielerkills',question,flags=re.I)
     return tuple(key for key,pattern in METRIC_WORDS.items() if re.search(pattern,question,re.I))
 
 
@@ -221,6 +224,25 @@ class PublicObservations:
         metric=self.metric_topic[0]
         return self.lookup('statistics',stats.METRICS[metric][0]+' von '+self.self_name)
 
+    def direct_statistics(self,question,facts):
+        """Keep supported native counters and scoped pages off the model path."""
+        if portrait_request(question):
+            return None
+        pager=getattr(self.assistant,'ranking_page',None)
+        page=pager(question,self.scope,with_metric=True) if callable(pager) else None
+        if page is not None:
+            if isinstance(page,tuple):
+                metric,page=page
+                self.metric_topic=(metric,)
+            return page
+        if not self.metric_topic:
+            return None
+        ranked=bool(re.search(r'\btop\s*\d+\b|\bwer\b.*\bmeist\w*\b|unterschied|differenz|vergleich',question,re.I))
+        own_or_named=bool((facts.get('players') or self.self_only) and structured_player_request(question))
+        if not ranked and not own_or_named:
+            return None
+        return self.lookup('statistics',question)
+
     def lookup(self, tool, query):
         if tool not in TOOLS[1:] or request_forbidden(query):
             raise ValueError('FORBIDDEN_DIALOGUE_TOOL')
@@ -322,6 +344,10 @@ class GroundedDialogue:
             followup=observations.direct_followup(question)
             if followup is not None:
                 return self.remember(scope,history,question,render_evidence(followup),'tool-statistics',metrics)
+        if self.allow_direct and callable(getattr(observations,'direct_statistics',None)):
+            statistics=observations.direct_statistics(question,facts)
+            if statistics is not None:
+                return self.remember(scope,history,question,render_evidence(statistics),'tool-statistics',observations.metric_topic)
         if self.allow_direct and callable(getattr(observations,'direct_portrait',None)):
             portrait=observations.direct_portrait(question,facts)
             if portrait is not None:

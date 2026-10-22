@@ -509,7 +509,7 @@ class Assistant:
             raise ValueError('INVALID_MOD_INVENTORY')
         return sorted(set(value))
 
-    def ranking_page(self, question, scope):
+    def ranking_page(self, question, scope, *, with_metric=False):
         q=unicodedata.normalize('NFKC',question).casefold()
         all_top=re.search(r'\btop\s*(\d+)\b',q)
         all_top=all_top if all_top and re.search(r'\ball(?:e|er|en)\s+(?:rekorde|ranglisten|kategorien|statistiken)\b',q) else None
@@ -533,7 +533,8 @@ class Assistant:
                 while len(self.ranking_pages)>256:self.ranking_pages.popitem(last=False)
         text=self.stat_answer('Top '+str(limit)+' '+stats.METRICS[metric][0])
         text=text.removesuffix(' Stand: gespeicherte Spielerdateien.')
-        return text+(' Für die nächste Kategorie: Hey Vector, weiter.' if remaining else ' Das war die letzte Kategorie.')
+        text=text+(' Für die nächste Kategorie: Hey Vector, weiter.' if remaining else ' Das war die letzte Kategorie.')
+        return (metric,text) if with_metric else text
 
     def stat_answer(self, question, block_items=(), *, principal=None):
         q = unicodedata.normalize('NFKC', question).casefold()

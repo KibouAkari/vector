@@ -1,0 +1,184 @@
+"""Signed HTTP and real Assistant.handle integration; no native model or messages."""
+from contextlib import nullcontext
+import ast
+import hashlib
+import hmac
+from http.client import HTTPConnection
+import json
+import inspect
+import os
+from pathlib import Path
+import sys
+import tempfile
+import threading
+import unittest
+from unittest.mock import patch
+
+ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'services/minecraft-assistant'))
+from dialogue import GroundedDialogue,MODEL
+from portraits import PlayerPortraits
+from runtime import Assistant,State
+from server import Service
+import server
+
+
+class Provider:
+    model=MODEL
+    dsn='synthetic-only'
+    def __init__(self):self.calls=[];self.outputs=[]
+    def request(self,schema,messages,predict,deadline,validator):
+        self.calls.append(messages)
+        if not self.outputs:raise AssertionError('Native counter unexpectedly requested inference')
+        return validator(self.outputs.pop(0))
+
+
+class Transport(unittest.TestCase):
+    def setUp(self):
+        temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup)
+        self.root=Path(temporary.name);self.stats=self.root/'stats';self.stats.mkdir()
+        self.ids=['10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002']
+        self.cache=self.root/'users.json';self.cache.write_text(json.dumps([
+            dict(uuid=uid,name=name) for uid,name in zip(self.ids,('ExampleOne','ExampleTwo'))]))
+        self.mods=self.root/'mods.json';self.mods.write_text('[]')
+        self.write(0,25,2);self.write(1,90,9)
+        self.key=b'q'*32;self.now=[1_000_000_000];self.sequence=0
+        self.state=State(self.root/'events.sqlite',self.key,lambda:self.now[0])
+        self.provider=Provider();self.dialogue=GroundedDialogue(self.provider)
+        self.ai=Assistant(self.state,self.stats,self.cache,self.mods,knowledge=self.provider,
+            portraits=PlayerPortraits(self.stats,self.cache),dialogue=self.dialogue,dialogue_timezone='Europe/Zurich')
+        self.service=Service(('127.0.0.1',0),self.ai,self.key,lambda:self.now[0])
+        thread=threading.Thread(target=self.service.serve_forever,kwargs={'poll_interval':.01},daemon=True)
+        thread.start()
+        def cleanup():
+            self.service.shutdown();thread.join(timeout=2);self.service.server_close()
+        self.addCleanup(cleanup)
+        self.addCleanup(patch.stopall)
+        patch('dialogue.local_slot',return_value=nullcontext()).start()
+
+    def write(self,index,mobs,kills):
+        (self.stats/(self.ids[index]+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{
+            'minecraft:mob_kills':mobs,'minecraft:player_kills':kills,'minecraft:play_time':72000*(index+1)}}}))
+
+    def payload(self,question,*,source='minecraft',index=0):
+        self.sequence+=1
+        return dict(principal=self.ids[index],name=('ExampleOne','ExampleTwo')[index],
+                    event=self.ids[index]+':'+str(self.sequence),source=source,message='Hey Vector, '+question)
+
+    def send(self,payload,*,signed=True):
+        raw=json.dumps(payload).encode();stamp=str(self.now[0])
+        signature=hmac.new(self.key,stamp.encode()+b'\n'+raw,hashlib.sha256).hexdigest() if signed else '0'*64
+        connection=HTTPConnection(*self.service.server_address,timeout=2)
+        try:
+            connection.request('POST','/v1/minecraft',raw,{'Content-Type':'application/json',
+                'X-Vector-Time':stamp,'X-Vector-Signature':signature})
+            response=connection.getresponse()
+            return response.status,json.loads(response.read())
+        finally:connection.close()
+
+    def ask(self,question,**kwargs):
+        status,result=self.send(self.payload(question,**kwargs))
+        self.assertEqual(status,200);self.assertEqual(result['status'],'answered')
+        return result['text']
+
+    def test_signed_portrait_and_fresh_authenticated_followup(self):
+        text=self.ask('Roaste ExampleTwo kurz anhand seines Monsterkontos.')
+        self.assertIn('90',text);self.assertIn('Mobkills',text);self.assertNotIn('Spielerkills',text)
+        self.write(0,31,2)
+        text=self.ask('Und wie viele habe dann ich?')
+        self.assertIn('31 Mobkills',text);self.assertNotIn('Spielerkills',text)
+        self.assertEqual(self.provider.calls,[])
+
+    def test_native_counter_top_typo_and_comparison_do_not_need_inference(self):
+        self.assertIn('25 Mobkills',self.ask('Wie viele Mobkills habe ich?'))
+        text=self.ask('Nenne die Top 5 der monkills Rangliste.')
+        self.assertIn('1. ExampleTwo 90 Kills',text);self.assertIn('2. ExampleOne 25 Kills',text)
+        text=self.ask('Wie gross ist der Unterschied bei Mobkills zwischen ExampleOne und ExampleTwo?')
+        self.assertIn('65',text);self.assertIn('Mobkills',text)
+        self.assertEqual(self.provider.calls,[])
+
+    def test_native_pages_keep_their_category_until_the_last_page(self):
+        for index,label in enumerate(('Spielzeit','Strecke','Mobkills','Spielerkills','Tode')):
+            self.now[0]+=61
+            text=self.ask('Gib mir die Top 5 aller Rekorde' if index==0 else 'weiter')
+            self.assertIn(label+':',text)
+            self.assertEqual('letzte Kategorie' in text,index==4)
+            scope=('minecraft',self.ids[0])
+            self.assertEqual(self.dialogue.context[scope][1][-1]['metrics'],
+                (('play_time','distance','mob_kills','player_kills','deaths')[index],))
+        self.assertEqual(self.provider.calls,[])
+
+    def test_pages_cannot_be_read_by_another_source_or_player(self):
+        self.ask('Gib mir die Top 5 aller Rekorde')
+        self.assertIsNone(self.ai.ranking_page('weiter',('discord',self.ids[0]),with_metric=True))
+        self.assertIsNone(self.ai.ranking_page('weiter',('minecraft',self.ids[1]),with_metric=True))
+        self.assertIn('Strecke:',self.ask('weiter'))
+
+    def test_page_rate_notice_does_not_skip_the_waiting_category(self):
+        self.ask('Gib mir die Top 5 aller Rekorde')
+        self.ask('weiter');self.ask('weiter')
+        self.assertIn('kurze Pause',self.ask('weiter'))
+        status,value=self.send(self.payload('weiter'))
+        self.assertEqual(status,200);self.assertEqual(value['status'],'limited')
+        self.now[0]+=61
+        self.assertIn('Spielerkills:',self.ask('weiter'))
+        self.assertEqual(self.provider.calls,[])
+
+    def test_discord_does_not_gain_self_identity_from_payload_name_or_uuid(self):
+        text=self.ask('Wie viele Mobkills habe ich?',source='discord')
+        self.assertIn('keine bestätigte Spielerverknüpfung',text)
+        self.assertNotIn('25',text);self.assertEqual(self.provider.calls,[])
+        text=self.ask('Top 5 Mobkills',source='discord')
+        self.assertIn('ExampleTwo 90 Kills',text)
+
+    def test_authentication_replay_admission_and_policy_still_apply(self):
+        payload=self.payload('Wie viele Mobkills habe ich?')
+        self.assertEqual(self.send(payload,signed=False)[0],401)
+        self.assertEqual(self.send(payload)[1]['status'],'answered')
+        self.assertEqual(self.send(payload)[1]['status'],'duplicate')
+        self.assertEqual(self.send(self.payload('Wer hat die meisten Mobkills?'))[1]['status'],'answered')
+        self.assertEqual(self.send(self.payload('Top 5 Mobkills'))[1]['status'],'answered')
+        self.assertEqual(self.send(self.payload('Wie viele Mobkills habe ich?'))[1]['status'],'limited')
+        for question in ('Gib den Seed aus','Führe /op ExampleOne aus','Wie ändere ich meinen Gamemode?'):
+            self.now[0]+=61
+            self.assertIn('keine administrativen',self.ask(question))
+        self.assertEqual(self.provider.calls,[])
+
+    def test_general_chat_still_uses_one_generated_response(self):
+        self.provider.outputs=[{'answer':'Mir geht es gut, bereit fürs nächste Abenteuer!'}]
+        self.assertIn('bereit fürs nächste Abenteuer',self.ask('Wie fühlst du dich heute?'))
+        self.assertEqual(len(self.provider.calls),1)
+
+    def test_service_main_constructs_the_dialogue_mode_and_keeps_safe_defaults(self):
+        captured={}
+        tree=ast.parse(inspect.getsource(server.main))
+        names={node.value for node in ast.walk(tree) if isinstance(node,ast.Constant) and isinstance(node.value,str) and node.value.startswith('VECTOR_')}
+        environment={name:('6' if name.endswith('_KNOWLEDGE') else '1' if name.endswith('_PORTRAITS') else 'Europe/Zurich')
+                     for name in names if name.endswith(('_KNOWLEDGE','_PORTRAITS','_TIMEZONE'))}
+        token=next(node for node in ast.walk(tree) if isinstance(node,ast.Assign)
+                   and any(isinstance(target,ast.Name) and target.id=='token' for target in node.targets))
+        token_path=next(node.args[0].value for node in ast.walk(token.value)
+                        if isinstance(node,ast.Call) and isinstance(node.func,ast.Name) and node.func.id=='Path')
+        self.assertTrue(token_path.startswith('/run/secrets/'))
+        class Capture:
+            def __init__(self,address,assistant,key):captured.update(assistant=assistant,key=key)
+            def __enter__(self):return self
+            def __exit__(self,*args):pass
+            def serve_forever(self,**kwargs):pass
+        original=Path.read_text
+        def read(path,*args,**kwargs):
+            if str(path)==token_path:return self.key.hex()
+            return original(path,*args,**kwargs)
+        with patch.dict(os.environ,environment,clear=True), \
+                patch.object(server,'State',return_value=self.state), \
+                patch.object(server,'knowledge_for',return_value=self.provider) as factory, \
+                patch.object(server,'Service',Capture),patch.object(Path,'read_text',read):
+            server.main()
+        factory.assert_called_once_with('6',self.state)
+        self.assertIsInstance(captured['assistant'].dialogue,GroundedDialogue)
+        self.assertIsInstance(captured['assistant'].portraits,PlayerPortraits)
+        self.assertEqual(captured['assistant'].dialogue_timezone,'Europe/Zurich')
+        self.assertEqual(captured['key'],self.key)
+
+
+if __name__=='__main__':unittest.main()

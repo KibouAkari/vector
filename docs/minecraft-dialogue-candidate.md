@@ -31,6 +31,12 @@ change a bound category. This is bounded reference resolution, not persistent
 player memory or a claim of general understanding.
 
 Other admitted questions make at most one call to the existing local model.
+Supported scoped ranking pages, explicit player counters, selected-category
+top lists and comparisons keep their existing statistics backend. These routes
+avoid model planning and retain metric metadata for follow-ups. The bounded
+category spelling corrections match the existing ranking parser. They do not
+turn arbitrary mentions of monsters into a statistics request. Generic chat
+still reaches generation and player assessments retain their portrait route.
 It can write a short answer or resolve one standalone allowlisted tool query.
 Trusted tool results are rendered directly; no second model call rewrites their
 facts. Explicit player-count and assessment requests use their actual backend,
@@ -112,6 +118,29 @@ and verifies termination before leaving the release guard. No service is
 stopped. Bounded leader observations explicitly mark omitted tied holders.
 Apostrophe digit grouping is normalized for numeric checks; ambiguous decimal
 and clock formats remain distinct.
+
+## Signed transport qualification
+
+`scripts/deploy/qualify-minecraft-dialogue-transport.py` consumes a pinned,
+successful four-case native report. It verifies the immutable source hashes,
+baseline profile/code and current assistant generation before preparing a
+private projected code tree. It retains the captured provider/fact modules,
+projects the reviewed native-routing changes, and preserves the installed
+service token mount and recognized environment-key bindings in `main` only.
+Token contents and environment values are not printed or copied. A missing,
+writable or ambiguous token mount fails qualification.
+
+The signed HTTP suite runs in a temporary container without external networking,
+with synthetic game data, token and usage state. It exercises actual
+`Assistant.handle` and HTTP authentication, fresh self follow-ups, counters,
+top lists, comparisons, all ranking pages, source isolation, rate-limit page
+resumption, replay/policy boundaries, one mocked generated reply and service
+construction. These are transport and routing checks, not new model-quality
+evidence or real addon/Discord delivery. The earlier native model evidence is
+retained separately. No model call, production write, restart or activation is
+performed; cleanup and unchanged live identities/profile/code are verified.
+The resulting capsule remains ineligible for automatic activation. A separate
+guarded rollout must bind the final candidate, profile, evidence and rollback.
 
 ## Rejected-answer diagnosis
 

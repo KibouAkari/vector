@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-22 — Keep native statistics in the conversational chat route
+
+- Preserve scoped ranking pagination, supported player counters, top lists and comparisons in experimental conversation mode without model planning. Carry the backend page category as structured metadata and retain existing bounded ranking typo corrections.
+- Verify signed HTTP requests through the actual assistant handler, including fresh self statistics, portrait category focus, all ranking pages, rate-limit resumption, cross-source isolation, replay, policy rejection and service construction. Ordinary chat still reaches generation.
+- Add a separate transport qualifier that pins a completed native report, retains the captured fact/provider modules and installed service token/environment bindings in a private projected candidate, and checks it in a temporary restricted container without external networking or model requests. Verify unchanged live state and temporary-container cleanup. It never activates a service or changes the native report's eligibility.
+- Validate 76 local tests across transport, native-evidence guards, conversation generation/evaluation and existing runtime contracts. These source checks are not a native deployment, real chat delivery or a claim of general model quality. Existing reviewed modes, resources and the complete earlier changelog remain intact.
+
 ## 2026-10-22 — Keep player metrics through portraits and own follow-ups
 
 - Keep an explicitly requested public statistic in focused player assessments, including small and zero counters, rather than substituting a stronger unrelated metric.
