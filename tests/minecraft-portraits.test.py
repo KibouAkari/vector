@@ -75,6 +75,24 @@ class Portraits(unittest.TestCase):
             self.assertLessEqual(len(text),390)
         self.assertIn('eindeutigen',self.ask('hältst du von UnknownPlayer?'))
 
+    def test_rank_two_pvp_does_not_dominate_a_builder_traveler_profile(self):
+        path=self.stats/(self.users[2]['uuid']+'.json');data=json.loads(path.read_bytes())
+        data['stats']['minecraft:custom']['minecraft:player_kills']=50
+        path.write_text(json.dumps(data))
+        text=self.ask('was hältst du von Example3?')
+        self.assertIn('Architekt',text)
+        self.assertNotIn('Spielerkills',text)
+        self.assertIn("3'000",text)
+
+    def test_style_varies_after_chat_context_expires_without_storing_old_prose(self):
+        first=self.ask('was hältst du von Example1?')
+        self.now[0]+=181
+        second=self.ask('was hältst du von Example1?')
+        self.assertNotEqual(first,second)
+        for text in (first,second):
+            self.assertIn("1'000",text);self.assertIn('200',text)
+        self.assertTrue(all(isinstance(value[0],int) for value in self.portraits.variants.values()))
+
     def test_portrait_voice_is_not_wrapped_in_stock_casual_prefix(self):
         mods=self.root/'mods.json';mods.write_text('[]')
         ai=Assistant(SimpleNamespace(admit=lambda *args:'accepted'),self.stats,self.cache,mods,

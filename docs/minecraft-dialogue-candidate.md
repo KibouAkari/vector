@@ -18,6 +18,13 @@ The backend still rereads the statistics. Multiple subjects, unresolved names,
 unlinked first-person identity and ordinary counter questions do not take this
 shortcut. This reduces routing errors; it is not general semantic understanding.
 
+Player portraits weight building, travel and player kills against the fresh
+roster's magnitudes. A second place far below the leading player-kill total no
+longer outranks stronger building/travel evidence. A small player-kill counter
+alone does not earn a combat label. Bounded style counters can last one day;
+they retain only counter/expiry metadata, not old chat text or judgements.
+Conversational subject context still expires after three minutes.
+
 A category-focused portrait keeps the requested metric even when a different
 metric ranks higher. Small and zero counters are included rather than silently
 replaced by a stronger achievement. A successful structured lookup retains its
@@ -31,6 +38,12 @@ change a bound category. This is bounded reference resolution, not persistent
 player memory or a claim of general understanding.
 
 Other admitted questions make at most one call to the existing local model.
+Supported scoped ranking pages, explicit player counters, selected-category
+top lists and comparisons keep their existing statistics backend. These routes
+avoid model planning and retain metric metadata for follow-ups. The bounded
+category spelling corrections match the existing ranking parser. They do not
+turn arbitrary mentions of monsters into a statistics request. Generic chat
+still reaches generation and player assessments retain their portrait route.
 It can write a short answer or resolve one standalone allowlisted tool query.
 Trusted tool results are rendered directly; no second model call rewrites their
 facts. Explicit player-count and assessment requests use their actual backend,
@@ -46,6 +59,11 @@ documentation, recipes and the public installed-mod inventory. No command,
 shell, arbitrary-file or web tool exists.
 
 The candidate uses a 4096-token model context; legacy modes retain 2048 tokens.
+Independent model questions omit the transcript; dependent questions include
+only the latest exchange. Previous tool replies become subject/category
+metadata instead of stale numbers. The two-turn scoped RAM context still
+resolves references and expires as before. This reduces prompt material; a
+new latency improvement is not claimed without measurement.
 The model handles conversation and semantic query resolution. It sees at most two recent exchanges
 from the same authenticated author and source, expires them after three
 minutes, and retains at most 256 scopes in RAM. Recent exchanges use native user/assistant roles. First-person references
@@ -112,6 +130,52 @@ and verifies termination before leaving the release guard. No service is
 stopped. Bounded leader observations explicitly mark omitted tied holders.
 Apostrophe digit grouping is normalized for numeric checks; ambiguous decimal
 and clock formats remain distinct.
+
+## Signed transport qualification
+
+`scripts/deploy/qualify-minecraft-dialogue-transport.py` consumes a pinned,
+successful four-case native report. It verifies the immutable source hashes,
+baseline profile/code and current assistant generation before preparing a
+private projected code tree. It retains the captured provider/fact modules,
+projects the reviewed native-routing changes, and preserves the installed
+service token mount and recognized environment-key bindings in `main` only.
+Token contents and environment values are not printed or copied. A missing,
+writable or ambiguous token mount fails qualification.
+
+The signed HTTP suite runs in a temporary container without external networking,
+with synthetic game data, token and usage state. It exercises actual
+`Assistant.handle` and HTTP authentication, fresh self follow-ups, counters,
+top lists, comparisons, all ranking pages, source isolation, rate-limit page
+resumption, replay/policy boundaries, one mocked generated reply and service
+construction. These are transport and routing checks, not new model-quality
+evidence or real addon/Discord delivery. The earlier native model evidence is
+retained separately. No model call, production write, restart or activation is
+performed; cleanup and unchanged live identities/profile/code are verified.
+The resulting capsule remains ineligible for automatic activation. A separate
+guarded rollout must bind the final candidate, profile, evidence and rollback.
+
+## Guarded opt-in
+
+`scripts/deploy/release-minecraft-dialogue.py` takes an explicit captured
+transport-manifest pin, rechecks the original successful native evidence and
+current mode-5 generation/profile/code, and prepares a private candidate.
+Only reviewed runtime, dialogue and portrait modules can replace captured
+modules. The model identifier and general instruction must match the native
+candidate; other support modules and the private service bindings stay pinned.
+An isolated signed-HTTP suite must pass again on the final projection, with
+no model request, real message or production event write.
+
+Preparation is the default. Explicit `--activate` changes only the dedicated
+assistant code bind and its bound knowledge-mode/timezone environment keys.
+The existing image, resource/network/security settings, inputs, state and
+unrelated services remain unchanged. The service is recreated without pulls,
+builds or dependencies; actual profile/code/health and unrelated identities
+are verified. Original bytes/code and a rollback launcher are saved first.
+Start failures and interrupts invoke the existing generation-aware rollback;
+external drift is refused rather than overwritten. A failed rollback is
+reported explicitly and retains its recovery evidence. No Minecraft restart
+or automatic welcome follows this operation. These safeguards do not prove
+general answer quality or real addon delivery.
 
 ## Rejected-answer diagnosis
 

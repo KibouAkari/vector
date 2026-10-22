@@ -41,10 +41,26 @@ SELF_REFERENCE = re.compile(r'\b(?:ich|mir|mich|mein(?:e|er|es|em|en)?|i|me|my)\
 BACK_REFERENCE = re.compile(r'^\s*(?:und|aber|also)\b|\b(?:er|ihm|ihn|sein\w*|diese[rsnm]?|davon|damit|dazu|das)\b', re.I)
 
 
+def saved_statistic_form(question,roster):
+    """Conservative fast-path grammar; unfamiliar qualifiers go to the planner."""
+    for player in roster:
+        question=re.sub(r'(?<![a-z0-9_])'+re.escape(player['name'])+r'(?![a-z0-9_])',' ',question,flags=re.I)
+    if re.search(r'\btop\s*\d+\b|rangliste|leaderboard',question,re.I):
+        question=re.sub(r'\bmonkills\b','mobkills',question,flags=re.I)
+        question=re.sub(r'\bspielerkilld\b','spielerkills',question,flags=re.I)
+    for pattern in METRIC_WORDS.values():question=re.sub(pattern,' ',question,flags=re.I)
+    question=re.sub(r'\btop(\d+)\b',r'top \1',question,flags=re.I)
+    allowed=set('wer wie welche welcher welchen viele viel vielen oft lange weit gross groß unterschied differenz vergleich zwischen und mit zu von bei im in den dem der die das des ein eine einer einem einen haben habe hab hat hast ich mir mich mein meine meinen meinem er sie ihm ihn sein seine seinen seinem sind ist du bitte nenne gib sage sag zeige mir top rang ränge raenge rangliste leaderboard platz ersten erste erster zweiten zweite drittmeisten zweitmeisten am meisten dann schon bisher insgesamt an führt fuehrt fuhrt'.split())
+    return all(word.isdecimal() or word in allowed for word in re.findall(r'\w+',question.casefold()))
+
+
 def requested_metrics(question, roster=()):
     # Names are data, even when someone happens to be called MonsterHunter.
     for player in roster:
         question=re.sub(r'(?<![a-z0-9_])'+re.escape(player['name'])+r'(?![a-z0-9_])',' ',question,flags=re.I)
+    if re.search(r'\btop\s*\d+\b|rangliste|leaderboard',question,re.I):
+        question=re.sub(r'\bmonkills\b','mobkills',question,flags=re.I)
+        question=re.sub(r'\bspielerkilld\b','spielerkills',question,flags=re.I)
     return tuple(key for key,pattern in METRIC_WORDS.items() if re.search(pattern,question,re.I))
 
 
@@ -184,6 +200,9 @@ class PublicObservations:
                 return [p for p in data['players'] if re.search(
                     r'(?<![a-z0-9_])' + re.escape(p['name']) + r'(?![a-z0-9_])', text, re.I)]
             mentioned = named(question)
+            if portrait_request(question):
+                from portraits import targets
+                mentioned=targets(question,data['players'])
             self.roster=[{'name':p['name'],'uuid':p['uuid']} for p in data['players']]
             self.metric_topic=requested_metrics(question,self.roster)
             # Only an explicit referential count request may inherit a category.
@@ -202,7 +221,8 @@ class PublicObservations:
                 if own is not None and own not in mentioned:
                     mentioned.insert(0, own)
             elif not mentioned and reference:
-                mentioned = named(reference)
+                previous=set(history[-1].get('subjects',()))
+                mentioned = named(reference) or [p for p in data['players'] if p['name'] in previous]
             labels = {'play_time': 'Spielstunden', 'distance': 'Strecke_km',
                       'mob_kills': 'Mobkills', 'player_kills': 'Spielerkills', 'deaths': 'Tode'}
             facts['players'] = [{'player': p['name'], 'values': {
@@ -220,6 +240,39 @@ class PublicObservations:
             return 'Welchen Minecraft-Spielernamen meinst du? Dein Discord-Anzeigename ist keine bestätigte Spielerverknüpfung.'
         metric=self.metric_topic[0]
         return self.lookup('statistics',stats.METRICS[metric][0]+' von '+self.self_name)
+
+    def direct_statistics(self,question,facts):
+        """Keep supported native counters and scoped pages off the model path."""
+        if portrait_request(question):
+            return None
+        pager=getattr(self.assistant,'ranking_page',None)
+        page=pager(question,self.scope,with_metric=True) if callable(pager) else None
+        if page is not None:
+            if isinstance(page,tuple):
+                metric,page=page
+                self.metric_topic=(metric,)
+            return page
+        if not self.metric_topic:
+            return None
+        without_period=re.sub(r'\b(?:heute|gestern|diese woche|diesen monat)\b',' ',question,flags=re.I)
+        if (without_period!=question and saved_statistic_form(without_period,self.roster)
+                and structured_player_request(question)):
+            return 'Ich habe nur gespeicherte Gesamtzähler, keine Aufteilung nach diesem Zeitraum. Für diesen Zeitraum kann ich daher keinen Wert nennen.'
+        if not saved_statistic_form(question,self.roster):return None
+        ranked=bool(re.search(r'\btop\s*\d+\b|\bwer\b|\bam\s+\d+|unterschied|differenz|vergleich',question,re.I))
+        own_or_named=bool((facts.get('players') or self.self_only) and structured_player_request(question))
+        if not ranked and not own_or_named:
+            return None
+        explicit=[p for p in self.roster if re.search(r'(?<![a-z0-9_])'+re.escape(p['name'])+r'(?![a-z0-9_])',question,re.I)]
+        if not explicit and not self.self_only and facts.get('players'):
+            players=facts['players']
+            if len(players)!=1 or not re.search(r'\b(?:er|sie|ihm|ihn)\b',question,re.I):return None
+            question=re.sub(r'\b(?:er|sie|ihm|ihn)\b',players[0]['player'],question,flags=re.I)
+        return self.lookup('statistics',question)
+
+    def requires_player_lookup(self,question,facts):
+        return bool(facts.get('players') and (portrait_request(question) or
+            self.metric_topic and saved_statistic_form(question,self.roster) and structured_player_request(question)))
 
     def lookup(self, tool, query):
         if tool not in TOOLS[1:] or request_forbidden(query):
@@ -285,12 +338,12 @@ class GroundedDialogue:
             turns=self.context.get(scope,(0,[]))[1]
             return turns[-1].get('origin','unreported') if turns else 'unreported'
 
-    def remember(self,scope,history,question,answer,origin,metrics=()):
+    def remember(self,scope,history,question,answer,origin,metrics=(),subjects=()):
         answer=safe_answer(answer)
         with self.lock:
             self.context.pop(scope,None)
             self.context[scope]=(self.clock()+180,[*history[-2:],{
-                'question':question[:240],'answer':answer,'origin':origin,'metrics':tuple(metrics)}][-2:])
+                'question':question[:240],'answer':answer,'origin':origin,'metrics':tuple(metrics),'subjects':tuple(subjects)}][-2:])
             while len(self.context)>256:self.context.popitem(last=False)
         return answer
 
@@ -318,24 +371,37 @@ class GroundedDialogue:
                 return self.remember(scope,history,question,direct,observations.direct_origin)
         facts = observations.initial(question, history[-2:])
         metrics=getattr(observations,'metric_topic',())
+        subjects=tuple(p['player'] for p in facts.get('players',[]) if isinstance(p,dict) and isinstance(p.get('player'),str))
         if self.allow_direct and callable(getattr(observations,'direct_followup',None)):
             followup=observations.direct_followup(question)
             if followup is not None:
-                return self.remember(scope,history,question,render_evidence(followup),'tool-statistics',metrics)
+                return self.remember(scope,history,question,render_evidence(followup),'tool-statistics',metrics,subjects)
+        if self.allow_direct and callable(getattr(observations,'direct_statistics',None)):
+            statistics=observations.direct_statistics(question,facts)
+            if statistics is not None:
+                return self.remember(scope,history,question,render_evidence(statistics),'tool-statistics',observations.metric_topic,subjects)
         if self.allow_direct and callable(getattr(observations,'direct_portrait',None)):
             portrait=observations.direct_portrait(question,facts)
             if portrait is not None:
-                return self.remember(scope,history,question,render_evidence(portrait),'tool-portrait',metrics)
-        player_lookup_required=bool(facts.get('players') and structured_player_request(question))
+                return self.remember(scope,history,question,render_evidence(portrait),'tool-portrait',metrics,subjects)
+        required=getattr(observations,'requires_player_lookup',None)
+        player_lookup_required=required(question,facts) if callable(required) else bool(facts.get('players') and structured_player_request(question))
         if self.allow_direct and not player_lookup_required and callable(getattr(observations,'reviewed_direct',None)):
             reviewed=observations.reviewed_direct(question)
             if reviewed is not None:
                 reviewed=self.validate_answer(reviewed)
                 return self.remember(scope,history,question,reviewed,'direct-reviewed')
         messages = [{'role': 'system', 'content': SYSTEM}]
-        for turn in history[-2:]:
+        # Independent questions need no transcript. A dependent question keeps
+        # one exchange; old tool figures are replaced with subject/topic metadata.
+        dependent=BACK_REFERENCE.search(question) or re.fullmatch(r'\s*(?:ja|nein|genau|gerne|ok|okay|klar)\s*[.!?]*',question,re.I)
+        model_history=history[-1:] if dependent else []
+        for turn in model_history:
+            prior={'answer':turn['answer']}
+            if turn.get('origin','').startswith('tool-'):
+                prior={'players':turn.get('subjects',()),'metrics':turn.get('metrics',())}
             messages.extend([{'role': 'user', 'content': turn['question']},
-                             {'role': 'assistant', 'content': json.dumps({'answer': turn['answer']}, ensure_ascii=False)}])
+                             {'role': 'assistant', 'content': json.dumps(prior, ensure_ascii=False)}])
         messages.append({'role': 'user', 'content': json.dumps({
             'q': question, 'facts': facts
         }, ensure_ascii=False, separators=(',', ':'))})
@@ -375,7 +441,7 @@ class GroundedDialogue:
                     evidence = observations.lookup(tool, query)
                     result=render_evidence(evidence)
                     origin='tool-'+tool
-            return self.remember(scope,history,question,result,origin,metrics if origin.startswith('tool-') else ())
+            return self.remember(scope,history,question,result,origin,metrics if origin.startswith('tool-') else (),subjects)
         except (ValueError,TimeoutError) as exc:
             recoverable=isinstance(exc,TimeoutError) or str(exc) in (
                 'UNSUPPORTED_DIALOGUE_NUMBER','INCOMPLETE_DIALOGUE_SENTENCE',

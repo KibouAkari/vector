@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-22 — Correct conversational rankings and add a guarded assistant opt-in
+
+- Recognize inflected death counters, natural count-based top lists and explicit first-place questions. Distinguish competition ranks from second-highest distinct values, retain ties and clarify absent ranks.
+- Keep full ranking pages within the conversational budget, bind fresh third-person subjects through follow-ups, and conservatively defer gameplay counts to planning. Unsupported time windows receive a specific data-availability explanation. Independent model questions omit history; dependent requests keep one exchange with metadata instead of old tool figures.
+- Weight player portraits against current roster magnitudes so a distant second player-kill total does not crowd out stronger building/travel evidence. Retain bounded style counters beyond the chat-context expiry, without retaining old prose or permanent player labels. Conversation mode emits at most one bounded rate-limit notice per scope/window within the existing global notice cap, without bypassing admission.
+- Add an explicit guarded opt-in from a pinned, completed transport capsule and retained native evidence. Recheck live generation/profile/code, keep the model/instruction and support modules pinned, run signed HTTP checks on the final projection, save original state and rollback code, and change only the assistant code bind and bound mode/timezone keys when activation is explicitly requested. Verify health/profile/identities; start failures and interrupts invoke the existing rollback guard. External drift is never overwritten.
+- Validate 129 local tests across conversation routing, signed transport, portraits, ranking requests, native evidence, profile bounds and recovery. Production activation and real channel delivery are separate outcomes; source checks do not establish universal model quality or faster generation. Full earlier changelog and README are preserved.
+
+## 2026-10-22 — Keep native statistics in the conversational chat route
+
+- Preserve scoped ranking pagination, supported player counters, top lists and comparisons in experimental conversation mode without model planning. Carry the backend page category as structured metadata and retain existing bounded ranking typo corrections.
+- Verify signed HTTP requests through the actual assistant handler, including fresh self statistics, portrait category focus, all ranking pages, rate-limit resumption, cross-source isolation, replay, policy rejection and service construction. Ordinary chat still reaches generation.
+- Add a separate transport qualifier that pins a completed native report, retains the captured fact/provider modules and installed service token/environment bindings in a private projected candidate, and checks it in a temporary restricted container without external networking or model requests. Verify unchanged live state and temporary-container cleanup. It never activates a service or changes the native report's eligibility.
+- Validate 76 local tests across transport, native-evidence guards, conversation generation/evaluation and existing runtime contracts. These source checks are not a native deployment, real chat delivery or a claim of general model quality. Existing reviewed modes, resources and the complete earlier changelog remain intact.
+
 ## 2026-10-22 — Keep player metrics through portraits and own follow-ups
 
 - Keep an explicitly requested public statistic in focused player assessments, including small and zero counters, rather than substituting a stronger unrelated metric.
