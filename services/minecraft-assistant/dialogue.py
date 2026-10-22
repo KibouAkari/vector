@@ -234,7 +234,7 @@ class PublicObservations:
             self.self_only=bool(personal_reference(question) and not any(p['uuid']!=self.principal for p in mentioned))
             facts['self_player'] = next((p['name'] for p in data['players'] if p['uuid'] == self.principal), None)
             self.self_name=facts['self_player']
-            if personal_reference(question) and (self.metric_topic or structured_player_request(question) or reference):
+            if personal_reference(question) and (self.metric_topic or structured_player_request(question) or reference and history[-1].get('origin','').startswith('tool-')):
                 own = next((p for p in data['players'] if p['uuid'] == self.principal), None)
                 if own is not None and own not in mentioned:
                     mentioned.insert(0, own)

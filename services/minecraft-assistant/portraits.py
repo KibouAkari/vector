@@ -224,7 +224,7 @@ class PlayerPortraits:
         intro=(f'Du? Für mich: {label}.' if own else f'{p["name"]}? Für mich: {label}.')
         if previous%4==1:intro=(f'Zu dir passt für mich: {label}.' if own else f'Bei {p["name"]} denke ich an {label}.')
         elif previous%4==2:intro=(f'Mein Eindruck von dir: {label}.' if own else f'Mein Eindruck von {p["name"]}: {label}.')
-        elif previous%4==3:intro=(f'Zu dir fällt mir ein: {label}.' if own else f'{p["name"]} passt für mich zu {label}.')
+        elif previous%4==3:intro=(f'Zu dir fällt mir ein: {label}.' if own else f'Bei {p["name"]} fällt mir ein: {label}.')
         if not chosen:
             lead=f'{p["name"]} ist in den gespeicherten Spielerdaten dabei, aber für eine faire Einschätzung fehlen mir noch Aktivitäten. Ein unbeschriebenes Abenteuerbuch, sozusagen.'
         else:
