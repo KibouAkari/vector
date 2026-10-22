@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-22 — Bound resolved player assessments to their backend
+
+- Let explicit assessments of one freshly resolved player use the public portrait backend without a model-generated tool query or model CPU lease. Preserve combat-style requests and authenticated self identity; ambiguous, unresolved and ordinary counter questions retain their existing paths.
+- Shorten the experimental conversation instruction and write it in German. This source change is not a native quality or latency result; existing reviewed modes, the selected model, deadlines and resource limits are unchanged.
+- Require the native single-player portrait case to use its trusted backend without inference. Add targeted smalltalk regressions for irrelevant death claims and greetings addressed to the assistant itself; superficial automatic checks still require manual review.
+- Verify fresh portrait counters, self isolation, ambiguous targets, input policy and the no-inference boundary locally. No production activation, model import, game restart or real chat message is performed by these source checks.
+
 ## 2026-10-20 — Evidence-first local conversation candidate
 
 - Add a direct configured-zone clock path and retain existing reviewed simple replies without acquiring the model CPU slot. A single reviewed passage can answer directly only when its subject coverage and requested answer form match; weak matches still use the model.

@@ -242,6 +242,10 @@ def case_checks(key, answer):
         checks['conversational_self_reply']=bool(re.search(r'\b(?:mir|ich|bereit|geht|läuft|laeuft)\b',q))
         checks['not_generic_fallback']=not any(t in q for t in ('was möchtest du genau','beschreibe kurz dein ziel','nicht verfügbar','versuche es später','welche mod'))
         checks['brief']=len(answer)<=240
+        # Regression checks for this neutral wellbeing question, not a general
+        # language/meaning classifier or a production output policy.
+        checks['no_unprompted_death_claim']=not re.search(r'\b(?:umgekommen|gestorben|tot|sterben)\b',q)
+        checks['not_addressing_itself']=not re.search(r'^\s*(?:hey|hallo|hi|yoo)\s+vector\b',q)
     elif key=='unlisted-gameplay':
         checks['sand_to_glass_in_furnace']=all(w in q for w in ('sand','glas','ofen')) and 'schmelz' in q
         checks['no_invented_temperature']=not re.search(r'\d|°|temperatur|grad\b',answer,re.I)
@@ -331,7 +335,9 @@ with tempfile.TemporaryDirectory(prefix='vector-dialogue-eval-',dir=payload.get(
             if not payload.get('profile_only') and not payload.get('diagnose_rejection') and origin!='unreported':
                 if key=='clock':checks['direct_without_model']=origin=='direct-clock' and len(usage)==before
                 if key=='smalltalk':checks['generated_conversation']=origin=='generated' and len(usage)-before==1
-                if key=='player-opinion':checks['trusted_portrait']=origin=='tool-portrait'
+                if key=='player-opinion':
+                    checks['trusted_portrait']=origin=='tool-portrait'
+                    checks['no_redundant_inference']=len(usage)==before
                 if key=='own-context':checks['trusted_fresh_statistics']=origin=='tool-statistics'
             passed=all(checks.values());error=None;code=None
         except Exception as exc:
