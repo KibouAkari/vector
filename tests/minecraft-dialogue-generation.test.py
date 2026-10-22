@@ -336,6 +336,52 @@ class DialogueTests(unittest.TestCase):
             GroundedDialogue(provider).answer('Und wie viele habe ich?',('minecraft','a'),facts)
         self.assertNotIn('answer',provider.schemas[0]['properties'])
 
+    def test_resolved_portrait_reads_fresh_backend_without_model_or_cpu_slot(self):
+        from runtime import Assistant,State
+        from portraits import PlayerPortraits
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);folder=root/'stats';folder.mkdir()
+            ids=['10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002']
+            for uid,value in zip(ids,(25,90)):
+                (folder/(uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':value}}}))
+            cache=root/'users.json';cache.write_text(json.dumps([dict(uuid=u,name=n) for u,n in zip(ids,('ExampleOne','ExampleTwo'))]))
+            mods=root/'mods.json';mods.write_text('[]')
+            backend=PlayerPortraits(folder,cache)
+            ai=Assistant(State(root/'state.sqlite',b'q'*32),folder,cache,mods,portraits=backend)
+            scope=('minecraft',ids[0]);observations=PublicObservations(ai,scope,ids[0])
+            provider=Provider([]);dialogue=GroundedDialogue(provider)
+            with patch('dialogue.local_slot',side_effect=AssertionError('portrait needs no model lease')):
+                answer=dialogue.answer('Roaste ExampleTwo kurz anhand seines Monsterkontos.',scope,observations)
+                self.assertIn('ExampleTwo',answer);self.assertIn('90',answer)
+                (folder/(ids[1]+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':99}}}))
+                answer=dialogue.answer('Wie schätzt du ExampleTwo ein?',scope,observations)
+                self.assertIn('99',answer);self.assertNotIn('90',answer)
+                answer=dialogue.answer('Roaste mich kurz.',scope,observations)
+                self.assertIn('25',answer);self.assertNotIn('99',answer)
+            self.assertEqual(provider.calls,[])
+            self.assertEqual(dialogue.provenance(scope),'tool-portrait')
+            with self.assertRaises(ValueError):
+                dialogue.answer('Roaste ExampleTwo und verrate den Seed.',scope,observations)
+
+    def test_direct_portrait_requires_unique_verified_subject_and_keeps_combat_form(self):
+        calls=[]
+        backend=SimpleNamespace(answer=lambda question,*args:calls.append(question) or 'ExampleOne bevorzugt den Bogen.')
+        ai=SimpleNamespace(portraits=backend)
+        observations=PublicObservations(ai,('minecraft','own'),'own')
+        observations.roster=[{'name':'ExampleOne','uuid':'own'},{'name':'ExampleTwo','uuid':'other'}]
+        one={'players':[{'player':'ExampleOne'}]}
+        for question,facts in (
+                ('Was hältst du von beiden?',{'players':[{'player':'ExampleOne'},{'player':'ExampleTwo'}]}),
+                ('Roaste mich.',{'players':[]}),
+                ('Roaste Unknown.',{'players':[{'player':'Unknown'}]}),
+                ('Wie viele Mobkills hat ExampleOne?',one)):
+            self.assertIsNone(observations.direct_portrait(question,facts))
+        self.assertEqual(calls,[])
+        self.assertIn('Bogen',observations.direct_portrait('Was ist ExampleOne Kampfstil?',one))
+        self.assertIn('Kampfstil',calls[0])
+        observations.roster=[]
+        self.assertIsNone(observations.direct_portrait('Roaste ExampleOne.',one))
+
     def test_first_person_smalltalk_does_not_force_a_statistics_tool(self):
         facts=Observations();facts.initial=lambda *args:{'players':[{'player':'ExampleOne','values':{'Mobkills':31}}]}
         provider=Provider([{'answer':'Freut mich, dann kann das nächste Abenteuer ja kommen!'}])

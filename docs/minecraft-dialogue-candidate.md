@@ -11,6 +11,13 @@ also answer directly when lexical subject coverage is strong and its requested
 procedure/explanation form matches. This is a narrow optimization, not a
 semantic relevance guarantee; weak and ambiguous matches still need inference.
 
+An explicit player assessment with one freshly resolved public player also
+uses the existing portrait backend directly. The request form, including combat
+style, is preserved; no model invents a second tool query or rewrites the result.
+The backend still rereads the statistics. Multiple subjects, unresolved names,
+unlinked first-person identity and ordinary counter questions do not take this
+shortcut. This reduces routing errors; it is not general semantic understanding.
+
 Other admitted questions make at most one call to the existing local model.
 It can write a short answer or resolve one standalone allowlisted tool query.
 Trusted tool results are rendered directly; no second model call rewrites their
@@ -38,6 +45,9 @@ explicit Minecraft name. Variation is encouraged but is not guaranteed. Existing
 rate, input and output policy boundaries apply before and after generation.
 
 Answers target one complete, brief sentence (ideally under 180 characters).
+The candidate's general instruction is now written in German and shortened.
+This is an instruction change, not a demonstrated improvement in native model
+quality or latency. The installed model and inference resource limits are unchanged.
 The JSON string may use up to 320 characters so a forced 160-character grammar
 limit does not cut a sentence short. The prediction limit stays 80 tokens;
 length-stopped output is still rejected. Complete reviewed passages are kept
@@ -96,3 +106,11 @@ code. Unsafe output is omitted. No production conversation is captured.
 Normal qualification does not log rejected prose. The mode cannot be combined
 with streaming profiling; its completed diagnostic never sets a quality pass
 or eligibility for activation. Semantic review remains required.
+
+The neutral smalltalk case also rejects previously observed irrelevant death
+claims and greetings addressed to the assistant itself. These are targeted
+regression checks, not a complete language or meaning evaluator. A grammatically
+or factually poor answer can still pass superficial checks and requires manual
+review. The single-player portrait case requires the trusted backend and zero
+model calls. Cold model loading is reported separately from prompt processing
+and generation; a fast warm request does not establish cold-start readiness.

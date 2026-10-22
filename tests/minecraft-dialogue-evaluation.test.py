@@ -30,6 +30,8 @@ class Evaluation(unittest.TestCase):
         rejected=(
             ('smalltalk','Was möchtest du genau wissen? Beschreibe kurz dein Ziel.'),
             ('smalltalk','Ich bin gerade nicht verfügbar, versuche es später.'),
+            ('smalltalk','Hallo, ich bin gut mit dem Leben umgekommen. Wie geht es dir heute?'),
+            ('smalltalk','Hey Vector! Mir geht es gut.'),
             ('unlisted-gameplay','Sand wird im Ofen zu Glas bei 1500 Grad.'),
             ('unlisted-gameplay','Sand im Ofen schmelzen, das Ergebnis ist,'),
             ('player-opinion','ExampleTwo hat 90 Monster getötet. Keine Spielersterbe aufgezeichnet.'),
