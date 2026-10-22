@@ -1,5 +1,5 @@
 """Policy/state-machine tests; mocked prose is never native quality evidence."""
-from contextlib import nullcontext
+from contextlib import nullcontext, contextmanager
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -38,6 +38,21 @@ class Observations:
 
 
 class DialogueTests(unittest.TestCase):
+    @contextmanager
+    def player_fixture(self):
+        from runtime import Assistant,State
+        from portraits import PlayerPortraits
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);folder=root/'stats';folder.mkdir()
+            ids=['10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002']
+            for uid,mobs,kills in zip(ids,(31,90),(2,9)):
+                (folder/(uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{
+                    'minecraft:mob_kills':mobs,'minecraft:player_kills':kills}}}))
+            cache=root/'users.json';cache.write_text(json.dumps([dict(uuid=u,name=n) for u,n in zip(ids,('ExampleOne','ExampleTwo'))]))
+            mods=root/'mods.json';mods.write_text('[]')
+            ai=Assistant(State(root/'state.sqlite',b'q'*32),folder,cache,mods,portraits=PlayerPortraits(folder,cache))
+            yield ai,ids
+
     def setUp(self):
         self.addCleanup(patch.stopall)
         patch('dialogue.local_slot', return_value=nullcontext()).start()
@@ -205,7 +220,7 @@ class DialogueTests(unittest.TestCase):
             root=Path(directory);folder=root/'stats';folder.mkdir()
             ids=['10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002']
             for uid,value in zip(ids,(25,90)):
-                (folder/(uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':value}}}))
+                (folder/(uid+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':value,'minecraft:player_kills':value//10}}}))
             cache=root/'users.json';cache.write_text(json.dumps([dict(uuid=u,name=n) for u,n in zip(ids,('ExampleOne','ExampleTwo'))]))
             mods=root/'mods.json';mods.write_text('[]')
             ai=Assistant(State(root/'state.sqlite',b'q'*32),folder,cache,mods)
@@ -353,11 +368,17 @@ class DialogueTests(unittest.TestCase):
             with patch('dialogue.local_slot',side_effect=AssertionError('portrait needs no model lease')):
                 answer=dialogue.answer('Roaste ExampleTwo kurz anhand seines Monsterkontos.',scope,observations)
                 self.assertIn('ExampleTwo',answer);self.assertIn('90',answer)
+                self.assertIn('Mobkills',answer);self.assertNotIn('Spielerkills',answer)
+                (folder/(ids[0]+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':31,'minecraft:player_kills':2}}}))
+                answer=dialogue.answer('Und wie viele habe dann ich?',scope,observations)
+                self.assertIn('31',answer);self.assertIn('Mobkills',answer)
+                self.assertNotIn('Spielerkills',answer)
+                self.assertEqual(dialogue.provenance(scope),'tool-statistics')
                 (folder/(ids[1]+'.json')).write_text(json.dumps({'stats':{'minecraft:custom':{'minecraft:mob_kills':99}}}))
                 answer=dialogue.answer('Wie schätzt du ExampleTwo ein?',scope,observations)
                 self.assertIn('99',answer);self.assertNotIn('90',answer)
                 answer=dialogue.answer('Roaste mich kurz.',scope,observations)
-                self.assertIn('25',answer);self.assertNotIn('99',answer)
+                self.assertIn('Du',answer);self.assertIn('2 Spielerkills',answer);self.assertNotIn('99',answer)
             self.assertEqual(provider.calls,[])
             self.assertEqual(dialogue.provenance(scope),'tool-portrait')
             with self.assertRaises(ValueError):
@@ -365,7 +386,7 @@ class DialogueTests(unittest.TestCase):
 
     def test_direct_portrait_requires_unique_verified_subject_and_keeps_combat_form(self):
         calls=[]
-        backend=SimpleNamespace(answer=lambda question,*args:calls.append(question) or 'ExampleOne bevorzugt den Bogen.')
+        backend=SimpleNamespace(answer=lambda question,*args,**kwargs:calls.append(question) or 'ExampleOne bevorzugt den Bogen.')
         ai=SimpleNamespace(portraits=backend)
         observations=PublicObservations(ai,('minecraft','own'),'own')
         observations.roster=[{'name':'ExampleOne','uuid':'own'},{'name':'ExampleTwo','uuid':'other'}]
@@ -381,6 +402,70 @@ class DialogueTests(unittest.TestCase):
         self.assertIn('Kampfstil',calls[0])
         observations.roster=[]
         self.assertIsNone(observations.direct_portrait('Roaste ExampleOne.',one))
+
+    def test_focused_portraits_cover_every_metric_including_zero_without_pvp_substitution(self):
+        import stats
+        with self.player_fixture() as (ai,ids):
+            scope=('minecraft',ids[0]);observations=PublicObservations(ai,scope,ids[0])
+            dialogue=GroundedDialogue(Provider([]))
+            for metric,(label,unit,_,_) in stats.METRICS.items():
+                with self.subTest(metric=metric):
+                    text=dialogue.answer('Was hältst du von ExampleTwo anhand der '+label+'?',scope,observations)
+                    self.assertIn(label+':',text)
+                    if metric!='player_kills':self.assertNotIn('Spielerkills',text)
+                    if metric=='deaths':self.assertIn('0 Tode',text)
+                    self.assertLessEqual(len(text),350)
+
+    def test_followup_category_is_explicit_not_inferred_from_previous_reply(self):
+        with self.player_fixture() as (ai,ids):
+            scope=('minecraft',ids[0]);observations=PublicObservations(ai,scope,ids[0])
+            history=[{'question':'Roaste ExampleTwo anhand seines Monsterkontos.',
+                      'answer':'ExampleTwo hat 9 Spielerkills.','metrics':('mob_kills',)}]
+            observations.initial('Und wie viele habe ich?',history)
+            text=observations.direct_followup('Und wie viele habe ich?')
+            self.assertIn('31 Mobkills',text);self.assertNotIn('Spielerkills',text)
+            observations.initial('Und wie viele Spielerkills habe ich?',history)
+            self.assertEqual(observations.metric_topic,('player_kills',))
+            with self.assertRaisesRegex(ValueError,'DIALOGUE_METRIC_CHANGED'):
+                observations.lookup('statistics','Mobkills von ExampleOne')
+
+    def test_metric_context_expires_and_is_not_shared_or_carried_over_unrelated_topics(self):
+        with self.player_fixture() as (ai,ids):
+            now=[0];provider=Provider([{'answer':'Mir geht es gut!'}])
+            dialogue=GroundedDialogue(provider,clock=lambda:now[0]);scope=('minecraft',ids[0])
+            observations=PublicObservations(ai,scope,ids[0])
+            dialogue.answer('Roaste ExampleTwo anhand seines Monsterkontos.',scope,observations)
+            for other in (('discord',ids[0]),('minecraft',ids[1])):
+                self.assertNotIn(other,dialogue.context)
+                isolated=PublicObservations(ai,other,other[1])
+                isolated.initial('Und wie viele habe ich?',dialogue.context.get(other,(0,[]))[1])
+                self.assertIsNone(isolated.direct_followup('Und wie viele habe ich?'))
+            dialogue.answer('Wie geht es dir?',scope,observations)
+            observations.initial('Und wie viele habe ich?',dialogue.context[scope][1])
+            self.assertIsNone(observations.direct_followup('Und wie viele habe ich?'))
+            dialogue.answer('Roaste ExampleTwo anhand seines Monsterkontos.',scope,observations)
+            now[0]=181
+            provider.values=iter([{'answer':'Welche Kategorie meinst du genau?'}])
+            with self.assertRaisesRegex(ValueError,'STRUCTURED_PLAYER_LOOKUP_REQUIRED'):
+                dialogue.answer('Und wie viele habe ich?',scope,observations)
+            self.assertFalse(observations.inherited_metric)
+            self.assertNotIn(scope,dialogue.context)
+
+    def test_ambiguous_followup_clarifies_and_new_object_does_not_inherit_metric(self):
+        with self.player_fixture() as (ai,ids):
+            scope=('minecraft',ids[0]);observations=PublicObservations(ai,scope,ids[0])
+            history=[{'question':'ExampleTwo Mobkills und Spielerkills',
+                      'metrics':('mob_kills','player_kills')}]
+            observations.initial('Und wie viele habe ich?',history)
+            text=observations.direct_followup('Und wie viele habe ich?')
+            self.assertIn('Welche Kategorie',text)
+            observations.initial('Und wie viele Äpfel habe ich?',history)
+            self.assertIsNone(observations.direct_followup('Und wie viele Äpfel habe ich?'))
+            observations=PublicObservations(ai,scope,None)
+            observations.initial('Und wie viele habe ich?',history[:1])
+            self.assertIsNone(observations.self_name)
+            text=observations.direct_followup('Und wie viele habe ich?')
+            self.assertNotIn('31',text)
 
     def test_first_person_smalltalk_does_not_force_a_statistics_tool(self):
         facts=Observations();facts.initial=lambda *args:{'players':[{'player':'ExampleOne','values':{'Mobkills':31}}]}

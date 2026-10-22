@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-22 — Keep player metrics through portraits and own follow-ups
+
+- Keep an explicitly requested public statistic in focused player assessments, including small and zero counters, rather than substituting a stronger unrelated metric.
+- Bind recent metric identifiers to the authenticated author/source context. Resolve unambiguous own-count follow-ups with fresh backend reads and no inference; explicit categories override history, while multiple categories need clarification. Unrelated turns, new objects and expired or other-source contexts do not inherit a category.
+- Reject generated statistics or portrait queries that change the bound category. Stage the proposed portrait backend in the isolated native qualifier and require both player cases to avoid redundant inference and preserve mob-kill meaning.
+- Validate category drift, fresh reads, identity isolation, ambiguity, expiry and zero counters locally. These source checks do not establish native model quality, activate a service, restart Minecraft, import a model or send real messages. Existing reviewed modes, model/resource limits and the full earlier changelog remain intact.
+
 ## 2026-10-22 — Bound resolved player assessments to their backend
 
 - Let explicit assessments of one freshly resolved player use the public portrait backend without a model-generated tool query or model CPU lease. Preserve combat-style requests and authenticated self identity; ambiguous, unresolved and ordinary counter questions retain their existing paths.

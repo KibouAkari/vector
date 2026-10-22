@@ -12,7 +12,7 @@ import time
 import unicodedata
 from zoneinfo import ZoneInfo
 
-from runtime import local_slot, request_forbidden, safe_answer, friendly_statistics, direct_chat_answer
+from runtime import local_slot, request_forbidden, safe_answer, friendly_statistics, direct_chat_answer, METRIC_WORDS
 import stats
 
 def numeric_tokens(text):
@@ -39,6 +39,13 @@ SYSTEM = (
 # reread; only the authenticated UUID can resolve a first-person reference.
 SELF_REFERENCE = re.compile(r'\b(?:ich|mir|mich|mein(?:e|er|es|em|en)?|i|me|my)\b', re.I)
 BACK_REFERENCE = re.compile(r'^\s*(?:und|aber|also)\b|\b(?:er|ihm|ihn|sein\w*|diese[rsnm]?|davon|damit|dazu|das)\b', re.I)
+
+
+def requested_metrics(question, roster=()):
+    # Names are data, even when someone happens to be called MonsterHunter.
+    for player in roster:
+        question=re.sub(r'(?<![a-z0-9_])'+re.escape(player['name'])+r'(?![a-z0-9_])',' ',question,flags=re.I)
+    return tuple(key for key,pattern in METRIC_WORDS.items() if re.search(pattern,question,re.I))
 
 
 def clock_question(question):
@@ -158,6 +165,8 @@ class PublicObservations:
         return self.lookup('portrait',question+' '+subject)
 
     def initial(self, question, history=()):
+        self.metric_topic=()
+        self.inherited_metric=False
         self.self_name=None
         self.self_only=bool(SELF_REFERENCE.search(question))
         self.roster=[]
@@ -176,6 +185,15 @@ class PublicObservations:
                     r'(?<![a-z0-9_])' + re.escape(p['name']) + r'(?![a-z0-9_])', text, re.I)]
             mentioned = named(question)
             self.roster=[{'name':p['name'],'uuid':p['uuid']} for p in data['players']]
+            self.metric_topic=requested_metrics(question,self.roster)
+            # Only an explicit referential count request may inherit a category.
+            # Never derive the category from the wording of an earlier answer.
+            if (not self.metric_topic and reference and SELF_REFERENCE.search(question)
+                    and re.search(r'\bwie\s+(?:viele?|oft|lange|weit)\b',question,re.I)
+                    and set(re.findall(r'\w+',question.casefold())) <= set(
+                        'und aber also wie viele viel oft lange weit habe hab bin ich denn dann schon bisher inzwischen jetzt insgesamt damit davon'.split())):
+                self.metric_topic=tuple(history[-1].get('metrics',()))
+                self.inherited_metric=bool(self.metric_topic)
             self.self_only=bool(SELF_REFERENCE.search(question) and not any(p['uuid']!=self.principal for p in mentioned))
             facts['self_player'] = next((p['name'] for p in data['players'] if p['uuid'] == self.principal), None)
             self.self_name=facts['self_player']
@@ -193,10 +211,26 @@ class PublicObservations:
             facts['statistics'] = 'Keine vollständig geprüften aktuellen Statistikdaten verfügbar.'
         return facts
 
+    def direct_followup(self,question):
+        if not self.inherited_metric or not self.self_only:
+            return None
+        if len(self.metric_topic)!=1:
+            return 'Welche Kategorie meinst du: '+', '.join(stats.METRICS[k][0] for k in self.metric_topic)+'?'
+        if self.self_name is None:
+            return 'Welchen Minecraft-Spielernamen meinst du? Dein Discord-Anzeigename ist keine bestätigte Spielerverknüpfung.'
+        metric=self.metric_topic[0]
+        return self.lookup('statistics',stats.METRICS[metric][0]+' von '+self.self_name)
+
     def lookup(self, tool, query):
         if tool not in TOOLS[1:] or request_forbidden(query):
             raise ValueError('FORBIDDEN_DIALOGUE_TOOL')
         ai = self.assistant
+        if tool in ('statistics','portrait') and getattr(self,'metric_topic',()):
+            selected=requested_metrics(query,self.roster)
+            if selected and set(selected)!=set(self.metric_topic):
+                raise ValueError('DIALOGUE_METRIC_CHANGED')
+            if tool=='statistics' and not selected:
+                query+=' '+ ' '.join(stats.METRICS[k][0] for k in self.metric_topic)
         if tool in ('statistics','portrait') and self.self_only:
             if self.self_name is None:
                 return 'Welchen Minecraft-Spielernamen meinst du? Dein Discord-Anzeigename ist keine bestätigte Spielerverknüpfung.'
@@ -209,7 +243,8 @@ class PublicObservations:
             value = ai.stat_answer(query, self.block_items, principal=self.principal)
             if isinstance(value,str):value=friendly_statistics(value,self.self_name)
         elif tool == 'portrait':
-            value = ai.portraits.answer('Was hältst du von '+query, self.principal, self.scope, self.block_items) if ai.portraits else None
+            value = ai.portraits.answer('Was hältst du von '+query, self.principal, self.scope, self.block_items,
+                metrics=getattr(self,'metric_topic',())) if ai.portraits else None
         elif tool == 'documentation':
             value = self.documentation(query)
         elif tool == 'recipe':
@@ -250,12 +285,12 @@ class GroundedDialogue:
             turns=self.context.get(scope,(0,[]))[1]
             return turns[-1].get('origin','unreported') if turns else 'unreported'
 
-    def remember(self,scope,history,question,answer,origin):
+    def remember(self,scope,history,question,answer,origin,metrics=()):
         answer=safe_answer(answer)
         with self.lock:
             self.context.pop(scope,None)
             self.context[scope]=(self.clock()+180,[*history[-2:],{
-                'question':question[:240],'answer':answer,'origin':origin}][-2:])
+                'question':question[:240],'answer':answer,'origin':origin,'metrics':tuple(metrics)}][-2:])
             while len(self.context)>256:self.context.popitem(last=False)
         return answer
 
@@ -282,10 +317,15 @@ class GroundedDialogue:
             if direct is not None:
                 return self.remember(scope,history,question,direct,observations.direct_origin)
         facts = observations.initial(question, history[-2:])
+        metrics=getattr(observations,'metric_topic',())
+        if self.allow_direct and callable(getattr(observations,'direct_followup',None)):
+            followup=observations.direct_followup(question)
+            if followup is not None:
+                return self.remember(scope,history,question,render_evidence(followup),'tool-statistics',metrics)
         if self.allow_direct and callable(getattr(observations,'direct_portrait',None)):
             portrait=observations.direct_portrait(question,facts)
             if portrait is not None:
-                return self.remember(scope,history,question,render_evidence(portrait),'tool-portrait')
+                return self.remember(scope,history,question,render_evidence(portrait),'tool-portrait',metrics)
         player_lookup_required=bool(facts.get('players') and structured_player_request(question))
         if self.allow_direct and not player_lookup_required and callable(getattr(observations,'reviewed_direct',None)):
             reviewed=observations.reviewed_direct(question)
@@ -335,7 +375,7 @@ class GroundedDialogue:
                     evidence = observations.lookup(tool, query)
                     result=render_evidence(evidence)
                     origin='tool-'+tool
-            return self.remember(scope,history,question,result,origin)
+            return self.remember(scope,history,question,result,origin,metrics if origin.startswith('tool-') else ())
         except (ValueError,TimeoutError) as exc:
             recoverable=isinstance(exc,TimeoutError) or str(exc) in (
                 'UNSUPPORTED_DIALOGUE_NUMBER','INCOMPLETE_DIALOGUE_SENTENCE',

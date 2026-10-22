@@ -36,7 +36,9 @@ class Evaluation(unittest.TestCase):
             ('unlisted-gameplay','Sand im Ofen schmelzen, das Ergebnis ist,'),
             ('player-opinion','ExampleTwo hat 90 Monster getötet. Keine Spielersterbe aufgezeichnet.'),
             ('player-opinion','ExampleTwo hat 90 Mobkills.'),
+            ('player-opinion','ExampleTwo hat 90 Spielerkills und wirkt wie ein Albtraum.'),
             ('own-context','Du hast 25 Mobkills.'),
+            ('own-context','Du hast inzwischen 31 Spielerkills.'),
             ('own-context','Du hast 31 Monsterkilling erzielt, aber noch keine Tode, also kein Ende der Spielzeit!'),
             ('own-context','ExampleTwo hat 90 Mobkills.'))
         for key,answer in rejected:
@@ -48,6 +50,15 @@ class Evaluation(unittest.TestCase):
             ('own-context','Du hast inzwischen 31 Mobkills.'))
         for key,answer in accepted:
             with self.subTest(key=key,answer=answer):self.assertTrue(all(check(key,answer).values()))
+
+    def test_qualifier_stages_portrait_candidate_instead_of_importing_installed_backend(self):
+        outer=ast.parse(Path(module.__file__).read_text())
+        inner=ast.parse(module.INNER)
+        expected=('runtime.py','dialogue.py','server.py','knowledge.py','portraits.py')
+        for tree in (outer,inner):
+            tuples=[tuple(n.value for n in node.elts) for node in ast.walk(tree)
+                    if isinstance(node,ast.Tuple) and all(isinstance(n,ast.Constant) and isinstance(n.value,str) for n in node.elts)]
+            self.assertIn(expected,tuples)
 
     def test_rejection_capture_is_bounded_synthetic_and_never_accepts_rejected_output(self):
         import re
