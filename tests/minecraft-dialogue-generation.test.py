@@ -158,11 +158,30 @@ class DialogueTests(unittest.TestCase):
 
     def test_compact_protocol_does_not_execute_ambiguous_or_unknown_actions(self):
         for value in ({}, {'answer':'Ja.','statistics':'Mobkills'}, {'http':'https://example.invalid'},
-                      {'statistics':42}, {'statistics':''}):
+                      {'statistics':42}, {'statistics':''}, {'statistics':'x'*181},
+                      {'answer':'x'*320+'.'}, {'answer':'   '}):
             provider=Provider([value]);facts=Observations()
             with self.subTest(value=value), self.assertRaises(ValueError):
                 GroundedDialogue(provider).answer('Wie läuft es?',('minecraft','a'),facts)
             self.assertEqual(facts.calls,[])
+
+    def test_prompt_projection_keeps_fresh_evidence_zeroes_and_failure_notices(self):
+        from copy import deepcopy
+        facts={'clock':'2026-10-20 12:34:00 CEST','self_player':None,'documentation':[],
+               'players':[{'player':'ExampleOne','values':{'Mobkills':0}}],
+               'statistics':'Keine vollständig geprüften aktuellen Statistikdaten verfügbar.',
+               'counter':0}
+        original=deepcopy(facts)
+        observations=Observations();observations.initial=lambda *args:facts
+        provider=Provider([{'answer':'Eine Pause klingt gut.'}])
+        GroundedDialogue(provider).answer('Ich bin platt.',('minecraft','a'),observations)
+        prompt=json.loads(provider.calls[0][-1]['content'])['facts']
+        self.assertEqual(prompt['players'],facts['players'])
+        self.assertEqual(prompt['statistics'],facts['statistics'])
+        self.assertEqual(prompt['counter'],0)
+        self.assertNotIn('self_player',prompt)
+        self.assertNotIn('documentation',prompt)
+        self.assertEqual(facts,original)
 
     def test_compact_prompt_has_stable_prefix_and_bounded_prediction(self):
         from dialogue import SYSTEM
@@ -500,4 +519,5 @@ class DialogueTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 
