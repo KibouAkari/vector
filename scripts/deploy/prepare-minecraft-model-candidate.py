@@ -63,11 +63,11 @@ def metadata(model,expected_weight):
 '''
 
 
-def registered_models_retained(before,after):
+def registered_models_retained(before,after,model=MODEL):
     """Only the separately named candidate may be added; never overwrite tags."""
     old=before['registered_models'];new=after['registered_models']
     return (all(new.get(key)==value for key,value in old.items())
-            and all(key in old or key.casefold()==MODEL.casefold() for key in new))
+            and all(key in old or key.casefold()==model.casefold() for key in new))
 
 
 def observed(guard,rows):
@@ -77,12 +77,13 @@ def observed(guard,rows):
         mounts=sorted(row.get('Mounts',[]),key=lambda value:guard.canonical(value))
         result[name]=(*guard.identity(row),state.get('Running'),state.get('OOMKilled'),
             state.get('Health',{}).get('Status'),guard.digest(guard.canonical({
-                'config':row['Config'],'host':row['HostConfig'],'mounts':mounts})))
+                'config':row['Config'],'host':row['HostConfig'],'mounts':mounts,
+                'networks':row.get('NetworkSettings',{}).get('Networks',{})})))
     return result
 
 
-def inspect_metadata(container):
-    program=METADATA+'\nprint(json.dumps(metadata('+repr(MODEL)+','+repr(WEIGHT_SHA256)+')))\n'
+def inspect_metadata(container,model=MODEL):
+    program=METADATA+'\nprint(json.dumps(metadata('+repr(model)+','+repr(WEIGHT_SHA256)+')))\n'
     result=subprocess.run(['docker','exec',container,'python3','-c',program],
         capture_output=True,timeout=20)
     if result.returncode:
@@ -99,7 +100,11 @@ def main():
     parser.add_argument('--workspace-root',type=Path,required=True)
     parser.add_argument('--lock-file',type=Path,required=True)
     parser.add_argument('--download',action='store_true')
+    parser.add_argument('--host-download',action='store_true')
+    parser.add_argument('--import-helper',type=Path)
     args=parser.parse_args()
+    if args.host_download != bool(args.import_helper):
+        parser.error('--host-download and --import-helper must be supplied together')
     if not args.download:parser.error('This command requires explicit --download authorization')
     sys.dont_write_bytecode=True
     os.umask(0o077)
@@ -107,6 +112,15 @@ def main():
         raise RuntimeError('UNSAFE_GUARD_PATH')
     spec=importlib.util.spec_from_file_location('model_candidate_guard',args.guard_helper)
     guard=importlib.util.module_from_spec(spec);spec.loader.exec_module(guard)
+    importer=None;model=MODEL
+    if args.host_download:
+        helper=guard.checked_path(str(args.import_helper))
+        helper_spec=importlib.util.spec_from_file_location('local_model_file_import',helper)
+        importer=importlib.util.module_from_spec(helper_spec);helper_spec.loader.exec_module(importer)
+        if (importer.SHA256!=WEIGHT_SHA256 or importer.SIZE!=WEIGHT_BYTES
+                or importer.MODEL!='vector-lfm25:1.2b-q4km-candidate'):
+            raise RuntimeError('UNEXPECTED_IMPORT_HELPER_CONTRACT')
+        model=importer.MODEL
     guard.checked_path(args.lock_file)
     descriptor=os.open(args.lock_file,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
     meta=os.fstat(descriptor)
@@ -134,31 +148,36 @@ def main():
             raise RuntimeError('EXISTING_INFERENCE_REQUIRED')
         releases=guard.checked_path(str(args.workspace_root/'releases'),directory=True)
         report=releases/('local-model-preparation-'+uuid.uuid4().hex);report.mkdir(mode=0o700)
-        result=dict(prepared=False,model=MODEL,source=SOURCE,expected_weight_sha256=WEIGHT_SHA256,
+        result=dict(prepared=False,model=model,source=SOURCE,expected_weight_sha256=WEIGHT_SHA256,
             expected_weight_bytes=WEIGHT_BYTES,model_calls=0,cloud_calls=0,messages_sent=0,
             production_activated=False,eligible_for_activation=False,native_execution_tested=False,
-            download_attempted=False)
+            download_attempted=False,import_attempted=False,
+            download_route='host-verified-internal-import' if importer else 'runtime-registry')
         print('Kandidat separat vorbereiten: etwa 731 MB Download, keine Modellanfrage oder Aktivierung.',flush=True)
         print('Belege: '+str(report),flush=True)
         guard.write_private(report/'preparation.py',Path(__file__).read_bytes())
         guard.write_private(report/'result.json',guard.canonical(result))
         error=None
         try:
-            initial=inspect_metadata(config['container'])
+            initial=inspect_metadata(config['container'],model)
             guard.write_private(report/'registry.before.json',guard.canonical(initial))
             if not initial['candidate_exists']:
-                result['download_attempted']=True
-                # Pull contains only a public model name, no user or game input.
-                with (report/'pull.stdout').open('xb') as stdout,(report/'pull.stderr').open('xb') as stderr:
-                    try:
-                        child=subprocess.run(['docker','exec','vector-local-inference','ollama','pull',MODEL],
-                            stdout=stdout,stderr=stderr,timeout=300)
-                    except subprocess.TimeoutExpired:
-                        result['download_completion_unknown']=True
-                        raise RuntimeError('CANDIDATE_DOWNLOAD_TIMEOUT')
-                if child.returncode:raise RuntimeError('CANDIDATE_DOWNLOAD_FAILED')
-            final=inspect_metadata(config['container'])
-            if not final['candidate_exists'] or not registered_models_retained(initial,final):
+                if importer:
+                    guard.write_private(report/'import-helper.py',args.import_helper.read_bytes())
+                    importer.prepare(args.workspace_root,config['container'],report,guard,result)
+                else:
+                    result['download_attempted']=True
+                    # Pull contains only a public model name, no user or game input.
+                    with (report/'pull.stdout').open('xb') as stdout,(report/'pull.stderr').open('xb') as stderr:
+                        try:
+                            child=subprocess.run(['docker','exec','vector-local-inference','ollama','pull',MODEL],
+                                stdout=stdout,stderr=stderr,timeout=300)
+                        except subprocess.TimeoutExpired:
+                            result['download_completion_unknown']=True
+                            raise RuntimeError('CANDIDATE_DOWNLOAD_TIMEOUT')
+                    if child.returncode:raise RuntimeError('CANDIDATE_DOWNLOAD_FAILED')
+            final=inspect_metadata(config['container'],model)
+            if not final['candidate_exists'] or not registered_models_retained(initial,final,model):
                 raise RuntimeError('EXISTING_MODEL_REGISTRY_CHANGED')
             guard.write_private(report/'registry.after.json',guard.canonical(final))
             result.update({key:value for key,value in final.items() if key!='registered_models'})
@@ -179,7 +198,7 @@ def main():
                 result.setdefault('error','SERVICE_STATE_UNVERIFIED')
             result['service_configuration_and_identities_unchanged']=unchanged
             result['prepared']=bool(result['prepared'] and unchanged is True)
-            result['model_cache_may_have_changed']=result['download_attempted']
+            result['model_cache_may_have_changed']=result['download_attempted'] or result['import_attempted']
             guard.replace_atomic(report/'result.json',guard.canonical(result))
             print(json.dumps(result,ensure_ascii=False,indent=2),flush=True)
         if error or not result['prepared']:raise SystemExit(1)
@@ -187,3 +206,4 @@ def main():
 
 
 if __name__=='__main__':main()
+
