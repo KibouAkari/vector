@@ -93,7 +93,7 @@ with tempfile.TemporaryDirectory(prefix='vector-candidate-screen-',dir=payload.g
                     sent=True;started_calls+=1
                     value=request('chat',{'model':MODEL,'stream':False,'keep_alive':'5m','format':schema,
                         'messages':messages,'options':{'temperature':0.1,'top_k':50,'repeat_penalty':1.05,
-                        'seed':17,'num_ctx':4096,'num_predict':80}},timeout=20)
+                        'seed':17,'num_ctx':4096,'num_predict':80,'num_thread':2}},timeout=20)
                 if isinstance(value,dict):
                     for key,source in [('input_tokens','prompt_eval_count'),('output_tokens','eval_count')]:
                         n=value.get(source)
@@ -118,7 +118,7 @@ with tempfile.TemporaryDirectory(prefix='vector-candidate-screen-',dir=payload.g
                 history=[messages[-1],{'role':'assistant','content':json.dumps({'answer':text},ensure_ascii=False)}]
             except Exception as exc:
                 entry['error']=type(exc).__name__
-                if isinstance(exc,ValueError) and re.fullmatch('[A-Z][A-Z0-9_]{2,79}',str(exc)):
+                if isinstance(exc,(ValueError,RuntimeError)) and re.fullmatch('[A-Z][A-Z0-9_]{2,79}',str(exc)):
                     entry['error_code']=str(exc)
                 if sent and (not isinstance(value,dict) or value.get('done') is not True):
                     entry['server_completion_unknown']=True

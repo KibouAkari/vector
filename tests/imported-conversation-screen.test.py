@@ -87,6 +87,7 @@ class Screen(unittest.TestCase):
         self.assertEqual(requests[0]['model'],screen.MODEL)
         self.assertEqual(requests[0]['options']['temperature'],0.1)
         self.assertEqual(requests[0]['options']['num_ctx'],4096)
+        self.assertEqual(requests[0]['options']['num_thread'],2)
         self.assertNotIn('think',requests[0])
         self.assertEqual(set(requests[0]['format']['properties']),{'answer','statistics','portrait','documentation','recipe','mods'})
         self.assertFalse(result['production_activated']);self.assertFalse(result['eligible_for_activation'])
@@ -103,6 +104,7 @@ class Screen(unittest.TestCase):
         result,requests,slots=self.probe(slot_busy=True)
         self.assertFalse(result['passed']);self.assertEqual(requests,[])
         self.assertEqual(result['model_calls'],0);self.assertEqual(result['unknown_usage_calls'],0)
+        self.assertEqual(result['cases'][0]['error_code'],'SYNTHETIC_BUSY')
 
     def test_incomplete_response_keeps_known_token_counts_and_cannot_pass(self):
         result,requests,slots=self.probe(incomplete=True)
