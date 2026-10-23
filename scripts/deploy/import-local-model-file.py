@@ -180,7 +180,9 @@ def prepare(root,container,report,guard,status):
             with os.fdopen(descriptor,'rb') as source:
                 upload=subprocess.run(['docker','exec','-i',container,'python3','-c',UPLOAD,SHA256,str(SIZE)],
                     stdin=source,capture_output=True,timeout=190)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as exc:
+            guard.write_private(report/'upload.stdout',exc.stdout or b'')
+            guard.write_private(report/'upload.stderr',exc.stderr or b'')
             status['import_completion_unknown']=True
             raise RuntimeError('CANDIDATE_BLOB_UPLOAD_TIMEOUT') from None
         guard.write_private(report/'upload.stdout',upload.stdout)

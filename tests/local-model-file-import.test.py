@@ -107,6 +107,20 @@ class FileImport(unittest.TestCase):
             self.assertEqual(internal.call_count,2)
             self.assertTrue(status['existing_verified_blob_reused'])
 
+    def test_upload_timeout_retains_diagnostics_and_never_creates_a_model(self):
+        with tempfile.TemporaryDirectory() as temp:
+            report=Path(temp);weight=report/'weight';weight.write_bytes(b'synthetic');status={}
+            error=module.subprocess.TimeoutExpired('synthetic',190,output=b'partial',stderr=b'diagnostic')
+            with patch.object(module,'internal',return_value={'exists':False}) as internal, \
+                    patch.object(module,'ensure_cached',return_value=weight), \
+                    patch.object(module.subprocess,'run',side_effect=error),redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(RuntimeError,'CANDIDATE_BLOB_UPLOAD_TIMEOUT'):
+                    module.prepare(report,'assistant',report,guard,status)
+            self.assertEqual(internal.call_count,1)
+            self.assertTrue(status['import_completion_unknown'])
+            self.assertEqual((report/'upload.stdout').read_bytes(),b'partial')
+            self.assertEqual((report/'upload.stderr').read_bytes(),b'diagnostic')
+
     def test_internal_timeout_preserves_partial_private_diagnostics(self):
         with tempfile.TemporaryDirectory() as temp:
             report=Path(temp)
