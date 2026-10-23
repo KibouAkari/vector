@@ -56,10 +56,13 @@ class Preparation(unittest.TestCase):
         original=module.observed(guard,{'service':row})
         row['Mounts'].reverse()
         self.assertEqual(module.observed(guard,{'service':row}),original)
+        row['NetworkSettings']={'Networks':{'private':{'NetworkID':'changed'}}}
+        self.assertNotEqual(module.observed(guard,{'service':row}),original)
+        del row['NetworkSettings']
         row['HostConfig']['NanoCpus']=4
         self.assertNotEqual(module.observed(guard,{'service':row}),original)
 
-    def run_preparation(self,exists,*,profile_drift=False,metadata_error=False,pull_timeout=False,verification_error=False):
+    def run_preparation(self,exists,*,profile_drift=False,metadata_error=False,pull_timeout=False,verification_error=False,host_download=False):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'releases').mkdir();baseline=root/'baseline';baseline.mkdir()
             profile=root/'compose';profile.write_bytes(b'profile')
@@ -81,13 +84,20 @@ class Preparation(unittest.TestCase):
                 if verification_error and len(calls)>1:raise PermissionError('synthetic verification failure')
                 return {'assistant':row,'vector-local-inference':row}
             guard.inventory=inventory
+            selected='vector-lfm25:1.2b-q4km-candidate' if host_download else module.MODEL
+            importer=SimpleNamespace(SHA256=module.WEIGHT_SHA256,SIZE=module.WEIGHT_BYTES,MODEL=selected)
+            imports=[]
+            def prepare(*values):
+                imports.append(1);values[-1].update(download_attempted=True,import_attempted=True)
+            importer.prepare=prepare
             old={'registered_models':{'existing':'a'},'candidate_exists':exists}
-            new={'registered_models':{'existing':'a',module.MODEL:'b'},'candidate_exists':True,'manifest_digest':'b'}
+            new={'registered_models':{'existing':'a',selected:'b'},'candidate_exists':True,'manifest_digest':'b'}
             args=['prep','--guard-helper',str(root/'guard.py'),'--baseline',str(baseline),
                 '--workspace-root',str(root),'--lock-file',str(lock),'--download']
+            if host_download:args+=['--host-download','--import-helper',str(root/'import.py')];(root/'import.py').write_bytes(b'# synthetic')
             fake_spec=SimpleNamespace(loader=SimpleNamespace(exec_module=lambda module:None))
             with patch.object(sys,'argv',args),patch.object(module.importlib.util,'spec_from_file_location',return_value=fake_spec), \
-                    patch.object(module.importlib.util,'module_from_spec',return_value=guard), \
+                    patch.object(module.importlib.util,'module_from_spec',side_effect=[guard,importer] if host_download else [guard]), \
                     patch.object(module,'inspect_metadata',side_effect=[RuntimeError('CANDIDATE_METADATA_CHECK_FAILED') if metadata_error else new if exists else old,new]) as metadata, \
                     patch.object(module.subprocess,'run',side_effect=module.subprocess.TimeoutExpired('synthetic-pull',300) if pull_timeout else None,return_value=SimpleNamespace(returncode=0)) as command, \
                     redirect_stdout(io.StringIO()):
@@ -103,8 +113,9 @@ class Preparation(unittest.TestCase):
                     return result
                 module.main()
                 result=json.loads(next((root/'releases').glob('*/result.json')).read_text())
-                self.assertEqual(command.call_count,0 if exists else 1)
-                if not exists:self.assertEqual(command.call_args.args[0],['docker','exec','vector-local-inference','ollama','pull',module.MODEL])
+                self.assertEqual(command.call_count,0 if exists or host_download else 1)
+                self.assertEqual(len(imports),int(host_download and not exists))
+                if not exists and not host_download:self.assertEqual(command.call_args.args[0],['docker','exec','vector-local-inference','ollama','pull',module.MODEL])
                 return result
 
     def test_only_explicit_candidate_is_downloaded_without_activation_or_native_claim(self):
@@ -122,6 +133,15 @@ class Preparation(unittest.TestCase):
         self.assertTrue(result['prepared'])
         self.assertFalse(result['download_attempted'])
         self.run_preparation(False,profile_drift=True)
+
+    def test_host_mode_imports_only_distinct_candidate_and_never_invokes_registry_pull(self):
+        result=self.run_preparation(False,host_download=True)
+        self.assertTrue(result['prepared'])
+        self.assertTrue(result['import_attempted'])
+        self.assertEqual(result['model'],'vector-lfm25:1.2b-q4km-candidate')
+        self.assertEqual(result['download_route'],'host-verified-internal-import')
+        self.assertTrue(result['model_cache_may_have_changed'])
+        self.assertEqual(result['model_calls'],0)
 
     def test_download_requires_explicit_flag(self):
         args=['prep','--guard-helper','unused','--baseline','unused','--workspace-root','unused','--lock-file','unused']
@@ -146,3 +166,4 @@ class Preparation(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+

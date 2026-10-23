@@ -1,5 +1,23 @@
 # Optional Minecraft integration
 
+For an inference container without public registry access, preparation can use
+`--download --host-download --import-helper <pinned import-local-model-file.py>`.
+The host downloads the public 731 MB GGUF over verified HTTPS, checks its exact
+size and SHA-256, then streams it through the existing assistant connection to
+the internal blob/create API. DNS, container networks, resource limits and
+running services are not changed. No game or chat input is included.
+The source license is retained with the private preparation report.
+
+This route registers only `vector-lfm25:1.2b-q4km-candidate`. Existing model tags
+must remain unchanged. A private owned host cache may be reused after a fresh
+digest check; failed partial host downloads are removed. The runtime imports the
+GGUF metadata/template, whose actual hash is recorded for later qualification.
+An existing matching runtime blob may be reused without downloading weights.
+Registration is not a native execution, German quality or latency test and does
+not activate the candidate. Host download/import failures preserve private
+diagnostics; completion uncertainty is reported rather than retried automatically.
+
+
 ## Separate CPU model preparation
 
 `scripts/deploy/prepare-minecraft-model-candidate.py` can prepare the publisher's
@@ -79,4 +97,5 @@ For a repeated native timeout, `--profile-only` measures one synthetic request u
 When observed runner-loading waits need to be distinguished from answer latency, `--preload --profile-only` sends one empty preload under the shared CPU slot with a separate 45-second bound, then releases that admission before the unchanged question budget begins. A failed preload skips the question. The preload contains no user prompt, does not permanently pin weights and never makes the service eligible for activation. [Ollama documents empty API preloads](https://docs.ollama.com/faq#how-can-i-preload-a-model-into-ollama-to-get-faster-response-times); a successful preload alone does not prove the subsequent request will meet its deadline.
 
 The experimental dialogue prefix uses concise internal English instructions but requests German answers. It sends verified self identity without automatically attaching own counters or an operator joke to every question; those remain available through a fresh statistics lookup. This reduces unrelated initial context and does not change backend authorization, privacy or forbidden-content checks. Native latency and semantic qualification are still required before any activation.
+
 

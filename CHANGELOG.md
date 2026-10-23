@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-23 — Import a verified CPU candidate without public inference egress
+
+- Add an explicit host-download route with bounded HTTPS redirects, exact public GGUF size/hash verification and a private reusable cache. Transfer the verified file through the existing internal blob/create API; retain source license and import diagnostics.
+- Register a separate local candidate alias while preserving existing models, service identities, profiles, network attachments and resource settings. Do not change DNS, enable inference internet access, restart services, generate answers or activate the candidate.
+- Test cache corruption, redirect rejection, import ordering, timeout evidence and host-mode integration using synthetic files only. Actual runtime import compatibility and conversation quality remain unqualified until measured.
+
 ## 2026-10-23 — Prepare a separate CPU conversation model without activation
 
 - Add an explicit-download preparer for the publisher's LFM2.5-1.2B-Instruct Q4_K_M candidate. Verify its public GGUF weight digest, architecture, size and registered manifest before recording it as prepared. Keep existing model tags and capture the template hash for later qualification.
@@ -1049,5 +1055,6 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The operator observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at [private release reference]. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
+
 
 
