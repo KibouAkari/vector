@@ -126,10 +126,10 @@ class Transport(unittest.TestCase):
             {'answer':'Erstmal durchatmen, der Tag rennt nicht weg.'}]
         self.ask('Ich bin heute völlig platt, muntere mich auf.')
         first=json.loads(self.provider.calls[0][-1]['content'])
-        self.assertEqual(first['facts']['players'],[])
+        self.assertNotIn('players',first['facts'])
         self.ask('Und erzähl mir etwas Lustiges für meine Pause.')
         messages=self.provider.calls[1]
-        self.assertEqual(json.loads(messages[-1]['content'])['facts']['players'],[])
+        self.assertNotIn('players',json.loads(messages[-1]['content'])['facts'])
         self.assertEqual(len(messages),4)
         self.assertIn('Sofa',messages[2]['content'])
         self.ask('Erzähl mir etwas Lustiges.',source='discord')
@@ -421,5 +421,6 @@ class Transport(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-23 — Compact the grounded chat candidate without dropping its tools
+
+- Shorten the candidate's German instruction around concrete, situational humor. Keep all six answer/tool alternatives and the same single-call routing; this is not a new smalltalk question table.
+- Remove repeated per-branch string-length grammar rules while retaining one-key output shape and the existing strict application validators for answer/query length, policy, required player lookups and grounded numbers. Model, prediction cap, context size, deadlines and CPU admission remain unchanged.
+- Omit absent top-level observations from prompts while preserving fresh nonempty evidence, zero counters and unavailable-source notices. Keep the original evidence object for validation and bounded own-author conversation history.
+- Synthetic tests cover prompt projection, signed conversational isolation and output limits independently of the grammar. Native speed, humor and the changed production request contract still require qualification; no rollout is performed by this source change.
+
 ## 2026-10-23 — Isolate a compact local conversation protocol measurement
 
 - Add an opt-in, evaluation-only character probe with an answer-only schema, a shorter German instruction, at most 64 output tokens and one bounded prior exchange. Keep the existing model, context size, CPU-slot admission, transport deadlines and output validators.
