@@ -121,6 +121,24 @@ class FileImport(unittest.TestCase):
             self.assertEqual((report/'upload.stdout').read_bytes(),b'partial')
             self.assertEqual((report/'upload.stderr').read_bytes(),b'diagnostic')
 
+    def test_child_upload_failure_and_unacknowledged_create_remain_uncertain(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);weight=root/'weight';weight.write_bytes(b'synthetic')
+            for phase in ('upload','head-after','create'):
+                with self.subTest(phase=phase):
+                    report=root/phase;report.mkdir();status={}
+                    def internal(container,payload,*args):
+                        if payload['operation']=='create':raise RuntimeError('SYNTHETIC_CREATE_RESPONSE_LOST')
+                        if phase=='head-after' and args[-1]=='blob-after':raise RuntimeError('SYNTHETIC_HEAD_FAILURE')
+                        return {'exists':phase=='create'}
+                    with patch.object(module,'internal',side_effect=internal), \
+                            patch.object(module,'ensure_cached',return_value=weight), \
+                            patch.object(module.subprocess,'run',return_value=SimpleNamespace(returncode=int(phase=='upload'),stdout=b'partial',stderr=b'diagnostic')), \
+                            patch.object(module,'public_open',return_value=Response(b'LFM Open License v1.0\nsynthetic')),redirect_stdout(io.StringIO()):
+                        with self.assertRaises(RuntimeError):module.prepare(root,'assistant',report,guard,status)
+                    self.assertTrue(status['import_completion_unknown'])
+                    self.assertNotIn('host_download_internal_import',status)
+
     def test_internal_timeout_preserves_partial_private_diagnostics(self):
         with tempfile.TemporaryDirectory() as temp:
             report=Path(temp)

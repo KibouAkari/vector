@@ -187,9 +187,15 @@ def prepare(root,container,report,guard,status):
             raise RuntimeError('CANDIDATE_BLOB_UPLOAD_TIMEOUT') from None
         guard.write_private(report/'upload.stdout',upload.stdout)
         guard.write_private(report/'upload.stderr',upload.stderr)
-        if upload.returncode:raise RuntimeError('CANDIDATE_BLOB_UPLOAD_FAILED')
-        if not internal(container,{'operation':'head','sha256':SHA256},report,guard,'blob-after')['exists']:
-            raise RuntimeError('CANDIDATE_BLOB_UPLOAD_UNVERIFIED')
+        if upload.returncode:
+            status['import_completion_unknown']=True
+            raise RuntimeError('CANDIDATE_BLOB_UPLOAD_FAILED')
+        try:
+            if not internal(container,{'operation':'head','sha256':SHA256},report,guard,'blob-after')['exists']:
+                raise RuntimeError('CANDIDATE_BLOB_UPLOAD_UNVERIFIED')
+        except Exception:
+            status['import_completion_unknown']=True
+            raise
     else:status['existing_verified_blob_reused']=True
     with public_open(LICENSE_URL) as response:license_raw=response.read(65537)
     if len(license_raw)>65536 or not license_raw.startswith(b'LFM Open License v1.0'):
@@ -206,4 +212,7 @@ def prepare(root,container,report,guard,status):
     except subprocess.TimeoutExpired:
         status['import_completion_unknown']=True
         raise RuntimeError('CANDIDATE_CREATE_TIMEOUT') from None
+    except Exception:
+        status['import_completion_unknown']=True
+        raise
     status['host_download_internal_import']=True
