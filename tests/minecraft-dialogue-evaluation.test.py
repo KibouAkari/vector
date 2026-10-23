@@ -20,6 +20,67 @@ spec.loader.exec_module(module)
 
 
 class Evaluation(unittest.TestCase):
+    def compact_provider(self, result):
+        tree=ast.parse(module.INNER)
+        function=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='install_compact_character_probe')
+        namespace={'json':json}
+        exec(compile(ast.Module(body=[function],type_ignores=[]),'compact-probe','exec'),namespace)
+        calls=[]
+        def native(schema,messages,predict,deadline,validator):
+            calls.append((schema,messages,predict,deadline))
+            return validator(result)
+        provider=SimpleNamespace(request=native)
+        namespace['install_compact_character_probe'](provider)
+        return provider,calls
+
+    def test_compact_probe_preserves_one_exchange_and_validator_without_tools_or_game_data(self):
+        answer={'answer':'Gönn dir eine Pause, dein Sofa wartet!'}
+        provider,calls=self.compact_provider(answer)
+        messages=[{'role':'system','content':'full planner'},
+                  {'role':'user','content':'Ich bin platt.'},
+                  {'role':'assistant','content':json.dumps({'answer':'Zeit für eine Pause!'})},
+                  {'role':'user','content':json.dumps({'q':'Und dein Plan?','facts':{'players':['ExampleOne'],'clock':'12:34'}})}]
+        original=json.loads(json.dumps(messages));validated=[]
+        result=provider.request({},messages,80,123,lambda value:validated.append(value) or value['answer'])
+        self.assertEqual(result,answer['answer'])
+        self.assertEqual(validated,[answer])
+        self.assertEqual(messages,original)
+        schema,compact,predict,deadline=calls[0]
+        self.assertEqual(set(schema['properties']),{'answer'})
+        self.assertEqual(schema['required'],['answer'])
+        self.assertFalse(schema['additionalProperties'])
+        self.assertEqual(compact[1:3],messages[1:3])
+        self.assertEqual(compact[-1]['content'],'Und dein Plan?')
+        self.assertNotIn('12:34',json.dumps(compact))
+        self.assertNotIn('ExampleOne',json.dumps(compact))
+        self.assertEqual((predict,deadline),(64,123))
+        self.assertIn("result['production_request_contract_tested']=False",module.INNER)
+
+    def test_compact_probe_rejects_tools_and_propagates_existing_validation(self):
+        messages=[{'role':'system','content':'planner'},
+                  {'role':'user','content':json.dumps({'q':'Eine Pause?'})}]
+        for result in ({'statistics':'Tode'}, {'answer':'x'*181}, {'answer':'ok','mods':'all'}, {'answer':2}):
+            provider,calls=self.compact_provider(result)
+            with self.subTest(result=result),self.assertRaisesRegex(ValueError,'INVALID_COMPACT_PROBE_ANSWER'):
+                provider.request({},messages,80,123,lambda value:self.fail('Invalid output passed'))
+        provider,_=self.compact_provider({'answer':'Erfundene 999 Mobkills.'})
+        def reject(value):raise ValueError('UNSUPPORTED_DIALOGUE_NUMBER')
+        with self.assertRaisesRegex(ValueError,'UNSUPPORTED_DIALOGUE_NUMBER'):
+            provider.request({},messages,80,123,reject)
+
+    def test_compact_probe_rejects_unbounded_history_and_conflicting_modes(self):
+        provider,calls=self.compact_provider({'answer':'Eine Pause!'} )
+        messages=[{'role':'system','content':'planner'},
+                  *[{'role':'user','content':'old'}]*3,
+                  {'role':'user','content':json.dumps({'q':'Eine Pause?'})}]
+        with self.assertRaisesRegex(ValueError,'INVALID_COMPACT_PROBE_HISTORY'):
+            provider.request({},messages,80,123,lambda value:value)
+        self.assertEqual(calls,[])
+        with patch.object(sys,'argv',['evaluation','--guard-helper','unused','--baseline','unused',
+                '--source-root','unused','--workspace-root','unused','--lock-file','unused',
+                '--compact-character-only','--profile-only']),self.assertRaises(SystemExit):
+            with redirect_stdout(io.StringIO()):module.main()
+
     def test_quality_checks_reject_previous_native_regressions(self):
         import re
         tree=ast.parse(module.INNER)
@@ -269,4 +330,5 @@ class Evaluation(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 
