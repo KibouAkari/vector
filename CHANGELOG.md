@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-23 — Prepare a separate CPU conversation model without activation
+
+- Add an explicit-download preparer for the publisher's LFM2.5-1.2B-Instruct Q4_K_M candidate. Verify its public GGUF weight digest, architecture, size and registered manifest before recording it as prepared. Keep existing model tags and capture the template hash for later qualification.
+- Guard the confirmed assistant code/profile/generation and release lock before any download. Preserve all observed service configurations and container identities; perform no generation, activation, resource changes or service restart. Cache additions and uncertain download completion are reported separately from service state.
+- Keep license/source attribution and preparation evidence separate from claims of native compatibility, German quality, latency or tool-use success. A prepared model is not eligible for automatic activation. Synthetic tests exercise tag/weight rejection, drift, resource preservation and zero-inference preparation.
+
 ## 2026-10-23 — Compact the grounded chat candidate without dropping its tools
 
 - Shorten the candidate's German instruction around concrete, situational humor. Keep all six answer/tool alternatives and the same single-call routing; this is not a new smalltalk question table.

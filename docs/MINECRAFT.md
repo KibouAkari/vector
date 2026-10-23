@@ -1,5 +1,29 @@
 # Optional Minecraft integration
 
+## Separate CPU model preparation
+
+`scripts/deploy/prepare-minecraft-model-candidate.py` can prepare the publisher's
+`LiquidAI/lfm2.5-1.2b-instruct:latest` candidate only with explicit `--download`.
+It uses the existing inference container and downloads about 731 MB. Its GGUF
+weight digest is checked against the [publisher's file](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/blob/main/LFM2.5-1.2B-Instruct-Q4_K_M.gguf).
+The model is separately licensed under the [LFM Open License](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct/blob/main/LICENSE).
+
+The preparer requires a confirmed operator baseline and the existing release
+lock before any download. It does not generate answers, change the assistant's
+model, install a runtime update, alter resources or restart any service. Existing
+tags are retained; a previously registered candidate with the wrong weights is
+rejected. Cache additions are intentional and are not described as an unchanged
+model registry. A timed-out download may continue inside the model runtime and
+is reported as uncertain; the preparer does not delete existing models or blobs.
+
+Preparation records the actual manifest and template hashes. It does not prove
+that this runtime can execute the architecture, preserve conversational context,
+follow German instructions or use tools correctly. Qualification must use the
+model's documented sampling settings and the same scoped inputs, output checks,
+CPU admission and deadlines before a separate guarded activation. This model is
+a candidate for conversation and retrieval-backed tasks, not a replacement for
+fresh statistics, installed recipes or verified server configuration.
+
 The bridge consists of a Java DiscordIntegration addon and a separate Python assistant. It is not part of a web app restart. Operators supply their own world, identities, configuration, tokens and model runtime. No real player data or server inventory is distributed here.
 
 ## Components
@@ -55,3 +79,4 @@ For a repeated native timeout, `--profile-only` measures one synthetic request u
 When observed runner-loading waits need to be distinguished from answer latency, `--preload --profile-only` sends one empty preload under the shared CPU slot with a separate 45-second bound, then releases that admission before the unchanged question budget begins. A failed preload skips the question. The preload contains no user prompt, does not permanently pin weights and never makes the service eligible for activation. [Ollama documents empty API preloads](https://docs.ollama.com/faq#how-can-i-preload-a-model-into-ollama-to-get-faster-response-times); a successful preload alone does not prove the subsequent request will meet its deadline.
 
 The experimental dialogue prefix uses concise internal English instructions but requests German answers. It sends verified self identity without automatically attaching own counters or an operator joke to every question; those remain available through a fresh statistics lookup. This reduces unrelated initial context and does not change backend authorization, privacy or forbidden-content checks. Native latency and semantic qualification are still required before any activation.
+
