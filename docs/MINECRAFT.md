@@ -1,5 +1,17 @@
 # Optional Minecraft integration
 
+An imported candidate can be screened with `evaluate-minecraft-dialogue.py`
+using paired `--candidate-preparation <private result.json>` and
+`--candidate-helper <pinned screen-imported-conversation.py>` arguments.
+This runs at most two synthetic API/chat responses with the existing restricted
+CPU-slot binding and one prior exchange. It verifies the prepared candidate's
+manifest, weight and actual template before and after, records native timing and
+usage, and stops on the first failure. Production model allowlists are unchanged.
+The screen does not qualify production routing, player tools or a rollout; humor
+requires manual review even when its bounded checks pass. Model residency can
+change, but service/network/resource configuration and existing tags must not.
+
+
 For an inference container without public registry access, preparation can use
 `--download --host-download --import-helper <pinned import-local-model-file.py>`.
 The host downloads the public 731 MB GGUF over verified HTTPS, checks its exact

@@ -500,8 +500,12 @@ def main():
     diagnostic.add_argument('--diagnose-rejection', action='store_true')
     diagnostic.add_argument('--character-only', action='store_true')
     diagnostic.add_argument('--compact-character-only', action='store_true')
+    diagnostic.add_argument('--candidate-preparation', type=Path)
+    parser.add_argument('--candidate-helper', type=Path)
     parser.add_argument('--preload', action='store_true')
     args = parser.parse_args()
+    if bool(args.candidate_preparation)!=bool(args.candidate_helper):
+        parser.error('--candidate-preparation and --candidate-helper must be supplied together')
     if args.compact_character_only:args.character_only=True
     if args.preload and not args.profile_only:parser.error('--preload requires --profile-only')
     sys.dont_write_bytecode = True
@@ -540,6 +544,13 @@ def main():
         expected['expected_compose_sha256'] = record['candidate_compose_sha256']
         expected['expected_profile_sha256'] = guard.digest(guard.canonical(profile))
         guard.validate_live(expected, before, profile)
+        candidate_screen=None;candidate_program=None
+        if args.candidate_preparation:
+            helper_path=guard.checked_path(str(args.candidate_helper))
+            helper_spec=importlib.util.spec_from_file_location('imported_candidate_screen',helper_path)
+            helper=importlib.util.module_from_spec(helper_spec);helper_spec.loader.exec_module(helper)
+            candidate_screen=helper.preparation(args.candidate_preparation,guard)
+            candidate_program=helper.INNER
         sources = {}
         for name in ('runtime.py','dialogue.py','server.py','knowledge.py','portraits.py'):
             path = guard.checked_path(str(args.source_root/'services/minecraft-assistant'/name))
@@ -577,17 +588,24 @@ def main():
         guard.write_private(report/'baseline.compose.json',saved.read_bytes())
         program=Path(__file__).read_bytes()
         guard.write_private(report/'evaluation.py',program)
+        if candidate_screen:
+            guard.write_private(report/'candidate-preparation.json',args.candidate_preparation.read_bytes())
+            guard.write_private(report/'candidate-screen-helper.py',helper_path.read_bytes())
         manifest=dict(baseline=str(baseline),container_identity=guard.identity(row),
             candidate_sha256={name:guard.digest(source.encode()) for name,source in sources.items()},
             baseline_record_sha256=guard.digest((baseline/'record.json').read_bytes()),
             evaluation_sha256=guard.digest(program),lock_file=str(args.lock_file),profile_only=args.profile_only,preload=args.preload,diagnose_rejection=args.diagnose_rejection,character_only=args.character_only,compact_character_only=args.compact_character_only)
+        if candidate_screen:
+            manifest.update(candidate_screen=candidate_screen,
+                screen_helper_sha256=guard.digest(helper_path.read_bytes()),
+                candidate_preparation_sha256=guard.digest(args.candidate_preparation.read_bytes()))
         guard.write_private(report/'manifest.json',guard.canonical(manifest))
-        print('Kompaktes Gesprächsprotokoll, höchstens zwei synthetische Fragen. Kein produktiver Routing-Test oder Rollout.' if args.compact_character_only else 'Zwei kurze synthetische Charakterfragen mit Gesprächsbezug. Keine Aktivierung.' if args.character_only else 'Zwei synthetische Fragen mit Ablehnungsdiagnose. Keine Aktivierung.' if args.diagnose_rejection else 'Begrenzte Ladepruefung (45 s), danach eine Streaming-Messung (20 s). Kein Rollout.' if args.preload else 'Eine synthetische Streaming-Messung, keine Aktivierung.' if args.profile_only else 'Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
+        print('Separaten importierten Kandidaten mit höchstens zwei synthetischen Antworten prüfen. Keine Aktivierung.' if candidate_screen else 'Kompaktes Gesprächsprotokoll, höchstens zwei synthetische Fragen. Kein produktiver Routing-Test oder Rollout.' if args.compact_character_only else 'Zwei kurze synthetische Charakterfragen mit Gesprächsbezug. Keine Aktivierung.' if args.character_only else 'Zwei synthetische Fragen mit Ablehnungsdiagnose. Keine Aktivierung.' if args.diagnose_rejection else 'Begrenzte Ladepruefung (45 s), danach eine Streaming-Messung (20 s). Kein Rollout.' if args.preload else 'Eine synthetische Streaming-Messung, keine Aktivierung.' if args.profile_only else 'Vier synthetische Fragen an das bestehende lokale Modell. Kein Rollout oder Minecraft-Neustart.',flush=True)
         print('Belege: '+str(report),flush=True)
         evaluation_id=uuid.uuid4().hex
         command = ['docker','exec','-i','-w','/code',config['container'],'python3','-c',WATCHDOG]
         try:
-            child = subprocess.run(command,input=json.dumps({'files':sources,'program':INNER,'evaluation_id':evaluation_id,'profile_only':args.profile_only,'character_only':args.character_only,'compact_character_only':args.compact_character_only,'preload':args.preload,'diagnose_rejection':args.diagnose_rejection,'stream_profile':STREAM_PROFILE if args.profile_only else None}).encode(),capture_output=True,timeout=150,start_new_session=True)
+            child = subprocess.run(command,input=json.dumps({'files':sources,'program':candidate_program or INNER,'candidate_screen':candidate_screen,'evaluation_id':evaluation_id,'profile_only':args.profile_only,'character_only':args.character_only,'compact_character_only':args.compact_character_only,'preload':args.preload,'diagnose_rejection':args.diagnose_rejection,'stream_profile':STREAM_PROFILE if args.profile_only else None}).encode(),capture_output=True,timeout=150,start_new_session=True)
         except subprocess.TimeoutExpired as exc:
             from types import SimpleNamespace
             child=SimpleNamespace(stdout=exc.stdout or b'',stderr=exc.stderr or b'',returncode=124)
@@ -606,7 +624,10 @@ def main():
         after = guard.inventory()
         def observed(value):
             state=value['State']
-            return (*guard.identity(value),state.get('Running'),state.get('OOMKilled'),state.get('Health',{}).get('Status'))
+            return (*guard.identity(value),state.get('Running'),state.get('OOMKilled'),state.get('Health',{}).get('Status'),
+                guard.digest(guard.canonical({'config':value.get('Config',{}),'host':value.get('HostConfig',{}),
+                    'mounts':sorted(value.get('Mounts',[]),key=lambda m:guard.canonical(m)),
+                    'networks':value.get('NetworkSettings',{}).get('Networks',{})})))
         unchanged = ({name:observed(value) for name,value in before.items()} ==
                      {name:observed(value) for name,value in after.items()}
                      and active.read_bytes() == saved.read_bytes()
@@ -630,6 +651,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-

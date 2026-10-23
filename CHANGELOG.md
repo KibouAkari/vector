@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-23 — Screen an imported conversation candidate without promotion
+
+- Add a separate two-response API/chat screen bound to an owned, verified preparation record, actual template/weight/manifest and the existing restricted CPU admission. Exercise German conversation and one prior exchange with native timing and token accounting; stop on the first failure.
+- Keep production model allowlists, routing, services and activation gates unchanged. Record model residency and unknown server completion separately; complete native client cleanup still does not prove server-side cancellation after a timeout.
+- Synthetic regressions cover preparation ownership, registration drift, conversational history, contention, timeouts and known usage on incomplete responses. A successful screen is not production routing qualification or an automatic humor-quality approval. Preserve the full dated history.
+
 ## 2026-10-23 — Import a verified CPU candidate without public inference egress
 
 - Add an explicit host-download route with bounded HTTPS redirects, exact public GGUF size/hash verification and a private reusable cache. Transfer the verified file through the existing internal blob/create API; retain source license and import diagnostics.
