@@ -36,7 +36,7 @@ class Screen(unittest.TestCase):
             path.write_text(json.dumps(record));path.chmod(0o644)
             with self.assertRaises(RuntimeError):screen.preparation(path,guard)
 
-    def probe(self,*,timeout=False,slot_busy=False,bad_manifest=False,incomplete=False):
+    def probe(self,*,timeout=False,slot_busy=False,bad_manifest=False,incomplete=False,cleanup_fail=False):
         requests=[];slots=[]
         runtime=ModuleType('runtime')
         runtime.State=lambda *args:None
@@ -45,6 +45,7 @@ class Screen(unittest.TestCase):
             slots.append(dsn)
             if slot_busy:raise RuntimeError('SYNTHETIC_BUSY')
             yield
+            if cleanup_fail:raise RuntimeError('SYNTHETIC_UNLOCK_FAILED')
         runtime.local_slot=slot;runtime.request_forbidden=lambda q:False;runtime.safe_answer=lambda q:q
         server=ModuleType('server');server.knowledge_for=lambda *args:SimpleNamespace(dsn='synthetic-restricted-role')
         dialogue=ModuleType('dialogue');dialogue.SYSTEM='synthetic system'
@@ -110,6 +111,14 @@ class Screen(unittest.TestCase):
         result,requests,slots=self.probe(incomplete=True)
         self.assertFalse(result['passed']);self.assertEqual(len(requests),1)
         self.assertEqual(result['known_input_tokens'],100);self.assertEqual(result['unknown_usage_calls'],0)
+
+    def test_slot_cleanup_failure_keeps_received_usage_and_still_fails(self):
+        result,requests,slots=self.probe(cleanup_fail=True)
+        self.assertFalse(result['passed']);self.assertEqual(len(requests),1)
+        self.assertEqual(result['known_input_tokens'],100)
+        self.assertEqual(result['known_output_tokens'],20)
+        self.assertEqual(result['unknown_usage_calls'],0)
+        self.assertEqual(result['cases'][0]['error_code'],'SYNTHETIC_UNLOCK_FAILED')
 
     def test_manifest_drift_stops_before_any_native_request(self):
         self.probe(bad_manifest=True)

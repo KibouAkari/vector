@@ -94,10 +94,10 @@ with tempfile.TemporaryDirectory(prefix='vector-candidate-screen-',dir=payload.g
                     value=request('chat',{'model':MODEL,'stream':False,'keep_alive':'5m','format':schema,
                         'messages':messages,'options':{'temperature':0.1,'top_k':50,'repeat_penalty':1.05,
                         'seed':17,'num_ctx':4096,'num_predict':80,'num_thread':2}},timeout=20)
-                if isinstance(value,dict):
-                    for key,source in [('input_tokens','prompt_eval_count'),('output_tokens','eval_count')]:
-                        n=value.get(source)
-                        if type(n) is int and n>=0:entry[key]=n
+                    if isinstance(value,dict):
+                        for key,source in [('input_tokens','prompt_eval_count'),('output_tokens','eval_count')]:
+                            n=value.get(source)
+                            if type(n) is int and n>=0:entry[key]=n
                 if (not isinstance(value,dict) or time.monotonic()-start>24 or value.get('model')!=MODEL or value.get('done') is not True
                         or value.get('done_reason')!='stop' or value.get('message',{}).get('thinking')):
                     raise ValueError('INCOMPLETE_CANDIDATE_RESPONSE')
