@@ -14,6 +14,8 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('model_preparation',ROOT/'scripts/deploy/prepare-minecraft-model-candidate.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+guard_spec=importlib.util.spec_from_file_location('preparation_real_guard',ROOT/'scripts/deploy/update-minecraft-ranking-runtime.py')
+real_guard=importlib.util.module_from_spec(guard_spec);guard_spec.loader.exec_module(real_guard)
 
 
 class Preparation(unittest.TestCase):
@@ -57,7 +59,7 @@ class Preparation(unittest.TestCase):
         row['HostConfig']['NanoCpus']=4
         self.assertNotEqual(module.observed(guard,{'service':row}),original)
 
-    def run_preparation(self,exists,*,profile_drift=False,metadata_error=False,pull_timeout=False):
+    def run_preparation(self,exists,*,profile_drift=False,metadata_error=False,pull_timeout=False,verification_error=False):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'releases').mkdir();baseline=root/'baseline';baseline.mkdir()
             profile=root/'compose';profile.write_bytes(b'profile')
@@ -71,9 +73,14 @@ class Preparation(unittest.TestCase):
                 read_config=lambda path:{'compose':str(profile),'service':'assistant','container':'assistant'},
                 digest=lambda raw:hashlib.sha256(raw).hexdigest(),canonical=lambda value:json.dumps(value,sort_keys=True).encode(),
                 compose=lambda *args:{},code_source=lambda *args:code,tree_files=lambda path:{},identity=lambda row:(row['Id'],),
-                write_private=lambda path,raw:Path(path).write_bytes(raw))
+                write_private=real_guard.write_private,replace_atomic=real_guard.replace_atomic)
             row={'Id':'id','State':{'Running':True,'Health':{'Status':'healthy'}},'Config':{},'HostConfig':{},'Mounts':[]}
-            guard.inventory=lambda:{'assistant':row,'vector-local-inference':row}
+            calls=[]
+            def inventory():
+                calls.append(1)
+                if verification_error and len(calls)>1:raise PermissionError('synthetic verification failure')
+                return {'assistant':row,'vector-local-inference':row}
+            guard.inventory=inventory
             old={'registered_models':{'existing':'a'},'candidate_exists':exists}
             new={'registered_models':{'existing':'a',module.MODEL:'b'},'candidate_exists':True,'manifest_digest':'b'}
             args=['prep','--guard-helper',str(root/'guard.py'),'--baseline',str(baseline),
@@ -88,7 +95,7 @@ class Preparation(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError,'CONFIRMED_BASELINE_PROFILE_CHANGED'):module.main()
                     self.assertEqual(metadata.call_count,0);command.assert_not_called()
                     return None
-                if metadata_error or pull_timeout:
+                if metadata_error or pull_timeout or verification_error:
                     with self.assertRaises(SystemExit):module.main()
                     result=json.loads(next((root/'releases').glob('*/result.json')).read_text())
                     self.assertFalse(result['prepared'])
@@ -127,6 +134,15 @@ class Preparation(unittest.TestCase):
         self.assertTrue(timed_out['download_completion_unknown'])
         self.assertTrue(timed_out['model_cache_may_have_changed'])
         self.assertFalse(timed_out['prepared'])
+
+    def test_verification_outage_preserves_download_timeout_evidence_and_never_reports_success(self):
+        result=self.run_preparation(False,pull_timeout=True,verification_error=True)
+        self.assertEqual(result['error'],'CANDIDATE_DOWNLOAD_TIMEOUT')
+        self.assertEqual(result['verification_error'],'PermissionError')
+        self.assertIsNone(result['service_configuration_and_identities_unchanged'])
+        self.assertTrue(result['download_completion_unknown'])
+        self.assertTrue(result['download_attempted'])
+        self.assertFalse(result['prepared'])
 
 
 if __name__=='__main__':unittest.main()

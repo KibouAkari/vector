@@ -167,13 +167,20 @@ def main():
             error=exc
             result.update(prepared=False,error=str(exc) if isinstance(exc,RuntimeError) else type(exc).__name__)
         finally:
-            unchanged=(observed(guard,before)==observed(guard,guard.inventory())
-                and active.read_bytes()==saved.read_bytes()
-                and guard.tree_files(code)==record['candidate_files'])
+            try:
+                unchanged=(observed(guard,before)==observed(guard,guard.inventory())
+                    and active.read_bytes()==saved.read_bytes()
+                    and guard.tree_files(code)==record['candidate_files'])
+                if not unchanged:
+                    result.setdefault('error','SERVICE_CONFIGURATION_CHANGED')
+            except Exception as exc:
+                unchanged=None
+                result['verification_error']=type(exc).__name__
+                result.setdefault('error','SERVICE_STATE_UNVERIFIED')
             result['service_configuration_and_identities_unchanged']=unchanged
-            result['prepared']=bool(result['prepared'] and unchanged)
+            result['prepared']=bool(result['prepared'] and unchanged is True)
             result['model_cache_may_have_changed']=result['download_attempted']
-            guard.write_private(report/'result.json',guard.canonical(result))
+            guard.replace_atomic(report/'result.json',guard.canonical(result))
             print(json.dumps(result,ensure_ascii=False,indent=2),flush=True)
         if error or not result['prepared']:raise SystemExit(1)
         print('Nur Modellbereitstellung abgeschlossen. Gesprächsqualität und Laufzeit sind noch ungeprüft.',flush=True)
