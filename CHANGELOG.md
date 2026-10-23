@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-23 — Isolate a compact local conversation protocol measurement
+
+- Add an opt-in, evaluation-only character probe with an answer-only schema, a shorter German instruction, at most 64 output tokens and one bounded prior exchange. Keep the existing model, context size, CPU-slot admission, transport deadlines and output validators.
+- Omit unrelated game evidence only in this synthetic social-chat experiment. Production request routing and prompts are unchanged; the report explicitly does not qualify the production request contract.
+- Retain the two-call maximum, stop-on-first-failure behavior, immutable manifests, cleanup checks and manual humor review. Source tests cover context retention, strict output shape, existing validation and mutually exclusive diagnostic modes. No native speed or quality improvement is claimed before measurement.
+
 ## 2026-10-22 — Prepare grounded character and conversational smalltalk
 
 - Route polite statistics requests and authenticated all-rank questions directly; distinguish request beneficiaries from personal-counter subjects.
@@ -1030,4 +1036,5 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The operator observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at [private release reference]. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
+
 
