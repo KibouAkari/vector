@@ -2,6 +2,8 @@
 import ast
 import base64
 import copy
+import contextlib
+import io
 import importlib.util
 import json
 from pathlib import Path
@@ -17,6 +19,15 @@ activation=importlib.util.module_from_spec(spec);spec.loader.exec_module(activat
 
 
 class Activation(unittest.TestCase):
+    def test_error_summary_keeps_import_cause_and_redacts_credentials(self):
+        output=io.StringIO()
+        with contextlib.redirect_stdout(output):
+            activation.display_error(b"ImportError: missing personal_reference password=synthetic-secret postgres://user:secret@host/db")
+        text=output.getvalue()
+        self.assertIn('personal_reference',text)
+        self.assertNotIn('synthetic-secret',text)
+        self.assertNotIn('user:secret',text)
+
     def test_factory_preserves_private_bindings_and_changes_only_unique_import(self):
         source='''TOKEN_PATH="/run/secrets/synthetic_private_token"
 def main():

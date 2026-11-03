@@ -9,6 +9,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import stat
@@ -71,6 +72,15 @@ def fingerprint(guard, prep, row):
     value = copy.deepcopy(row)
     value['HostConfig'].pop('NanoCpus', None)
     return prep.configuration(guard, value)
+
+
+def display_error(raw):
+    errors=re.findall(r'^[A-Za-z_][A-Za-z0-9_]*(?:Error|Exception):[^\n]*',raw.decode(errors='replace'),re.M)
+    if errors:
+        text=re.sub(r'\b[a-zA-Z][a-zA-Z0-9+.-]*://\S+','[URL entfernt]',errors[-1])
+        text=re.sub(r'(?i)\bbearer\s+\S+','Bearer [entfernt]',text)
+        text=re.sub(r'(?i)\b(token|password|secret|dsn)\s*[=:]\s*[^\s;,]+',r'\1=[entfernt]',text)
+        print(json.dumps({'candidate_start_error':text[:600]},ensure_ascii=False),flush=True)
 
 
 BOOTSTRAP = r'''
@@ -216,6 +226,8 @@ def main():
         launcher='#!/usr/bin/env python3\nimport runpy,sys\nsys.dont_write_bytecode=True\nsys.argv='+repr(rollback_args)+'\nrunpy.run_path(sys.argv[0],run_name="__main__")\n'
         guard.write_private(directory/'rollback.py', launcher.encode())
         print('Rollback: python3 '+str(directory/'rollback.py'), flush=True)
+        def interrupted(signum,frame):raise InterruptedError('ACTIVATION_INTERRUPTED')
+        signal.signal(signal.SIGTERM,interrupted)
         cpu_attempted=False;activated=False;phase='preflight'
         try:
             payload=dict(module_source=(code/'datafirst.py').read_text(),
@@ -225,6 +237,7 @@ def main():
             print('Prüfe zuerst das vollständige Modulpaket ohne Modellaufruf.',flush=True)
             imported=candidate_run(guard,evaluation,process,op['assistant'],dict(payload,integration=imports),directory,'imports')
             if imported.returncode or b'COHERENT_IMPORTS_OK' not in imported.stdout:
+                display_error(imported.stderr)
                 raise RuntimeError('COHERENT_IMPORT_CHECK_FAILED')
             current=guard.inventory()
             if set(before)!=set(current) or any(prep.configuration(guard,before[n])!=prep.configuration(guard,current[n]) for n in before):
@@ -247,12 +260,7 @@ def main():
             guard.write_private(directory/'native.json',guard.canonical(native or {'error':'CANDIDATE_START_FAILED'}))
             if child.returncode or not native or not native.get('passed'):
                 if native is None:
-                    import re
-                    errors=re.findall(r'^[A-Za-z_][A-Za-z0-9_]*(?:Error|Exception):[^\n]*',child.stderr.decode(errors='replace'),re.M)
-                    if errors:
-                        text=re.sub(r'\b[a-zA-Z][a-zA-Z0-9+.-]*://\S+','[URL entfernt]',errors[-1])
-                        text=re.sub(r'(?i)\b(token|password|secret)\s*[=:]\s*[^\s;,]+',r'\1=[entfernt]',text)
-                        print(json.dumps({'candidate_start_error':text[:600]},ensure_ascii=False),flush=True)
+                    display_error(child.stderr)
                 raise RuntimeError('SIGNED_CANDIDATE_NOT_QUALIFIED')
             phase='activation_preflight'
             observed=guard.inventory();meta=prep.metadata(op['assistant']);prep.verify_model(meta)
@@ -281,11 +289,16 @@ def main():
             print(json.dumps(result,ensure_ascii=False,indent=2),flush=True)
         except BaseException as exc:
             import traceback
-            guard.write_private(directory/'failure.private.txt',traceback.format_exc().encode())
-            if not activated and active.read_bytes()==candidate_raw:
-                guard.rollback(directory,allow_missing=True)
-            if cpu_attempted and not activated:
-                restore_cpu(guard,prep,resources,op['inference'])
+            old_mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGINT,signal.SIGTERM})
+            try:
+                try:
+                    guard.write_private(directory/'failure.private.txt',traceback.format_exc().encode())
+                    if not activated and active.read_bytes()==candidate_raw:
+                        guard.rollback(directory,allow_missing=True)
+                finally:
+                    if cpu_attempted and not activated:
+                        restore_cpu(guard,prep,resources,op['inference'])
+            finally:signal.pthread_sigmask(signal.SIG_SETMASK,old_mask)
             raise RuntimeError('QWEN35_ACTIVATION_FAILED '+phase+'; Belege: '+str(directory)) from exc
 
 
