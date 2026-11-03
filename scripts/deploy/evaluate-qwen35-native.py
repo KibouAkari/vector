@@ -250,8 +250,8 @@ with tempfile.TemporaryDirectory(prefix='vector-datafirst-http-',dir=payload.get
     try:
         for index,(case,question) in enumerate([
             ('fast-counter','Wie viele Tode habe ich?'),
-            ('generated-portrait','Was hältst du von ExampleOne?'),
-            ('generated-context','Soll ich weiterbauen oder lieber chillen?')]):
+            ('generated-context','Soll ich weiterbauen oder lieber chillen?'),
+            ('generated-portrait','Was hältst du von ExampleOne?')]):
             if case=='generated-context':
                 engine.remember(('minecraft',ids[0]),[],'Ich habe lange gebaut und bin müde.',
                     'Dann klingt eine Pause sinnvoll.','generated')
