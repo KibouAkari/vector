@@ -94,7 +94,7 @@ class Preparation(unittest.TestCase):
         self.assertTrue(m.registry_retained(old,{'old':'a',m.MODEL:'b'}))
         for new in ({},{'old':'b'},{'old':'a','unrelated':'b'}):self.assertFalse(m.registry_retained(old,new))
 
-    def execute(self,*,drift=False,update_failure=False,other_change=False):
+    def execute(self,*,drift=False,update_failure=False,other_change=False,registry_drift=False):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'releases').mkdir();(root/'local-inference').mkdir()
             lock=root/'lock';lock.touch()
@@ -115,9 +115,12 @@ class Preparation(unittest.TestCase):
                 return value
             guard=SimpleNamespace(**{k:getattr(g,k) for k in ('checked_path','canonical','digest','identity','write_private','replace_atomic','sync_directory')},
                 inventory=inventory)
-            imported=False;commands=[];uploads=[]
+            imported=False;commands=[];uploads=[];reads=0
             def metadata(container):
+                nonlocal reads
+                reads+=1
                 value={'runtime_version':'0.40.4','sources':source_hashes if not drift else {},'registry':{'old':'a'},'candidate_exists':imported}
+                if registry_drift and reads>1:value['registry']['concurrent']='c'
                 if imported:value.update(registry={'old':'a',m.MODEL:'b'},manifest_digest='b'*64,
                     details={'family':'qwen35','quantization_level':'Q4_K_M'},
                     weight_digests=[m.WEIGHT,m.PROJECTOR],template_sha256=m.TEMPLATE,renderer='qwen3.5',parser='qwen3.5',
@@ -157,11 +160,11 @@ class Preparation(unittest.TestCase):
                 if drift:
                     with self.assertRaisesRegex(RuntimeError,'OBSERVED_ASSISTANT_SOURCE_CHANGED'):m.main()
                     self.assertEqual(commands,[]);fetch.assert_not_called();return
-                if update_failure or other_change:
+                if update_failure or other_change or registry_drift:
                     with self.assertRaises(SystemExit):m.main()
                 else:m.main()
             result=json.loads(next((root/'releases').glob('*/result.json')).read_text())
-            self.assertEqual(len(commands),1)
+            self.assertEqual(len(commands),0 if registry_drift else 1)
             self.assertEqual(result['model_calls'],0);self.assertFalse(result['production_activated'])
             self.assertFalse(result['native_execution_tested']);self.assertFalse(result['eligible_for_activation'])
             self.assertEqual(rows['game']['HostConfig']['Memory'],12*1073741824)
@@ -174,6 +177,12 @@ class Preparation(unittest.TestCase):
         self.assertEqual(result['actual_memory_limit_bytes'],m.TARGET)
         self.assertEqual(set(uploads),{'sha256:'+m.WEIGHT,'sha256:'+m.PROJECTOR})
         self.execute(drift=True)
+
+    def test_registry_race_stops_before_memory_update_or_blob_import(self):
+        result,uploads=self.execute(registry_drift=True)
+        self.assertFalse(result['prepared']);self.assertFalse(result['memory_limit_updated'])
+        self.assertEqual(result['error'],'MODEL_REGISTRY_CHANGED_BEFORE_IMPORT')
+        self.assertEqual(uploads,[])
 
     def test_partial_resource_command_failure_is_reported_as_actual_ram_change(self):
         result,uploads=self.execute(update_failure=True)
