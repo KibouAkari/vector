@@ -278,7 +278,9 @@ def main():
             current=guard.inventory()
             if set(before)!=set(current) or any(configuration(guard,before[n])!=configuration(guard,current[n]) for n in before):
                 raise RuntimeError('SERVICE_CHANGED_DURING_PREPARATION')
-            if metadata(op['assistant'])['sources']!=op['source_hashes']:raise RuntimeError('ASSISTANT_SOURCE_CHANGED')
+            rechecked=metadata(op['assistant'])
+            if rechecked['sources']!=op['source_hashes']:raise RuntimeError('ASSISTANT_SOURCE_CHANGED')
+            if rechecked['registry']!=initial['registry']:raise RuntimeError('MODEL_REGISTRY_CHANGED_BEFORE_IMPORT')
             new_swap=old.get('MemorySwap',0) if old['Memory']==TARGET else swap_target(old)
             result['target_memory_bytes']=TARGET;result['target_memory_swap_bytes']=new_swap
             if old['Memory']!=TARGET:
@@ -307,6 +309,9 @@ def main():
                 body={'model':MODEL,'stream':False,'files':{d['from']:d['digest'] for d in blobs},
                     'template':typed('template').read_text(),'license':typed('license').read_text(),
                     'renderer':config['renderer'],'parser':config['parser'],'requires':config['requires'],'parameters':params}
+                rechecked=metadata(op['assistant'])
+                if rechecked['registry']!=initial['registry'] or rechecked['sources']!=op['source_hashes']:
+                    raise RuntimeError('MODEL_OR_SOURCE_CHANGED_BEFORE_CREATE')
                 result['import_attempted']=True
                 try:transport.internal(op['assistant'],{'operation':'create','body':body},report,guard,'create')
                 except Exception:
