@@ -10,11 +10,14 @@ import os
 from pathlib import Path
 import re
 import shutil
+import socket
+import ssl
 import stat
 import subprocess
 import sys
 import time
 import traceback
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -43,7 +46,16 @@ class Redirect(urllib.request.HTTPRedirectHandler):
 
 def open_public(url):
     if not allowed_url(url):raise RuntimeError('UNAPPROVED_REGISTRY_SOURCE')
-    return urllib.request.build_opener(urllib.request.ProxyHandler({}),Redirect()).open(url,timeout=20)
+    try:
+        return urllib.request.build_opener(urllib.request.ProxyHandler({}),Redirect()).open(url,timeout=20)
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError('PUBLIC_REGISTRY_HTTP_'+str(exc.code)) from None
+    except urllib.error.URLError as exc:
+        reason=exc.reason
+        kind='DNS' if isinstance(reason,socket.gaierror) else 'TLS' if isinstance(reason,ssl.SSLError) else 'CONNECT'
+        raise RuntimeError('PUBLIC_REGISTRY_'+kind+'_FAILED') from None
+    except TimeoutError:
+        raise RuntimeError('PUBLIC_REGISTRY_TIMEOUT') from None
 
 def load_helper(path,name,guard):
     path=guard.checked_path(str(path))

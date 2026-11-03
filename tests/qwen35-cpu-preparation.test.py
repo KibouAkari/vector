@@ -66,6 +66,18 @@ class Preparation(unittest.TestCase):
             self.assertFalse(m.allowed_url(url))
         with self.assertRaises(RuntimeError):m.Redirect().redirect_request(None,None,302,'',{},'http://localhost/')
 
+    def test_public_transport_errors_expose_codes_without_signed_url_data(self):
+        errors=[
+            (m.urllib.error.HTTPError('https://registry.ollama.ai/a?secret=do-not-print',403,'denied',{},None),'PUBLIC_REGISTRY_HTTP_403'),
+            (m.urllib.error.URLError(m.socket.gaierror('synthetic')),'PUBLIC_REGISTRY_DNS_FAILED'),
+            (m.urllib.error.URLError(m.ssl.SSLError('synthetic')),'PUBLIC_REGISTRY_TLS_FAILED')]
+        for error,expected in errors:
+            with self.subTest(expected=expected),patch.object(m.urllib.request,'build_opener',
+                    return_value=SimpleNamespace(open=lambda *a,**k:(_ for _ in ()).throw(error))):
+                with self.assertRaises(RuntimeError) as caught:m.open_public(m.BASE+'manifests/9b')
+                self.assertEqual(str(caught.exception),expected)
+                self.assertNotIn('do-not-print',str(caught.exception))
+
     def test_cache_checks_digest_reuses_owned_file_and_never_overwrites_corruption(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'local-inference').mkdir()
