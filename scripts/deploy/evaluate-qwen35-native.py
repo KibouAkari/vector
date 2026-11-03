@@ -222,7 +222,7 @@ with tempfile.TemporaryDirectory(prefix='vector-qwen35-native-',dir=payload.get(
 '''
 
 INTEGRATION=r'''
-import hashlib,hmac,http.client,json,sys,tempfile,threading,time,types,uuid
+import hashlib,hmac,http.client,json,re,sys,tempfile,threading,time,types,uuid
 from pathlib import Path
 payload=json.load(sys.stdin);sys.path.insert(0,'/code')
 from runtime import Assistant,State
@@ -270,7 +270,9 @@ with tempfile.TemporaryDirectory(prefix='vector-datafirst-http-',dir=payload.get
                 checks={'answered':response.status==200 and answer.get('status')=='answered',
                     'correct_route':origin==('tool-statistics' if case=='fast-counter' else 'generated')}
                 if case=='fast-counter':checks['fresh_count']='10' in text
-                elif case=='generated-portrait':checks['playtime_context']='300' in text or 'spielzeit' in text.casefold()
+                elif case=='generated-portrait':
+                    checks['fresh_playtime']='300' in text and bool(re.search(r'spielzeit|stunden|\bh\b',text,re.I))
+                    checks['no_false_missing_data']=not any(s in text.casefold() for s in ('keine daten','nicht verfügbar','nicht vorliegen'))
                 else:checks['rest_context']=any(word in text.casefold() for word in ('pause','chill','müd','ruh','schlaf','erhol'))
                 delta=usage[before:];known_input=sum(r[1] or 0 for r in delta);known_output=sum(r[2] or 0 for r in delta)
                 entry={'id':case,'seconds':round(time.monotonic()-started,3),'synthetic_answer':text,
@@ -287,6 +289,7 @@ with tempfile.TemporaryDirectory(prefix='vector-datafirst-http-',dir=payload.get
         'cases':results,'model':candidate.MODEL,'candidate_pins':payload['pins'],'model_calls':len(usage),
         'known_input_tokens':sum(r[1] or 0 for r in usage),'known_output_tokens':sum(r[2] or 0 for r in usage),
         'unknown_usage_calls':sum(r[1] is None or r[2] is None for r in usage),
+        'server_completion_unknown':any(r[1] is None or r[2] is None for r in usage),
         'signed_candidate_http_tested':True,'production_request_contract_tested':False,
         'live_player_routes_tested':False,'production_ledger_writes':False,'temporary_state_only':True,
         'humor_and_language_require_manual_review':True,'cloud_calls':0,'messages_sent':0,
