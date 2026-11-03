@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03 — Measure native Qwen3.5 conversation and tool selection
+
+- Add a separate bounded, synthetic three-request CPU probe for an owned prepared Qwen3.5 candidate. Capture actual conversational history, native tool selection, token usage and load/prompt/generation timing without changing production model selection or resource limits.
+- Preserve service/code/registry evidence, restricted CPU admission and read-only source checks. Report unknown server completion separately from verified native client cleanup; keep evidence when cleanup verification fails. A completed slow measurement remains distinct from passing the existing backend budget.
+- Synthetic boundary tests cover contention, timeouts, tool/subject validation, thinking-output rejection and usage retained across slot-cleanup failures. Humor/language review, final tool-result composition, live routing and production activation remain unqualified. Preserve the full dated history.
+
 ## 2026-11-03 — Prepare a pinned Qwen3.5 9B CPU and vision candidate
 
 - Add host-side preparation of the official CPU/GGUF model and vision projector with exact manifest/layer integrity checks. Preserve the native Qwen3.5 renderer/parser and import under a separate candidate alias through the existing internal API.

@@ -1,5 +1,34 @@
 # Optional Minecraft integration
 
+## Qwen3.5 native CPU measurement
+
+After successful preparation, `scripts/deploy/evaluate-qwen35-native.py` accepts
+the owned preparation directory and pinned guard/preparation/process helpers.
+It verifies the current inference generation, 24 GiB cap, two-CPU limit,
+read-only assistant code and registered candidate before making at most three
+synthetic requests under the existing restricted CPU admission.
+
+The probe uses native `/api/chat`, `think: false`, an 8192-token context and
+96 output tokens. It measures German conversation, the actual previous exchange,
+and one native statistics-tool request against a synthetic fixture. It does not
+read real player statistics or expose arbitrary tools. The tool result is checked
+locally; final model composition from that result is not tested.
+
+Each request has a 60-second transport timeout; the client process is bounded
+separately and terminated before releasing the host lock. Native token counts,
+load/prompt/generation timing, unknown server completion and client cleanup are
+recorded privately. A timeout can leave server-side completion unknown even after
+the client is gone. Model residency/cache state may change and cause subsequent
+old-model requests to reload; inference CPU/RAM limits are not changed.
+
+`diagnostic_completed` means all three protocol requests and preservation checks
+completed. A complete measurement may still report `passed: false` for advisory
+content checks or exceeding the existing 24-second backend budget. German quality,
+humor and contextual correctness require review of actual answers. Neither result
+permits activation. This is not a production routing, live-data, image-quality or
+end-to-end tool-response qualification, and it does not modify either application,
+model allowlist, service configuration or Minecraft container.
+
 CPU preparation for `vector-qwen35:9b-q4km-candidate` is available through
 `scripts/deploy/prepare-qwen35-cpu.py`. It requires an explicit download flag,
 an owned current operator snapshot and authorization for a 24 GiB RAM cap.
