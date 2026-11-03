@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03 — Screen data-first composition and preserve native failure evidence
+
+- Add an optional two-request Qwen3.5 composition profile with concrete conversational context and a controller-computed synthetic comparison supplied before generation. Reduce output cap and experimental sampling variation; preserve CPU, RAM, admission, code and service boundaries. No production model switch or routing change.
+- Retain the actual synthetic native message when tool selection fails. Treat sentence punctuation as advisory and recover completed usage plus interrupted-request status if a worker exits before its final summary.
+- Fourteen synthetic boundary tests cover both profiles and failure recovery. Native response quality and latency remain unproven for the new profile; this is not a fix for live statistics routing or permission to activate.
+
 ## 2026-11-03 — Measure native Qwen3.5 conversation and tool selection
 
 - Add a separate bounded, synthetic three-request CPU probe for an owned prepared Qwen3.5 candidate. Capture actual conversational history, native tool selection, token usage and load/prompt/generation timing without changing production model selection or resource limits.

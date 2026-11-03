@@ -34,7 +34,7 @@ def tool():
 
 
 class NativeBoundaryTests(unittest.TestCase):
-    def run_inner(self, responses=None, slot_error=None, cleanup_error=None, slow=False):
+    def run_inner(self, responses=None, slot_error=None, cleanup_error=None, slow=False, data_first=False):
         responses = list(responses if responses is not None else [
             answer('Mach mal Pause, dein Akku braucht heute offenbar ein Ladekabel.'),
             answer('Leg dich kurz aufs Sofa und gönn dir eine ruhige Pause.'), tool()])
@@ -77,7 +77,8 @@ class NativeBoundaryTests(unittest.TestCase):
                 pass
 
         output = io.StringIO()
-        payload = {'system': probe.SYSTEM, 'tool': probe.TOOL, 'pins': {'test': 'synthetic'}}
+        payload = {'system': probe.DATA_SYSTEM if data_first else probe.SYSTEM,
+                   'tool': probe.TOOL, 'pins': {'test': 'synthetic'}, 'data_first': data_first}
         original_path = list(sys.path)
         timer = itertools.count(step=9 if slow else .001)
         try:
@@ -174,6 +175,49 @@ class NativeBoundaryTests(unittest.TestCase):
         self.assertEqual(len(requests), 3)
         self.assertTrue(result['diagnostic_completed'])
         self.assertFalse(result['passed'])
+
+    def test_missing_punctuation_is_advisory_not_transport_failure(self):
+        result, requests = self.run_inner([answer('Du brauchst eine Pause'),
+                                          answer('Ruh dich auf dem Sofa aus.'), tool()])
+        self.assertEqual(len(requests), 3)
+        self.assertTrue(result['diagnostic_completed'])
+        self.assertFalse(result['passed'])
+        self.assertFalse(result['cases'][0]['checks']['complete_sentence'])
+
+    def test_actual_failed_tool_message_is_retained(self):
+        value = answer('Ich habe keine Daten.')
+        result, _ = self.run_inner([answer('Du brauchst eine Pause.'),
+                                  answer('Ruh dich auf dem Sofa aus.'), value])
+        self.assertEqual(result['cases'][-1]['synthetic_native_message'], value['message'])
+
+    def test_data_first_two_requests_and_calculated_evidence(self):
+        result, requests = self.run_inner([
+            answer('Gönn dir eine Pause, die Blöcke laufen dir nicht weg.'),
+            answer('ExampleOne liegt mit 250 Mobkills vor ExampleTwo.')], data_first=True)
+        self.assertTrue(result['passed'])
+        self.assertEqual(result['model_calls'], 2)
+        self.assertEqual(result['expected_cases'], 2)
+        for request in requests:
+            self.assertNotIn('tools', request)
+            self.assertEqual(request['options']['presence_penalty'], 0)
+            self.assertEqual(request['options']['num_predict'], 64)
+        self.assertIn('müde', requests[0]['messages'][1]['content'])
+        evidence = json.loads(requests[1]['messages'][1]['content'].removeprefix('Datenblock: '))
+        self.assertEqual(evidence['difference'], 250)
+        self.assertEqual(evidence['mob_kills'], {'ExampleOne': 1200, 'ExampleTwo': 950})
+        self.assertFalse(result['production_activated'])
+        self.assertFalse(result['production_request_contract_tested'])
+
+    def test_progress_recovery_preserves_usage_and_marks_interrupted_request(self):
+        cases = [{'id': 'smalltalk', 'request_attempted': True,
+                  'input_tokens': 100, 'output_tokens': 20}]
+        result = probe.recover_progress(cases, ['smalltalk', 'followup'])
+        self.assertEqual(result['model_calls'], 2)
+        self.assertEqual(result['known_input_tokens'], 100)
+        self.assertEqual(result['known_output_tokens'], 20)
+        self.assertEqual(result['unknown_usage_calls'], 1)
+        self.assertEqual(result['interrupted_requests'], ['followup'])
+        self.assertTrue(result['server_completion_unknown'])
 
     def test_private_evidence_rejects_world_readable_and_symlinks(self):
         with tempfile.TemporaryDirectory() as temporary:

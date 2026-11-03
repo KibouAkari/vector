@@ -1,5 +1,19 @@
 # Optional Minecraft integration
 
+The Qwen3.5 native evaluator also accepts `--data-first` for a separate two-request
+composition screen. It supplies a short prior exchange and then a controller-computed
+synthetic comparison before generation, rather than asking the model to select a tool.
+This profile lowers temperature to 0.3, presence penalty to zero and the output cap to
+64 tokens. Context, two-thread limit, admission, ownership and preservation guards stay
+unchanged. These are experimental settings, not a proven quality or speed improvement.
+It neither fixes production routing nor qualifies native tool selection. Compare actual
+answers and timing before any separate rollout.
+
+Native tool failures now retain the actual synthetic message. Missing final punctuation
+is an advisory content failure, not a reason to skip remaining requests. If the worker
+ends before its final summary, completed progress events retain known token counts;
+a separately flushed request marker identifies interrupted requests and unknown usage.
+
 ## Qwen3.5 native CPU measurement
 
 After successful preparation, `scripts/deploy/evaluate-qwen35-native.py` accepts
