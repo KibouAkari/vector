@@ -85,6 +85,31 @@ class DialogueTests(unittest.TestCase):
         self.assertIn('Fortschrittsdatei', self.ask('wie viele Fortschritte hat ExampleOne?'))
         self.assertEqual(self.calls, [])
 
+    def test_time_qualified_counter_is_not_replaced_with_lifetime_total(self):
+        self.assertIn('keine Aufteilung', self.ask('wie viele Tode habe ich seit gestern?'))
+        self.assertEqual(self.calls, [])
+
+    def test_weapon_specific_kills_are_not_total_mobkills(self):
+        self.assertIn('nicht, welche Waffe', self.ask('wie viele Mobkills habe ich mit dem Schwert?'))
+        self.assertEqual(self.calls, [])
+
+    def test_focused_portrait_keeps_zero_requested_metric(self):
+        self.write(self.ids[0], 0, 300)
+        self.reply = 'ExampleOne hat 0 Tode, das ist ein friedlicher Zwischenstand.'
+        self.ask('was hältst du von ExampleOne anhand der Tode?')
+        evidence = json.loads(self.calls[-1][-2]['content'].removeprefix('Datenblock: '))
+        self.assertEqual(set(evidence['records']), {'Tode'})
+        self.assertEqual(evidence['records']['Tode'][0], 0)
+
+    def test_unqualified_crafting_recipe_does_not_reach_generation(self):
+        self.assertIn('Grundrezept', self.ask('wie stelle ich einen Amboss her?'))
+        self.assertEqual(self.calls, [])
+
+    def test_general_redstone_opinion_is_not_unknown_player(self):
+        self.reply = 'Redstone ist für mich die schönste Art, eine Tür unnötig kompliziert zu machen.'
+        self.assertEqual(self.ask('was hältst du von Redstone?'), self.reply)
+        self.assertEqual(len(self.calls), 1)
+
     def test_portrait_is_generated_from_records_including_playtime(self):
         self.reply = 'ExampleOne hat mit 300 h Spielzeit offenbar die Stammgastkarte gelöst.'
         self.assertIn('Stammgastkarte', self.ask('was hältst du von ExampleOne?'))

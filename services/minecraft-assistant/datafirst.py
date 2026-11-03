@@ -9,7 +9,7 @@ import urllib.request
 
 from dialogue import (GroundedDialogue, clock_question, personal_reference,
                       portrait_request, render_evidence, numeric_tokens,
-                      structured_player_request)
+                      structured_player_request, saved_statistic_form)
 from runtime import local_slot, request_forbidden, safe_answer, MOD_INVENTORY
 import stats
 
@@ -102,22 +102,25 @@ def portrait_facts(observations, question, facts):
     if len(matches) != 1:
         return None
     player = matches[0]
-    selected = [(stats.rank(data, player, metric), metric) for metric in stats.METRICS]
-    selected.sort(key=lambda row: (player['values'][row[1]] <= 0,
-        row[0], list(stats.METRICS).index(row[1])))
+    focused = getattr(observations, 'metric_topic', ())
+    selected = [(stats.rank(data, player, metric), metric) for metric in (focused or stats.METRICS)]
+    if not focused:
+        selected.sort(key=lambda row: (player['values'][row[1]] <= 0,
+            row[0], list(stats.METRICS).index(row[1])))
+        selected = selected[:2]
     result = {'player': player['name'], 'records': {
         stats.METRICS[metric][0]: [round(player['values'][metric], 1), stats.METRICS[metric][1], rank]
-        for rank, metric in selected[:2]}}
+        for rank, metric in selected}}
     weapons = {label: sum(value for identifier, value in player['used'].items()
         if any(identifier.split(':', 1)[1] == kind or identifier.split(':', 1)[1].endswith('_' + kind)
                for kind in kinds)) for label, kinds in {
         'Bogen': ('bow',), 'Armbrust': ('crossbow',), 'Schwert': ('sword',),
         'Streitkolben': ('mace',), 'Speer': ('spear',), 'Dreizack': ('trident',)}.items()}
     highest = max(weapons.values(), default=0)
-    if highest:
+    if highest and not focused:
         result['weapon_uses'] = {key: n for key, n in weapons.items() if n == highest}
     advancements = advancement_summary(getattr(ai.portraits, 'advancements', None), player['uuid'])
-    if advancements:
+    if advancements and not focused:
         result['advancements'] = advancements
     return result
 
@@ -148,7 +151,22 @@ class DataFirstDialogue(GroundedDialogue):
         if query != question:
             facts = observations.initial(query, history)
         metrics = getattr(observations, 'metric_topic', ())
+        is_portrait = portrait_request(question)
+        if (is_portrait and not facts.get('players') and not personal_reference(question)
+                and re.search(r'\b(?:minecraft|redstone|vector|mods?|backpack|rucksack|claims?|partys)\b', question, re.I)):
+            is_portrait = False
         subjects = tuple(p['player'] for p in facts.get('players', []))
+        scoped_query=query
+        for person in observations.roster:
+            scoped_query=re.sub(r'(?<![a-z0-9_])'+re.escape(person['name'])+r'(?![a-z0-9_])',' ',scoped_query,flags=re.I)
+        if metrics and structured_player_request(question) and re.search(
+                r'heute|gestern|\bseit\b|woche|monat|jahr|\b(?:today|yesterday|since|weekly|monthly)\b', scoped_query, re.I):
+            return self.remember(scope,history,question,
+                'Ich habe gespeicherte Gesamtzähler, aber keine Aufteilung für diesen Zeitraum. Dafür kann ich keinen verlässlichen Wert nennen.', 'unsupported-scope')
+        if (structured_player_request(question) and re.search(r'kills|töt|toet|pvp',scoped_query,re.I)
+                and re.search(r'bogen|\bbow\b|schwert|sword|mace|speer|trident|armbrust',scoped_query,re.I)):
+            return self.remember(scope,history,question,
+                'Die Gesamt-Killzähler zeigen nicht, welche Waffe die Kills verursacht hat. Waffen-Nutzungen sind dafür kein Ersatz.', 'unsupported-scope')
         for method in (observations.direct_followup, lambda q: observations.direct_statistics(q, facts)):
             direct = method(query)
             if direct is not None:
@@ -156,7 +174,11 @@ class DataFirstDialogue(GroundedDialogue):
                     getattr(observations, 'metric_topic', metrics), subjects,
                     getattr(observations, 'statistics_success', False))
         ai = observations.assistant
-        if not portrait_request(question) and (structured_player_request(question)
+        operation_query = re.sub(r'blöck\w*|bloeck\w*|\bblocks?\b|abgebaut|platziert|plaziert|block-items', ' ', query, flags=re.I)
+        operation_query = re.sub(r'\b(?:who|has|the|most)\b', lambda m: m[0] if m[0].casefold() in names else
+            {'who':'wer','has':'hat','the':'die','most':'meisten'}[m[0].casefold()], operation_query, flags=re.I)
+        verified_form=saved_statistic_form(operation_query,observations.roster)
+        if not is_portrait and verified_form and (structured_player_request(question)
                 or re.search(r'^\s*(?:wer|who)\b|rekord|record|rangliste|leaderboard', question, re.I)):
             # Let the existing counter engine recognize all its operations, including
             # blocks/population, rather than narrowing it to five metric keywords.
@@ -183,11 +205,12 @@ class DataFirstDialogue(GroundedDialogue):
                     continue
                 recipe = book.answer(question)
                 from recipes import UNAVAILABLE
-                if recipe == UNAVAILABLE and not re.search(r'craft|rezept|recipe', question, re.I):
+                if recipe == UNAVAILABLE and re.search(
+                        r'\bwie\s+bau\w*\b.*\b(?:haus|burg|brücke|bruecke|dorf)\b', question, re.I):
                     continue
                 if recipe is not None:
                     return self.remember(scope, history, question, render_evidence(recipe), 'tool-recipe')
-        if portrait_request(question):
+        if is_portrait:
             try:
                 portrait = portrait_facts(observations, question, facts)
             except (OSError, ValueError, KeyError, TypeError):
@@ -213,7 +236,7 @@ class DataFirstDialogue(GroundedDialogue):
         if history and history[-1]['origin'] == 'generated':
             previous = history[-1]
             # Never carry old numerical answers into the next factual question.
-            if (not metrics and not portrait_request(question) and not structured_player_request(question)
+            if (not metrics and not is_portrait and not structured_player_request(question)
                     and not previous.get('metrics') and not previous.get('subjects')):
                 messages += [{'role': 'user', 'content': previous['question'][:160]},
                     {'role': 'assistant', 'content': previous['answer'][:200]}]
@@ -227,7 +250,7 @@ class DataFirstDialogue(GroundedDialogue):
             value = safe_answer(value)
             if request_forbidden(value):
                 raise ValueError('FORBIDDEN_DIALOGUE_OUTPUT')
-            if evidence and (metrics or portrait_request(question) or evidence.get('players')
+            if evidence and (metrics or is_portrait or evidence.get('players')
                              or evidence.get('documentation') or evidence.get('statistics')):
                 grounded_numbers(value, evidence)
             return value
