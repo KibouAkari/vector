@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Three synthetic native requests; no production model or resource changes."""
 import argparse
+import ast
 import fcntl
 import importlib.util
 import json
@@ -220,11 +221,86 @@ with tempfile.TemporaryDirectory(prefix='vector-qwen35-native-',dir=payload.get(
     print('VECTOR_QWEN35_RESULT='+json.dumps(result,ensure_ascii=False),flush=True)
 '''
 
+INTEGRATION=r'''
+import hashlib,hmac,http.client,json,sys,tempfile,threading,time,types,uuid
+from pathlib import Path
+payload=json.load(sys.stdin);sys.path.insert(0,'/code')
+from runtime import Assistant,State
+from server import Service,knowledge_for
+from portraits import PlayerPortraits
+candidate=types.ModuleType('vector_datafirst_candidate')
+exec(compile(payload['module_source'],'<owned-datafirst-source>','exec'),candidate.__dict__)
+usage=[];results=[];current=None
+with tempfile.TemporaryDirectory(prefix='vector-datafirst-http-',dir=payload.get('temporary_parent')) as tmp:
+    root=Path(tmp);folder=root/'stats';folder.mkdir();cache=root/'users.json';mods=root/'mods.json';mods.write_text('[]')
+    ids=['00000000-0000-0000-0000-'+str(i).zfill(12) for i in (1,2,3)]
+    cache.write_text(json.dumps([{'name':name,'uuid':uid} for name,uid in zip(('ExampleOne','ExampleTwo','ExampleThree'),ids)]))
+    for uid,deaths,hours in zip(ids,(10,7,2),(300,50,3)):
+        (folder/(uid+'.json')).write_text(json.dumps({'stats':{
+            'minecraft:custom':{'minecraft:deaths':deaths,'minecraft:play_time':hours*72000,'minecraft:mob_kills':deaths*100},
+            'minecraft:used':{'minecraft:bow':100,'minecraft:iron_sword':20}}}))
+    state=State(root/'events.sqlite',b'q'*32)
+    admission=knowledge_for('6',state)
+    # Only the restricted DSN is reused. No production ledger or real input data.
+    admission.usage=lambda *args:usage.append(args)
+    engine=candidate.create_dialogue(admission,'qwen35-data-first')
+    ai=Assistant(state,folder,cache,mods,portraits=PlayerPortraits(folder,cache),dialogue=engine)
+    service=Service(('127.0.0.1',0),ai,b'q'*32)
+    thread=threading.Thread(target=service.serve_forever,daemon=True);thread.start()
+    try:
+        for index,(case,question) in enumerate([
+            ('fast-counter','Wie viele Tode habe ich?'),
+            ('generated-portrait','Was hältst du von ExampleOne?'),
+            ('generated-context','Soll ich weiterbauen oder lieber chillen?')]):
+            if case=='generated-context':
+                engine.remember(('minecraft',ids[0]),[],'Ich habe lange gebaut und bin müde.',
+                    'Dann klingt eine Pause sinnvoll.','generated')
+            print(json.dumps({'case_started':case}),flush=True)
+            if case!='fast-counter':print(json.dumps({'request_attempted':case}),flush=True)
+            body=json.dumps({'principal':ids[0],'name':'ExampleOne','event':str(uuid.uuid4())+':'+str(index),
+                'message':'Hey Vector, '+question}).encode();stamp=str(int(time.time()))
+            headers={'Content-Type':'application/json','X-Vector-Time':stamp,
+                'X-Vector-Signature':hmac.new(b'q'*32,stamp.encode()+b'\n'+body,hashlib.sha256).hexdigest()}
+            connection=http.client.HTTPConnection('127.0.0.1',service.server_address[1],timeout=35)
+            started=time.monotonic();before=len(usage)
+            try:
+                connection.request('POST','/v1/minecraft',body,headers)
+                response=connection.getresponse();answer=json.loads(response.read(8193))
+                text=answer.get('text','');origin=engine.provenance(('minecraft',ids[0]))
+                checks={'answered':response.status==200 and answer.get('status')=='answered',
+                    'correct_route':origin==('tool-statistics' if case=='fast-counter' else 'generated')}
+                if case=='fast-counter':checks['fresh_count']='10' in text
+                elif case=='generated-portrait':checks['playtime_context']='300' in text or 'spielzeit' in text.casefold()
+                else:checks['rest_context']=any(word in text.casefold() for word in ('pause','chill','müd','ruh','schlaf','erhol'))
+                delta=usage[before:];known_input=sum(r[1] or 0 for r in delta);known_output=sum(r[2] or 0 for r in delta)
+                entry={'id':case,'seconds':round(time.monotonic()-started,3),'synthetic_answer':text,
+                    'reply_origin':origin,'checks':checks,'model_calls':len(delta),
+                    'request_attempted':bool(delta),'input_tokens':known_input if delta and all(r[1] is not None for r in delta) else None,
+                    'output_tokens':known_output if delta and all(r[2] is not None for r in delta) else None}
+                entry['within_existing_backend_budget']=entry['seconds']<=24
+                entry['passed']=all(checks.values()) and entry['within_existing_backend_budget']
+                results.append(entry);print(json.dumps({'case':entry},ensure_ascii=False),flush=True)
+                if not checks['answered'] or not checks['correct_route']:break
+            finally:connection.close()
+    finally:service.shutdown();service.server_close();thread.join(timeout=2)
+    result={'diagnostic_completed':len(results)==3,'passed':len(results)==3 and all(r['passed'] for r in results),
+        'cases':results,'model':candidate.MODEL,'candidate_pins':payload['pins'],'model_calls':len(usage),
+        'known_input_tokens':sum(r[1] or 0 for r in usage),'known_output_tokens':sum(r[2] or 0 for r in usage),
+        'unknown_usage_calls':sum(r[1] is None or r[2] is None for r in usage),
+        'signed_candidate_http_tested':True,'production_request_contract_tested':False,
+        'live_player_routes_tested':False,'production_ledger_writes':False,'temporary_state_only':True,
+        'humor_and_language_require_manual_review':True,'cloud_calls':0,'messages_sent':0,
+        'production_activated':False,'eligible_for_activation':False,'model_residency_may_have_changed':bool(usage),
+        'evaluation_scope':'qwen35-data-first-signed-candidate-http'}
+    print('VECTOR_QWEN35_RESULT='+json.dumps(result,ensure_ascii=False),flush=True)
+'''
+
 def main():
     parser=argparse.ArgumentParser()
     for name in ('guard-helper','prepare-helper','process-helper','preparation','workspace-root','lock-file'):
         parser.add_argument('--'+name,type=Path,required=True)
     parser.add_argument('--data-first',action='store_true')
+    parser.add_argument('--data-first-module',type=Path)
     args=parser.parse_args();sys.dont_write_bytecode=True;os.umask(0o077)
     guard=load(args.guard_helper,'qwen35_native_guard')
     prep=load(args.prepare_helper,'qwen35_native_prep',guard)
@@ -267,19 +343,31 @@ def main():
         report=guard.checked_path(str(args.workspace_root/'releases'),directory=True)/('qwen35-native-evaluation-'+uuid.uuid4().hex)
         report.mkdir(mode=0o700)
         guard.write_private(report/'evaluation.py',Path(__file__).read_bytes())
+        module_source=None
+        if args.data_first_module:
+            module_path=guard.checked_path(str(args.data_first_module))
+            meta=module_path.stat()
+            if (not stat.S_ISREG(meta.st_mode) or meta.st_uid!=os.geteuid()
+                    or stat.S_IMODE(meta.st_mode)&0o077 or meta.st_size>65536):
+                raise RuntimeError('OWNED_CANDIDATE_SOURCE_REQUIRED')
+            module_source=module_path.read_text();ast.parse(module_source)
         system=DATA_SYSTEM if args.data_first else SYSTEM
         manifest={'preparation':str(directory),'preparation_sha256':guard.digest((directory/'result.json').read_bytes()),
             'source_hashes':op['source_hashes'],'pins':pins,'system':system,'tool':TOOL,'data_first':args.data_first,
+            'data_first_module_sha256':guard.digest(module_source.encode()) if module_source else None,
             'evaluation_sha256':guard.digest(Path(__file__).read_bytes()),
             'helpers':{str(p.name):guard.digest(p.read_bytes()) for p in (args.guard_helper,args.prepare_helper,args.process_helper)}}
         guard.write_private(report/'manifest.json',guard.canonical(manifest))
-        print(('Zwei datenbasierte' if args.data_first else 'Höchstens drei')+' lokale Anfragen, Thinking aus. Keine Aktivierung und kein Neustart.',flush=True)
+        print(('Signierten Kandidaten prüfen, höchstens zwei Modellantworten.' if module_source else
+            ('Zwei datenbasierte' if args.data_first else 'Höchstens drei')+' lokale Anfragen, Thinking aus.')+
+            ' Keine Aktivierung und kein Neustart.',flush=True)
         print('Belege: '+str(report),flush=True)
         evaluation_id=uuid.uuid4().hex;child=None;result=None;terminated=False;termination_error=None
         try:
             try:
                 child=subprocess.run(['docker','exec','-i','-w','/code',op['assistant'],'python3','-c',WATCHDOG],
-                    input=json.dumps({'program':INNER,'evaluation_id':evaluation_id,'system':system,'tool':TOOL,'pins':pins,'data_first':args.data_first}).encode(),
+                    input=json.dumps({'program':INTEGRATION if module_source else INNER,'evaluation_id':evaluation_id,
+                        'system':system,'tool':TOOL,'pins':pins,'data_first':args.data_first,'module_source':module_source}).encode(),
                     capture_output=True,timeout=240,start_new_session=True)
             except subprocess.TimeoutExpired as exc:
                 from types import SimpleNamespace

@@ -172,10 +172,15 @@ def main():
     dialogue = None
     timezone = os.environ.get('VECTOR_MINECRAFT_TIMEZONE', 'UTC')
     if mode == '6':
-        from dialogue import GroundedDialogue
         from zoneinfo import ZoneInfo
         ZoneInfo(timezone)
-        dialogue = GroundedDialogue(knowledge)
+        profile = os.environ.get('VECTOR_MINECRAFT_DIALOGUE_PROFILE', 'legacy')
+        if profile == 'legacy':
+            from dialogue import GroundedDialogue
+            dialogue = GroundedDialogue(knowledge)
+        else:
+            from datafirst import create_dialogue
+            dialogue = create_dialogue(knowledge, profile)
     assistant = Assistant(state, '/inputs/stats', '/inputs/usercache.json', '/inputs/mods.json',
                           knowledge, recipes, mod_recipes, portraits, dialogue=dialogue, dialogue_timezone=timezone)
     with Service(('0.0.0.0', 8090), assistant, key) as service:
@@ -184,5 +189,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
