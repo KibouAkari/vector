@@ -55,6 +55,9 @@ def profile_for_dialogue(guard,transport,profile,service,code,timezone,*,expecte
     environment=profile['services'][service].get('environment')
     if not isinstance(environment,dict) or environment.get(mode)!=expected_mode:
         raise RuntimeError('CONFIRMED_REVIEWED_MODE_REQUIRED')
+    selected=bindings.get('DIALOGUE_PROFILE',[])
+    if selected and environment.get(selected[0].value,'legacy')!='legacy':
+        raise RuntimeError('SEPARATE_DIALOGUE_PROFILE_QUALIFICATION_REQUIRED')
     candidate=guard.changed_profile(profile,service,code)
     candidate['services'][service]['environment'].update({mode:'6',zone:timezone})
     return candidate

@@ -21,6 +21,16 @@ guard=load('scripts/deploy/update-minecraft-ranking-runtime.py','guard_check')
 
 
 class Release(unittest.TestCase):
+    def test_old_native_evidence_cannot_select_new_composer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code=Path(directory)
+            (code/'server.py').write_text((ROOT/'services/minecraft-assistant/server.py').read_text())
+            profile={'services':{'assistant':{'environment':{
+                'VECTOR_MINECRAFT_KNOWLEDGE':'6',
+                'VECTOR_MINECRAFT_DIALOGUE_PROFILE':'qwen35-data-first'}}}}
+            with self.assertRaisesRegex(RuntimeError,'SEPARATE_DIALOGUE_PROFILE_QUALIFICATION_REQUIRED'):
+                release.profile_for_dialogue(guard,transport,profile,'assistant',code,'UTC',expected_mode='6')
+
     def test_only_code_and_bound_mode_timezone_change_in_the_profile(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);old=root/'old';new=root/'new';old.mkdir();new.mkdir()
@@ -158,4 +168,5 @@ class Release(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
 

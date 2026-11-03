@@ -14,7 +14,7 @@ import sys
 import uuid
 
 FILES={'runtime.py','dialogue.py','server.py','knowledge.py','portraits.py'}
-ENV_SUFFIXES=('KNOWLEDGE','RECIPES','MOD_RECIPES_SHA256','PORTRAITS','ADVANCEMENTS','TIMEZONE')
+ENV_SUFFIXES=('KNOWLEDGE','RECIPES','MOD_RECIPES_SHA256','PORTRAITS','ADVANCEMENTS','TIMEZONE','DIALOGUE_PROFILE')
 
 
 def main_node(text):
