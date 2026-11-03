@@ -40,10 +40,10 @@ class NativeComposer:
 
     def request(self, messages, validator):
         deadline = time.monotonic() + 24
-        payload = {'model': MODEL, 'think': False, 'stream': False, 'keep_alive': '5m',
+        payload = {'model': MODEL, 'think': False, 'stream': False, 'keep_alive': '30m',
             'messages': messages, 'options': {'temperature': .3, 'top_p': .8,
                 'top_k': 20, 'min_p': 0, 'presence_penalty': 0, 'repeat_penalty': 1,
-                'num_ctx': 8192, 'num_thread': 2, 'num_predict': 48}}
+                'num_ctx': 8192, 'num_thread': 4, 'num_predict': 48}}
 
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self, *args):

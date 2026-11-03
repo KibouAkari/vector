@@ -205,7 +205,7 @@ class ProviderTests(unittest.TestCase):
         self.assertNotIn('format', body)
         self.assertNotIn('tools', body)
         self.assertNotIn('seed', body['options'])
-        self.assertEqual(body['options']['num_thread'], 2)
+        self.assertEqual(body['options']['num_thread'], 4)
         self.assertEqual(usage, [(MODEL, 100, 10, True)])
 
     def test_slot_cleanup_failure_keeps_known_usage_unaccepted(self):

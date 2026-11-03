@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03 — Activate a coherent Qwen3.5 package with bounded CPU migration
+
+- Stage the complete assistant Python dependency set instead of importing new code against an older installed dialogue module. Preserve installed private server bindings, runtime aliases, the configured joke and data/catalog files; check package imports before resource changes or model requests.
+- Add an explicit activation path with an owned two-to-four CPU quota transition, four generation threads and 30-minute requested model residency. Keep 24 GiB RAM/swap policy and unrelated services unchanged. Qualify the staged signed HTTP route with at most two synthetic native answers, then recreate only the assistant; preserve guarded rollback and resource ownership checks.
+- Six focused migration tests and the existing 23 data-first tests pass locally. Native four-thread latency, successful host activation and real chat behavior remain unobserved until the operator executes the release. No game restart, image build or repository history deletion.
+
 ## 2026-11-03 — Add an opt-in data-first conversation profile
 
 - Add a separate Qwen3.5 composition profile while retaining the legacy default. Preserve direct counters, rankings, block operations, recipe checks and public mod inventory; generate free responses and player assessments from fresh, compact evidence rather than portrait templates. Keep scoped, expiring conversation memory and authenticated self resolution.
