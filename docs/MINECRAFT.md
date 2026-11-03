@@ -1,5 +1,39 @@
 # Optional Minecraft integration
 
+## Opt-in Qwen3.5 data-first dialogue source
+
+Mode 6 retains its existing dialogue by default. The separate private runtime setting
+`VECTOR_MINECRAFT_DIALOGUE_PROFILE=qwen35-data-first` selects `datafirst.py` only
+after a dedicated guarded rollout. Do not set it on an unqualified installation.
+Unknown profiles fail closed. This source change does not activate any service.
+
+The candidate keeps direct clock, counter, ranking, block, mod-inventory and qualified
+recipe paths. Free conversation and player assessments use one fixed local Qwen3.5
+request with no generated tool execution or cloud fallback. Portrait context is rebuilt
+from complete public snapshots, prioritizing positive high-ranking metrics and known
+weapon-use counters; these do not prove hit rate, victim identity, loyalty or skill.
+Unavailable advancement sources are not inferred from other counters. Discord display
+names do not establish a player's authenticated identity.
+
+Conversation memory remains author/source scoped, bounded to 256 scopes and two turns,
+and expires after three minutes. It is not permanent personal memory. Old factual
+answers are excluded from subsequent factual prompts. Selected complete documentation
+passages have a context cap; source checks and numerical grounding are not semantic
+proofs. General game advice is distinct from verified server configuration.
+
+The experimental native request uses no fixed seed, non-thinking generation, 48 output
+tokens, two threads and the existing 24-second budget/CPU admission. This does not
+establish acceptable cold-start latency, natural variation or universal answer coverage.
+The existing transport, authorization, replay/rate controls and policy remain in force.
+No Minecraft addon or web model selection changes are included.
+
+The native evaluator's `--data-first-module PATH` loads owned candidate source into
+an isolated process with synthetic stats, synthetic HMAC and temporary state. It exercises
+the existing signed HTTP handler and actual assistant routing with one fast counter and
+at most two native answers. Only restricted CPU admission is reused. It does not read
+real player data, write a production usage ledger or qualify a production deployment.
+Review actual generated content and latency separately; activation stays disabled.
+
 The Qwen3.5 native evaluator also accepts `--data-first` for a separate two-request
 composition screen. It supplies a short prior exchange and then a controller-computed
 synthetic comparison before generation, rather than asking the model to select a tool.

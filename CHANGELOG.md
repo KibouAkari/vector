@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03 — Add an opt-in data-first conversation profile
+
+- Add a separate Qwen3.5 composition profile while retaining the legacy default. Preserve direct counters, rankings, block operations, recipe checks and public mod inventory; generate free responses and player assessments from fresh, compact evidence rather than portrait templates. Keep scoped, expiring conversation memory and authenticated self resolution.
+- Fix numerical evidence equivalence for decimal-formatted counts, prioritize meaningful positive portrait metrics, and prevent missing advancement counts from being guessed from unrelated values. The fixed local request has no generated tools, cloud fallback or fixed sampling seed.
+- Extend isolated native qualification to the signed HTTP handler and actual assistant routing using synthetic inputs and temporary state. Eighteen new synthetic tests plus existing dialogue regressions pass locally. Native integration quality, cold-start latency, live deployment and persistent player memory remain unqualified; no service activation or resource change.
+
 ## 2026-11-03 — Screen data-first composition and preserve native failure evidence
 
 - Add an optional two-request Qwen3.5 composition profile with concrete conversational context and a controller-computed synthetic comparison supplied before generation. Reduce output cap and experimental sampling variation; preserve CPU, RAM, admission, code and service boundaries. No production model switch or routing change.
