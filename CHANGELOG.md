@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03 — Prepare a pinned Qwen3.5 9B CPU and vision candidate
+
+- Add host-side preparation of the official CPU/GGUF model and vision projector with exact manifest/layer integrity checks. Preserve the native Qwen3.5 renderer/parser and import under a separate candidate alias through the existing internal API.
+- Permit an explicitly authorized 24 GiB cap on the selected inference container, preserving CPU settings and the existing swap allowance. Record before/actual limits and partial failures privately; verify all other service configurations, code and model tags remain unchanged. No restart, network expansion, native generation or model activation.
+- Exercise metadata, public delivery/cache integrity, swap policy, source drift and zero-inference preparation with synthetic tests. Existing models and evidence are retained. Native answer quality, latency and the conversational/tool redesign remain separate unfinished work.
+
 ## 2026-10-23 — Screen an imported conversation candidate without promotion
 
 - Add a separate two-response API/chat screen bound to an owned, verified preparation record, actual template/weight/manifest and the existing restricted CPU admission. Exercise German conversation and one prior exchange with native timing and token accounting; stop on the first failure.

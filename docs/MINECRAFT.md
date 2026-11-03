@@ -1,5 +1,28 @@
 # Optional Minecraft integration
 
+CPU preparation for `vector-qwen35:9b-q4km-candidate` is available through
+`scripts/deploy/prepare-qwen35-cpu.py`. It requires an explicit download flag,
+an owned current operator snapshot and authorization for a 24 GiB RAM cap.
+It downloads the pinned public Ollama CPU/GGUF manifest on the host, verifies
+all layer sizes/digests and imports both the Q4_K_M weights and vision projector
+through the existing internal API. Native renderer/parser metadata is retained.
+No inference-container internet access, native generation or production model
+selection is enabled by preparation.
+
+Only the selected inference container's RAM limit and corresponding memory-plus-
+swap limit may change. The existing swap allowance and two-CPU limit are retained;
+other container configurations, identities, code, profiles and model tags must
+remain unchanged. Previous limits and actual observed limits are recorded privately,
+including partial resource-update failures. Host/model cache additions are reported
+separately. A failed import does not silently reduce the authorized RAM cap or
+remove models/cache files. The retained before-resource record supports a separate
+usage-aware restoration; do not blindly lower RAM while a model is loaded.
+
+Preparation captures the registered manifest/template/capabilities. It does not
+establish useful tool use, image quality, correctness, personality or CPU latency.
+The CPU backend must still be measured with a small relevant native evaluation
+before a separate application/assistant rollout can select this candidate.
+
 An imported candidate can be screened with `evaluate-minecraft-dialogue.py`
 using paired `--candidate-preparation <private result.json>` and
 `--candidate-helper <pinned screen-imported-conversation.py>` arguments.
