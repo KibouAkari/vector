@@ -1,5 +1,30 @@
 # Optional Minecraft integration
 
+## Coherent Qwen3.5 activation
+
+`scripts/deploy/activate-qwen35-datafirst.py` requires an explicit `--activate`,
+owned preparation evidence, the current four source pins, a healthy dedicated mode-6
+assistant, unchanged model registration and the confirmed 2-CPU/24-GiB inference baseline.
+It stages the complete Python dependency set together. The installed server keeps its
+handlers, secret paths, knowledge checksums and private factory settings; exactly one
+dialogue import is switched to the new composer. Existing private runtime aliases and
+the configured best-player joke are preserved. Existing data/catalog files remain intact.
+
+A zero-model import check loads this complete staged package in an isolated temporary
+process instead of mixing candidate code with the old installed `dialogue.py`.
+Only then may the inference quota change from two to four CPU units, paired with four
+generation threads. RAM/swap, images, networks, state, other service profiles and Minecraft
+are unchanged. The composer requests 30-minute residency; other model users can still
+evict it. Additional CPU quota/residency does not guarantee response latency.
+
+The same staged code then exercises signed candidate HTTP with synthetic files and
+at most two native answers. A successful check and unchanged baseline permit immediate
+recreation of only the assistant using its existing image. No Docker build, game restart,
+cloud prompt or game/Discord message is performed. Failed activation uses guarded code
+rollback and restores the previous CPU quota. Private release records include a rollback
+launcher; it verifies resource ownership before restoring the quota. Old model-preparation
+records are not rewritten and must not be treated as the new deployment baseline.
+
 ## Opt-in Qwen3.5 data-first dialogue source
 
 Mode 6 retains its existing dialogue by default. The separate private runtime setting
