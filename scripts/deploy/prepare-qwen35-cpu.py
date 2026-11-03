@@ -210,7 +210,7 @@ def upload(path,descriptor,container,report,guard,transport,result,index):
     sha=descriptor['digest'].split(':')[1]
     head=transport.internal(container,{'operation':'head','sha256':sha},report,guard,'blob-'+str(index)+'-before')
     if head['exists']:return
-    result['import_attempted']=True
+    result['import_attempted']=True;upload_logs_written=False
     try:
         fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW)
         with os.fdopen(fd,'rb') as source:
@@ -218,12 +218,13 @@ def upload(path,descriptor,container,report,guard,transport,result,index):
                 stdin=source,capture_output=True,timeout=190)
         guard.write_private(report/('upload-'+str(index)+'.stdout'),child.stdout)
         guard.write_private(report/('upload-'+str(index)+'.stderr'),child.stderr)
+        upload_logs_written=True
         if child.returncode:raise RuntimeError('QWEN35_UPLOAD_FAILED')
         if not transport.internal(container,{'operation':'head','sha256':sha},report,guard,'blob-'+str(index)+'-after')['exists']:
             raise RuntimeError('QWEN35_UPLOAD_UNVERIFIED')
     except Exception as exc:
         result['import_completion_unknown']=True
-        if isinstance(exc,subprocess.TimeoutExpired):
+        if isinstance(exc,subprocess.TimeoutExpired) and not upload_logs_written:
             guard.write_private(report/('upload-'+str(index)+'.stdout'),exc.stdout or b'')
             guard.write_private(report/('upload-'+str(index)+'.stderr'),exc.stderr or b'')
         raise

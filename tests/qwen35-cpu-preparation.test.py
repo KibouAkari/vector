@@ -106,7 +106,7 @@ class Preparation(unittest.TestCase):
         self.assertTrue(m.registry_retained(old,{'old':'a',m.MODEL:'b'}))
         for new in ({},{'old':'b'},{'old':'a','unrelated':'b'}):self.assertFalse(m.registry_retained(old,new))
 
-    def execute(self,*,drift=False,update_failure=False,other_change=False,registry_drift=False):
+    def execute(self,*,drift=False,update_failure=False,other_change=False,registry_drift=False,late_registry_drift=False):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'releases').mkdir();(root/'local-inference').mkdir()
             lock=root/'lock';lock.touch()
@@ -133,6 +133,7 @@ class Preparation(unittest.TestCase):
                 reads+=1
                 value={'runtime_version':'0.40.4','sources':source_hashes if not drift else {},'registry':{'old':'a'},'candidate_exists':imported}
                 if registry_drift and reads>1:value['registry']['concurrent']='c'
+                if late_registry_drift and reads>=3:value['registry'][m.MODEL]='concurrent-writer'
                 if imported:value.update(registry={'old':'a',m.MODEL:'b'},manifest_digest='b'*64,
                     details={'family':'qwen35','quantization_level':'Q4_K_M'},
                     weight_digests=[m.WEIGHT,m.PROJECTOR],template_sha256=m.TEMPLATE,renderer='qwen3.5',parser='qwen3.5',
@@ -172,7 +173,7 @@ class Preparation(unittest.TestCase):
                 if drift:
                     with self.assertRaisesRegex(RuntimeError,'OBSERVED_ASSISTANT_SOURCE_CHANGED'):m.main()
                     self.assertEqual(commands,[]);fetch.assert_not_called();return
-                if update_failure or other_change or registry_drift:
+                if update_failure or other_change or registry_drift or late_registry_drift:
                     with self.assertRaises(SystemExit):m.main()
                 else:m.main()
             result=json.loads(next((root/'releases').glob('*/result.json')).read_text())
@@ -195,6 +196,31 @@ class Preparation(unittest.TestCase):
         self.assertFalse(result['prepared']);self.assertFalse(result['memory_limit_updated'])
         self.assertEqual(result['error'],'MODEL_REGISTRY_CHANGED_BEFORE_IMPORT')
         self.assertEqual(uploads,[])
+
+    def test_new_alias_after_uploads_cannot_be_overwritten(self):
+        result,uploads=self.execute(late_registry_drift=True)
+        self.assertFalse(result['prepared'])
+        self.assertEqual(result['error'],'MODEL_OR_SOURCE_CHANGED_BEFORE_CREATE')
+        self.assertEqual(len(uploads),2)
+        self.assertTrue(result['memory_limit_updated'])
+
+    def test_upload_and_post_upload_timeouts_preserve_their_original_private_logs(self):
+        for stage in ('upload','verify'):
+            with self.subTest(stage=stage),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);source=root/'weight';source.write_bytes(b'synthetic')
+                status={};calls=[]
+                def internal(*args):
+                    calls.append(1)
+                    if len(calls)>1:raise m.subprocess.TimeoutExpired('synthetic-head',70,output=b'head-partial')
+                    return {'exists':False}
+                timeout=m.subprocess.TimeoutExpired('synthetic-upload',190,output=b'upload-partial',stderr=b'upload-diagnostic')
+                with patch.object(m.subprocess,'run',side_effect=timeout if stage=='upload' else None,
+                        return_value=SimpleNamespace(returncode=0,stdout=b'completed-upload',stderr=b'clean')):
+                    with self.assertRaises(m.subprocess.TimeoutExpired):
+                        m.upload(source,{'digest':'sha256:'+m.WEIGHT,'size':9},'assistant',root,g,SimpleNamespace(internal=internal,UPLOAD='synthetic'),status,0)
+                self.assertTrue(status['import_completion_unknown'])
+                self.assertEqual((root/'upload-0.stdout').read_bytes(),b'upload-partial' if stage=='upload' else b'completed-upload')
+                self.assertEqual((root/'upload-0.stderr').read_bytes(),b'upload-diagnostic' if stage=='upload' else b'clean')
 
     def test_partial_resource_command_failure_is_reported_as_actual_ram_change(self):
         result,uploads=self.execute(update_failure=True)

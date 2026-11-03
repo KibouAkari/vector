@@ -134,3 +134,7 @@ When observed runner-loading waits need to be distinguished from answer latency,
 The experimental dialogue prefix uses concise internal English instructions but requests German answers. It sends verified self identity without automatically attaching own counters or an operator joke to every question; those remain available through a fresh statistics lookup. This reduces unrelated initial context and does not change backend authorization, privacy or forbidden-content checks. Native latency and semantic qualification are still required before any activation.
 
 
+
+All operator registry writers must use the same existing release lock. Do not run
+manual model creation/pulls concurrently with preparation; the model API has no
+compare-and-create operation. Rechecks reject newly occupied aliases before create.
