@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-04 — Ground named-server questions and retain useful portrait answers
+
+- Bind a private operator-provided server name to the existing statistics namespace. Broad top-statistics requests use real category pages; unresolved statistical requests ask for a category instead of generating imaginary rankings. Add the current-server role to general composition context without putting deployment names into the repository.
+- Validate German decimal/thousands notation against exact structured numbers. Keep invented values rejected, and return fresh verified portrait records if generated prose fails validation, without retrying inference. Clarify achievement/weapon-use semantics and reject unsupported equipment, luck and accuracy claims in portraits.
+- Prefer a strongly matched reviewed backpack upgrade passage, and ask for the upgrade stage when no documentation is available instead of guessing ingredients or a workstation.
+- Add an assistant-only context update path bound to the successful Qwen release identity, code and Compose evidence. Preserve all other container identities/configuration, CPU/RAM, private service bindings and rollback. Native quality is not requalified by this source update. Keep the complete changelog history.
+
 ## 2026-11-04 — Allow short Qwen replies to finish without accepting truncation
 
 - Increase generation headroom from 48 to 96 tokens and request a direct reply within 30 words. Keep the 24-second response deadline, separate preload, four inference threads and existing assistant-only activation/recovery path.

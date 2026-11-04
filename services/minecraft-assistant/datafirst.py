@@ -2,6 +2,7 @@
 from collections import OrderedDict
 from decimal import Decimal, InvalidOperation
 import json
+import os
 import re
 import threading
 import time
@@ -21,15 +22,29 @@ SYSTEM = ('Vector: Deutsch, hilfreich. Antworte direkt in höchstens 30 Wörtern
 
 
 def grounded_numbers(answer, evidence):
-    def numbers(text):
+    def variants(token):
         values = set()
-        for token in numeric_tokens(text):
-            try:
-                values.add(Decimal(token))
-            except InvalidOperation:
-                values.add(token)
+        try:
+            values.add(Decimal(token.replace(',', '.')))
+        except InvalidOperation:
+            pass
+        if re.fullmatch(r'\d{1,3}(?:\.\d{3})+(?:,\d+)?', token):
+            values.add(Decimal(token.replace('.', '').replace(',', '.')))
+        if not values:
+            values.add(token)
         return values
-    if not numbers(answer) <= numbers(json.dumps(evidence, ensure_ascii=False)):
+    def collect(value):
+        if type(value) in (int, float):
+            return {Decimal(str(value))}
+        if isinstance(value, str):
+            return set().union(*(variants(token) for token in numeric_tokens(value)))
+        if isinstance(value, dict):
+            return set().union(*(collect(v) for v in value.values()))
+        if isinstance(value, (list, tuple)):
+            return set().union(*(collect(v) for v in value))
+        return set()
+    known = collect(evidence)
+    if any(not variants(token) & known for token in numeric_tokens(answer)):
         raise ValueError('UNSUPPORTED_DIALOGUE_NUMBER')
 
 
@@ -121,7 +136,7 @@ class NativeComposer:
             codes = {'LOCAL_DEADLINE', 'MODEL_RESPONSE_LIMIT', 'INCOMPLETE_MODEL_RESPONSE',
                      'MODEL_USAGE_MISSING', 'UNEXPECTED_MODEL_MESSAGE', 'INVALID_DIALOGUE_ANSWER',
                      'FORBIDDEN_DIALOGUE_OUTPUT', 'UNSUPPORTED_DIALOGUE_NUMBER',
-                     'INVALID_ANSWER', 'UNSAFE_ANSWER'}
+                     'INVALID_ANSWER', 'UNSAFE_ANSWER', 'UNSUPPORTED_PORTRAIT_INFERENCE'}
             if len(exc.args) == 1 and isinstance(exc.args[0], str) and exc.args[0] in codes:
                 self.last_error['code'] = exc.args[0]
             if isinstance(value, dict):
@@ -182,6 +197,9 @@ class DataFirstDialogue(GroundedDialogue):
         self.clock = clock
         self.context = OrderedDict()
         self.lock = threading.Lock()
+        self.server_name = os.environ.get('VECTOR_SERVER_NAME', '').strip()
+        if self.server_name and not re.fullmatch(r'[\w .-]{1,64}', self.server_name):
+            raise ValueError('INVALID_SERVER_NAME')
 
     def answer(self, question, scope, observations):
         if not isinstance(question, str) or not 1 <= len(question) <= 1200 or request_forbidden(question):
@@ -194,10 +212,13 @@ class DataFirstDialogue(GroundedDialogue):
             history = list(self.context.get(scope, (0, []))[1])
         if clock_question(question):
             return self.remember(scope, history, question, observations.direct(question), 'direct-clock')
-        facts = observations.initial(question, history)
+        query = question
+        if self.server_name:
+            query = re.sub(r'(?<!\w)' + re.escape(self.server_name) + r'(?!\w)', 'server', query, flags=re.I)
+        facts = observations.initial(query, history)
         names = {p['name'].casefold() for p in observations.roster}
         query = re.sub(r'\b(?:traveled|travelled|walked)\b',
-            lambda m: m[0] if m[0].casefold() in names else 'Strecke', question, flags=re.I)
+            lambda m: m[0] if m[0].casefold() in names else 'Strecke', query, flags=re.I)
         if query != question:
             facts = observations.initial(query, history)
         metrics = getattr(observations, 'metric_topic', ())
@@ -224,6 +245,13 @@ class DataFirstDialogue(GroundedDialogue):
                     getattr(observations, 'metric_topic', metrics), subjects,
                     getattr(observations, 'statistics_success', False))
         ai = observations.assistant
+        statistic_request = bool(re.search(r'\btop\s*\d+\b|statistik\w*|\bstats\b|rangliste|leaderboard', query, re.I))
+        if statistic_request and not metrics and not subjects and not personal_reference(query):
+            limit = re.search(r'\btop\s*(\d+)\b', query, re.I)
+            if limit and re.search(r'statistik|rekord|kategor', query, re.I):
+                page = ai.ranking_page('top '+limit[1]+' aller Statistiken', scope)
+                if page is not None:
+                    return self.remember(scope, history, question, page, 'tool-statistics')
         operation_query = re.sub(r'blöck\w*|bloeck\w*|\bblocks?\b|abgebaut|platziert|plaziert|block-items', ' ', query, flags=re.I)
         operation_query = re.sub(r'\b(?:who|has|the|most)\b', lambda m: m[0] if m[0].casefold() in names else
             {'who':'wer','has':'hat','the':'die','most':'meisten'}[m[0].casefold()], operation_query, flags=re.I)
@@ -240,6 +268,14 @@ class DataFirstDialogue(GroundedDialogue):
                     metrics, subjects)
         if MOD_INVENTORY.search(question):
             return self.remember(scope, history, question, render_evidence(observations.lookup('mods', question)), 'tool-mods')
+        if re.search(r'backpack|rucksack', query, re.I) and re.search(r'upgrad|erweitern|verbessern', query, re.I):
+            reviewed = observations.reviewed_direct(query)
+            if reviewed:
+                return self.remember(scope, history, question, render_evidence(reviewed), 'tool-documentation')
+            if not facts.get('documentation'):
+                return self.remember(scope, history, question,
+                    'Für dieses Rucksack-Upgrade fehlt mir eine passende geprüfte Anleitung. Welche Stufe möchtest du erreichen? Zutaten und Werkbank möchte ich nicht raten.',
+                    'missing-upgrade-documentation')
         if re.search(r'fortschritt|advancement', question, re.I) and structured_player_request(question):
             try:
                 person = portrait_facts(observations, question, facts)
@@ -282,7 +318,14 @@ class DataFirstDialogue(GroundedDialogue):
             return self.remember(scope, history, question,
                 'Das betrifft zu viele Daten für eine kurze Antwort. Welche Kategorie oder welchen Spieler soll ich zuerst nehmen?',
                 'context-limit')
-        messages = [{'role': 'system', 'content': SYSTEM}]
+        if statistic_request and not is_portrait:
+            return self.remember(scope, history, question,
+                'Welche Kategorie möchtest du sehen: Spielzeit, Strecke, Mobkills, Spielerkills oder Tode? Ich verwende dafür die gespeicherten Serverdaten.',
+                'missing-statistics-category')
+        messages = [{'role': 'system', 'content': SYSTEM +
+            ' Du hilfst auf dem aktuellen Minecraft-Server; die Daten stammen von diesem Server.' +
+            (' Servername: '+self.server_name+'.' if self.server_name else '') +
+            (' Spielerporträt: Nenne belegte Stärken. Fortschritte sind Achievements, keine Abenteuerzahl. Nutzungen sind keine Schüsse, Treffer oder Kills. Tode belegen weder Pech noch Ausrüstung; wenig Mobkills beweisen kein schlechtes Können.' if is_portrait else '')}]
         if history and history[-1]['origin'] == 'generated':
             previous = history[-1]
             # Never carry old numerical answers into the next factual question.
@@ -298,6 +341,8 @@ class DataFirstDialogue(GroundedDialogue):
             if not isinstance(value, str) or not 1 <= len(value.strip()) <= 320:
                 raise ValueError('INVALID_DIALOGUE_ANSWER')
             value = safe_answer(value)
+            if is_portrait and re.search(r'treffer|schüsse|schuesse|treffsicher|pech|glück|glueck|ausrüstung|ausruestung', value, re.I):
+                raise ValueError('UNSUPPORTED_PORTRAIT_INFERENCE')
             if request_forbidden(value):
                 raise ValueError('FORBIDDEN_DIALOGUE_OUTPUT')
             if evidence and (metrics or is_portrait or evidence.get('players')
@@ -308,6 +353,16 @@ class DataFirstDialogue(GroundedDialogue):
         try:
             answer = self.provider.request(messages, validate)
             return self.remember(scope, history, question, answer, 'generated', metrics, subjects)
+        except ValueError:
+            if is_portrait:
+                records = '; '.join(label+' '+str(row[0])+' '+row[1]+' (Rang '+str(row[2])+')'
+                                    for label, row in evidence['records'].items())
+                text = evidence['player']+': '+records+'. Daraus lässt sich ein Spielstil erkennen, aber kein Gesamturteil über Können ableiten.'
+                if len(text) > 320:
+                    text = evidence['player']+': '+records+'.'
+                return self.remember(scope, history, question, safe_answer(text), 'tool-portrait-evidence', metrics, subjects)
+            self.clear(scope)
+            raise
         except Exception:
             self.clear(scope)
             raise
