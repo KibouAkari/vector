@@ -37,8 +37,8 @@ with tempfile.TemporaryDirectory(prefix='vector-portrait-state-') as temporary:
         knowledge=knowledge,dialogue=engine,
         portraits=PlayerPortraits('/inputs/stats','/inputs/usercache.json','/inputs/advancements'))
     print(json.dumps({'preload':engine.provider.preload()}),flush=True)
+    principal=str(uuid.uuid4());scope=('discord',principal)
     for name in payload['players']:
-        principal=str(uuid.uuid4());scope=('discord',principal)
         observations=PublicObservations(ai,scope,None,())
         started=time.monotonic();before=len(usage)
         answer=engine.answer('Wie schätzt du '+name+' ein?',scope,observations)
