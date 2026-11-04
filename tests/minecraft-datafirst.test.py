@@ -172,19 +172,25 @@ class DialogueTests(unittest.TestCase):
         self.assertNotIn('kürzlich',text)
         self.assertIn('300',text)
 
-    def test_fallback_blends_supported_signals_without_fixed_disclaimer(self):
-        evidence={'player':'ExampleTwo','records':{'Mobkills':[9683,'Kills',6],'Strecke':[100,'km',4]},
-            'signals':['more_mob_than_player_kills','travel_recorded']}
-        first=portrait_fallback(evidence,0)
-        second=portrait_fallback(evidence,1)
-        self.assertNotEqual(first,second)
-        for text in (first,second):
-            self.assertIn('Rang 6',text)
-            self.assertIn('Rang 4',text)
-            self.assertNotIn('Gesamturteil',text)
-            self.assertNotRegex(text,r'führt|viel|Elite|Spitze')
-            self.assertIn('Monster',text)
-            self.assertLessEqual(len(text),320)
+    def test_fallback_is_factual_and_has_no_canned_humor(self):
+        evidence={'player':'ExampleTwo','records':{'Mobkills':[9683,'Kills',6],'Strecke':[100,'km',4]}}
+        text=portrait_fallback(evidence)
+        self.assertIn('Rang 6',text)
+        self.assertIn('Rang 4',text)
+        self.assertNotRegex(text,r'Nachbarn|Monster bekommen|Gesamturteil|Zuschauertribüne')
+
+    def test_generated_portrait_has_trusted_anchor_and_scoped_phrase_memory(self):
+        self.reply='Hier wohnt offenbar jemand zwischen Werkbank und Weltreise.'
+        first=self.ask('was hältst du von ExampleOne?')
+        self.assertIn(self.reply,first)
+        self.assertIn('Spielzeit 300.0 h (Rang 1)',first)
+        self.assertEqual(self.engine.provenance(('minecraft',self.ids[0])),'generated')
+        self.ask('was hältst du von ExampleOne?')
+        self.assertIn('Nicht dieselbe Formulierung',self.calls[-1][1]['content'])
+        self.write(self.ids[0],10,301)
+        self.assertIn('301.0 h',self.ask('was hältst du von ExampleOne?'))
+        self.ask('was hältst du von ExampleOne?',principal=self.ids[1])
+        self.assertNotIn('Nicht dieselbe Formulierung',str(self.calls[-1]))
 
     def test_fallback_never_invents_an_unobserved_role(self):
         evidence={'player':'Example','records':{'Mobkills':[0,'Kills',4]},'signals':[]}
@@ -202,9 +208,9 @@ class DialogueTests(unittest.TestCase):
         self.ask('was hältst du von ExampleOne?')
         evidence=json.loads(self.calls[-1][-2]['content'].removeprefix('Datenblock: '))
         self.assertFalse({'Mobkills','Spielerkills'}<=set(evidence['records']))
-        self.assertIn('travel_recorded',evidence['signals'])
+        self.assertNotIn('signals',evidence)
 
-    def test_native_failure_varies_but_rereads_current_portrait_values(self):
+    def test_native_failure_rereads_current_portrait_values(self):
         def timeout(messages,validator):raise TimeoutError()
         self.engine.provider.request=timeout
         first=self.ask('was hältst du von ExampleOne?')
