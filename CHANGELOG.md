@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-04 — Allow short Qwen replies to finish without accepting truncation
+
+- Increase generation headroom from 48 to 96 tokens and request a direct reply within 30 words. Keep the 24-second response deadline, separate preload, four inference threads and existing assistant-only activation/recovery path.
+- Continue rejecting token-limit completions, unsafe output and unsupported factual numbers. Expose only whitelisted validation codes, known completion reasons and integer token counts on failure so a generic fallback does not hide the cause. Arbitrary exception text and model content remain excluded from diagnostics.
+- Local regression checks cover a complete reply beyond the previous token cap, truncated output rejection and credential-like exception redaction. Native latency and response quality remain subject to the existing signed candidate gate before activation; no live deployment is claimed by these tests.
+
 ## 2026-11-04 — Separate Qwen startup loading from answer latency
 
 - Preload the pinned local candidate with an empty request under the existing inference slot and a separate 45-second startup budget. Keep the same context and four inference threads, request continued RAM residency, and retain the 24-second generated-answer deadline.

@@ -200,7 +200,7 @@ class ProviderTests(unittest.TestCase):
                     open=lambda *args, **kwargs: (_ for _ in ()).throw(TimeoutError()))):
             with self.assertRaises(TimeoutError): composer.preload()
 
-    def invoke(self, value, *, release_error=False):
+    def invoke(self, value, *, release_error=False, validator=None):
         usage, requests = [], []
         @contextlib.contextmanager
         def slot(dsn):
@@ -221,9 +221,10 @@ class ProviderTests(unittest.TestCase):
         with patch('datafirst.local_slot', slot), patch('urllib.request.build_opener',
                 return_value=SimpleNamespace(open=open_request)):
             try:
-                result = composer.request([{'role': 'user', 'content': 'Hallo'}], lambda text: text)
+                result = composer.request([{'role': 'user', 'content': 'Hallo'}], validator or (lambda text: text))
             except Exception as exc:
                 result = exc
+        self.diagnostic = composer.last_error
         return result, usage, requests
 
     def value(self):
@@ -242,7 +243,35 @@ class ProviderTests(unittest.TestCase):
         self.assertNotIn('tools', body)
         self.assertNotIn('seed', body['options'])
         self.assertEqual(body['options']['num_thread'], 4)
+        self.assertEqual(body['options']['num_predict'], 96)
         self.assertEqual(usage, [(MODEL, 100, 10, True)])
+
+    def test_complete_reply_over_previous_48_token_cap_is_accepted(self):
+        value = self.value()
+        value['eval_count'] = 65
+        result, usage, _ = self.invoke(value)
+        self.assertEqual(result, 'Hallo!')
+        self.assertEqual(usage, [(MODEL, 100, 65, True)])
+        self.assertIsNone(self.diagnostic)
+
+    def test_token_limit_still_rejects_partial_reply_with_safe_reason(self):
+        value = self.value()
+        value.update(done_reason='length', eval_count=96)
+        result, usage, _ = self.invoke(value)
+        self.assertIsInstance(result, ValueError)
+        self.assertEqual(self.diagnostic, {'type': 'ValueError', 'request_attempted': True,
+            'code': 'INCOMPLETE_MODEL_RESPONSE', 'done_reason': 'length',
+            'prompt_eval_count': 100, 'eval_count': 96})
+        self.assertFalse(usage[0][-1])
+
+    def test_arbitrary_exception_text_is_never_exposed(self):
+        def reject(text):
+            raise ValueError('password=synthetic-secret postgres://private')
+        result, usage, _ = self.invoke(self.value(), validator=reject)
+        self.assertIsInstance(result, ValueError)
+        self.assertNotIn('synthetic-secret', json.dumps(self.diagnostic))
+        self.assertNotIn('code', self.diagnostic)
+        self.assertFalse(usage[0][-1])
 
     def test_slot_cleanup_failure_keeps_known_usage_unaccepted(self):
         result, usage, _ = self.invoke(self.value(), release_error=True)
