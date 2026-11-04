@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-04 — Separate Qwen startup loading from answer latency
+
+- Preload the pinned local candidate with an empty request under the existing inference slot and a separate 45-second startup budget. Keep the same context and four inference threads, request continued RAM residency, and retain the 24-second generated-answer deadline.
+- Run the existing signed synthetic chat check and activate the coherent assistant package in the same operation only when it passes. Preserve CPU/code recovery and all other service configuration. Report preload separately from warm answer measurements; cold-start latency and the 2–12 second target remain unproven.
+- Expose only the native exception type and whether a request was attempted when the chat handler returns its fallback. No prompt, credential, exception text or partial model output is added to reports. Preserve the complete prior changelog.
+
 ## 2026-11-03 — Activate a coherent Qwen3.5 package with bounded CPU migration
 
 - Stage the complete assistant Python dependency set instead of importing new code against an older installed dialogue module. Preserve installed private server bindings, runtime aliases, the configured joke and data/catalog files; check package imports before resource changes or model requests.

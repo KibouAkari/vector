@@ -244,6 +244,9 @@ with tempfile.TemporaryDirectory(prefix='vector-datafirst-http-',dir=payload.get
     # Only the restricted DSN is reused. No production ledger or real input data.
     admission.usage=lambda *args:usage.append(args)
     engine=candidate.create_dialogue(admission,'qwen35-data-first')
+    print(json.dumps({'preload_started':True,'limit_seconds':45,'prompt_sent':False}),flush=True)
+    preload=engine.provider.preload()
+    print(json.dumps({'preload':preload}),flush=True)
     ai=Assistant(state,folder,cache,mods,portraits=PlayerPortraits(folder,cache),dialogue=engine)
     service=Service(('127.0.0.1',0),ai,b'q'*32)
     thread=threading.Thread(target=service.serve_forever,daemon=True);thread.start()
@@ -276,6 +279,7 @@ with tempfile.TemporaryDirectory(prefix='vector-datafirst-http-',dir=payload.get
                 else:checks['rest_context']=any(word in text.casefold() for word in ('pause','chill','müd','ruh','schlaf','erhol'))
                 delta=usage[before:];known_input=sum(r[1] or 0 for r in delta);known_output=sum(r[2] or 0 for r in delta)
                 entry={'id':case,'seconds':round(time.monotonic()-started,3),'synthetic_answer':text,
+                    'native_error':engine.provider.last_error,
                     'reply_origin':origin,'checks':checks,'model_calls':len(delta),
                     'request_attempted':bool(delta),'input_tokens':known_input if delta and all(r[1] is not None for r in delta) else None,
                     'output_tokens':known_output if delta and all(r[2] is not None for r in delta) else None}
@@ -286,7 +290,8 @@ with tempfile.TemporaryDirectory(prefix='vector-datafirst-http-',dir=payload.get
             finally:connection.close()
     finally:service.shutdown();service.server_close();thread.join(timeout=2)
     result={'diagnostic_completed':len(results)==3,'passed':len(results)==3 and all(r['passed'] for r in results),
-        'cases':results,'model':candidate.MODEL,'candidate_pins':payload['pins'],'model_calls':len(usage),
+        'cases':results,'preload':preload,'cold_start_latency_tested':False,
+        'model':candidate.MODEL,'candidate_pins':payload['pins'],'model_calls':len(usage),
         'known_input_tokens':sum(r[1] or 0 for r in usage),'known_output_tokens':sum(r[2] or 0 for r in usage),
         'unknown_usage_calls':sum(r[1] is None or r[2] is None for r in usage),
         'server_completion_unknown':any(r[1] is None or r[2] is None for r in usage),

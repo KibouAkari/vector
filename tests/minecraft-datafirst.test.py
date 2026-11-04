@@ -165,6 +165,41 @@ class DialogueTests(unittest.TestCase):
 
 
 class ProviderTests(unittest.TestCase):
+    def test_preload_has_no_prompt_separate_budget_and_matching_runner(self):
+        requests, usage = [], []
+        composer = NativeComposer('restricted', lambda *args: usage.append(args))
+        def open_request(request, timeout):
+            requests.append((request, timeout))
+            response = SimpleNamespace(read=lambda size: json.dumps(
+                {'model': MODEL, 'done': True, 'response': ''}).encode())
+            return contextlib.nullcontext(response)
+        with patch('datafirst.local_slot', lambda dsn: contextlib.nullcontext()), patch(
+                'urllib.request.build_opener', return_value=SimpleNamespace(open=open_request)):
+            result = composer.preload()
+        body = json.loads(requests[0][0].data)
+        self.assertEqual(requests[0][0].full_url, 'http://vector-local-inference:11434/api/generate')
+        self.assertEqual(body, {'model': MODEL, 'stream': False, 'keep_alive': -1,
+            'options': {'num_ctx': 8192, 'num_thread': 4}})
+        self.assertLessEqual(requests[0][1], 45)
+        self.assertEqual(usage, [])
+        self.assertFalse(result['prompt_sent'])
+        self.assertEqual(result['generated_tokens'], 0)
+
+    def test_preload_rejects_generation_and_transport_failure(self):
+        composer = NativeComposer('restricted')
+        for value in ({'model': MODEL, 'done': True, 'response': 'unexpected'},
+                      {'model': 'other', 'done': True}, {'model': MODEL, 'done': False}):
+            response = SimpleNamespace(read=lambda size: json.dumps(value).encode())
+            with patch('datafirst.local_slot', lambda dsn: contextlib.nullcontext()), patch(
+                    'urllib.request.build_opener', return_value=SimpleNamespace(
+                        open=lambda *args, **kwargs: contextlib.nullcontext(response))):
+                with self.assertRaisesRegex(ValueError, 'UNEXPECTED_PRELOAD_RESPONSE'):
+                    composer.preload()
+        with patch('datafirst.local_slot', lambda dsn: contextlib.nullcontext()), patch(
+                'urllib.request.build_opener', return_value=SimpleNamespace(
+                    open=lambda *args, **kwargs: (_ for _ in ()).throw(TimeoutError()))):
+            with self.assertRaises(TimeoutError): composer.preload()
+
     def invoke(self, value, *, release_error=False):
         usage, requests = [], []
         @contextlib.contextmanager
@@ -202,6 +237,7 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual(requests[0].full_url, 'http://vector-local-inference:11434/api/chat')
         body = json.loads(requests[0].data)
         self.assertFalse(body['think'])
+        self.assertEqual(body['keep_alive'], -1)
         self.assertNotIn('format', body)
         self.assertNotIn('tools', body)
         self.assertNotIn('seed', body['options'])
@@ -240,6 +276,7 @@ def synthetic_request(self,messages,validator):
     self.usage(MODEL,100,20,True)
     return result
 NativeComposer.request=synthetic_request
+NativeComposer.preload=lambda self:dict(completed=True,seconds=0,prompt_sent=False,generated_tokens=0,keep_alive=-1)
 '''
         payload = {'module_source': source, 'pins': {}}
         output = io.StringIO()
@@ -251,6 +288,8 @@ NativeComposer.request=synthetic_request
         self.assertTrue(result['diagnostic_completed'])
         self.assertTrue(result['passed'])
         self.assertEqual(result['model_calls'], 2)
+        self.assertTrue(result['preload']['completed'])
+        self.assertFalse(result['cold_start_latency_tested'])
         self.assertEqual(result['cases'][0]['model_calls'], 0)
         self.assertTrue(result['signed_candidate_http_tested'])
         self.assertFalse(result['production_activated'])
