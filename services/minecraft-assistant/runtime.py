@@ -873,6 +873,8 @@ class Assistant:
                     limit = int(top_match[1]) if top_match else 1
                     text,success = self.category_leaders(metric,limit,numbered=bool(top_match))
                     if outcome is not None:outcome['success']=success
+                    if success and not top_match and len(text)<=285:
+                        text+=' Stand: gespeicherte Spielerdateien.'
                     return text
             elif not selected and people:
                 person = people[0]
