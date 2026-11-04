@@ -232,9 +232,10 @@ class Transport(unittest.TestCase):
     def test_page_rate_notice_does_not_skip_the_waiting_category(self):
         self.ask('Gib mir die Top 5 aller Rekorde')
         self.ask('weiter');self.ask('weiter')
-        self.assertIn('kurze Pause',self.ask('weiter'))
-        status,value=self.send(self.payload('weiter'))
-        self.assertEqual(status,200);self.assertEqual(value['status'],'limited')
+        with patch.object(self.ai.state,'admit',return_value='limited'):
+            self.assertIn('kurze Pause',self.ask('weiter'))
+            status,value=self.send(self.payload('weiter'))
+            self.assertEqual(status,200);self.assertEqual(value['status'],'limited')
         self.now[0]+=61
         self.assertIn('Spielerkills:',self.ask('weiter'))
         self.assertEqual(self.provider.calls,[])
