@@ -104,7 +104,7 @@ class State:
             db.execute('DELETE FROM local_usage WHERE stamp < ?', (self.clock() - 7 * 86400,))
             db.execute('INSERT INTO local_usage VALUES (?, ?, ?, ?, ?)', (self.clock(), model, input_tokens, output_tokens, int(accepted)))
 
-    def admit(self, principal, event):
+    def admit(self, principal, event, *, continuation=False):
         def hashed(value):
             return hmac.new(self.key, value.encode(), hashlib.sha256).hexdigest()
         now = self.clock()
@@ -117,7 +117,8 @@ class State:
                 return 'busy'
             user = db.execute('SELECT COUNT(*) FROM events WHERE principal=? AND stamp>? AND accepted=1', (hashed(principal), now - 60)).fetchone()[0]
             total = db.execute('SELECT COUNT(*) FROM events WHERE stamp>? AND accepted=1', (now - 60,)).fetchone()[0]
-            accepted = user < 3 and total < 12
+            # Only an owned, live statistics continuation gets this read budget.
+            accepted = user < (8 if continuation else 3) and total < (24 if continuation else 12)
             db.execute('INSERT INTO events VALUES (?, ?, ?, ?)', (hashed(event), hashed(principal), now, int(accepted)))
             return 'accepted' if accepted else 'limited'
 
@@ -440,7 +441,12 @@ class Assistant:
         greeting, question = addressed
         prefix = greeting.capitalize() + ' ' + name + ', '
         scope = (source, principal)
-        admitted = self.state.admit(principal, event)
+        with self.ranking_lock:
+            pending = self.ranking_pages.get(scope)
+            continuation = bool(pending and pending[2] > time.monotonic()
+                and PAGE_NEXT.fullmatch(unicodedata.normalize('NFKC',question).casefold()))
+        admitted = (self.state.admit(principal, event, continuation=True) if continuation
+                    else self.state.admit(principal, event))
         if admitted != 'accepted':
             # One bounded notice for an owned pending page; never compute the page
             # or bypass admission. Replays and further rejected requests stay silent.
@@ -557,10 +563,13 @@ class Assistant:
             data=stats.snapshot(self.stats_dir,self.usercache)
             stats.require_complete(data)
             leaders=stats.leaders(data,metric,limit)
-            if len(leaders)>10:
-                return 'es gibt mehr als zehn gleichplatzierte Spieler. Bitte grenze die Frage ein.',False
+            tied_excerpt = len(leaders)>10
+            if tied_excerpt:
+                leaders=leaders[:10]
             label,unit,*_=stats.METRICS[metric]
             text=label+': '+'; '.join(str(1+sum(other['value']>p['value'] for other in leaders))+'. '+p['name']+' '+number(p['value'],unit) for p in leaders)+'.'
+            if tied_excerpt:
+                text+=' Auszug bei Gleichstand.'
             if len(text)>320:
                 return 'die Liste ist für eine Chatantwort zu lang. Bitte frage nach einer kleineren Rangliste.',False
             return text,True
@@ -602,6 +611,14 @@ class Assistant:
                 self.ranking_pages[scope]=(limit,remaining,now+180)
                 while len(self.ranking_pages)>256:self.ranking_pages.popitem(last=False)
         text,success=self.category_leaders(metric,limit)
+        if not success:
+            with self.ranking_lock:
+                current=self.ranking_pages.get(scope)
+                expected=(limit,remaining,now+180) if remaining else None
+                if current==expected:
+                    self.ranking_pages[scope]=(limit,[metric]+remaining,now+180)
+            if with_metric and with_outcome:return (),text,False
+            return ((),text) if with_metric else text
         notice=(' Weiter?' if remaining else ' Letzte Kategorie.') if with_metric else (' Für die nächste Kategorie: Hey Vector, weiter.' if remaining else ' Das war die letzte Kategorie.')
         text=text+notice
         if with_metric and with_outcome:return metric,text,success
@@ -866,6 +883,7 @@ class Assistant:
             return text + '. Stand: gespeicherte Spielerdateien.'
         except (OSError, ValueError, TypeError, KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.'
+
 
 
 

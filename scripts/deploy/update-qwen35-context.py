@@ -44,6 +44,7 @@ def main():
     for key in ('guard-helper', 'release-helper', 'baseline', 'source', 'release-root', 'lock-file'):
         parser.add_argument('--'+key, type=Path, required=True)
     parser.add_argument('--server-name', required=True)
+    parser.add_argument('--runtime-source', type=Path)
     parser.add_argument('--activate', action='store_true')
     parser.add_argument('--rollback', type=Path)
     args = parser.parse_args()
@@ -100,6 +101,13 @@ def main():
         if release.constant(raw, 'MODEL') != release.constant((installed/'datafirst.py').read_bytes(), 'MODEL'):
             raise RuntimeError('MODEL_CHANGE_FORBIDDEN')
         (code/'datafirst.py').write_bytes(raw)
+        if args.runtime_source:
+            runtime = guard.checked_path(str(args.runtime_source)).read_text()
+            ast.parse(runtime)
+            installed_runtime = (installed/'runtime.py').read_text()
+            runtime = guard.preserve_joke(installed_runtime,
+                guard.preserve_server_literals(installed_runtime, runtime)).decode()
+            (code/'runtime.py').write_text(runtime)
         for path in [code, *code.rglob('*')]:
             path.chmod(0o755 if path.is_dir() else 0o644)
         candidate = guard.changed_profile(profile, config['service'], code)

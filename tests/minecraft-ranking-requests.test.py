@@ -266,10 +266,12 @@ class RankingRequests(unittest.TestCase):
         self.assertIn('Spielzeit',self.ask('Top 5 aller Rekorde')['text'])
         self.assertNotIn('REPEATED',self.ask('weiter')['text'])
         self.assertIn('Mobkills',self.ask('weiter')['text'])
-        notice=self.ask('weiter')
-        self.assertIn('Minutenlimits',notice['text'])
-        self.assertEqual(self.ask('weiter')['status'],'limited')
-        self.assertEqual(self.ask('weiter',source='discord')['status'],'limited')
+        # Simulate an exhausted continuation/global budget, independent of ordinary limits.
+        with patch.object(self.ai.state,'admit',return_value='limited'):
+            notice=self.ask('weiter')
+            self.assertIn('Minutenlimits',notice['text'])
+            self.assertEqual(self.ask('weiter')['status'],'limited')
+            self.assertEqual(self.ask('weiter',source='discord')['status'],'limited')
         scope=('minecraft',self.ids[0])
         self.assertEqual(self.ai.ranking_pages[scope][1][0],'player_kills')
         now[0]+=61
