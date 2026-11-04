@@ -166,6 +166,44 @@ class DialogueTests(unittest.TestCase):
         self.assertNotIn('Ausrüstung', text)
         self.assertIn('300', text)
 
+    def test_portrait_timeout_uses_fresh_values_without_retry(self):
+        calls=[]
+        def timeout(messages, validator):
+            calls.append(messages)
+            raise TimeoutError('LOCAL_DEADLINE')
+        self.engine.provider.request=timeout
+        text=self.ask('was hältst du von ExampleOne?')
+        self.assertIn('300',text)
+        self.assertEqual(len(calls),1)
+        self.assertEqual(self.engine.provenance(('minecraft',self.ids[0])),'tool-portrait-evidence')
+
+    def test_five_category_pages_fit_owned_continuation_budget(self):
+        import uuid
+        for question in ['top 10 aller Statistiken']+['weiter']*4:
+            result=self.ai.handle({'principal':self.ids[0],'name':'ExampleOne',
+                'event':str(uuid.uuid4())+':1','message':'Hey Vector, '+question})
+            self.assertEqual(result['status'],'answered')
+            self.assertNotIn('Minutenlimit',result['text'])
+        self.assertEqual(self.calls,[])
+        result=self.ai.handle({'principal':self.ids[0],'name':'ExampleOne',
+            'event':str(uuid.uuid4())+':1','message':'Hey Vector, wie geht es dir?'})
+        self.assertIn('Minutenlimit',result['text'])
+        self.assertEqual(self.calls,[])
+
+    def test_large_tie_has_bounded_real_excerpt(self):
+        users=[{'name':'User'+str(i),'uuid':'00000000-0000-0000-0000-'+str(i).zfill(12)} for i in range(1,15)]
+        self.cache.write_text(json.dumps(users))
+        for p in users:self.write(p['uuid'],0,1)
+        text,success=self.ai.category_leaders('player_kills',10)
+        self.assertTrue(success)
+        self.assertIn('Gleichstand',text)
+        self.assertEqual(text.count('1. User'),10)
+
+    def test_failed_page_stays_pending(self):
+        with patch.object(self.ai,'category_leaders',return_value=('Nicht lesbar.',False)):
+            self.ai.ranking_page('top 10 aller Statistiken',('minecraft',self.ids[0]))
+        self.assertEqual(self.ai.ranking_pages[('minecraft',self.ids[0])][1][0],'play_time')
+
     def test_conversation_history_is_scoped(self):
         self.ask('ich bin müde, soll ich noch bauen?')
         self.ask('und was empfiehlst du mir?')

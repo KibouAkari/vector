@@ -353,7 +353,7 @@ class DataFirstDialogue(GroundedDialogue):
         try:
             answer = self.provider.request(messages, validate)
             return self.remember(scope, history, question, answer, 'generated', metrics, subjects)
-        except ValueError:
+        except (ValueError, TimeoutError, OSError, RuntimeError):
             if is_portrait:
                 records = '; '.join(label+' '+str(row[0])+' '+row[1]+' (Rang '+str(row[2])+')'
                                     for label, row in evidence['records'].items())

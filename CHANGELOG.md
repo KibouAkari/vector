@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-04 — Preserve portrait facts and finish paged rankings
+
+- Keep fresh verified portrait records available after native timeouts, transport errors and local runtime failures, without another model request. This extends the existing validation fallback; it does not establish the cause of a particular uninstrumented live failure.
+- Permit a bounded read continuation budget only for an already-owned, unexpired ranking page and an exact next-page request. New questions retain the existing admission limits and all replay protections. Show a labelled, deterministic excerpt for more than ten tied leaders rather than abandoning the category; retain the current page when its read fails.
+- Extend the existing assistant-only context update to optionally replace runtime code while preserving installed private server aliases and personality literal. CPU/RAM and unrelated services remain unchanged. Keep all prior changelog history.
+
 ## 2026-11-04 — Ground named-server questions and retain useful portrait answers
 
 - Bind a private operator-provided server name to the existing statistics namespace. Broad top-statistics requests use real category pages; unresolved statistical requests ask for a category instead of generating imaginary rankings. Add the current-server role to general composition context without putting deployment names into the repository.
