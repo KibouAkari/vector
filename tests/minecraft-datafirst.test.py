@@ -57,6 +57,64 @@ class DialogueTests(unittest.TestCase):
         observations = PublicObservations(self.ai, scope, principal if source == 'minecraft' else None, block_items)
         return self.engine.answer(question, scope, observations)
 
+    def test_current_server_playerkill_leader_never_reaches_model(self):
+        for uid,kills in zip(self.ids,(10,200,50)):
+            path=self.path/(uid+'.json');data=json.loads(path.read_text())
+            data['stats']['minecraft:custom']['minecraft:player_kills']=kills
+            path.write_text(json.dumps(data))
+        for q in ('wer hat die meisten playerkills auf dem server?',
+                  'wer hat die meisten playerkills auf unserem Minecraft-Server?'):
+            text=self.ask(q)
+            self.assertIn('ExampleTwo',text)
+            self.assertIn('200',text)
+            self.assertNotIn('ExampleOne',text)
+        self.assertEqual(self.calls,[])
+
+    def test_unknown_ranking_qualifier_never_gets_a_generated_leader(self):
+        self.reply='ExampleOne führt mit erfundenen Werten.'
+        text=self.ask('wer hat die meisten playerkills mit Diamantschwertern?')
+        self.assertNotIn('erfundenen',text)
+        self.assertEqual(self.calls,[])
+
+    def test_numbered_foreign_server_scope_is_not_erased(self):
+        text=self.ask('wer hat die meisten playerkills auf dem server-2?')
+        self.assertIn('nicht eindeutig',text)
+        self.assertEqual(self.calls,[])
+
+    def test_operator_statistics_gate_runs_without_inference(self):
+        import io
+        import os
+        spec=importlib.util.spec_from_file_location('statistics_update',ROOT/'scripts/deploy/update-qwen35-context.py')
+        update=importlib.util.module_from_spec(spec);spec.loader.exec_module(update)
+        program=update.STATISTICS_CHECK
+        for name,path in [('stats',self.path),('usercache.json',self.cache),('mods.json',self.mods)]:
+            program=program.replace("'/inputs/"+name+"'",repr(str(path)))
+        output=io.StringIO()
+        payload={'candidate_code':str(ROOT/'services/minecraft-assistant'),'server_name':'ExampleCraft'}
+        with patch.dict(os.environ),patch('sys.stdin',io.StringIO(json.dumps(payload))),contextlib.redirect_stdout(output):
+            with self.assertRaises(SystemExit) as stopped:
+                exec(compile(program,'<statistics-gate>','exec'),{})
+        self.assertEqual(stopped.exception.code,0)
+        report=json.loads(output.getvalue().splitlines()[-1])['statistics_report']
+        self.assertTrue(report['passed'])
+        self.assertEqual(report['model_calls'],0)
+        self.assertEqual(report['unexpected_generation_attempts'],0)
+
+    def test_top_ten_with_zero_ties_returns_labelled_excerpt(self):
+        users=[{'name':'Example'+str(i),'uuid':'00000000-0000-0000-0000-'+str(i).zfill(12)} for i in range(1,21)]
+        self.cache.write_text(json.dumps(users))
+        for i,p in enumerate(users):
+            self.write(p['uuid'],1,1)
+            path=self.path/(p['uuid']+'.json');data=json.loads(path.read_text())
+            data['stats']['minecraft:custom']['minecraft:player_kills']=200 if i==1 else 0
+            path.write_text(json.dumps(data))
+        text=self.ask('wer sind die top 10 bei playerkills')
+        self.assertIn('1. Example2 200',text)
+        self.assertIn('Auszug bei Gleichstand',text)
+        self.assertNotIn('grenze',text)
+        self.assertLessEqual(len(text),320)
+        self.assertEqual(self.calls,[])
+
     def test_rankings_and_rank_followup_use_no_model(self):
         self.assertIn('ExampleOne', self.ask('wer sind die fünf mit den meisten Toden?'))
         self.assertIn('ExampleTwo', self.ask('und wer ist zweiter?'))

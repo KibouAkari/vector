@@ -265,6 +265,10 @@ class DataFirstDialogue(GroundedDialogue):
         query = question
         if self.server_name:
             query = re.sub(r'(?<!\w)' + re.escape(self.server_name) + r'(?!\w)', 'server', query, flags=re.I)
+        # Current-server scope is not an extra statistic qualifier. Keep other
+        # qualifiers (time periods, weapons, other named servers) for validation.
+        query = re.sub(r'\bauf\s+(?:(?:dem|diesem|unserem)\s+)?(?:minecraft[- ]+)?server\b(?=\s*(?:bitte\s*)?[?!.]*\s*$)',
+            ' ', query, flags=re.I)
         facts = observations.initial(query, history)
         names = {p['name'].casefold() for p in observations.roster}
         query = re.sub(r'\b(?:traveled|travelled|walked)\b',
@@ -372,6 +376,12 @@ class DataFirstDialogue(GroundedDialogue):
             return self.remember(scope, history, question,
                 'Welche Kategorie möchtest du sehen: Spielzeit, Strecke, Mobkills, Spielerkills oder Tode? Ich verwende dafür die gespeicherten Serverdaten.',
                 'missing-statistics-category')
+        if metrics and not is_portrait and (structured_player_request(question)
+                or re.search(r'\b(?:wer|who)\b', question, re.I)):
+            return self.remember(scope, history, question,
+                'Diese Statistikfrage lässt sich nicht eindeutig aus den gespeicherten Gesamtzählern beantworten. '
+                'Bitte nenne Kategorie und gegebenenfalls Spieler; zusätzliche Bedingungen kann ich nicht raten.',
+                'unsupported-statistics-scope')
         messages = [{'role': 'system', 'content': (PORTRAIT_SYSTEM if is_portrait else SYSTEM) +
             (' Servername: '+self.server_name+'.' if self.server_name else '')}]
         if is_portrait:

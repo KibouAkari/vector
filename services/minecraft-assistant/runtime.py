@@ -557,19 +557,25 @@ class Assistant:
         except (OSError,ValueError,TypeError,KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.',False
 
-    def category_leaders(self,metric,limit):
+    def category_leaders(self,metric,limit,*,numbered=True):
         """Structured server-wide page; category words can also be usernames."""
         try:
             data=stats.snapshot(self.stats_dir,self.usercache)
             stats.require_complete(data)
             leaders=stats.leaders(data,metric,limit)
+            label,unit,*_=stats.METRICS[metric]
+            if limit == 1 and leaders[0]['value'] == 0:
+                return label+': noch kein positiver gespeicherter Zähler.',True
             tied_excerpt = len(leaders)>10
             if tied_excerpt:
                 leaders=leaders[:10]
             label,unit,*_=stats.METRICS[metric]
-            text=label+': '+'; '.join(str(1+sum(other['value']>p['value'] for other in leaders))+'. '+p['name']+' '+number(p['value'],unit) for p in leaders)+'.'
+            text=label+': '+'; '.join((str(1+sum(other['value']>p['value'] for other in leaders))+'. ' if numbered else '')+p['name']+' '+number(p['value'],unit) for p in leaders)+'.'
             if tied_excerpt:
                 text+=' Auszug bei Gleichstand.'
+            if len(text)>320 and unit not in ('h','km'):
+                text=label+': '+'; '.join((str(1+sum(other['value']>p['value'] for other in leaders))+'. ' if numbered else '')+p['name']+' '+number(p['value'],'').strip() for p in leaders)+'.'
+                if tied_excerpt:text+=' Auszug bei Gleichstand.'
             if len(text)>320:
                 return 'die Liste ist für eine Chatantwort zu lang. Bitte frage nach einer kleineren Rangliste.',False
             return text,True
@@ -865,11 +871,11 @@ class Assistant:
                     if not re.search(r'\bwer\b|\bwho\b|meist|längst|höchst|top\s*\d+|rangliste|leaderboard', q):
                         return 'nenne bitte den vollständigen Spielernamen oder frage nach dem Spitzenreiter.'
                     limit = int(top_match[1]) if top_match else 1
-                    leaders = stats.leaders(data, metric, limit)
-                    if len(leaders) > 10:
-                        return 'es gibt mehr als zehn gleichplatzierte Spieler. Bitte grenze die Frage ein.'
-                    text = label + ': ' + '; '.join((str(1 + sum(other['value'] > p['value'] for other in leaders)) + '. ' if top_match else '')
-                        + p['name'] + ' ' + number(p['value'], unit) for p in leaders)
+                    text,success = self.category_leaders(metric,limit,numbered=bool(top_match))
+                    if outcome is not None:outcome['success']=success
+                    if success and not top_match and len(text)<=285:
+                        text+=' Stand: gespeicherte Spielerdateien.'
+                    return text
             elif not selected and people:
                 person = people[0]
                 text = person['name'] + ': ' + '; '.join(label + ' ' + number(person['values'][key], unit) + ' (Rang ' + str(stats.rank(data, person, key)) + ')' for key, (label, unit, *_) in stats.METRICS.items())
