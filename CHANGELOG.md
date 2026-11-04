@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-04 — Keep server rankings on authoritative counter routes
+
+Current-server scope phrases are normalized before statistics routing. Previously the conservative grammar rejected asking who has the most player kills on the server and allowed model generation to invent a leader. Unresolved structured questions about known statistic categories now return a scope clarification instead of generating an unsupported statistic.
+
+Single-category rankings reuse the structured category renderer, including a labelled excerpt when ties extend beyond ten players. A zero maximum does not become a positive record. Long count lists can omit repeated unit labels to fit the chat limit without dropping row values. Rank semantics and full-snapshot completeness checks remain intact.
+
+The assistant-only updater adds a two-query statistics gate against the complete staged package and live read-only input data. Inference is disabled; both reported player-kill questions must return the deterministic statistics origin and agree with the parsed snapshot before activation. No Minecraft restart or resource change. Local tests cover server scope, unsupported qualifiers, zero ties and executing the operator gate without inference.
+
 ## 2026-11-04 — Separate portrait narration from numeric counters
 
 The operator's native gate rejected a completed portrait with an unsupported number; another generated portrait invented an assessment of weapon usefulness. General player opinions now receive only the two selected current rank traits, expressed without counters, and omit incidental weapon and advancement data. Exact values remain in trusted code and are appended after validation. Model prose may not introduce digits outside the player name, unsupported weapon claims or the observed decorative-weapon judgement. Explicit combat-style requests retain the most-used weapon labels without inferred accuracy or usefulness. The shorter dedicated prompt asks for a brief comment, not a statistical recital.

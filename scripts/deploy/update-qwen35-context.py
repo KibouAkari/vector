@@ -55,24 +55,69 @@ raise SystemExit(0 if report['passed'] else 1)
 '''
 
 
-def check_portraits(guard, args, container, code, directory):
+STATISTICS_CHECK = r'''
+import json,os,sys,tempfile,time,uuid
+from pathlib import Path
+from types import SimpleNamespace
+payload=json.load(sys.stdin)
+sys.path.insert(0,payload['candidate_code'])
+os.environ['VECTOR_SERVER_NAME']=payload['server_name']
+from runtime import Assistant,State,number
+from dialogue import PublicObservations
+from datafirst import DataFirstDialogue
+import stats
+cases=[];attempts=[]
+with tempfile.TemporaryDirectory(prefix='vector-statistics-state-') as temporary:
+    state=State(Path(temporary)/'events.sqlite',os.urandom(32))
+    engine=DataFirstDialogue(SimpleNamespace(dsn='no-inference',usage=None))
+    def disabled(*args):
+        attempts.append(True)
+        raise RuntimeError('GENERATION_DISABLED')
+    engine.provider.request=disabled
+    ai=Assistant(state,'/inputs/stats','/inputs/usercache.json','/inputs/mods.json',dialogue=engine)
+    data=stats.snapshot('/inputs/stats','/inputs/usercache.json');stats.require_complete(data)
+    principal=str(uuid.uuid4());scope=('discord',principal)
+    for limit,question in [(1,'wer hat die meisten playerkills auf dem server?'),
+                           (10,'wer sind die top 10 bei playerkills')]:
+        expected=stats.leaders(data,'player_kills',limit)[:10]
+        start=time.monotonic()
+        text=engine.answer(question,scope,PublicObservations(ai,scope,None,()))
+        valid=(all(p['name'] in text for p in expected)
+            if limit>1 or expected[0]['value']>0 else 'kein positiver' in text)
+        if expected[0]['value']>0:
+            valid=valid and number(expected[0]['value'],'').strip() in text
+        case=dict(question=question,text=text,seconds=round(time.monotonic()-start,3),
+            reply_origin=engine.provenance(scope),passed=bool(valid and not attempts
+                and engine.provenance(scope)=='tool-statistics'))
+        cases.append(case);print(json.dumps({'statistics_case':case},ensure_ascii=False),flush=True)
+report=dict(passed=len(cases)==2 and all(c['passed'] for c in cases),cases=cases,
+    model_calls=0,cloud_calls=0,messages_sent=0,unexpected_generation_attempts=len(attempts),
+    production_ledger_writes=False)
+print(json.dumps({'statistics_report':report},ensure_ascii=False),flush=True)
+raise SystemExit(0 if report['passed'] else 1)
+'''
+
+
+def check_portraits(guard, args, container, code, directory, *, statistics=False):
     candidate = load(args.candidate_helper, 'portrait_candidate')
     evaluation = load(args.evaluation_helper, 'portrait_evaluation')
     process = load(args.process_helper, 'portrait_process')
     payload = dict(files={str(p.relative_to(code)):base64.b64encode(p.read_bytes()).decode()
-        for p in code.rglob('*') if p.is_file()}, integration=PORTRAIT_CHECK,
+        for p in code.rglob('*') if p.is_file()}, integration=STATISTICS_CHECK if statistics else PORTRAIT_CHECK,
         server_name=args.server_name, players=args.check_player)
-    child = candidate.candidate_run(guard, evaluation, process, container, payload, directory, 'portraits')
+    kind = 'statistics' if statistics else 'portrait'
+    child = candidate.candidate_run(guard, evaluation, process, container, payload, directory, kind)
     report = None
     for line in child.stdout.decode(errors='replace').splitlines():
         try: value = json.loads(line)
         except ValueError: continue
-        if 'portrait_case' in value or 'preload' in value:
+        if kind+'_case' in value or 'preload' in value:
             print(json.dumps(value, ensure_ascii=False), flush=True)
-        if 'portrait_report' in value: report = value['portrait_report']
+        if kind+'_report' in value: report = value[kind+'_report']
     if child.returncode or report is None or not report.get('passed'):
-        raise RuntimeError('GENERATED_PORTRAITS_NOT_QUALIFIED; Belege: '+str(directory))
-    guard.write_private(directory/'portraits.json', guard.canonical(report))
+        code = 'STATISTICS_ROUTES_NOT_QUALIFIED' if statistics else 'GENERATED_PORTRAITS_NOT_QUALIFIED'
+        raise RuntimeError(code+'; Belege: '+str(directory))
+    guard.write_private(directory/(kind+'.json'), guard.canonical(report))
     return report
 
 
@@ -107,11 +152,14 @@ def main():
     parser.add_argument('--server-name', required=True)
     parser.add_argument('--runtime-source', type=Path)
     parser.add_argument('--check-player', action='append', default=[])
+    parser.add_argument('--check-statistics', action='store_true')
     for key in ('candidate-helper', 'evaluation-helper', 'process-helper'):
         parser.add_argument('--'+key, type=Path)
     parser.add_argument('--activate', action='store_true')
     parser.add_argument('--rollback', type=Path)
     args = parser.parse_args()
+    if args.check_statistics and (args.check_player or not all((args.candidate_helper, args.evaluation_helper, args.process_helper))):
+        parser.error('statistics gate requires native helpers and no portrait requests')
     if args.check_player and (len(args.check_player) > 2
             or any(not re.fullmatch(r'[A-Za-z0-9_]{1,16}', p) for p in args.check_player)
             or not all((args.candidate_helper, args.evaluation_helper, args.process_helper))):
@@ -203,7 +251,8 @@ def main():
             raise InterruptedError('CONTEXT_UPDATE_INTERRUPTED')
         signal.signal(signal.SIGTERM, interrupted)
         try:
-            native = check_portraits(guard, args, assistant, code, directory) if args.check_player else None
+            native = check_portraits(guard, args, assistant, code, directory,
+                statistics=args.check_statistics) if args.check_player or args.check_statistics else None
             current = guard.inventory()
             if (not unchanged(before, current, '') or active.read_bytes() != original
                     or guard.tree_files(installed) != prior['candidate_files']):
@@ -214,7 +263,7 @@ def main():
             result = dict(deployed=True, knowledge_mode='qwen35-data-first', model=proof['model'],
                 game_restart=False, only_assistant_recreated=True, other_services_unchanged=True,
                 model_calls=native['model_calls'] if native else 0, cloud_calls=0, messages_sent=0,
-                native_quality_retested=native is not None,
+                native_quality_retested=bool(args.check_player), statistics_routes_retested=args.check_statistics,
                 release=str(directory), rollback=str(directory/'rollback.py'))
             guard.write_private(directory/'result.json', guard.canonical(result))
             print(json.dumps(result, indent=2), flush=True)
