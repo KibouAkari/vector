@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-04 — Compose contextual player portraits without the repeated disclaimer
+
+- Replace the fixed failed-portrait disclaimer with bounded, evidence-dependent combinations of public activity signals. Rotate available observations per player without caching numerical values, and keep fresh counters and ranks visible. Fallback remains deterministic composition, not a second model request or a promise of unlimited unique prose.
+- Select complementary activity families instead of filling both headline records with combat counters. Supply derived combat balance, travel, playtime, weapon-use and achievement context only when supported by the current snapshot. Label shared leaders and avoid equating deaths with a positive skill ranking.
+- Ask generated portraits to connect evidence with dry humor and relative rank context. Reject unqualified high-volume/superlative claims when all supplied ranks are fourth or lower. Never infer accuracy, equipment, luck or achievement recency from the available counters.
+- This assistant-only source change does not activate the separately prepared Minecraft addon queue or authorize a game restart. Preserve the full prior changelog.
+
 ## 2026-11-04 — Queue Minecraft and Discord requests before HTTP dispatch
 
 - Replace the addon's in-flight rejection gate with one serial worker and four bounded FIFO waiting slots. A queued request is acknowledged, and a full queue receives a clear reply. Sign each HTTP request when its worker turn begins so queue wait consumes neither its signature age nor its 27-second transport budget.
