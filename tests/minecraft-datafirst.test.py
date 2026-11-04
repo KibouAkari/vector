@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'services/minecraft-assistant'))
-from datafirst import DataFirstDialogue, NativeComposer, MODEL, create_dialogue
+from datafirst import DataFirstDialogue, NativeComposer, MODEL, create_dialogue, grounded_numbers
 from dialogue import PublicObservations, GroundedDialogue
 from portraits import PlayerPortraits
 from recipes import RecipeBook
@@ -134,11 +134,37 @@ class DialogueTests(unittest.TestCase):
         self.assertIn('eindeutigen', self.ask('was hältst du von Example?'))
         self.assertEqual(self.calls, [])
 
-    def test_unprovided_portrait_numbers_fail_and_clear_memory(self):
+    def test_unprovided_portrait_numbers_use_fresh_facts_without_retry(self):
         self.reply = 'ExampleOne hat 99999 Mobkills.'
-        with self.assertRaisesRegex(ValueError, 'UNSUPPORTED_DIALOGUE_NUMBER'):
-            self.ask('was hältst du von ExampleOne?')
-        self.assertEqual(self.engine.context, {})
+        text = self.ask('was hältst du von ExampleOne?')
+        self.assertNotIn('99999', text)
+        self.assertIn('300', text)
+        self.assertEqual(len(self.calls), 1)
+
+    def test_localized_numbers_do_not_allow_invented_values(self):
+        grounded_numbers('2.345,6 km und 367,5 h', {'distance':2345.6, 'hours':367.5})
+        grounded_numbers('2.345 Blöcke', {'blocks':2345})
+        with self.assertRaises(ValueError): grounded_numbers('2.346 Blöcke', {'blocks':2345})
+        with self.assertRaises(ValueError): grounded_numbers('2345 km', {'distance':2.345})
+
+    def test_missing_upgrade_documentation_never_guesses_workstation(self):
+        self.assertIn('geprüfte Anleitung', self.ask('wie upgrade ich meinen backpack?'))
+        self.assertEqual(self.calls, [])
+
+    def test_server_context_and_broad_top_statistics_are_grounded(self):
+        self.engine.server_name = 'ExampleCraft'
+        text = self.ask('kannst du mir die top 10 Statistiken zu ExampleCraft geben?')
+        self.assertIn('Spielzeit', text)
+        self.assertNotIn('Herobrine', text)
+        self.assertEqual(self.calls, [])
+        self.ask('was ist ExampleCraft?')
+        self.assertIn('Servername: ExampleCraft', self.calls[-1][0]['content'])
+
+    def test_portrait_never_infers_equipment_or_accuracy(self):
+        self.reply = 'ExampleOne braucht bessere Ausrüstung und mehr Glück bei seinen Treffern.'
+        text = self.ask('was hältst du von ExampleOne?')
+        self.assertNotIn('Ausrüstung', text)
+        self.assertIn('300', text)
 
     def test_conversation_history_is_scoped(self):
         self.ask('ich bin müde, soll ich noch bauen?')
