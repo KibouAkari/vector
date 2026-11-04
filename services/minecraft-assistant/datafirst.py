@@ -37,10 +37,41 @@ class NativeComposer:
     """One local request, fixed destination/model, no generated tools or cloud fallback."""
     def __init__(self, dsn, usage=None):
         self.dsn, self.usage = dsn, usage
+        self.last_error = None
+
+    def preload(self):
+        """Load without a prompt; separate bounded startup from response latency."""
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *args):
+                return None
+        payload = {'model': MODEL, 'stream': False, 'keep_alive': -1,
+                   'options': {'num_ctx': 8192, 'num_thread': 4}}
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+        started = time.monotonic()
+        with local_slot(self.dsn):
+            remaining = 45 - (time.monotonic() - started)
+            if remaining <= 0:
+                raise TimeoutError('PRELOAD_DEADLINE')
+            request = urllib.request.Request('http://vector-local-inference:11434/api/generate',
+                json.dumps(payload).encode(), {'Content-Type': 'application/json'})
+            with opener.open(request, timeout=remaining) as response:
+                raw = response.read(32769)
+            if len(raw) > 32768:
+                raise ValueError('PRELOAD_RESPONSE_LIMIT')
+            value = json.loads(raw)
+            if time.monotonic() - started > 45:
+                raise TimeoutError('PRELOAD_DEADLINE')
+            if (not isinstance(value, dict) or value.get('model') != MODEL
+                    or value.get('done') is not True or value.get('response')
+                    or value.get('thinking') or value.get('eval_count', 0) != 0):
+                raise ValueError('UNEXPECTED_PRELOAD_RESPONSE')
+        return {'completed': True, 'seconds': round(time.monotonic() - started, 3),
+                'prompt_sent': False, 'generated_tokens': 0, 'keep_alive': -1}
 
     def request(self, messages, validator):
+        self.last_error = None
         deadline = time.monotonic() + 24
-        payload = {'model': MODEL, 'think': False, 'stream': False, 'keep_alive': '30m',
+        payload = {'model': MODEL, 'think': False, 'stream': False, 'keep_alive': -1,
             'messages': messages, 'options': {'temperature': .3, 'top_p': .8,
                 'top_k': 20, 'min_p': 0, 'presence_penalty': 0, 'repeat_penalty': 1,
                 'num_ctx': 8192, 'num_thread': 4, 'num_predict': 48}}
@@ -82,6 +113,11 @@ class NativeComposer:
             # A failed CPU-slot release is not an accepted request.
             accepted = True
             return answer
+        except Exception as exc:
+            # No exception text, prompt, credential or partial model output is logged.
+            self.last_error = {'type': type(exc).__name__,
+                               'request_attempted': attempted}
+            raise
         finally:
             if attempted and self.usage:
                 def count(key):

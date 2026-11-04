@@ -248,7 +248,7 @@ def main():
             if actual['HostConfig']['NanoCpus']!=4000000000 or fingerprint(guard,prep,actual)!=resources['non_cpu_fingerprint']:
                 raise RuntimeError('CPU_UPDATE_SCOPE_MISMATCH')
             phase='coherent_signed_candidate'
-            print('Prüfe vollständiges Modulpaket und signierten Chat; höchstens zwei Modellantworten.',flush=True)
+            print('Lade Qwen separat vor (höchstens 45 s), dann signierter Chat mit unverändertem Antwortlimit; höchstens zwei Modellantworten.',flush=True)
             program=evaluation.INTEGRATION
             if program.count("sys.path.insert(0,'/code')")!=1:raise RuntimeError('UNEXPECTED_EVALUATION_CONTRACT')
             program=program.replace("sys.path.insert(0,'/code')","sys.path.insert(0,payload['candidate_code'])")
@@ -259,8 +259,7 @@ def main():
                 elif line.startswith('{'):print(line,flush=True)
             guard.write_private(directory/'native.json',guard.canonical(native or {'error':'CANDIDATE_START_FAILED'}))
             if child.returncode or not native or not native.get('passed'):
-                if native is None:
-                    display_error(child.stderr)
+                display_error(child.stderr)
                 raise RuntimeError('SIGNED_CANDIDATE_NOT_QUALIFIED')
             phase='activation_preflight'
             observed=guard.inventory();meta=prep.metadata(op['assistant']);prep.verify_model(meta)
@@ -283,7 +282,8 @@ def main():
             result=dict(deployed=True,model=prep.MODEL,knowledge_mode='qwen35-data-first',inference_cpus=4,generation_threads=4,memory_gib=24,
                 game_restart=False,only_assistant_recreated=True,other_services_unchanged=True,
                 model_calls=native['model_calls'],cloud_calls=0,messages_sent=0,
-                release=str(directory),rollback=str(directory/'rollback.py'),native_cases=native['cases'])
+                release=str(directory),rollback=str(directory/'rollback.py'),native_cases=native['cases'],
+                preload=native['preload'],cold_start_latency_tested=False,keep_alive=-1)
             guard.write_private(directory/'result.json',guard.canonical(result))
             activated=True
             print(json.dumps(result,ensure_ascii=False,indent=2),flush=True)
