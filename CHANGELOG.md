@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-04 — Free portrait composition with native activation gate
+
+Player portraits now use a dedicated short model prompt rather than the general chat prompt plus broad activity hints. The model composes a personal comment; a current record and rank are appended by trusted code. Recent phrasing is scoped to the requesting conversation and expires after three minutes. Failed generation returns fresh facts without canned humorous endings. Portrait sampling is more varied, with a short output budget and unchanged inference resources.
+
+The existing assistant-only context updater can qualify at most two real local portrait generations against its complete staged module package before activation. A fallback, native failure or missing report blocks activation. The bounded native process is cleaned up, temporary state avoids production ledger writes, and existing immutable baseline, drift and rollback checks remain in place. Minecraft and other services are unchanged. Local tests verify composition, current anchors, scoped phrase memory, inference guards and deployment boundaries; real model language is qualified on the operator host rather than claimed from mocks.
+
 ## 2026-11-04 — Compose contextual player portraits without the repeated disclaimer
 
 - Replace the fixed failed-portrait disclaimer with bounded, evidence-dependent combinations of public activity signals. Rotate available observations per player without caching numerical values, and keep fresh counters and ranks visible. Fallback remains deterministic composition, not a second model request or a promise of unlimited unique prose.

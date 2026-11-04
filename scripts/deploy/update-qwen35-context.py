@@ -2,6 +2,7 @@
 """Update only composition code against an immutable successful Qwen release."""
 import argparse
 import ast
+import base64
 import fcntl
 import importlib.util
 import json
@@ -13,6 +14,66 @@ import signal
 import stat
 import sys
 import uuid
+
+
+PORTRAIT_CHECK = r'''
+import json,os,sys,tempfile,time,uuid
+from pathlib import Path
+payload=json.load(sys.stdin)
+sys.path.insert(0,payload['candidate_code'])
+os.environ['VECTOR_SERVER_NAME']=payload['server_name']
+from runtime import Assistant,State
+from server import knowledge_for
+from portraits import PlayerPortraits
+from dialogue import PublicObservations
+from datafirst import DataFirstDialogue
+usage=[];cases=[]
+with tempfile.TemporaryDirectory(prefix='vector-portrait-state-') as temporary:
+    state=State(Path(temporary)/'events.sqlite',os.urandom(32))
+    knowledge=knowledge_for('6',state)
+    knowledge.usage=lambda *args:usage.append(args)
+    engine=DataFirstDialogue(knowledge)
+    ai=Assistant(state,'/inputs/stats','/inputs/usercache.json','/inputs/mods.json',
+        knowledge=knowledge,dialogue=engine,
+        portraits=PlayerPortraits('/inputs/stats','/inputs/usercache.json','/inputs/advancements'))
+    print(json.dumps({'preload':engine.provider.preload()}),flush=True)
+    for name in payload['players']:
+        principal=str(uuid.uuid4());scope=('discord',principal)
+        observations=PublicObservations(ai,scope,None,())
+        started=time.monotonic();before=len(usage)
+        answer=engine.answer('Wie schätzt du '+name+' ein?',scope,observations)
+        origin=engine.provenance(scope)
+        case=dict(player=name,seconds=round(time.monotonic()-started,3),text=answer,
+            reply_origin=origin,native_error=engine.provider.last_error,
+            model_calls=len(usage)-before,passed=origin=='generated' and len(usage)-before==1)
+        cases.append(case);print(json.dumps({'portrait_case':case},ensure_ascii=False),flush=True)
+        if not case['passed']:break
+report=dict(passed=len(cases)==len(payload['players']) and all(c['passed'] for c in cases),
+    cases=cases,model_calls=len(usage),cloud_calls=0,messages_sent=0,production_ledger_writes=False)
+print(json.dumps({'portrait_report':report},ensure_ascii=False),flush=True)
+raise SystemExit(0 if report['passed'] else 1)
+'''
+
+
+def check_portraits(guard, args, container, code, directory):
+    candidate = load(args.candidate_helper, 'portrait_candidate')
+    evaluation = load(args.evaluation_helper, 'portrait_evaluation')
+    process = load(args.process_helper, 'portrait_process')
+    payload = dict(files={str(p.relative_to(code)):base64.b64encode(p.read_bytes()).decode()
+        for p in code.rglob('*') if p.is_file()}, integration=PORTRAIT_CHECK,
+        server_name=args.server_name, players=args.check_player)
+    child = candidate.candidate_run(guard, evaluation, process, container, payload, directory, 'portraits')
+    report = None
+    for line in child.stdout.decode(errors='replace').splitlines():
+        try: value = json.loads(line)
+        except ValueError: continue
+        if 'portrait_case' in value or 'preload' in value:
+            print(json.dumps(value, ensure_ascii=False), flush=True)
+        if 'portrait_report' in value: report = value['portrait_report']
+    if child.returncode or report is None or not report.get('passed'):
+        raise RuntimeError('GENERATED_PORTRAITS_NOT_QUALIFIED; Belege: '+str(directory))
+    guard.write_private(directory/'portraits.json', guard.canonical(report))
+    return report
 
 
 def load(path, name):
@@ -45,9 +106,16 @@ def main():
         parser.add_argument('--'+key, type=Path, required=True)
     parser.add_argument('--server-name', required=True)
     parser.add_argument('--runtime-source', type=Path)
+    parser.add_argument('--check-player', action='append', default=[])
+    for key in ('candidate-helper', 'evaluation-helper', 'process-helper'):
+        parser.add_argument('--'+key, type=Path)
     parser.add_argument('--activate', action='store_true')
     parser.add_argument('--rollback', type=Path)
     args = parser.parse_args()
+    if args.check_player and (len(args.check_player) > 2
+            or any(not re.fullmatch(r'[A-Za-z0-9_]{1,16}', p) for p in args.check_player)
+            or not all((args.candidate_helper, args.evaluation_helper, args.process_helper))):
+        parser.error('one or two player names and all native helpers required')
     os.umask(0o077)
     sys.dont_write_bytecode = True
     guard = load(args.guard_helper, 'context_guard')
@@ -135,6 +203,7 @@ def main():
             raise InterruptedError('CONTEXT_UPDATE_INTERRUPTED')
         signal.signal(signal.SIGTERM, interrupted)
         try:
+            native = check_portraits(guard, args, assistant, code, directory) if args.check_player else None
             current = guard.inventory()
             if (not unchanged(before, current, '') or active.read_bytes() != original
                     or guard.tree_files(installed) != prior['candidate_files']):
@@ -144,7 +213,8 @@ def main():
                 raise RuntimeError('OTHER_SERVICE_CONFIGURATION_CHANGED')
             result = dict(deployed=True, knowledge_mode='qwen35-data-first', model=proof['model'],
                 game_restart=False, only_assistant_recreated=True, other_services_unchanged=True,
-                model_calls=0, cloud_calls=0, messages_sent=0, native_quality_retested=False,
+                model_calls=native['model_calls'] if native else 0, cloud_calls=0, messages_sent=0,
+                native_quality_retested=native is not None,
                 release=str(directory), rollback=str(directory/'rollback.py'))
             guard.write_private(directory/'result.json', guard.canonical(result))
             print(json.dumps(result, indent=2), flush=True)
