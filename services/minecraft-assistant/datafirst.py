@@ -172,10 +172,16 @@ def portrait_facts(observations, question, facts):
     if not focused:
         selected.sort(key=lambda row: (player['values'][row[1]] <= 0,
             row[0], list(stats.METRICS).index(row[1])))
-        selected = selected[:2]
+        first = selected[0]
+        family = lambda metric: 'combat' if metric in ('mob_kills', 'player_kills') else metric
+        second = next((row for row in selected[1:] if family(row[1]) != family(first[1])
+                       and player['values'][row[1]] > 0), selected[1])
+        selected = [first, second]
     result = {'player': player['name'], 'records': {
         stats.METRICS[metric][0]: [round(player['values'][metric], 1), stats.METRICS[metric][1], rank]
         for rank, metric in selected}}
+    result['shared_leaders'] = [stats.METRICS[metric][0] for rank, metric in selected
+        if rank == 1 and sum(p['values'][metric] == player['values'][metric] for p in data['players']) > 1]
     weapons = {label: sum(value for identifier, value in player['used'].items()
         if any(identifier.split(':', 1)[1] == kind or identifier.split(':', 1)[1].endswith('_' + kind)
                for kind in kinds)) for label, kinds in {
@@ -187,7 +193,68 @@ def portrait_facts(observations, question, facts):
     advancements = advancement_summary(getattr(ai.portraits, 'advancements', None), player['uuid'])
     if advancements and not focused:
         result['advancements'] = advancements
+    signals = []
+    values = player['values']
+    if not focused:
+        if values['mob_kills'] > values['player_kills']:
+            signals.append('more_mob_than_player_kills')
+        if values['play_time'] > 0 and stats.rank(data, player, 'play_time') == 1:
+            signals.append('playtime_leader')
+        if values['distance'] > 0:
+            signals.append('travel_recorded')
+        if 0 < values['play_time'] < 10:
+            signals.append('short_recorded_playtime')
+        if values['deaths'] >= 200:
+            signals.append('frequent_respawns')
+        if highest and len(result.get('weapon_uses', {})) == 1:
+            if 'Bogen' in result['weapon_uses']: signals.append('bow_preferred')
+            if 'Schwert' in result['weapon_uses']: signals.append('sword_preferred')
+        if advancements and advancements.get('count', 0) > 0:
+            signals.append('advancements_recorded')
+    result['signals'] = signals
     return result
+
+
+def portrait_fallback(evidence, turn=0):
+    """Vary grounded combinations when native prose is unavailable; no cached values."""
+    from runtime import number
+    records = evidence['records']
+    name = evidence['player']
+    anchors = []
+    for label, (value, unit, rank) in records.items():
+        position = 'führt' if rank == 1 and value > 0 and label != 'Tode' else 'Rang '+str(rank)
+        if rank == 1 and label in evidence.get('shared_leaders', []): position = 'geteilter Rang 1'
+        anchors.append(label+' '+number(value, unit)+' ('+position+')')
+    hooks = []
+    signals = set(evidence.get('signals', []))
+    if 'playtime_leader' in signals:
+        hooks.append('Der Logout-Knopf ist hier wohl eher ein Vorschlag.')
+    if 'travel_recorded' in signals:
+        hooks.append('Unterwegs sein gehört offenbar ebenso zum Programm wie Ankommen.')
+    if 'more_mob_than_player_kills' in signals:
+        hooks.append('Die Monster bekommen offenbar öfter Besuch als die Nachbarn.')
+    if 'bow_preferred' in signals:
+        hooks.append('Beim Bogen wirkt Abstand offenbar wie ein guter Plan, zumindest nach der Nutzung.')
+    if 'sword_preferred' in signals:
+        hooks.append('Die Schwertnutzung passt eher zum Nahkampf als zur Zuschauertribüne.')
+    if 'frequent_respawns' in signals:
+        hooks.append('Der Respawn-Punkt dürfte den Namen inzwischen auswendig kennen.')
+    if 'short_recorded_playtime' in signals:
+        hooks.append('Noch wenig Spielzeit im Log, die eigene Servergeschichte hat also Platz.')
+    if 'advancements_recorded' in signals:
+        hooks.append('Die Fortschritte zeigen auch Ziele abseits der Rangliste.')
+    # A direct metric question supplies no cross-category signals.
+    if not hooks:
+        return safe_answer(name+': '+'; '.join(anchors)+'.')
+    index = (sum(map(ord, name))+turn) % len(hooks)
+    selected = [hooks[index]]
+    if len(hooks) > 1:
+        selected.append(hooks[(index+1) % len(hooks)])
+    prefix = name+': '+'; '.join(anchors)+'.'
+    text = prefix+' '+' '.join(selected)
+    if len(text) > 320: text = prefix+' '+selected[0]
+    if len(text) > 320: text = prefix
+    return safe_answer(text)
 
 
 class DataFirstDialogue(GroundedDialogue):
@@ -197,6 +264,7 @@ class DataFirstDialogue(GroundedDialogue):
         self.clock = clock
         self.context = OrderedDict()
         self.lock = threading.Lock()
+        self.portrait_turns = OrderedDict()
         self.server_name = os.environ.get('VECTOR_SERVER_NAME', '').strip()
         if self.server_name and not re.fullmatch(r'[\w .-]{1,64}', self.server_name):
             raise ValueError('INVALID_SERVER_NAME')
@@ -325,7 +393,7 @@ class DataFirstDialogue(GroundedDialogue):
         messages = [{'role': 'system', 'content': SYSTEM +
             ' Du hilfst auf dem aktuellen Minecraft-Server; die Daten stammen von diesem Server.' +
             (' Servername: '+self.server_name+'.' if self.server_name else '') +
-            (' Spielerporträt: Nenne belegte Stärken. Fortschritte sind Achievements, keine Abenteuerzahl. Nutzungen sind keine Schüsse, Treffer oder Kills. Tode belegen weder Pech noch Ausrüstung; wenig Mobkills beweisen kein schlechtes Können.' if is_portrait else '')}]
+            (' Porträt: Werte verbinden, trockener Humor. Nur Rang eins führt, zwei/drei sind vorne; dahinter keine Superlative. Keine pauschale Schlussfloskel. Fortschritte sind Achievements, Nutzungen keine Treffer. Keine Schlüsse auf Ausrüstung, Glück, Können oder Zeitpunkte.' if is_portrait else '')}]
         if history and history[-1]['origin'] == 'generated':
             previous = history[-1]
             # Never carry old numerical answers into the next factual question.
@@ -343,6 +411,9 @@ class DataFirstDialogue(GroundedDialogue):
             value = safe_answer(value)
             if is_portrait and re.search(r'treffer|schüsse|schuesse|treffsicher|pech|glück|glueck|ausrüstung|ausruestung|neueste|kürzlich|kuerzlich|zuletzt|gerade erst', value, re.I):
                 raise ValueError('UNSUPPORTED_PORTRAIT_INFERENCE')
+            if (is_portrait and all(row[2] >= 4 for row in evidence['records'].values())
+                    and re.search(r'\b(?:viel\w*|enorm\w*|riesig\w*|elite|spitzen\w*|führend\w*|fuehrend\w*)\b', value, re.I)):
+                raise ValueError('UNSUPPORTED_PORTRAIT_INFERENCE')
             if request_forbidden(value):
                 raise ValueError('FORBIDDEN_DIALOGUE_OUTPUT')
             if evidence and (metrics or is_portrait or evidence.get('players')
@@ -355,12 +426,12 @@ class DataFirstDialogue(GroundedDialogue):
             return self.remember(scope, history, question, answer, 'generated', metrics, subjects)
         except (ValueError, TimeoutError, OSError, RuntimeError):
             if is_portrait:
-                records = '; '.join(label+' '+str(row[0])+' '+row[1]+' (Rang '+str(row[2])+')'
-                                    for label, row in evidence['records'].items())
-                text = evidence['player']+': '+records+'. Daraus lässt sich ein Spielstil erkennen, aber kein Gesamturteil über Können ableiten.'
-                if len(text) > 320:
-                    text = evidence['player']+': '+records+'.'
-                return self.remember(scope, history, question, safe_answer(text), 'tool-portrait-evidence', metrics, subjects)
+                with self.lock:
+                    turn = self.portrait_turns.pop(evidence['player'], 0)
+                    self.portrait_turns[evidence['player']] = turn+1
+                    while len(self.portrait_turns) > 256: self.portrait_turns.popitem(last=False)
+                text = portrait_fallback(evidence, turn)
+                return self.remember(scope, history, question, text, 'tool-portrait-evidence', metrics, subjects)
             self.clear(scope)
             raise
         except Exception:

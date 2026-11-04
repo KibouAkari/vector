@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'services/minecraft-assistant'))
-from datafirst import DataFirstDialogue, NativeComposer, MODEL, create_dialogue, grounded_numbers
+from datafirst import DataFirstDialogue, NativeComposer, MODEL, create_dialogue, grounded_numbers, portrait_fallback
 from dialogue import PublicObservations, GroundedDialogue
 from portraits import PlayerPortraits
 from recipes import RecipeBook
@@ -171,6 +171,56 @@ class DialogueTests(unittest.TestCase):
         text=self.ask('was hältst du von ExampleOne?')
         self.assertNotIn('kürzlich',text)
         self.assertIn('300',text)
+
+    def test_fallback_blends_supported_signals_without_fixed_disclaimer(self):
+        evidence={'player':'ExampleTwo','records':{'Mobkills':[9683,'Kills',6],'Strecke':[100,'km',4]},
+            'signals':['more_mob_than_player_kills','travel_recorded']}
+        first=portrait_fallback(evidence,0)
+        second=portrait_fallback(evidence,1)
+        self.assertNotEqual(first,second)
+        for text in (first,second):
+            self.assertIn('Rang 6',text)
+            self.assertIn('Rang 4',text)
+            self.assertNotIn('Gesamturteil',text)
+            self.assertNotRegex(text,r'führt|viel|Elite|Spitze')
+            self.assertIn('Monster',text)
+            self.assertLessEqual(len(text),320)
+
+    def test_fallback_never_invents_an_unobserved_role(self):
+        evidence={'player':'Example','records':{'Mobkills':[0,'Kills',4]},'signals':[]}
+        self.assertNotRegex(portrait_fallback(evidence),r'führt|Monster bekommen|Bogen|Schwert|Logout')
+        evidence.update(records={'Spielzeit':[300,'h',1]},shared_leaders=['Spielzeit'])
+        self.assertIn('geteilter Rang 1',portrait_fallback(evidence))
+
+    def test_combat_metrics_do_not_hide_other_recorded_activity(self):
+        self.write(self.ids[0],10,1)
+        p=self.path/(self.ids[0]+'.json')
+        value=json.loads(p.read_text());value['stats']['minecraft:custom'].update(
+            {'minecraft:player_kills':50,'minecraft:walk_one_cm':50000000})
+        p.write_text(json.dumps(value))
+        self.reply='ExampleOne spielt.'
+        self.ask('was hältst du von ExampleOne?')
+        evidence=json.loads(self.calls[-1][-2]['content'].removeprefix('Datenblock: '))
+        self.assertFalse({'Mobkills','Spielerkills'}<=set(evidence['records']))
+        self.assertIn('travel_recorded',evidence['signals'])
+
+    def test_native_failure_varies_but_rereads_current_portrait_values(self):
+        def timeout(messages,validator):raise TimeoutError()
+        self.engine.provider.request=timeout
+        first=self.ask('was hältst du von ExampleOne?')
+        self.write(self.ids[0],10,301)
+        second=self.ask('was hältst du von ExampleOne?')
+        self.assertNotEqual(first,second)
+        self.assertIn('301',second)
+        self.assertNotIn('Gesamturteil',second)
+
+    def test_lower_ranks_do_not_get_unsupported_superlatives(self):
+        users=[{'name':'Example'+str(i),'uuid':'00000000-0000-0000-0000-'+str(i).zfill(12)} for i in range(1,8)]
+        self.cache.write_text(json.dumps(users))
+        for i,p in enumerate(users):self.write(p['uuid'],10+i,1+i)
+        self.reply='Example1 hat enorm viele Mobkills und ist absolute Elite.'
+        text=self.ask('was hältst du von Example1?')
+        self.assertNotRegex(text,r'enorm|Elite|viele')
 
     def test_portrait_timeout_uses_fresh_values_without_retry(self):
         calls=[]
