@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-04 — Separate portrait narration from numeric counters
+
+The operator's native gate rejected a completed portrait with an unsupported number; another generated portrait invented an assessment of weapon usefulness. General player opinions now receive only the two selected current rank traits, expressed without counters, and omit incidental weapon and advancement data. Exact values remain in trusted code and are appended after validation. Model prose may not introduce digits outside the player name, unsupported weapon claims or the observed decorative-weapon judgement. Explicit combat-style requests retain the most-used weapon labels without inferred accuracy or usefulness. The shorter dedicated prompt asks for a brief comment, not a statistical recital.
+
+The same assistant-only native activation gate remains mandatory in the supplied operator flow; both requests now share a temporary conversation to exercise phrasing memory. No number-validation bypass, inference resource change or Minecraft restart. Local composition and signed-route tests cover qualitative inputs, zero counters, trusted numeric anchors and the reported unsupported judgement. Native success and semantic quality are not claimed before the operator run.
+
 ## 2026-11-04 — Free portrait composition with native activation gate
 
 Player portraits now use a dedicated short model prompt rather than the general chat prompt plus broad activity hints. The model composes a personal comment; a current record and rank are appended by trusted code. Recent phrasing is scoped to the requesting conversation and expires after three minutes. Failed generation returns fresh facts without canned humorous endings. Portrait sampling is more varied, with a short output budget and unchanged inference resources.

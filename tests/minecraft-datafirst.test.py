@@ -95,11 +95,11 @@ class DialogueTests(unittest.TestCase):
 
     def test_focused_portrait_keeps_zero_requested_metric(self):
         self.write(self.ids[0], 0, 300)
-        self.reply = 'ExampleOne hat 0 Tode, das ist ein friedlicher Zwischenstand.'
+        self.reply = 'ExampleOne hält seinen Respawn-Punkt offenbar lieber auf Abstand.'
         self.ask('was hältst du von ExampleOne anhand der Tode?')
         evidence = json.loads(self.calls[-1][-2]['content'].removeprefix('Datenblock: '))
-        self.assertEqual(set(evidence['records']), {'Tode'})
-        self.assertEqual(evidence['records']['Tode'][0], 0)
+        self.assertEqual(set(evidence['Merkmale']), {'Tode'})
+        self.assertEqual(evidence['Merkmale']['Tode'], 'noch nicht verzeichnet')
 
     def test_unqualified_crafting_recipe_does_not_reach_generation(self):
         self.assertIn('Grundrezept', self.ask('wie stelle ich einen Amboss her?'))
@@ -111,13 +111,15 @@ class DialogueTests(unittest.TestCase):
         self.assertEqual(len(self.calls), 1)
 
     def test_portrait_is_generated_from_records_including_playtime(self):
-        self.reply = 'ExampleOne hat mit 300 h Spielzeit offenbar die Stammgastkarte gelöst.'
+        self.reply = 'ExampleOne hat offenbar die Stammgastkarte zwischen Werkbank und Weltreise gelöst.'
         self.assertIn('Stammgastkarte', self.ask('was hältst du von ExampleOne?'))
         text = self.calls[0][-2]['content']
         facts = json.loads(text.removeprefix('Datenblock: '))
         self.assertEqual(facts['player'], 'ExampleOne')
-        self.assertEqual(facts['records']['Spielzeit'], [300, 'h', 1])
-        self.assertEqual(facts['weapon_uses'], {'Bogen': 100})
+        self.assertEqual(facts['Merkmale']['Spielzeit'], 'an der Spitze')
+        self.assertNotIn('weapon_uses', facts)
+        self.assertNotIn('300', text)
+        self.assertNotIn('100', text)
         self.assertNotIn('Stammgastkarte', text)
 
     def test_discord_name_is_not_authenticated_self(self):
@@ -159,6 +161,21 @@ class DialogueTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.ask('was ist ExampleCraft?')
         self.assertIn('Servername: ExampleCraft', self.calls[-1][0]['content'])
+
+    def test_general_portrait_rejects_incidental_weapon_judgement(self):
+        self.reply='ExampleOne nutzt seinen Bogen nur als dekorative Spielerei.'
+        text=self.ask('was hältst du von ExampleOne?')
+        self.assertNotIn('Spielerei',text)
+        self.assertEqual(self.engine.provenance(('minecraft',self.ids[0])),'tool-portrait-evidence')
+
+    def test_portrait_numbers_are_added_only_by_trusted_code(self):
+        self.reply='ExampleOne wohnt offenbar direkt an der Werkbank.'
+        text=self.ask('was hältst du von ExampleOne?')
+        self.assertIn('300.0 h',text)
+        self.assertNotIn('300',str(self.calls[-1]))
+        self.reply='ExampleOne hat 300 h gespielt.'
+        self.ask('was hältst du von ExampleOne?')
+        self.assertEqual(self.engine.provenance(('minecraft',self.ids[0])),'tool-portrait-evidence')
 
     def test_portrait_never_infers_equipment_or_accuracy(self):
         self.reply = 'ExampleOne braucht bessere Ausrüstung und mehr Glück bei seinen Treffern.'
@@ -207,7 +224,7 @@ class DialogueTests(unittest.TestCase):
         self.reply='ExampleOne spielt.'
         self.ask('was hältst du von ExampleOne?')
         evidence=json.loads(self.calls[-1][-2]['content'].removeprefix('Datenblock: '))
-        self.assertFalse({'Mobkills','Spielerkills'}<=set(evidence['records']))
+        self.assertFalse({'Mobkills','Spielerkills'}<=set(evidence['Merkmale']))
         self.assertNotIn('signals',evidence)
 
     def test_native_failure_rereads_current_portrait_values(self):
@@ -425,7 +442,7 @@ class SignedCandidateProbeTests(unittest.TestCase):
         source = (ROOT / 'services/minecraft-assistant/datafirst.py').read_text()
         source += '''
 def synthetic_request(self,messages,validator):
-    text=('ExampleOne hat mit 300 h Spielzeit wohl ein zweites Zuhause gefunden.'
+    text=('ExampleOne hat zwischen Werkbank und Weltreise wohl ein zweites Zuhause gefunden.'
         if 'ExampleOne' in messages[-1]['content'] else 'Gönn dir eine Pause, die Blöcke laufen dir nicht weg.')
     result=validator(text)
     self.usage(MODEL,100,20,True)
