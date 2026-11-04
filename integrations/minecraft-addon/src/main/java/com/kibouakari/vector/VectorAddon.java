@@ -401,9 +401,12 @@ public final class VectorAddon implements DiscordIntegrationAddon {
                 return notice(payload, "das Anfragelimit ist erreicht. Bitte warte etwa eine Minute.");
             if (result.has("status") && "busy".equals(result.get("status").getAsString()))
                 return notice(payload, "der lokale Dienst ist ausgelastet. Bitte versuche es später nochmals.");
-            if (!result.has("status") || !"answered".equals(result.get("status").getAsString()) || !result.has("text")) return null;
+            if (result.has("status") && ("ignored".equals(result.get("status").getAsString())
+                    || "duplicate".equals(result.get("status").getAsString()))) return null;
+            if (!result.has("status") || !"answered".equals(result.get("status").getAsString()) || !result.has("text"))
+                return notice(payload, "die lokale Antwort war nicht verwendbar. Bitte versuche es nochmals.");
             String reply = result.get("text").getAsString();
-            return safe(reply) ? reply : null;
+            return safe(reply) ? reply : notice(payload, "die lokale Antwort war nicht verwendbar. Bitte versuche es nochmals.");
         } catch (Exception ignored) {
             LOG.warning("Vector local request unavailable; no cloud fallback.");
             return notice(payload, "bei deiner Frage gab es ein lokales Verbindungs- oder Zeitproblem. Bitte versuche es nochmals.");
