@@ -557,7 +557,7 @@ class Assistant:
         except (OSError,ValueError,TypeError,KeyError):
             return 'die gespeicherten Statistiken sind gerade unvollständig oder nicht lesbar. Ich nenne deshalb keinen Rekord.',False
 
-    def category_leaders(self,metric,limit):
+    def category_leaders(self,metric,limit,*,numbered=True):
         """Structured server-wide page; category words can also be usernames."""
         try:
             data=stats.snapshot(self.stats_dir,self.usercache)
@@ -570,11 +570,11 @@ class Assistant:
             if tied_excerpt:
                 leaders=leaders[:10]
             label,unit,*_=stats.METRICS[metric]
-            text=label+': '+'; '.join(str(1+sum(other['value']>p['value'] for other in leaders))+'. '+p['name']+' '+number(p['value'],unit) for p in leaders)+'.'
+            text=label+': '+'; '.join((str(1+sum(other['value']>p['value'] for other in leaders))+'. ' if numbered else '')+p['name']+' '+number(p['value'],unit) for p in leaders)+'.'
             if tied_excerpt:
                 text+=' Auszug bei Gleichstand.'
             if len(text)>320 and unit not in ('h','km'):
-                text=label+': '+'; '.join(str(1+sum(other['value']>p['value'] for other in leaders))+'. '+p['name']+' '+number(p['value'],'').strip() for p in leaders)+'.'
+                text=label+': '+'; '.join((str(1+sum(other['value']>p['value'] for other in leaders))+'. ' if numbered else '')+p['name']+' '+number(p['value'],'').strip() for p in leaders)+'.'
                 if tied_excerpt:text+=' Auszug bei Gleichstand.'
             if len(text)>320:
                 return 'die Liste ist für eine Chatantwort zu lang. Bitte frage nach einer kleineren Rangliste.',False
@@ -871,7 +871,7 @@ class Assistant:
                     if not re.search(r'\bwer\b|\bwho\b|meist|längst|höchst|top\s*\d+|rangliste|leaderboard', q):
                         return 'nenne bitte den vollständigen Spielernamen oder frage nach dem Spitzenreiter.'
                     limit = int(top_match[1]) if top_match else 1
-                    text,success = self.category_leaders(metric,limit)
+                    text,success = self.category_leaders(metric,limit,numbered=bool(top_match))
                     if outcome is not None:outcome['success']=success
                     return text
             elif not selected and people:
