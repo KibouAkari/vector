@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-04 — Queue Minecraft and Discord requests before HTTP dispatch
+
+- Replace the addon's in-flight rejection gate with one serial worker and four bounded FIFO waiting slots. A queued request is acknowledged, and a full queue receives a clear reply. Sign each HTTP request when its worker turn begins so queue wait consumes neither its signature age nor its 27-second transport budget.
+- Bind queued work and delivery to the current addon/bridge generation, expire work waiting over two minutes, and retain shutdown cancellation. Keep ignored/duplicate backend results silent; report explicit service/transport/rate-limit failures rather than silently losing the answer. No additional bot, cloud call or game-thread blocking is introduced.
+- Add an offline deterministic queue test covering two-user-equivalent sequential work, FIFO order, four waiting slots, overload notice, one active responder and delivery of every accepted answer. Existing signed HTTP flow checks remain required.
+- Reject player-portrait recency claims when only untimed advancement summaries are available. A dragon advancement does not establish a recent or latest kill.
+- Source preparation is not live activation. Configuration reload does not establish that already-loaded addon bytecode was replaced; deployment requires a verified loader/restart plan and preserves the running game until explicitly authorized.
+
 ## 2026-11-04 — Preserve portrait facts and finish paged rankings
 
 - Keep fresh verified portrait records available after native timeouts, transport errors and local runtime failures, without another model request. This extends the existing validation fallback; it does not establish the cause of a particular uninstrumented live failure.

@@ -65,7 +65,62 @@ public final class VectorAddonTest {
         }
     }
 
+
+    static void fifoQueue() throws Exception {
+        java.util.concurrent.CountDownLatch entered = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch finished = new java.util.concurrent.CountDownLatch(5);
+        java.util.concurrent.CountDownLatch delivered = new java.util.concurrent.CountDownLatch(5);
+        java.util.List<String> order = new java.util.concurrent.CopyOnWriteArrayList<>();
+        java.util.List<String> messages = new java.util.concurrent.CopyOnWriteArrayList<>();
+        java.util.concurrent.atomic.AtomicInteger running = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger maximum = new java.util.concurrent.atomic.AtomicInteger();
+        VectorAddon addon = new VectorAddon(payload -> {
+            int active = running.incrementAndGet();
+            maximum.accumulateAndGet(active, Math::max);
+            String question = payload.get("message").getAsString();
+            try {
+                if (question.endsWith("Q0")) { entered.countDown(); release.await(5, java.util.concurrent.TimeUnit.SECONDS); }
+                order.add(question);
+                return "Hey Example, Antwort " + question;
+            } catch (InterruptedException stopped) {
+                Thread.currentThread().interrupt();
+                return null;
+            } finally { running.decrementAndGet(); finished.countDown(); }
+        });
+        VectorAddon.Bridge bridge = new VectorAddon.Bridge() {
+            public void schedule(Runnable task) { task.run(); }
+            public String playerName(java.util.UUID player) { return "Example"; }
+            public void publish(String message) { messages.add(message); if (message.contains(", Antwort ")) delivered.countDown(); }
+        };
+        Path directory = Files.createTempDirectory("vector-queue-test");
+        try {
+            addon.start(bridge, new byte[32], directory.resolve("intro"), false, true);
+            for (int i = 0; i < 6; i++) {
+                long begin = System.nanoTime();
+                addon.discord("100000000000000001", "100000000000000001", true, false, false,
+                    "200000000000000001", "30000000000000000" + i, "Example", "Hey Vector Q" + i);
+                if (System.nanoTime() - begin > java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(250))
+                    throw new AssertionError("Queue blocks game callback");
+                if (i == 0 && !entered.await(3, java.util.concurrent.TimeUnit.SECONDS))
+                    throw new AssertionError("First request not running");
+            }
+            if (messages.stream().noneMatch(value -> value.contains("Warteschlange ist voll")))
+                throw new AssertionError("Queue overflow stayed silent");
+            if (messages.stream().filter(value -> value.contains("deine Frage wartet")).count() != 4)
+                throw new AssertionError("Queued requests not acknowledged");
+            release.countDown();
+            if (!finished.await(5, java.util.concurrent.TimeUnit.SECONDS) || !delivered.await(5, java.util.concurrent.TimeUnit.SECONDS)) throw new AssertionError("Queued request lost");
+            if (!order.equals(java.util.List.of("Hey Vector Q0", "Hey Vector Q1", "Hey Vector Q2", "Hey Vector Q3", "Hey Vector Q4")))
+                throw new AssertionError("FIFO order lost: " + order);
+            if (maximum.get() != 1) throw new AssertionError("Parallel HTTP/model work");
+        } finally {
+            release.countDown(); addon.stop();
+            Files.deleteIfExists(directory.resolve("intro")); Files.deleteIfExists(directory);
+        }
+    }
     public static void main(String[] args) throws Exception {
+        fifoQueue();
         ownerWelcome();
         var field = VectorAddon.class.getDeclaredField("GREETING"); field.setAccessible(true);
         var greetings = (java.util.regex.Pattern) field.get(null);

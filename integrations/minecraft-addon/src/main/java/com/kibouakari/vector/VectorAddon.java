@@ -49,7 +49,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -65,8 +65,11 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     private final AtomicLong sequence = new AtomicLong();
     private final Gson gson = new Gson();
     private volatile ThreadPoolExecutor worker;
-    private final AtomicBoolean requestInFlight = new AtomicBoolean();
+    private final Function<JsonObject, String> responder;
+    public VectorAddon() { responder = this::answer; }
+    VectorAddon(Function<JsonObject, String> responder) { this.responder = responder; }
     private volatile boolean active;
+    private volatile boolean requestRunning;
     private volatile ScheduledExecutorService ownerWelcomeTimer;
     private DiscordEventHandler handler;
     private byte[] key;
@@ -206,11 +209,12 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     void start(Bridge transport, byte[] secret, Path marker, boolean intro, boolean discord) {
         if (active || secret.length != 32) throw new IllegalArgumentException();
         bridge = transport;
+        requestRunning = false;
         key = secret.clone();
         introMarker = marker;
         introduction = intro;
         discordInput = discord;
-        worker = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1), task -> {
+        worker = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(4), task -> {
             Thread thread = new Thread(task, "Vector-local-chat");
             thread.setDaemon(true);
             return thread;
@@ -276,30 +280,45 @@ public final class VectorAddon implements DiscordIntegrationAddon {
     }
 
     private void submit(JsonObject request, String message) {
-        if (!active || !requestInFlight.compareAndSet(false, true)) return;
+        ThreadPoolExecutor submittedWorker = worker;
+        Bridge submittedBridge = bridge;
+        if (!active || submittedWorker == null) return;
         if (BLOCK_USE.matcher(message).find()) {
             JsonArray ids = new JsonArray();
-            try { for (String id : bridge.blockItems()) ids.add(id); }
+            try { for (String id : submittedBridge.blockItems()) ids.add(id); }
             catch (Exception ignored) { }
             request.add("block_items", ids);
         }
+        long enqueued = System.nanoTime();
+        boolean waiting = requestRunning || !submittedWorker.getQueue().isEmpty();
         try {
-            worker.execute(() -> {
+            submittedWorker.execute(() -> {
+                if (!active || worker != submittedWorker || bridge != submittedBridge) return;
                 String reply;
-                try { reply = answer(request); }
-                finally { requestInFlight.set(false); }
-                // Admission reopens before delivery is visible. The single
-                // queue slot covers completion handoff, never HTTP backlog.
+                requestRunning = true;
+                try {
+                    if (System.nanoTime() - enqueued > TimeUnit.SECONDS.toNanos(120))
+                        reply = notice(request, "deine Frage hat zu lange gewartet. Bitte stelle sie nochmals.");
+                    else reply = responder.apply(request);
+                } finally {
+                    if (worker == submittedWorker) requestRunning = false;
+                }
                 if (reply != null) onServer(() -> {
-                    if (!active) return;
+                    if (!active || worker != submittedWorker || bridge != submittedBridge) return;
                     introduce();
-                    bridge.publish(reply);
+                    submittedBridge.publish(reply);
                 });
             });
-        } catch (RejectedExecutionException ignored) {
-            requestInFlight.set(false);
-            // No unbounded queue, public busy-message spam or tick delay.
+            // submit already runs on the scheduled Minecraft thread.
+            if (waiting) submittedBridge.publish(notice(request, "deine Frage wartet und kommt der Reihe nach dran."));
+        } catch (RejectedExecutionException full) {
+            if (active && worker == submittedWorker && bridge == submittedBridge)
+                submittedBridge.publish(notice(request, "die Warteschlange ist voll. Bitte versuche es später nochmals."));
         }
+    }
+
+    private static String notice(JsonObject payload, String message) {
+        return "Hey " + payload.get("name").getAsString() + ", " + message;
     }
 
     private void onServer(Runnable task) {
@@ -375,14 +394,19 @@ public final class VectorAddon implements DiscordIntegrationAddon {
                 throw failure;
             }
             byte[] raw = response.body();
-            if (response.statusCode() != 200 || raw.length > 8192) return null;
+            if (response.statusCode() != 200 || raw.length > 8192)
+                return notice(payload, "der lokale Dienst konnte deine Frage gerade nicht beantworten. Bitte versuche es nochmals.");
             JsonObject result = gson.fromJson(new String(raw, StandardCharsets.UTF_8), JsonObject.class);
+            if (result.has("status") && "limited".equals(result.get("status").getAsString()))
+                return notice(payload, "das Anfragelimit ist erreicht. Bitte warte etwa eine Minute.");
+            if (result.has("status") && "busy".equals(result.get("status").getAsString()))
+                return notice(payload, "der lokale Dienst ist ausgelastet. Bitte versuche es später nochmals.");
             if (!result.has("status") || !"answered".equals(result.get("status").getAsString()) || !result.has("text")) return null;
             String reply = result.get("text").getAsString();
             return safe(reply) ? reply : null;
         } catch (Exception ignored) {
             LOG.warning("Vector local request unavailable; no cloud fallback.");
-            return null;
+            return notice(payload, "bei deiner Frage gab es ein lokales Verbindungs- oder Zeitproblem. Bitte versuche es nochmals.");
         }
     }
 
