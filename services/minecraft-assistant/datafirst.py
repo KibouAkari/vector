@@ -377,7 +377,7 @@ class DataFirstDialogue(GroundedDialogue):
                 'Welche Kategorie möchtest du sehen: Spielzeit, Strecke, Mobkills, Spielerkills oder Tode? Ich verwende dafür die gespeicherten Serverdaten.',
                 'missing-statistics-category')
         if metrics and not is_portrait and (structured_player_request(question)
-                or re.search(r'^\s*(?:wer|who)\b', question, re.I)):
+                or re.search(r'\b(?:wer|who)\b', question, re.I)):
             return self.remember(scope, history, question,
                 'Diese Statistikfrage lässt sich nicht eindeutig aus den gespeicherten Gesamtzählern beantworten. '
                 'Bitte nenne Kategorie und gegebenenfalls Spieler; zusätzliche Bedingungen kann ich nicht raten.',
