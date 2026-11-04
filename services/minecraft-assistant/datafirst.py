@@ -267,7 +267,7 @@ class DataFirstDialogue(GroundedDialogue):
             query = re.sub(r'(?<!\w)' + re.escape(self.server_name) + r'(?!\w)', 'server', query, flags=re.I)
         # Current-server scope is not an extra statistic qualifier. Keep other
         # qualifiers (time periods, weapons, other named servers) for validation.
-        query = re.sub(r'\bauf\s+(?:(?:dem|diesem|unserem)\s+)?(?:minecraft[- ]+)?server\b',
+        query = re.sub(r'\bauf\s+(?:(?:dem|diesem|unserem)\s+)?(?:minecraft[- ]+)?server\b(?=\s*(?:bitte\s*)?[?!.]*\s*$)',
             ' ', query, flags=re.I)
         facts = observations.initial(query, history)
         names = {p['name'].casefold() for p in observations.roster}

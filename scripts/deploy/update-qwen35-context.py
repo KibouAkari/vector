@@ -79,13 +79,23 @@ with tempfile.TemporaryDirectory(prefix='vector-statistics-state-') as temporary
     principal=str(uuid.uuid4());scope=('discord',principal)
     for limit,question in [(1,'wer hat die meisten playerkills auf dem server?'),
                            (10,'wer sind die top 10 bei playerkills')]:
-        expected=stats.leaders(data,'player_kills',limit)[:10]
+        ranked=stats.leaders(data,'player_kills',limit)
+        expected=ranked[:10]
         start=time.monotonic()
         text=engine.answer(question,scope,PublicObservations(ai,scope,None,()))
-        valid=(all(p['name'] in text for p in expected)
-            if limit>1 or expected[0]['value']>0 else 'kein positiver' in text)
-        if expected[0]['value']>0:
-            valid=valid and number(expected[0]['value'],'').strip() in text
+        body=text.removesuffix(' Stand: gespeicherte Spielerdateien.')
+        if limit==1 and expected[0]['value']==0:
+            valid=body=='Spielerkills: noch kein positiver gespeicherter Zähler.'
+        else:
+            tied=len(ranked)>10
+            full=[];compact=[]
+            for p in expected:
+                rank=1+sum(other['values']['player_kills']>p['value'] for other in data['players'])
+                prefix=(str(rank)+'. ' if limit>1 else '')+p['name']+' '
+                full.append(prefix+number(p['value'],'Kills'))
+                compact.append(prefix+number(p['value'],'').strip())
+            suffix='.'+(' Auszug bei Gleichstand.' if tied else '')
+            valid=body in ('Spielerkills: '+'; '.join(rows)+suffix for rows in (full,compact))
         case=dict(question=question,text=text,seconds=round(time.monotonic()-start,3),
             reply_origin=engine.provenance(scope),passed=bool(valid and not attempts
                 and engine.provenance(scope)=='tool-statistics'))

@@ -76,6 +76,11 @@ class DialogueTests(unittest.TestCase):
         self.assertNotIn('erfundenen',text)
         self.assertEqual(self.calls,[])
 
+    def test_numbered_foreign_server_scope_is_not_erased(self):
+        text=self.ask('wer hat die meisten playerkills auf dem server-2?')
+        self.assertIn('nicht eindeutig',text)
+        self.assertEqual(self.calls,[])
+
     def test_operator_statistics_gate_runs_without_inference(self):
         import io
         import os
