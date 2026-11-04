@@ -166,6 +166,12 @@ class DialogueTests(unittest.TestCase):
         self.assertNotIn('Ausrüstung', text)
         self.assertIn('300', text)
 
+    def test_portrait_does_not_invent_achievement_recency(self):
+        self.reply='ExampleOne hat kürzlich einen Drachen besiegt.'
+        text=self.ask('was hältst du von ExampleOne?')
+        self.assertNotIn('kürzlich',text)
+        self.assertIn('300',text)
+
     def test_portrait_timeout_uses_fresh_values_without_retry(self):
         calls=[]
         def timeout(messages, validator):

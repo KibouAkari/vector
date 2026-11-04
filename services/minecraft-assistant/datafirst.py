@@ -341,7 +341,7 @@ class DataFirstDialogue(GroundedDialogue):
             if not isinstance(value, str) or not 1 <= len(value.strip()) <= 320:
                 raise ValueError('INVALID_DIALOGUE_ANSWER')
             value = safe_answer(value)
-            if is_portrait and re.search(r'treffer|schüsse|schuesse|treffsicher|pech|glück|glueck|ausrüstung|ausruestung', value, re.I):
+            if is_portrait and re.search(r'treffer|schüsse|schuesse|treffsicher|pech|glück|glueck|ausrüstung|ausruestung|neueste|kürzlich|kuerzlich|zuletzt|gerade erst', value, re.I):
                 raise ValueError('UNSUPPORTED_PORTRAIT_INFERENCE')
             if request_forbidden(value):
                 raise ValueError('FORBIDDEN_DIALOGUE_OUTPUT')

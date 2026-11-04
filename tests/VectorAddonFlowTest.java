@@ -120,7 +120,8 @@ public final class VectorAddonFlowTest {
                     if (Files.exists(marker)) throw new AssertionError("Disabled introduction claimed delivery");
                 } else if (phase.equals("restart")) {
                     chat(first, ONE, "hey Vector, wer hat die meisten Mobkills?");
-                    bridge.silent(1200);
+                    if (!bridge.take().contains("Anfragelimit")) throw new AssertionError("Rate limit must explain the missing answer");
+                    bridge.silent(150);
                 } else throw new AssertionError("Unsupported phase");
             } finally { first.stop(); }
 
