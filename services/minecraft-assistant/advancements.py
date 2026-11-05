@@ -85,6 +85,13 @@ def answer(question, observations, history=()):
     except (OSError, ValueError, KeyError, TypeError):
         return 'Die gespeicherten Spielerstatistiken sind unvollständig. Ich nenne deshalb keinen Fortschrittsrekord.'
     groups = set(CATEGORIES) | {category(i) for p in rows for i in p['known']}
+    scope_query=re.sub(IDENTIFIER.pattern,' ',question,flags=re.I)
+    for player in rows:
+        scope_query=re.sub(r'(?<![A-Za-z0-9_])'+re.escape(player['name'])+r'(?![A-Za-z0-9_])',' ',scope_query,flags=re.I)
+    if re.search(r'\b(?:ohne|außer|ausser|minus|ausgenommen)\b',scope_query,re.I):
+        return 'Diese Einschränkung ist für Fortschrittsranglisten nicht unterstützt. Ich kann Gesamtwerte, eine Kategorie oder einen einzelnen Fortschritt vergleichen.'
+    if re.search(r'\bauf\s+(?!(?:rang|platz|welch\w*|(?:den|dem)\s+(?:rang|platz))\b)',scope_query,re.I):
+        return 'Ich lese Fortschritte nur vom aktuellen Minecraft-Server. Bitte kläre die zusätzliche Server- oder Bereichsangabe.'
     ids = set(re.findall(IDENTIFIER.pattern, question.casefold()))
     if any(i.split(':', 1)[1].startswith('recipes/') for i in ids):
         return 'Rezeptfreischaltungen zählen hier nicht als Spielfortschritte.'
@@ -96,10 +103,7 @@ def answer(question, observations, history=()):
         return 'Diesen Fortschritt finde ich nicht in den gespeicherten Dateien. Seine Existenz oder einen Rekord kann ich daraus nicht bestätigen.'
     selected = next(iter(ids & groups), None)
     if selected is None and not particular:
-        category_query=question
-        for player in rows:
-            category_query=re.sub(r'(?<![A-Za-z0-9_])'+re.escape(player['name'])+r'(?![A-Za-z0-9_])',' ',category_query,flags=re.I)
-        matches = [key for key, (_, pattern) in CATEGORIES.items() if re.search(pattern, category_query, re.I)]
+        matches = [key for key, (_, pattern) in CATEGORIES.items() if re.search(pattern, scope_query, re.I)]
         if len(matches) > 1:
             return 'Welche Fortschrittskategorie meinst du: '+', '.join(CATEGORIES[k][0] for k in matches)+'?'
         selected = matches[0] if matches else None
@@ -110,7 +114,7 @@ def answer(question, observations, history=()):
         return 'Welche Fortschrittskategorie meinst du? Frage zum Beispiel nach Abenteuer, Nether, End oder der vollständigen Kategorie-ID.'
     if selected is None and not particular and re.search(r'\b(?:fortschritt|achievement|advancement)\b|\bim\s+(?!server\b|minecraft\b|spiel\b)', question, re.I):
         return 'Welchen einzelnen Fortschritt oder welche Kategorie meinst du? Nenne den bekannten Namen oder die vollständige Fortschritts-ID.'
-    if re.search(r'\bheute\b|\bgestern\b|\bseit\b|woche|monat|jahr|zuerst|zuletzt|als erster', question, re.I):
+    if re.search(r'\bheute\b|\bgestern\b|\bseit\b|woche|monat|jahr|zuerst|zuletzt|als erster', scope_query, re.I):
         return 'Diese Rangliste zählt abgeschlossene Fortschritte insgesamt, nicht neu erreichte Fortschritte in einem Zeitraum oder die Reihenfolge des Erreichens.'
     label = KNOWN_ADVANCEMENTS.get(particular, particular) if particular else (
         CATEGORIES.get(selected, (selected, None))[0] if selected else 'alle Kategorien')

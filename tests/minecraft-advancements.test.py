@@ -84,6 +84,8 @@ class Rankings(unittest.TestCase):
         self.obs.principal=None
         self.assertIn('Spielerverknüpfung',self.ask('wie viele Fortschritte habe ich?'))
         self.assertIn('nicht neu erreichte',self.ask('wer hat heute die meisten Fortschritte?'))
+        self.assertIn('nur vom aktuellen',self.ask('wer hat die meisten Fortschritte auf server-2?'))
+        self.assertIn('Einschränkung',self.ask('wer hat die meisten Fortschritte ohne End?'))
 
     def test_unknown_category_or_identifier_does_not_become_total(self):
         self.assertIn('Welche Fortschrittskategorie',self.ask('top 5 Fortschritte Kategorie PVP'))
