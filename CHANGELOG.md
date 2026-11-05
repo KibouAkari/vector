@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-05 — Validate friendly leader sentences in the statistics activation gate
+
+The operator run returned a correct deterministic leader sentence, but the gate accepted only the equivalent list rendering and blocked activation. Accept the existing three friendly sentence forms only for a single positive leader, using the exact expected player and counter. Shared leaders still require the full tied list. Top-ten rows, values, competition ranks and excerpt labels retain their strict snapshot comparison. No assistant response logic, model settings or service scope changes.
+
+Regression tests cover all existing leader sentence forms, wrong names and values, hidden ties and corrupted lower-row values or ranks. Seven isolated deployment-gate tests pass locally; native operator evidence already showed both counter routes return in a fraction of a second without inference.
+
 ## 2026-11-04 — Keep server rankings on authoritative counter routes
 
 Current-server scope phrases are normalized before statistics routing. Previously the conservative grammar rejected asking who has the most player kills on the server and allowed model generation to invent a leader. Unresolved structured questions about known statistic categories now return a scope clarification instead of generating an unsupported statistic.

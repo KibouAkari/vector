@@ -66,4 +66,39 @@ class Boundaries(unittest.TestCase):
             self.assertEqual(len(writes),1)
 
 
+class StatisticsFormatting(unittest.TestCase):
+    def validate(self,text,rows,limit):
+        import textwrap
+        start=update.STATISTICS_CHECK.index("        body=text.removesuffix")
+        end=update.STATISTICS_CHECK.index("        case=dict",start)
+        code=textwrap.dedent(update.STATISTICS_CHECK[start:end])
+        env=dict(text=text,ranked=rows,expected=rows[:10],limit=limit,
+            data={'players':[{'values':{'player_kills':row['value']}} for row in rows]},
+            number=lambda value,unit:format(int(value),',').replace(',',"'")+' '+unit)
+        exec(compile(code,'<statistics-validation>','exec'),env)
+        return env['valid']
+
+    def test_actual_friendly_leader_format_matches_exact_expected_counter(self):
+        rows=[{'name':'ExampleTwo','value':211}]
+        for text in (
+            'ExampleTwo hat mit 211 Kills die meisten Spielerkills.',
+            'bei Spielerkills liegt ExampleTwo vorne: 211 Kills.',
+            'die Spitze bei Spielerkills gehört ExampleTwo – mit 211 Kills.',
+            'Spielerkills: ExampleTwo 211 Kills.'):
+            self.assertTrue(self.validate(text,rows,1))
+        self.assertFalse(self.validate('ExampleOne hat mit 211 Kills die meisten Spielerkills.',rows,1))
+        self.assertFalse(self.validate('ExampleTwo hat mit 212 Kills die meisten Spielerkills.',rows,1))
+
+    def test_friendly_sentence_cannot_hide_a_shared_leader(self):
+        rows=[{'name':'ExampleOne','value':211},{'name':'ExampleTwo','value':211}]
+        self.assertFalse(self.validate('ExampleOne hat mit 211 Kills die meisten Spielerkills.',rows,1))
+        self.assertTrue(self.validate('Spielerkills: ExampleOne 211 Kills; ExampleTwo 211 Kills.',rows,1))
+
+    def test_every_top_row_value_and_rank_remains_required(self):
+        rows=[{'name':'ExampleOne','value':211},{'name':'ExampleTwo','value':54}]
+        self.assertTrue(self.validate('Spielerkills: 1. ExampleOne 211 Kills; 2. ExampleTwo 54 Kills.',rows,10))
+        self.assertFalse(self.validate('Spielerkills: 1. ExampleOne 211 Kills; 2. ExampleTwo 999 Kills.',rows,10))
+        self.assertFalse(self.validate('Spielerkills: 1. ExampleOne 211 Kills; 1. ExampleTwo 54 Kills.',rows,10))
+
+
 if __name__=='__main__':unittest.main()

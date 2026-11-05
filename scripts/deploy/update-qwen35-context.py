@@ -96,6 +96,12 @@ with tempfile.TemporaryDirectory(prefix='vector-statistics-state-') as temporary
                 compact.append(prefix+number(p['value'],'').strip())
             suffix='.'+(' Auszug bei Gleichstand.' if tied else '')
             valid=body in ('Spielerkills: '+'; '.join(rows)+suffix for rows in (full,compact))
+            if limit==1 and len(ranked)==1 and expected[0]['value']>0:
+                player=expected[0]['name'];amount=number(expected[0]['value'],'Kills')
+                valid=valid or body in (
+                    player+' hat mit '+amount+' die meisten Spielerkills.',
+                    'bei Spielerkills liegt '+player+' vorne: '+amount+'.',
+                    'die Spitze bei Spielerkills gehört '+player+' – mit '+amount+'.')
         case=dict(question=question,text=text,seconds=round(time.monotonic()-start,3),
             reply_origin=engine.provenance(scope),passed=bool(valid and not attempts
                 and engine.provenance(scope)=='tool-statistics'))
