@@ -192,7 +192,7 @@ def main():
         original_files = guard.tree_files(installed)
         source = args.source_root/'services/minecraft-assistant'
         for name in ('runtime.py', 'dialogue.py', 'portraits.py', 'stats.py', 'recipes.py', 'modrecipes.py',
-                     'datafirst.py', 'documentation.py', 'knowledge.py', 'companion.py', 'policy.py'):
+                     'datafirst.py', 'advancements.py', 'documentation.py', 'knowledge.py', 'companion.py', 'policy.py'):
             raw = guard.checked_path(str(source/name)).read_bytes();ast.parse(raw)
             if name == 'runtime.py':
                 raw = guard.preserve_joke((installed/name).read_text(),
@@ -304,3 +304,4 @@ def main():
 
 if __name__=='__main__':
     main()
+

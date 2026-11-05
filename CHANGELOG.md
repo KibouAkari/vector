@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-05 — Completed advancement rankings and category records
+
+Add a read-only advancement counter backend for completed gameplay advancements across the full saved player roster. It supports total and category leaderboards, personal counts and competition ranks, personal category records, individual advancement identifiers and known names. Vanilla category labels are provided; stored mod categories are discovered from their identifiers, including recorded but unfinished entries. Recipe unlocks are excluded. Ordinal follow-ups retain the previous category while rereading current counters.
+
+Missing, malformed or symlinked player advancement files remain unavailable rather than becoming zero counts. A global ranking or record requires complete coverage. Unknown categories/identifiers, ambiguous players and unsupported periods receive a concrete clarification instead of a generated ranking. General portraits and gameplay advice retain their existing routes. No world metadata or private inventories are read.
+
+The assistant-only updater can stage the new module and requires it when imported. Its no-inference statistics gate additionally checks total and adventure-category answers against the saved files and reports missing-file coverage. Incomplete advancement coverage permits an honest unavailable answer, never a fabricated ranking. Existing counter checks, private bindings, rollback and other-service guards remain. Ten advancement tests, fifty existing data-first tests and seven updater gate tests pass locally, including executing all four operator checks with synthetic input files. Native host coverage is verified by the operator flow before activation.
+
 ## 2026-11-05 — Validate friendly leader sentences in the statistics activation gate
 
 The operator run returned a correct deterministic leader sentence, but the gate accepted only the equivalent list rendering and blocked activation. Accept the existing three friendly sentence forms only for a single positive leader, using the exact expected player and counter. Shared leaders still require the full tied list. Top-ten rows, values, competition ranks and excerpt labels retain their strict snapshot comparison. No assistant response logic, model settings or service scope changes.

@@ -106,9 +106,37 @@ with tempfile.TemporaryDirectory(prefix='vector-statistics-state-') as temporary
             reply_origin=engine.provenance(scope),passed=bool(valid and not attempts
                 and engine.provenance(scope)=='tool-statistics'))
         cases.append(case);print(json.dumps({'statistics_case':case},ensure_ascii=False),flush=True)
-report=dict(passed=len(cases)==2 and all(c['passed'] for c in cases),cases=cases,
+    coverage=None
+    if payload.get('check_advancements'):
+        from portraits import PlayerPortraits
+        from advancements import completed
+        ai.portraits=PlayerPortraits('/inputs/stats','/inputs/usercache.json','/inputs/advancements')
+        saved=[];missing=0
+        for p in data['players']:
+            try:done,known=completed('/inputs/advancements',p['uuid'])
+            except (OSError,ValueError,KeyError,TypeError):done=None;missing+=1
+            saved.append((p['name'],done))
+        coverage=dict(players=len(saved),missing_or_unreadable=missing)
+        for group,label in [(None,'alle Kategorien'),('minecraft:adventure','Abenteuer')]:
+            question='wer hat die meisten '+('Abenteuer-' if group else '')+'Fortschritte?'
+            started=time.monotonic()
+            text=engine.answer(question,scope,PublicObservations(ai,scope,None,()))
+            title='Fortschritte ('+label+')'
+            if missing:
+                expected='Für '+str(missing)+' Spieler fehlen lesbare Fortschrittsdateien. Eine vollständige Serverrangliste oder einen Rekord kann ich deshalb nicht bestätigen.'
+            else:
+                values=sorted([(name,sum(group is None or identifier.startswith(group+'/') for identifier in done))
+                    for name,done in saved],key=lambda p:(-p[1],p[0].casefold()))
+                leaders=[p for p in values if p[1]==values[0][1]]
+                expected=(title+': '+'; '.join('1. '+name+' '+str(value) for name,value in leaders[:10])+'.'
+                    +(' Auszug bei Gleichstand.' if len(leaders)>10 else '') if values[0][1]>0 else title+': noch kein Abschluss in den gespeicherten Dateien.')
+            case=dict(question=question,text=text,seconds=round(time.monotonic()-started,3),
+                reply_origin=engine.provenance(scope),passed=text==expected and not attempts
+                    and engine.provenance(scope)=='tool-advancements')
+            cases.append(case);print(json.dumps({'statistics_case':case},ensure_ascii=False),flush=True)
+report=dict(passed=len(cases)==(4 if payload.get('check_advancements') else 2) and all(c['passed'] for c in cases),cases=cases,
     model_calls=0,cloud_calls=0,messages_sent=0,unexpected_generation_attempts=len(attempts),
-    production_ledger_writes=False)
+    production_ledger_writes=False,advancements_coverage=coverage)
 print(json.dumps({'statistics_report':report},ensure_ascii=False),flush=True)
 raise SystemExit(0 if report['passed'] else 1)
 '''
@@ -120,7 +148,8 @@ def check_portraits(guard, args, container, code, directory, *, statistics=False
     process = load(args.process_helper, 'portrait_process')
     payload = dict(files={str(p.relative_to(code)):base64.b64encode(p.read_bytes()).decode()
         for p in code.rglob('*') if p.is_file()}, integration=STATISTICS_CHECK if statistics else PORTRAIT_CHECK,
-        server_name=args.server_name, players=args.check_player)
+        server_name=args.server_name, players=args.check_player,
+        check_advancements=bool(getattr(args,'advancements_source',None)))
     kind = 'statistics' if statistics else 'portrait'
     child = candidate.candidate_run(guard, evaluation, process, container, payload, directory, kind)
     report = None
@@ -167,6 +196,7 @@ def main():
         parser.add_argument('--'+key, type=Path, required=True)
     parser.add_argument('--server-name', required=True)
     parser.add_argument('--runtime-source', type=Path)
+    parser.add_argument('--advancements-source', type=Path)
     parser.add_argument('--check-player', action='append', default=[])
     parser.add_argument('--check-statistics', action='store_true')
     for key in ('candidate-helper', 'evaluation-helper', 'process-helper'):
@@ -174,6 +204,8 @@ def main():
     parser.add_argument('--activate', action='store_true')
     parser.add_argument('--rollback', type=Path)
     args = parser.parse_args()
+    if args.activate and args.advancements_source and not args.check_statistics:
+        parser.error('advancement updates require --check-statistics')
     if args.check_statistics and (args.check_player or not all((args.candidate_helper, args.evaluation_helper, args.process_helper))):
         parser.error('statistics gate requires native helpers and no portrait requests')
     if args.check_player and (len(args.check_player) > 2
@@ -233,6 +265,12 @@ def main():
         if release.constant(raw, 'MODEL') != release.constant((installed/'datafirst.py').read_bytes(), 'MODEL'):
             raise RuntimeError('MODEL_CHANGE_FORBIDDEN')
         (code/'datafirst.py').write_bytes(raw)
+        if args.advancements_source:
+            advancements = guard.checked_path(str(args.advancements_source)).read_bytes()
+            ast.parse(advancements)
+            (code/'advancements.py').write_bytes(advancements)
+        if any(isinstance(node, ast.ImportFrom) and node.module=='advancements' for node in ast.walk(ast.parse(raw))) and not (code/'advancements.py').is_file():
+            raise RuntimeError('ADVANCEMENTS_MODULE_REQUIRED')
         if args.runtime_source:
             runtime = guard.checked_path(str(args.runtime_source)).read_text()
             ast.parse(runtime)
@@ -295,3 +333,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
