@@ -94,6 +94,25 @@ class Rankings(unittest.TestCase):
         self.assertIn('nicht in den gespeicherten',self.ask('wer hat Fortschritt example:unknown/foo?'))
         self.assertIsNone(self.ask('wer hat die meisten playerkills?'))
         self.assertIsNone(self.ask('wie bekomme ich den Fortschritt Sniper-Duell?'))
+        self.assertIsNone(self.ask('Wie kann ich den Fortschritt Sniper-Duell bekommen?'))
+        self.assertIn('Welche Fortschrittskategorie',self.ask('wer hat die meisten PVP-Fortschritte?'))
+        self.assertIn('Welche Fortschrittskategorie',self.ask('top 5 Fortschritte bei PVP'))
+        self.assertIn('nicht neu erreichte',self.ask('wer hat in den letzten 7 Tagen die meisten Fortschritte?'))
+        self.assertIn('nicht neu erreichte',self.ask('who has the most advancements today?'))
+
+    def test_player_names_are_not_achievement_titles_or_category_prefixes(self):
+        cache=self.obs.assistant.usercache
+        self.players[0]['name']='Drachensieg';self.players[1]['name']='NetherFan'
+        cache.write_text(json.dumps(self.players))
+        self.assertIsNone(self.ask('wie viele Tode hat Drachensieg?'))
+        self.assertIn('2 abgeschlossen',self.ask('wie viele Fortschritte hat Drachensieg?'))
+        self.assertIn('NetherFan 1',self.ask('wer hat den Fortschritt Drachensieg?'))
+        self.assertIn('Drachensieg: Fortschritte (Nether) 0',self.ask('welchen Rang habe ich bei Nether-Fortschritten?'))
+        self.assertIn('nicht eindeutig zuordnen',self.ask('welchen Rang hat UnknownPlayer bei Fortschritten?'))
+
+    def test_spelled_list_size_is_preserved(self):
+        text=self.ask('wer sind die drei mit den meisten Fortschritten?')
+        self.assertIn('Example1',text);self.assertIn('Example2',text);self.assertIn('Example3',text)
 
     def test_operator_gate_runs_both_live_input_categories_without_generation(self):
         import contextlib,io,os

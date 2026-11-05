@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 
 import stats
-from portraits import KNOWN_ADVANCEMENTS, targets, normalized
+from portraits import KNOWN_ADVANCEMENTS, normalized
 from dialogue import personal_reference, portrait_request
 from runtime import ranking_numbers, ranking_position
 
@@ -62,6 +62,22 @@ def snapshot(ai):
     return rows, unavailable
 
 
+def subjects(question, rows):
+    query=re.sub(IDENTIFIER.pattern,' ',question,flags=re.I)
+    result=[]
+    category_names={'nether','end','story','adventure','abenteuer','husbandry','landwirtschaft','minecraft'}
+    for player in rows:
+        for match in re.finditer(r'(?<![A-Za-z0-9_])'+re.escape(player['name'])+r'(?![A-Za-z0-9_])',query,re.I):
+            before=query[:match.start()]
+            if re.search(r'\b(?:fortschritt|achievement|advancement)\s+$',before,re.I):
+                continue
+            if player['name'].casefold() in category_names and not re.search(r'\b(?:hat|von|für|fuer|for|of)\s+$',before,re.I):
+                continue
+            result.append(player)
+            break
+    return result
+
+
 def answer(question, observations, history=()):
     # General opinions still use the portrait path, not counter rendering.
     if (history and history[-1]['origin']=='tool-advancements'
@@ -74,7 +90,8 @@ def answer(question, observations, history=()):
         label=topic[1]
         key=next((k for k,(name,_) in CATEGORIES.items() if name==label),label)
         question+=' Fortschritte '+('' if label=='alle Kategorien' else key)
-    if re.search(r'\bwie\s+(?:bekomm|erhalt|mach|schaff|funktionier)|\bwas\s+bedeut', question, re.I):
+    if (re.search(r'\bwie\b.*\b(?:bekomm\w*|erhalt\w*|mach\w*|schaff\w*|freischalt\w*|erreich\w*|funktionier\w*)\b|\bwas\s+bedeut',question,re.I)
+            and not re.search(r'\bwie\s+viel',question,re.I)):
         return None
     named = [identifier for identifier, label in KNOWN_ADVANCEMENTS.items()
              if normalized(label) in normalized(question)]
@@ -84,9 +101,16 @@ def answer(question, observations, history=()):
         rows, unavailable = snapshot(observations.assistant)
     except (OSError, ValueError, KeyError, TypeError):
         return 'Die gespeicherten Spielerstatistiken sind unvollständig. Ich nenne deshalb keinen Fortschrittsrekord.'
+    people=subjects(question,rows)
+    reference_query=question
+    for player in people:
+        reference_query=re.sub(r'(?<![A-Za-z0-9_])'+re.escape(player['name'])+r'(?![A-Za-z0-9_])',' ',reference_query,flags=re.I)
+    named=[identifier for identifier,label in KNOWN_ADVANCEMENTS.items() if normalized(label) in normalized(reference_query)]
+    if not INTENT.search(question) and not named:
+        return None
     groups = set(CATEGORIES) | {category(i) for p in rows for i in p['known']}
     scope_query=re.sub(IDENTIFIER.pattern,' ',question,flags=re.I)
-    for player in rows:
+    for player in people:
         scope_query=re.sub(r'(?<![A-Za-z0-9_])'+re.escape(player['name'])+r'(?![A-Za-z0-9_])',' ',scope_query,flags=re.I)
     if re.search(r'\b(?:wenigst\w*|keine\w*|null|nicht|wann|morgen|verloren|wird|werden|bald)\b',scope_query,re.I):
         return 'Diese Bedingung kann ich mit der Fortschrittsrangliste nicht beantworten. Ich kann abgeschlossene Gesamtzahlen, die höchsten Werte, Kategorien und einzelne Fortschritte auslesen.'
@@ -101,6 +125,15 @@ def answer(question, observations, history=()):
     if len(selected_ids) > 1 or len(ids & groups) > 1 or len(named) > 1:
         return 'Bitte frage nach einer Fortschrittskategorie oder einem einzelnen Fortschritt.'
     particular = next(iter(selected_ids), named[0] if named else None)
+    if not people:
+        probe=re.sub(IDENTIFIER.pattern,' ',question,flags=re.I)
+        articles={'die','den','der','das','dem','am','meisten','viele','alle','allen','bei','im','auf','in','einer','einen','meine','meinen'}
+        for match in re.finditer(r'\b(?:fortschritte|rang|platz)\s+(?:hat|von|für|fuer)\s+([A-Za-z][A-Za-z0-9_]{2,15})\b',probe,re.I):
+            token=match[1]
+            known_label=KNOWN_ADVANCEMENTS.get(particular)
+            if token.casefold() in articles or INTENT.search(token):continue
+            if known_label and normalized(probe[match.start(1):]).startswith(normalized(known_label)):continue
+            return 'Diesen Minecraft-Spieler kann ich nicht eindeutig zuordnen. Bitte nenne den vollständigen gespeicherten Spielernamen.'
     if particular and particular not in KNOWN_ADVANCEMENTS and not any(particular in p['known'] for p in rows):
         return 'Diesen Fortschritt finde ich nicht in den gespeicherten Dateien. Seine Existenz oder einen Rekord kann ich daraus nicht bestätigen.'
     selected = next(iter(ids & groups), None)
@@ -114,9 +147,11 @@ def answer(question, observations, history=()):
         return 'Fortschrittskategorien: '+', '.join(labels)+'.' if len(', '.join(labels)) <= 270 else 'Es gibt viele Mod-Kategorien. Frage mit ihrer Kategorie-ID, zum Beispiel minecraft:adventure.'
     if re.search(r'\bkategorie\b', question, re.I) and selected is None and not particular:
         return 'Welche Fortschrittskategorie meinst du? Frage zum Beispiel nach Abenteuer, Nether, End oder der vollständigen Kategorie-ID.'
+    if selected is None and not particular and re.search(r'\b\w+-fortschritt|\b(?:bei|beim)\s+(?!(?:den\s+)?(?:fortschritt|achievement|advancement|errungenschaft))\w',scope_query,re.I):
+        return 'Welche Fortschrittskategorie meinst du? Diese Bereichsangabe kann ich keiner gespeicherten Kategorie eindeutig zuordnen.'
     if selected is None and not particular and re.search(r'\b(?:fortschritt|achievement|advancement)\b|\bim\s+(?!server\b|minecraft\b|spiel\b)', question, re.I):
         return 'Welchen einzelnen Fortschritt oder welche Kategorie meinst du? Nenne den bekannten Namen oder die vollständige Fortschritts-ID.'
-    if re.search(r'\bheute\b|\bgestern\b|\bseit\b|woche|monat|jahr|zuerst|zuletzt|als erster', scope_query, re.I):
+    if re.search(r'\bheute\b|\bgestern\b|\bseit\b|woche|monat|jahr|zuerst|zuletzt|als erster|\btage?n?\b|\bstunden?\b|\bminuten?\b|\b(?:today|yesterday|since|last|daily|weekly|monthly|days?|hours?|minutes?|weeks?|months?|years?)\b', scope_query, re.I):
         return 'Diese Rangliste zählt abgeschlossene Fortschritte insgesamt, nicht neu erreichte Fortschritte in einem Zeitraum oder die Reihenfolge des Erreichens.'
     label = KNOWN_ADVANCEMENTS.get(particular, particular) if particular else (
         CATEGORIES.get(selected, (selected, None))[0] if selected else 'alle Kategorien')
@@ -126,7 +161,8 @@ def answer(question, observations, history=()):
     def count(player):
         return sum((i == particular if particular else category(i) == selected if selected else True)
                    for i in player['completed'])
-    people = targets(re.sub(IDENTIFIER.pattern, ' ', question, flags=re.I), rows)
+    if people and personal_reference(question) and any(p['uuid']!=observations.principal for p in people):
+        return 'Meinst du deine eigenen Fortschritte oder den ausdrücklich genannten Spieler? Bitte frage nach einer eindeutigen Person.'
     if not people and personal_reference(question):
         people = [p for p in rows if p['uuid'] == observations.principal]
         if not people:
@@ -161,7 +197,7 @@ def answer(question, observations, history=()):
     if values[0][1] == 0:
         return title+': noch kein Abschluss in den gespeicherten Dateien.'
     numbered = ranking_numbers(question)
-    top = re.search(r'\btop\s*(\d+)\b', numbered, re.I)
+    top = re.search(r'\btop\s*(\d+)\b', numbered, re.I) or re.search(r'\b(?:die|den)\s+(\d+)\s+(?:spieler\s+)?(?:mit\s+(?:den\s+)?)?meisten\b',numbered,re.I)
     position = ranking_position(numbered)
     limit = int(top[1]) if top else 1
     if not 1 <= limit <= 10 or position is not None and not 1 <= position <= 10:

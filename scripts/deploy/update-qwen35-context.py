@@ -204,6 +204,8 @@ def main():
     parser.add_argument('--activate', action='store_true')
     parser.add_argument('--rollback', type=Path)
     args = parser.parse_args()
+    if args.activate and args.advancements_source and not args.check_statistics:
+        parser.error('advancement updates require --check-statistics')
     if args.check_statistics and (args.check_player or not all((args.candidate_helper, args.evaluation_helper, args.process_helper))):
         parser.error('statistics gate requires native helpers and no portrait requests')
     if args.check_player and (len(args.check_player) > 2
