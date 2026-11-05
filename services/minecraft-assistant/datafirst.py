@@ -280,6 +280,10 @@ class DataFirstDialogue(GroundedDialogue):
         if (is_portrait and not facts.get('players') and not personal_reference(question)
                 and re.search(r'\b(?:minecraft|redstone|vector|mods?|backpack|rucksack|claims?|partys)\b', question, re.I)):
             is_portrait = False
+        from advancements import answer as advancement_answer
+        advancement = advancement_answer(query, observations, history)
+        if advancement is not None:
+            return self.remember(scope, history, question, advancement, 'tool-advancements')
         subjects = tuple(p['player'] for p in facts.get('players', []))
         scoped_query=query
         for person in observations.roster:
@@ -457,3 +461,4 @@ def create_dialogue(knowledge, profile='legacy'):
     if profile == 'qwen35-data-first':
         return DataFirstDialogue(knowledge)
     raise ValueError('UNQUALIFIED_DIALOGUE_PROFILE')
+
