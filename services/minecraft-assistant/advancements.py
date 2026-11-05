@@ -88,6 +88,8 @@ def answer(question, observations, history=()):
     scope_query=re.sub(IDENTIFIER.pattern,' ',question,flags=re.I)
     for player in rows:
         scope_query=re.sub(r'(?<![A-Za-z0-9_])'+re.escape(player['name'])+r'(?![A-Za-z0-9_])',' ',scope_query,flags=re.I)
+    if re.search(r'\b(?:wenigst\w*|keine\w*|null|nicht|wann|morgen|verloren|wird|werden|bald)\b',scope_query,re.I):
+        return 'Diese Bedingung kann ich mit der Fortschrittsrangliste nicht beantworten. Ich kann abgeschlossene Gesamtzahlen, die höchsten Werte, Kategorien und einzelne Fortschritte auslesen.'
     if re.search(r'\b(?:ohne|außer|ausser|minus|ausgenommen)\b',scope_query,re.I):
         return 'Diese Einschränkung ist für Fortschrittsranglisten nicht unterstützt. Ich kann Gesamtwerte, eine Kategorie oder einen einzelnen Fortschritt vergleichen.'
     if re.search(r'\bauf\s+(?!(?:rang|platz|welch\w*|(?:den|dem)\s+(?:rang|platz))\b)',scope_query,re.I):

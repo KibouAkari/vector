@@ -86,6 +86,8 @@ class Rankings(unittest.TestCase):
         self.assertIn('nicht neu erreichte',self.ask('wer hat heute die meisten Fortschritte?'))
         self.assertIn('nur vom aktuellen',self.ask('wer hat die meisten Fortschritte auf server-2?'))
         self.assertIn('Einschränkung',self.ask('wer hat die meisten Fortschritte ohne End?'))
+        self.assertIn('Diese Bedingung',self.ask('wer hat die wenigsten Fortschritte?'))
+        self.assertIn('Diese Bedingung',self.ask('wer hat keine Fortschritte?'))
 
     def test_unknown_category_or_identifier_does_not_become_total(self):
         self.assertIn('Welche Fortschrittskategorie',self.ask('top 5 Fortschritte Kategorie PVP'))
