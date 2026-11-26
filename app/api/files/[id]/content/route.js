@@ -1,3 +1,4 @@
+import {isImportedSourceFile} from "../../../../../lib/project-sources";
 import { canAccessProject, canEditProject } from "../../../../../lib/identity";
 import {
   getSession
@@ -187,6 +188,10 @@ export async function PATCH(
           415
       }
     );
+  }
+
+  if (await isImportedSourceFile(file.id)) {
+    return Response.json({error: "Imported source snapshots are read-only. Create a new file to edit this text."}, {status: 409});
   }
 
   const body =

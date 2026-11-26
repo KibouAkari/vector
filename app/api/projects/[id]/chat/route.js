@@ -1,3 +1,4 @@
+import {sourceEvidenceForFiles} from "../../../../../lib/project-sources";
 import {reviewPrivacyRequest} from '../../../../../lib/privacy-review';
 import crypto from "node:crypto";
 
@@ -389,6 +390,8 @@ export async function POST(
       limit: 10
     });
 
+  const sourceEvidence = await sourceEvidenceForFiles(projectId, chunks.map(chunk => chunk.file_id).filter(Boolean));
+
   const rawContext =
     chunks
       .map(
@@ -396,7 +399,7 @@ export async function POST(
           chunk,
           index
         ) =>
-          `SOURCE ${index + 1}: ${chunk.original_name} lines ${chunk.start_line}-${chunk.end_line}\n${chunk.content}`
+          `SOURCE ${index + 1}: ${chunk.original_name} lines ${chunk.start_line}-${chunk.end_line}\n${sourceEvidence.has(chunk.file_id) ? JSON.stringify(sourceEvidence.get(chunk.file_id)) + "\n" : ""}${chunk.content}`
       )
       .join(
         "\n\n---\n\n"

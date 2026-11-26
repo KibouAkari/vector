@@ -148,3 +148,12 @@ features. Project index replacement is transactional; a failed rebuild preserves
 the previous complete index instead of exposing partially inserted chunks. This
 is a foundation change, not a claim of a complete harvesting pipeline or a live
 production rollout.
+
+## Retained web sources
+
+The project Files workspace now includes a public-page importer for static HTML,
+plain text and Markdown. It retains an encrypted original snapshot, a read-only
+searchable text file, source hashes, acquisition time and visible failure/partial
+state. Project access and outbound-model privacy rules remain in force. Private
+network targets and local-only project imports are blocked. This source feature
+has not been qualified on a live deployment. See [limits, recovery and storage](docs/SOURCE_INGESTION.md).

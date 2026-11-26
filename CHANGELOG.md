@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-11-26 — Retain public web sources in the project workspace (#143)
+
+Add a project Files source panel and authenticated import/list/original-download
+API. Static HTML, plain text and Markdown are fetched without model calls or
+third-party extraction. Retain encrypted originals, immutable extracted text
+files, hashes, acquisition time, extraction method and explicit partial/failure
+state. Existing project search and project chat receive source provenance through
+their existing privacy review. A source record does not certify factual accuracy.
+
+Pin validated public DNS destinations for each request/redirect; reject private
+and reserved addresses, credentials, custom ports, unsupported responses and
+bounded download/body/extraction overflows. Add idempotent request identities,
+cross-process import capacity limits, retry attempts and interrupted-attempt
+recovery. Source/file/index writes commit together. Project membership is checked
+before acquisition and editing access rechecked before materialization. Imported
+text is read-only; original snapshots are attachment-only.
+Successful imports also advance the project's modification time.
+
+Pin MIT-licensed htmlparser2 10.0.0. Patch Next.js 16.4.0 to 16.4.6 for registry
+security advisories and override ExcelJS's UUID dependency to compatible 11.1.1,
+with a conditional-format XLSX round-trip regression. Add transport, extraction,
+role/privacy and real PostgreSQL lifecycle tests to CI. Document supported scope
+and remaining work. No live deployment, model call or Minecraft change.
+
 ## 2026-11-26 — Establish the workspace plan and atomic project indexing
 
 Project knowledge index replacement now uses one database transaction and locks

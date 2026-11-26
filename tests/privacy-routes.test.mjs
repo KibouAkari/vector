@@ -15,7 +15,7 @@ function load(path,bindings,names) {
 }
 function route(path,{owned=true,projectAllowed=true,projectPrivacy='internal'}={}) {
   const queries=[],reviews=[],jobs=[];
-  const deps={crypto,requestDestination,getSession:async()=>({userId:'alice',role:'owner'}),hasFeature:()=>true,
+  const deps={sourceEvidenceForFiles:async()=>new Map(),crypto,requestDestination,getSession:async()=>({userId:'alice',role:'owner'}),hasFeature:()=>true,
     assertUserBudget:async()=>({allowed:true}),initializeDatabase:async()=>{},initializeChatAttachmentDatabase:async()=>{},
     prepareChatAttachmentContext:async()=>({context:'attachment: hidden@example.invalid',attachments:[]}),
     CHAT_ATTACHMENT_CONTEXT_MARKER:'\nATTACHMENTS\n',canAccessProject:async()=>projectAllowed,
@@ -102,8 +102,8 @@ test('confirmed project jobs keep originals out of finding metadata and retrieve
   const core=await import('../lib/privacy-review-core.mjs');
   const email='erika@example.invalid',password='synthetic privacy phrase';
   const jobs=[];let outboundSnapshot,mappingSnapshot;
-  const chunks=[{original_name:email,start_line:1,end_line:1,content:`Passwort: "${password}".`}];
-  const deps={crypto,requestDestination,getSession:async()=>({userId:'alice',role:'owner',username:'alice'}),
+  const chunks=[{file_id:'fixture',original_name:email,start_line:1,end_line:1,content:`Passwort: "${password}".`}];
+  const deps={sourceEvidenceForFiles:async()=>new Map([['fixture',{url:'https://docs.example.org/?contact=sourceperson@example.invalid',partial:true}]]),crypto,requestDestination,getSession:async()=>({userId:'alice',role:'owner',username:'alice'}),
     canAccessProject:async()=>true,initializeDatabase:async()=>{},assertUserBudget:async()=>({allowed:true}),
     db:{query:async sql=>/SELECT \*/.test(sql)?{rowCount:1,rows:[{privacy_level:'personal'}]}:{rowCount:1,rows:[]}},
     searchProjectChunks:async()=>chunks,
@@ -121,6 +121,7 @@ test('confirmed project jobs keep originals out of finding metadata and retrieve
   assert.equal(response.status,202);assert.equal(jobs.length,1);
   assert.equal(jobs[0].payload.messages.at(-1).content,core.literalReplace(outboundSnapshot[0],mappingSnapshot));
   const wire=JSON.stringify(jobs[0].payload);
+  assert.ok(!wire.includes('sourceperson@example.invalid'),'Source provenance is reviewed and sanitized too.');
   assert.ok(!wire.includes(email),'Email must not survive in durable finding or retrieval metadata.');
   assert.ok(!wire.includes(password),'Credential must not survive in durable job metadata.');
   const meta=jobs[0].payload.privacy.values;
@@ -132,7 +133,7 @@ test('confirmed project jobs keep originals out of finding metadata and retrieve
 
 function acceptedChat({role='owner',budgetAllowed=true}={}) {
   const jobs=[],reviews=[],queries=[];
-  const deps={crypto,requestDestination,getSession:async()=>({userId:'alice',role,features:{chat:true}}),hasFeature:()=>true,
+  const deps={sourceEvidenceForFiles:async()=>new Map(),crypto,requestDestination,getSession:async()=>({userId:'alice',role,features:{chat:true}}),hasFeature:()=>true,
     initializeDatabase:async()=>{},initializeChatAttachmentDatabase:async()=>{},
     assertUserBudget:async()=>({allowed:budgetAllowed}),
     prepareChatAttachmentContext:async()=>({context:'',attachments:[]}),CHAT_ATTACHMENT_CONTEXT_MARKER:'\nATTACHMENTS\n',
