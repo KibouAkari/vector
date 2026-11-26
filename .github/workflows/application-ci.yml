@@ -112,7 +112,7 @@ jobs:
             cat /tmp/vector-auth-ci-next.log
             false
           fi
-          node --test tests/project-index.integration.test.mjs tests/project-access-api.integration.test.mjs tests/usage-attribution.integration.test.mjs tests/privacy-vault.integration.test.mjs tests/local-workers-db.integration.test.mjs tests/model-intelligence-api.integration.test.mjs
+          node --test tests/project-sources.integration.test.mjs tests/project-index.integration.test.mjs tests/project-access-api.integration.test.mjs tests/usage-attribution.integration.test.mjs tests/privacy-vault.integration.test.mjs tests/local-workers-db.integration.test.mjs tests/model-intelligence-api.integration.test.mjs
 
   secret-scan:
     name: Working tree secret scan

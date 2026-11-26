@@ -38,3 +38,7 @@ journey, explicit acceptance gates and candidate integration roles. It supplemen
 the existing deployment/privacy priorities above; it does not mark the versioned
 phases as delivered. First harden project knowledge, then qualify ingestion,
 evidence-backed answers, resumable execution, scoped memory and optional studios.
+
+The static public [source importer](SOURCE_INGESTION.md) is implemented in source.
+Next qualify ingestion against the live web stack, add document extraction and
+source lifecycle controls, then evaluate passage-level citation support.

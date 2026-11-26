@@ -126,3 +126,12 @@ No findings are attributed to its body. Obtain a copy before answering its
 specific criticisms. Publish a release with concrete demonstrated journeys,
 known limitations and reproducible checks; favourable coverage should follow
 verifiable product improvements, not unsupported comparison claims.
+
+## Implementation update, 26 November 2026
+
+The [retained-source importer](SOURCE_INGESTION.md) implements the static public
+URL slice of milestone 1 and supplies provenance to existing project retrieval.
+It includes source state, explicit retry, original snapshots, hashes, bounds and
+private-network protection. This is not a completed milestone: unified uploaded
+document extraction, durable import workers, source removal/refresh controls and
+claim-level citation evaluation remain open. No live deployment is implied.

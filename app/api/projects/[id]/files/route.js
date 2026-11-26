@@ -76,6 +76,7 @@ export async function GET(
           size_bytes,
           sha256,
           previewable,
+          source_snapshot,
           created_at
 
         FROM project_files

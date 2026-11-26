@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, File, FileCode2, FileImage, FileText, FolderOpen, LoaderCircle, Plus, Save, Search, Upload, X } from 'lucide-react';
 import { filePreviewKind, projectFileBytes, visibleProjectFiles } from '../../../lib/project-file-view.mjs';
 
+import ProjectSourcesPanel from "./project-sources-panel";
+
 function fileIcon(file) {
   const kind = filePreviewKind(file);
   return kind === 'image' ? FileImage : kind === 'text' ? FileCode2 : kind === 'pdf' ? FileText : File;
@@ -75,7 +77,7 @@ export default function ProjectFilesWorkspace({
   }
 
   async function save() {
-    if (!selected || !canEdit || preview.truncated || saving) return;
+    if (!selected || selected.source_snapshot || !canEdit || preview.truncated || saving) return;
     setSaving(true);
     setNotice('');
     try {
@@ -113,6 +115,7 @@ export default function ProjectFilesWorkspace({
   }
 
   return <section className="vp-files" aria-label="Project files">
+    <ProjectSourcesPanel projectId={projectId} canEdit={canEdit} onFilesChanged={onFilesChanged}/>
     <header className="vp-files-toolbar">
       <div><h2>Files</h2><p>{files.length} {files.length === 1 ? 'file' : 'files'} · {projectFileBytes(totalBytes)}</p></div>
       <div className="vp-actions">
@@ -163,8 +166,8 @@ export default function ProjectFilesWorkspace({
           {previewMatches && preview.status === 'ready' && kind === 'pdf' && <iframe className="vp-pdf-preview" src={`${fileBase}/raw`} title={`PDF preview: ${selected.original_name}`}/>}
           {previewMatches && preview.status === 'ready' && kind === 'download' && <div className="vp-empty"><File size={34} strokeWidth={1.3}/><h3>Open it in your own app</h3><p>A browser preview is not available for this format.<br/>Download the original file to view or edit it.</p></div>}
           {previewMatches && preview.status === 'ready' && kind === 'text' && <div className="vp-text-preview">
-            <div className="vp-editor-toolbar"><span>{editing ? 'Editing · save or cancel before switching files' : preview.truncated ? 'Partial preview · editing disabled' : 'Text preview'}</span>
-              {canEdit && !preview.truncated && <div className="vp-actions">{editing ? <>
+            <div className="vp-editor-toolbar"><span>{editing ? 'Editing · save or cancel before switching files' : selected.source_snapshot ? 'Imported source · read-only snapshot' : preview.truncated ? 'Partial preview · editing disabled' : 'Text preview'}</span>
+              {canEdit && !selected.source_snapshot && !preview.truncated && <div className="vp-actions">{editing ? <>
                 <button type="button" className="vp-button" disabled={saving} onClick={() => {setDraft(preview.text); setEditing(false); setNotice('');}}>Cancel</button>
                 <button type="button" className="vp-button vp-button-primary" disabled={saving} onClick={save}><Save size={15}/>{saving ? 'Saving…' : 'Save changes'}</button>
               </> : <button type="button" className="vp-button" onClick={() => setEditing(true)}>Edit text</button>}</div>}
