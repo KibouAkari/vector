@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-26 — Establish the workspace plan and atomic project indexing
+
+Project knowledge index replacement now uses one database transaction and locks
+the owning project file. Failed inserts roll back the whole replacement, readers
+do not see an intermediate partial index, and a mismatched project cannot replace
+another project's chunks. The previous index may still describe an older file
+revision; full versioned ingestion and extraction state remain planned. Schema
+initialization is shared across requests and retried after a failed setup, so
+search and statistics calls do not repeat DDL while a rebuild is in progress.
+
+Add failure/visibility/project-scope regression tests and a real PostgreSQL CI
+fixture for the same boundaries. The workspace plan distinguishes source evidence
+from production readiness, defines a source-to-artifact delivery sequence and
+places proposed integrations behind measurable acceptance gates. No provider
+calls, new dependencies, deployment or Minecraft changes.
+
 ## 2026-11-05 — Completed advancement rankings and category records
 
 Add a read-only advancement counter backend for completed gameplay advancements across the full saved player roster. It supports total and category leaderboards, personal counts and competition ranks, personal category records, individual advancement identifiers and known names. Vanilla category labels are provided; stored mod categories are discovered from their identifiers, including recorded but unfinished entries. Recipe unlocks are excluded. Ordinal follow-ups retain the previous category while rereading current counters.
@@ -1165,6 +1181,5 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The operator observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at [private release reference]. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
-
 
 
