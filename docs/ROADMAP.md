@@ -30,3 +30,11 @@
 3. Measure routing, native cold/warm latency, tool completeness and actual provider costs before changing gateways or orchestration.
 4. Add representative task evaluations for conversations, server reads, file work and failure recovery. Preserve ownership and privacy boundaries throughout.
 5. Complete history/artifact/license review before any public release; keep deployment evidence private.
+
+## Workspace and harvester delivery
+
+The [workspace plan](WORKSPACE_PLAN.md) defines the proposed source-to-artifact
+journey, explicit acceptance gates and candidate integration roles. It supplements
+the existing deployment/privacy priorities above; it does not mark the versioned
+phases as delivered. First harden project knowledge, then qualify ingestion,
+evidence-backed answers, resumable execution, scoped memory and optional studios.

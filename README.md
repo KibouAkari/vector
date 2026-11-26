@@ -138,3 +138,13 @@ The cinematic black-hole experience is adapted from [Gargantua by hasnain7abbas]
 ### Experimental local Minecraft conversations
 
 An opt-in conversational candidate can generate short local answers from public observations and bounded tools instead of selecting fixed reply text. It is inactive by default and requires native accuracy and latency qualification before a separate guarded rollout. See [the candidate architecture and evaluation boundary](docs/minecraft-dialogue-candidate.md).
+
+## Workspace and harvester direction
+
+The [workspace delivery plan](docs/WORKSPACE_PLAN.md) maps source collection,
+traceable answers, resumable work, scoped memory and optional creative tools to
+explicit acceptance gates. Candidate integrations are distinguished from shipped
+features. Project index replacement is transactional; a failed rebuild preserves
+the previous complete index instead of exposing partially inserted chunks. This
+is a foundation change, not a claim of a complete harvesting pipeline or a live
+production rollout.
