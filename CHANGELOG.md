@@ -6,7 +6,9 @@ Project knowledge index replacement now uses one database transaction and locks
 the owning project file. Failed inserts roll back the whole replacement, readers
 do not see an intermediate partial index, and a mismatched project cannot replace
 another project's chunks. The previous index may still describe an older file
-revision; full versioned ingestion and extraction state remain planned.
+revision; full versioned ingestion and extraction state remain planned. Schema
+initialization is shared across requests and retried after a failed setup, so
+search and statistics calls do not repeat DDL while a rebuild is in progress.
 
 Add failure/visibility/project-scope regression tests and a real PostgreSQL CI
 fixture for the same boundaries. The workspace plan distinguishes source evidence
@@ -1179,6 +1181,5 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The operator observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at [private release reference]. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
-
 
 
