@@ -42,3 +42,11 @@ evidence-backed answers, resumable execution, scoped memory and optional studios
 The static public [source importer](SOURCE_INGESTION.md) is implemented in source.
 Next qualify ingestion against the live web stack, add document extraction and
 source lifecycle controls, then evaluate passage-level citation support.
+
+## Shared platform delivery
+
+The [control/skills/security delivery](PLATFORM_DELIVERY.md) adds protected owner
+approvals, project instruction skills and a scoped local evidence/report flow.
+It maps the requested integrations to explicit adapter and release requirements.
+Live voice, general channels, device installers, parallel agent teams and media
+generation are still incomplete. Source inventory is not runtime readiness.

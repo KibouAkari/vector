@@ -1,0 +1,6 @@
+import {requireOwner} from '../../lib/auth';
+import Sidebar from '../../components/sidebar';
+import {PLATFORM_CAPABILITIES} from '../../lib/platform-catalog.mjs';
+import './platform.css';
+export const dynamic='force-dynamic';
+export default async function PlatformPage(){const session=await requireOwner();return <div className="vector-shell"><Sidebar session={session}/><main className="main"><div className="vp-control"><h1>Platform control</h1><p>One place for workspace capabilities, access and execution boundaries. This is a source inventory, not a live service-health check. Planned connections cannot run from this page.</p><div className="vp-control-actions"><a href="/approvals">Approval queue</a><a href="/permissions">Permission policies</a><a href="/models">Models and API keys</a><a href="/usage">Usage</a><a href="/users">Users</a></div><div className="vp-control-grid">{PLATFORM_CAPABILITIES.map(item=><section className="vp-control-card" key={item.id}><span className="vp-control-tag">{item.status==='source'?'Implemented in source':item.status==='partial'?'Partial foundation':'Planned'}</span><h2>{item.name}</h2><p>{item.detail}</p>{item.href&&<a href={item.href}>Open workspace</a>}</section>)}</div></div></main></div>;}

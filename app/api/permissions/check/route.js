@@ -23,6 +23,8 @@ export async function POST(request) {
     );
   }
 
+  if (session.role !== "owner") return Response.json({error: "Owner access required"}, {status: 403});
+
   const body =
     await request.json();
 

@@ -1,3 +1,4 @@
+import {selectedSkillContext} from "../../../../../lib/project-skills";
 import {sourceEvidenceForFiles} from "../../../../../lib/project-sources";
 import {reviewPrivacyRequest} from '../../../../../lib/privacy-review';
 import crypto from "node:crypto";
@@ -392,8 +393,12 @@ export async function POST(
 
   const sourceEvidence = await sourceEvidenceForFiles(projectId, chunks.map(chunk => chunk.file_id).filter(Boolean));
 
+  let skillContext;
+  try { skillContext = await selectedSkillContext(projectId, body.skillIds); }
+  catch { return Response.json({error: "Selected skills are invalid, unavailable or no longer active."}, {status: 400}); }
+
   const rawContext =
-    chunks
+    skillContext + "\n\n" + chunks
       .map(
         (
           chunk,
@@ -498,7 +503,7 @@ export async function POST(
       userId:
         session.userId,
       conversationId,
-      message:safeMessage+'\nprivacy:'+privacy.destination+':'+(body.privacyEnabled===false?'off':body.privacyDecision||'replace')
+      message:safeMessage+(skillContext?'\nskills:'+crypto.createHash('sha256').update(skillContext).digest('hex'):'')+'\nprivacy:'+privacy.destination+':'+(body.privacyEnabled===false?'off':body.privacyDecision||'replace')
     });
 
   const duplicate =

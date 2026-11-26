@@ -19,3 +19,11 @@ The public handoff describes source boundaries. Operator-specific instructions, 
 5. Record actual deployment evidence privately. Do not infer a live fix from a merged PR.
 
 See [architecture](ARCHITECTURE.md), [security](SECURITY.md), [deployment](DEPLOYMENT.md), [Minecraft](MINECRAFT.md), [publication](PUBLICATION.md) and [roadmap](ROADMAP.md).
+
+## Platform source update
+
+Global approvals and policy administration require platform owner. Project skills
+are immutable instruction drafts activated against an exact content hash and
+selected explicitly before privacy review. The security workbench imports scoped
+Nmap XML and renders local reports; it executes no scan. See
+[platform delivery](PLATFORM_DELIVERY.md) for tests, boundaries and unfinished adapters.

@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-11-26 — Platform control, reviewed skills and security evidence reports
+
+Close an authorization gap in global approval decisions: require platform owner
+before reading request bodies or updating approvals. Restrict approval/policy
+pages and policy inspection to owner. Surface failed approval saves in the UI.
+
+Add an owner platform source inventory with explicit implemented/partial/planned
+states. Add project instruction skills with editor drafts, exact-hash owner
+activation/retirement, immutable content and explicit selection in project chat.
+Revalidate active project selection before enqueue and cover instructions with
+existing privacy review. Include selected content in duplicate request identity.
+Skills grant no tools and execute no scripts.
+
+Add a project-linked, owner-only security evidence workflow: exact IP scope,
+authorization reference, expiry, digest approval, bounded strict Nmap XML import,
+immutable encrypted original, scope coverage and deterministic PDF/Markdown
+reports. Reports classify open ports as informational, disclose user-supplied
+provenance and never claim a verified vulnerability or a clean security posture.
+No scans are launched. Add pinned ISC saxes 6.0.0; reuse existing PDF rendering
+dependencies. Include synthetic parser/report/role tests and authenticated API
+coverage for scopes, reports and skill lifecycle.
+
+Quick workflows avoid separate planner/reviewer stages for routine work, while
+existing deterministic artifact and execution safeguards remain. Document the
+requested integration roles, privileged adapter requirements and remaining
+release work. No paid model tests, outbound messages, calls or deployment.
+
 ## 2026-11-26 — Retain public web sources in the project workspace (#143)
 
 Add a project Files source panel and authenticated import/list/original-download

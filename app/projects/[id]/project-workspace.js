@@ -19,6 +19,7 @@ import remarkGfm
   from "remark-gfm";
 
 import {usePrivacySend} from '../../../components/ui/privacy-review-dialog';
+import ProjectSkillsPanel from "./project-skills-panel";
 import ProjectFilesWorkspace from "./project-files-workspace";
 
 const PRIVACY_NAMES = {
@@ -847,6 +848,8 @@ export default function ProjectWorkbench({
     }
   }
 
+  const [selectedSkillIds,setSelectedSkillIds]=useState([]);
+  useEffect(()=>setSelectedSkillIds([]),[project.id]);
   const [privacyEnabled,setPrivacyEnabled]=useState(true);
   const {privacySend,privacyDialog} = usePrivacySend(`${project.id}:${conversationId || 'new'}`);
 
@@ -900,6 +903,7 @@ export default function ProjectWorkbench({
 
     try {
       const response = await privacySend(`/api/projects/${project.id}/chat`,{
+        skillIds:selectedSkillIds,
         message:text,conversationId,mode:chatMode,privacyEnabled
       },{localOnly:project.privacy_level==='local_only'});
 
@@ -1335,6 +1339,7 @@ export default function ProjectWorkbench({
         tab ===
         "chat" && (
           <section className="project-chat">
+            <ProjectSkillsPanel projectId={project.id} canEdit={canEdit} selected={selectedSkillIds} onSelection={setSelectedSkillIds}/>
 
             {
               privacyNotice && (

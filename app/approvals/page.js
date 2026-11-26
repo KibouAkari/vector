@@ -1,5 +1,5 @@
 import {
-  requireSession
+  requireOwner
 } from "../../lib/auth";
 
 import {
@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ApprovalsPage() {
   const session =
-    await requireSession();
+    await requireOwner();
 
   await initializeDatabase();
 

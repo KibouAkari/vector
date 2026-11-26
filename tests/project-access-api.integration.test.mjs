@@ -340,6 +340,47 @@ test("real authenticated API permissions and project isolation", async t => {
       assert.equal((await unchanged.json()).content, "PRIVATE_PROJECT_CONTENT");
     });
 
+    await t.test("project skills require exact owner review and remain tenant scoped", async () => {
+      const base = `/api/projects/${projectId}/skills`;
+      await expectStatus(base, { as: "outsider" }, 404);
+      const draft = (await (await expectStatus(base, { as: "editor", method: "POST", body: {
+        action: "create", name: "Evidence reporting", instructions: "Use supplied evidence and disclose missing information."
+      } }, 200)).json()).skill;
+      assert.equal(draft.status, "draft");
+      assert.equal((await (await expectStatus(base, { as: "viewer" }, 200)).json()).skills.length, 0);
+      await expectStatus(base, { as: "editor", method: "POST", body: {action:"activate", id:draft.id, contentSha256:draft.content_sha256} }, 403);
+      await expectStatus(base, { as: "admin", method: "POST", body: {action:"activate", id:draft.id, contentSha256:"0".repeat(64)} }, 400);
+      await expectStatus(base, { as: "admin", method: "POST", body: {action:"activate", id:draft.id, contentSha256:draft.content_sha256} }, 200);
+      assert.equal((await (await expectStatus(base, { as: "viewer" }, 200)).json()).skills[0].status, "active");
+      await expectStatus(base, { as: "admin", method: "POST", body: {action:"retire", id:draft.id, contentSha256:draft.content_sha256} }, 200);
+      assert.equal((await (await expectStatus(base, { as: "viewer" }, 200)).json()).skills.length, 0);
+    });
+
+    await t.test("security scope, immutable evidence and local report downloads require platform owner", async () => {
+      const base="/api/security/assessments";
+      await expectStatus(base,{as:"editor"},403);
+      await expectStatus(base,{as:"editor",method:"POST",body:{}},403);
+      await expectStatus('/api/approvals/nonexistent/decision',{as:"editor",method:"POST",body:{decision:"approved"}},403);
+      await expectStatus('/api/permissions/check',{as:"editor",method:"POST",body:{permission:"network.scan"}},403);
+      const row=(await (await expectStatus(base,{as:"admin",method:"POST",body:{action:"create",projectId,
+        name:"Synthetic network evidence",targets:["192.0.2.10"],authorization:"Isolated synthetic fixture owned by CI",
+        authorizationConfirmed:true,expiresAt:new Date(Date.now()+3600000).toISOString(),requestId:crypto.randomUUID()}},200)).json()).assessment;
+      await expectStatus(base,{as:"admin",method:"POST",body:{action:"approve",id:row.id,scopeDigest:"0".repeat(64)}},400);
+      await expectStatus(base,{as:"admin",method:"POST",body:{action:"approve",id:row.id,scopeDigest:row.scope_digest}},200);
+      const xml='<nmaprun scanner="nmap" version="fixture"><host><status state="up"/><address addr="192.0.2.10" addrtype="ipv4"/><ports><port protocol="tcp" portid="443"><state state="open"/><service name="https"/></port></ports></host><runstats><finished exit="success"/></runstats></nmaprun>';
+      await expectStatus(base,{as:"admin",method:"POST",body:{action:"import",id:row.id,xml:xml.replace('192.0.2.10','192.0.2.11')}},400);
+      const done=(await (await expectStatus(base,{as:"admin",method:"POST",body:{action:"import",id:row.id,xml}},200)).json()).assessment;
+      assert.equal(done.status,"completed");assert.equal(done.result.observations[0].severity,"informational");
+      await expectStatus(base,{as:"admin",method:"POST",body:{action:"import",id:row.id,xml}},200);
+      await expectStatus(base,{as:"admin",method:"POST",body:{action:"import",id:row.id,xml:xml+' '}},400);
+      const report=`${base}/${row.id}/report`;
+      await expectStatus(report,{as:"viewer"},403);
+      const pdf=await expectStatus(report,{as:"admin"},200);
+      assert.match(Buffer.from(await pdf.arrayBuffer()).toString('ascii',0,8),/%PDF/);
+      assert.match(pdf.headers.get('content-disposition'),/^attachment/);
+      const original=await expectStatus(report+'?format=xml',{as:"admin"},200);assert.equal(await original.text(),xml);
+    });
+
     await t.test("tasks are readable by viewer, writable by editor", async () => {
       await expectStatus(`/api/projects/${projectId}/tasks`, { as: "viewer" }, 200);
       await expectStatus(`/api/projects/${projectId}/tasks`, { as: "outsider" }, 404);
