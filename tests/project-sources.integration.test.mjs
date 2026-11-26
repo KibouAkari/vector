@@ -28,11 +28,12 @@ test('retained source import, index and recovery on real PostgreSQL',async t=>{
   }};
   try {
     await admin.query(`CREATE SCHEMA ${schema}`);
-    await pool.query(`CREATE TABLE projects(id TEXT PRIMARY KEY,privacy_level TEXT);
+    await pool.query(`CREATE TABLE projects(id TEXT PRIMARY KEY,privacy_level TEXT,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
       CREATE TABLE conversations(id TEXT PRIMARY KEY); CREATE TABLE tasks(id TEXT PRIMARY KEY);
       CREATE TABLE project_files(id TEXT PRIMARY KEY,project_id TEXT REFERENCES projects(id),original_name TEXT,
         stored_name TEXT,mime_type TEXT,extension TEXT,size_bytes BIGINT,sha256 TEXT,previewable BOOLEAN,source_snapshot BOOLEAN);
-      INSERT INTO projects VALUES ('p','internal'),('other','internal'),('local','local_only');`);
+      INSERT INTO projects(id,privacy_level,updated_at) VALUES
+        ('p','internal','2000-01-01'),('other','internal','2000-01-01'),('local','local_only','2000-01-01');`);
     const index=load('../lib/project-index.js',{crypto,db,initializeDatabase:async()=>{}},['initializeProjectIndex','replaceProjectTextChunks','searchProjectChunks']);
     const deps={crypto,db,canEditProject:async()=>allowed,initializeFileDatabase:async()=>{},...index,
       writeEncryptedFile:async({fileId,buffer})=>{stored.set(fileId,buffer);return {storedName:fileId};},
@@ -48,6 +49,8 @@ test('retained source import, index and recovery on real PostgreSQL',async t=>{
     await t.test('success retains snapshot provenance and an immutable searchable text file',async()=>{
       first=await run();assert.equal(first.status,'indexed');assert.equal(first.method,'static-html-text-v1');
       assert.ok(first.rawSha256);assert.ok(await api.isImportedSourceFile(first.fileId));
+      const project=(await pool.query("SELECT updated_at FROM projects WHERE id='p'")).rows[0];
+      assert.ok(new Date(project.updated_at).getTime()>Date.parse('2000-01-01'));
       const chunks=await index.searchProjectChunks({projectId:'p',query:'evidence'});
       assert.equal(chunks[0].file_id,first.fileId);
       const evidence=await api.sourceEvidenceForFiles('p',[first.fileId]);assert.equal(evidence.get(first.fileId).rawSha256,first.rawSha256);

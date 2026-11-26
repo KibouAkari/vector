@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-26 — Retain public web sources in the project workspace
+## 2026-11-26 — Retain public web sources in the project workspace (#143)
 
 Add a project Files source panel and authenticated import/list/original-download
 API. Static HTML, plain text and Markdown are fetched without model calls or
@@ -16,6 +16,7 @@ cross-process import capacity limits, retry attempts and interrupted-attempt
 recovery. Source/file/index writes commit together. Project membership is checked
 before acquisition and editing access rechecked before materialization. Imported
 text is read-only; original snapshots are attachment-only.
+Successful imports also advance the project's modification time.
 
 Pin MIT-licensed htmlparser2 10.0.0. Patch Next.js 16.4.0 to 16.4.6 for registry
 security advisories and override ExcelJS's UUID dependency to compatible 11.1.1,
