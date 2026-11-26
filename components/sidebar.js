@@ -348,6 +348,8 @@ export default function Sidebar({
           session.role ===
           "owner" && (
             <div className="v52-owner-nav">
+              <Link href="/platform" className={pathname.startsWith("/platform") ? "active" : ""}>Platform control</Link>
+              <Link href="/security" className={pathname.startsWith("/security") ? "active" : ""}>Security workspace</Link>
 
               <span>
                 Owner

@@ -211,6 +211,7 @@ export default function ChatClient({
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("auto");
   const [privacyEnabled,setPrivacyEnabled]=useState(true);
+  const [freeOnly,setFreeOnly]=useState(false);
   const [activeJob, setActiveJob] = useState(null);
   const {privacySend,privacyDialog} = usePrivacySend(`${userId}:${conversationId || "new"}`);
 
@@ -1189,7 +1190,7 @@ export default function ChatClient({
 
     try {
       const response = await privacySend('/api/chat',{
-        message:text,conversationId:conversationIdRef.current || conversationId,mode,privacyEnabled,
+        message:text,conversationId:conversationIdRef.current || conversationId,mode,privacyEnabled,billingPolicy:freeOnly?'free-only':'standard',
         attachmentIds:attachmentSnapshot.map(attachment=>attachment.id)
       });
 
@@ -1932,7 +1933,7 @@ export default function ChatClient({
 
               <div className="v54-composer-right">
                 <ChatControls mode={mode} onModeChange={setMode} privacyEnabled={privacyEnabled}
-                  onPrivacyChange={setPrivacyEnabled} disabled={submitting || Boolean(activeJob)} />
+                  freeOnly={freeOnly} onFreeOnlyChange={setFreeOnly} onPrivacyChange={setPrivacyEnabled} disabled={submitting || Boolean(activeJob)} />
 
                 {activeJob ? (
                   <button

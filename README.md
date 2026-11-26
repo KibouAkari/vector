@@ -157,3 +157,25 @@ searchable text file, source hashes, acquisition time and visible failure/partia
 state. Project access and outbound-model privacy rules remain in force. Private
 network targets and local-only project imports are blocked. This source feature
 has not been qualified on a live deployment. See [limits, recovery and storage](docs/SOURCE_INGESTION.md).
+
+## Platform control, skills and security evidence
+
+Owners can inspect the source capability map at `/platform`, administer protected
+approvals and use `/security` for scoped Nmap XML evidence and local PDF reports.
+Project editors can draft skills; owners review exact text before activation, and
+users explicitly select active skills in project chat. Quick mode avoids separate
+planner/reviewer calls for routine work. Voice, general messaging, device agents
+and media adapters remain planned, not connected by the capability map. See the
+[delivery details and integration decisions](docs/PLATFORM_DELIVERY.md).
+
+## Free inference and accountable privacy
+
+Chat and project chat can restrict inference to configured local models or
+OpenRouter free variants, with no paid fallback. Privacy review supports
+individual placeholder selection and explicit original send; detector outages
+show a rules-only decision. The per-account call ledger separates reported USD
+charges, calculated estimates and unknown usage.
+
+See [free usage, privacy and accounting](docs/FREE_USAGE_PRIVACY_ACCOUNTING.md)
+for provider terms, setup, limitations and source verification. These controls
+do not create free accounts or claim unlimited inference.

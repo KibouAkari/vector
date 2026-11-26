@@ -95,10 +95,10 @@ try {
   check('explicit-off-preserves-original-and-skips-detector-'+phase);
   if(phase==='outage') {
     const before=await counts();
-    const result=await (await call('/api/chat',{method:'POST',body:{message:prompt+' Noch nicht geprüfte neue Nachricht.',mode:'normal'},status:503})).json();
-    assert.equal(result.error,'PRIVACY_REVIEW_FAILED');privateValuesAbsent(result,values);
+    const result=await (await call('/api/chat',{method:'POST',body:{message:prompt+' Noch nicht geprüfte neue Nachricht.',mode:'normal'},status:409})).json();
+    assert.equal(result.error,'PRIVACY_REVIEW_REQUIRED');assert.equal(result.privacyReview.scanStatus,'unavailable');privateValuesAbsent(result,values);
     noNewChat(before,await counts());assert.equal((await counts()).usage_events,before.usage_events);
-    check('native-service-outage-blocks-cloud-send-before-writes');
+    check('native-service-outage-requires-explicit-rules-only-choice-before-writes');
     const local=await queued('/api/chat',{message:prompt,mode:'local'});
     assert.equal(local.job.payload.privacyDestination,'local');check('local-request-remains-quiet-during-detector-outage');
   } else {

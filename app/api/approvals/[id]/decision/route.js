@@ -31,6 +31,10 @@ export async function POST(
     );
   }
 
+  if (session.role !== "owner") {
+    return Response.json({error: "Owner access required"}, {status: 403});
+  }
+
   const {
     id
   } = await context.params;

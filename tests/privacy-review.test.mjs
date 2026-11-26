@@ -141,11 +141,13 @@ test('images require explicit unchanged permission and cannot be falsely declare
   await assert.rejects(runtime.reviewPrivacyRequest({...confirmed,uninspectable:true}));
 });
 
-test('unavailable local detection fails closed without fabricating usage',async()=>{
-  const failed=loadRuntime({fail:true});await assert.rejects(failed.reviewPrivacyRequest(args()));
-  assert.equal(failed.usage.length,0);
-  const partial=loadRuntime({truncated:true});await assert.rejects(partial.reviewPrivacyRequest(args()));
-  assert.equal(partial.usage.length,0);
+test('unavailable detection offers an explicit rules-only choice without fabricating usage',async()=>{
+ for(const failure of [{fail:true},{truncated:true}]){
+  const runtime=loadRuntime(failure),request=args();const data=await (await runtime.reviewPrivacyRequest(request)).response.json();
+  assert.equal(data.privacyReview.scanStatus,'unavailable');assert.equal(runtime.usage.length,0);
+  const plan=await runtime.reviewPrivacyRequest({...request,body:{...request.body,privacyDecision:'original',privacyReviewToken:data.privacyReview.token}});
+  assert.equal(plan.apply(text),text);assert.equal(runtime.requests.length,1);
+ }
 });
 
 test('new tool evidence requires explicit masking consent and preserves JSON escapes',async()=>{
@@ -486,4 +488,28 @@ test('credential-shaped tool fields promote every existing alias before future r
   const metadata=await next.response.json();
   assert.ok(!JSON.stringify(metadata).includes(email));
   assert.equal(metadata.privacyReview.findings[0].type,'PASSWORD');
+});
+
+test('selective masking is bound to known findings and survives worker vault reloads',async()=>{
+ const runtime=loadRuntime();const request={...args(),body:{...args().body,toolEvidenceDecision:'replace'}};
+ const data=await (await runtime.reviewPrivacyRequest(request)).response.json();
+ const selected=[...data.privacyReview.findings,...data.privacyReview.contextFindings].filter(f=>f.type!=='PERSON').map(f=>f.placeholder);
+ const confirm={...request,body:{...request.body,privacyDecision:'replace',privacyReplaceIds:selected,privacyReviewToken:data.privacyReview.token}};
+ const plan=await runtime.reviewPrivacyRequest(confirm);const safe=plan.apply(text);
+ assert.ok(safe.includes('Erika Muster'));assert.ok(!safe.includes(secret));assert.ok(!safe.includes('erika@example.invalid'));
+ runtime.vault.set('selective',plan.mappings);
+ await runtime.withJobPrivacy({userId:'alice',conversationId:'selective',privacyPolicy:plan.policy},async()=>{
+   assert.equal(runtime.protectProviderPayload({input:[{role:'user',content:safe}]}).input[0].content,safe);
+   const tool=await runtime.protectToolEvidence(JSON.stringify({name:'Erika Muster',password:'new synthetic value'}));
+   assert.ok(!tool.sanitized.includes('Erika Muster'));assert.ok(!tool.sanitized.includes('new synthetic value'));
+   assert.equal(core.literalReplace(safe,plan.mappings,true),text);
+ });
+ await assert.rejects(runtime.reviewPrivacyRequest({...confirm,body:{...confirm.body,privacyReplaceIds:['made-up']}}),/Invalid privacy selection/);
+ await assert.rejects(runtime.reviewPrivacyRequest({...confirm,body:{...confirm.body,billingPolicy:'free-only'}}));
+});
+test('quoted JSON and escaped credentials are completely replaced with exact restoration',()=>{
+ for(const input of ['Password: "R7! synthetic phrase"',JSON.stringify({instructions:'Password: "R7! synthetic phrase"'}),JSON.stringify({password:'R7! synthetic phrase'})]){
+   const plan=core.makePrivacyPlan(input,core.deterministicFindings(input));assert.ok(!plan.sanitized.includes('R7! synthetic phrase'),plan.sanitized);assert.equal(core.literalReplace(plan.sanitized,plan.mappings,true),input);
+   assert.ok(!plan.mappings.some(m=>m.value==='\\'));
+ }
 });

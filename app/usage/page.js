@@ -1,3 +1,4 @@
+import UsageCalls from './usage-calls';
 import {
   requireOwner
 } from "../../lib/auth";
@@ -46,13 +47,14 @@ export default async function UsagePage() {
             </h1>
 
             <p className="control-description">
-              Every future model call will be
-              checked against task, daily and
-              monthly budgets before it is
-              executed.
+              Workspace budget totals combine configured estimates and reported charges.
+              They are budget controls, not reconciled provider invoices.
+              The call ledger below shows only your own requests.
             </p>
 
           </header>
+
+          <UsageCalls />
 
           <section className="control-card">
 

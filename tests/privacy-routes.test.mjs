@@ -15,7 +15,7 @@ function load(path,bindings,names) {
 }
 function route(path,{owned=true,projectAllowed=true,projectPrivacy='internal'}={}) {
   const queries=[],reviews=[],jobs=[];
-  const deps={sourceEvidenceForFiles:async()=>new Map(),crypto,requestDestination,getSession:async()=>({userId:'alice',role:'owner'}),hasFeature:()=>true,
+  const deps={selectedSkillContext:async()=>'',sourceEvidenceForFiles:async()=>new Map(),crypto,requestDestination,getSession:async()=>({userId:'alice',role:'owner'}),hasFeature:()=>true,
     assertUserBudget:async()=>({allowed:true}),initializeDatabase:async()=>{},initializeChatAttachmentDatabase:async()=>{},
     prepareChatAttachmentContext:async()=>({context:'attachment: hidden@example.invalid',attachments:[]}),
     CHAT_ATTACHMENT_CONTEXT_MARKER:'\nATTACHMENTS\n',canAccessProject:async()=>projectAllowed,
@@ -103,7 +103,7 @@ test('confirmed project jobs keep originals out of finding metadata and retrieve
   const email='erika@example.invalid',password='synthetic privacy phrase';
   const jobs=[];let outboundSnapshot,mappingSnapshot;
   const chunks=[{file_id:'fixture',original_name:email,start_line:1,end_line:1,content:`Passwort: "${password}".`}];
-  const deps={sourceEvidenceForFiles:async()=>new Map([['fixture',{url:'https://docs.example.org/?contact=sourceperson@example.invalid',partial:true}]]),crypto,requestDestination,getSession:async()=>({userId:'alice',role:'owner',username:'alice'}),
+  const deps={selectedSkillContext:async()=> 'Reporting skill for skillperson@example.invalid',sourceEvidenceForFiles:async()=>new Map([['fixture',{url:'https://docs.example.org/?contact=sourceperson@example.invalid',partial:true}]]),crypto,requestDestination,getSession:async()=>({userId:'alice',role:'owner',username:'alice'}),
     canAccessProject:async()=>true,initializeDatabase:async()=>{},assertUserBudget:async()=>({allowed:true}),
     db:{query:async sql=>/SELECT \*/.test(sql)?{rowCount:1,rows:[{privacy_level:'personal'}]}:{rowCount:1,rows:[]}},
     searchProjectChunks:async()=>chunks,
@@ -121,6 +121,7 @@ test('confirmed project jobs keep originals out of finding metadata and retrieve
   assert.equal(response.status,202);assert.equal(jobs.length,1);
   assert.equal(jobs[0].payload.messages.at(-1).content,core.literalReplace(outboundSnapshot[0],mappingSnapshot));
   const wire=JSON.stringify(jobs[0].payload);
+  assert.ok(!wire.includes('skillperson@example.invalid'),'Selected skill instructions are reviewed and sanitized too.');
   assert.ok(!wire.includes('sourceperson@example.invalid'),'Source provenance is reviewed and sanitized too.');
   assert.ok(!wire.includes(email),'Email must not survive in durable finding or retrieval metadata.');
   assert.ok(!wire.includes(password),'Credential must not survive in durable job metadata.');
@@ -133,7 +134,7 @@ test('confirmed project jobs keep originals out of finding metadata and retrieve
 
 function acceptedChat({role='owner',budgetAllowed=true}={}) {
   const jobs=[],reviews=[],queries=[];
-  const deps={sourceEvidenceForFiles:async()=>new Map(),crypto,requestDestination,getSession:async()=>({userId:'alice',role,features:{chat:true}}),hasFeature:()=>true,
+  const deps={selectedSkillContext:async()=>'',sourceEvidenceForFiles:async()=>new Map(),crypto,requestDestination,getSession:async()=>({userId:'alice',role,features:{chat:true}}),hasFeature:()=>true,
     initializeDatabase:async()=>{},initializeChatAttachmentDatabase:async()=>{},
     assertUserBudget:async()=>({allowed:budgetAllowed}),
     prepareChatAttachmentContext:async()=>({context:'',attachments:[]}),CHAT_ATTACHMENT_CONTEXT_MARKER:'\nATTACHMENTS\n',
@@ -158,7 +159,7 @@ test('actual chat Auto queues local statistics while explicit Normal retains clo
       assert.equal(api.jobs[0].payload.privacyDestination,destination);
       assert.equal(api.jobs[0].payload.privacyPolicy,'bound-policy');
       assert.equal(api.jobs[0].payload.allowServer,true);
-      assert.match(api.jobs[0].requestHash,/privacy:.*:off$/);
+      assert.match(api.jobs[0].requestHash,/privacy:.*:off$/m);
       assert.equal(api.reviews[0].body.privacyEnabled,false);
     }
   } finally {if(previous===undefined)delete process.env.VECTOR_LOCAL_WORKERS;else process.env.VECTOR_LOCAL_WORKERS=previous;}
@@ -204,4 +205,23 @@ test('Auto statistics remain available without cloud budget while external tasks
       assert.equal(response.status,status);assert.equal(api.jobs.length,status===202?1:0);
     }
   } finally {if(previous===undefined)delete process.env.VECTOR_LOCAL_WORKERS;else process.env.VECTOR_LOCAL_WORKERS=previous;}
+});
+
+test('free inference preference is validated and retained in the durable chat job',async()=>{
+ const api=acceptedChat();const send=body=>api.POST(new Request('http://vector.test',{method:'POST',body:JSON.stringify(body)}));
+ assert.equal((await send({message:'A synthetic task',mode:'normal',billingPolicy:'free-only'})).status,202);assert.equal(api.jobs[0].payload.billingPolicy,'free-only');assert.match(api.jobs[0].requestHash,/billing:free-only/);
+ assert.equal((await send({message:'Another task',billingPolicy:'unlimited-free-keys'})).status,400);assert.equal(api.jobs.length,1);
+});
+
+test('actual project route and privacy engine mask quoted skill credentials before durable enqueue',async()=>{
+ const core=await import('../lib/privacy-review-core.mjs');const {AsyncLocalStorage}=await import('node:async_hooks');
+ process.env.VECTOR_PRIVACY_REVIEW='1';process.env.FILE_ENCRYPTION_KEY='07'.repeat(32);
+ const vault=new Map();const privacy=load('../lib/privacy-review.js',{crypto,AsyncLocalStorage,...core,requestPrivacyScan:async()=>({findings:[],metrics:{model:'offline-detector-fixture'}}),withLocalWorkerSlot:fn=>fn(),recordUsage:async()=>{},getPrivacyMappings:async id=>vault.get(id)||[],savePrivacyMappings:async({conversationId,mappings})=>vault.set(conversationId,mappings)},['reviewPrivacyRequest']);
+ const jobs=[],instructions='Password: "R7! synthetic phrase"';
+ const api=load('../app/api/projects/[id]/chat/route.js',{crypto,requestDestination,selectedSkillContext:async()=>instructions,sourceEvidenceForFiles:async()=>new Map(),getSession:async()=>({userId:'alice',role:'owner',username:'alice'}),canAccessProject:async()=>true,initializeDatabase:async()=>{},assertUserBudget:async()=>({allowed:true}),db:{query:async sql=>/SELECT \*/.test(sql)?{rowCount:1,rows:[{privacy_level:'personal'}]}:{rowCount:1,rows:[]}},searchProjectChunks:async()=>[],...privacy,determineTaskMode:()=> 'normal',getModelForMode:()=> 'fixture',shouldUseWebSearch:()=>false,getMaximumOutputTokens:()=>100,estimateRequestCost:()=>({chf:0}),usdToChf:()=>0,checkCost:async()=>({allowed:true}),savePrivacyMappings:async({conversationId,mappings})=>vault.set(conversationId,mappings),findRecentDuplicate:async()=>null,makeRequestHash:args=>args.message,enqueueAgentJob:async job=>{jobs.push(job);return 'job';},restorePrivateValues:async({text})=>text},['POST']);
+ const send=body=>api.POST(new Request('http://vector.test',{method:'POST',body:JSON.stringify(body)}),{params:{id:'project'}});
+ const input={message:'Review the selected skill.',mode:'normal',privacyEnabled:true,toolEvidenceDecision:'replace',billingPolicy:'free-only'};
+ const first=await send(input);assert.equal(first.status,409);assert.equal(jobs.length,0);const review=(await first.json()).privacyReview;
+ assert.equal((await send({...input,privacyDecision:'replace',privacyReplaceIds:[...review.findings,...review.contextFindings].map(f=>f.placeholder),privacyReviewToken:review.token})).status,202);
+ assert.equal(jobs[0].payload.billingPolicy,'free-only');assert.ok(!JSON.stringify(jobs[0].payload).includes('R7! synthetic phrase'));assert.ok(jobs[0].payload.messages.at(-1).content.includes('<VEC_PASSWORD_'));
 });

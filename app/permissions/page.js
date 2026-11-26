@@ -1,5 +1,5 @@
 import {
-  requireSession
+  requireOwner
 } from "../../lib/auth";
 
 import {
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PermissionsPage() {
   const session =
-    await requireSession();
+    await requireOwner();
 
   await initializeDatabase();
 
@@ -48,10 +48,10 @@ export default async function PermissionsPage() {
             </h1>
 
             <p className="control-description">
-              Every tool action passes through
-              this policy layer. Agents cannot
-              bypass it through prompts or
-              instructions.
+              Review configured permission policies.
+              Enforcement must be verified for each
+              connected adapter; a policy entry alone
+              does not establish runtime protection.
             </p>
 
           </header>
