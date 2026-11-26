@@ -347,6 +347,8 @@ test("real authenticated API permissions and project isolation", async t => {
         action: "create", name: "Evidence reporting", instructions: "Use supplied evidence and disclose missing information."
       } }, 200)).json()).skill;
       assert.equal(draft.status, "draft");
+      const unicode=(await (await expectStatus(base,{as:"editor",method:"POST",body:{action:"create",name:"Unicode draft",instructions:"界".repeat(6000)}},200)).json()).skill;
+      assert.equal(unicode.instructions.length,6000);
       assert.equal((await (await expectStatus(base, { as: "viewer" }, 200)).json()).skills.length, 0);
       await expectStatus(base, { as: "editor", method: "POST", body: {action:"activate", id:draft.id, contentSha256:draft.content_sha256} }, 403);
       await expectStatus(base, { as: "admin", method: "POST", body: {action:"activate", id:draft.id, contentSha256:"0".repeat(64)} }, 400);
@@ -362,9 +364,10 @@ test("real authenticated API permissions and project isolation", async t => {
       await expectStatus(base,{as:"editor",method:"POST",body:{}},403);
       await expectStatus('/api/approvals/nonexistent/decision',{as:"editor",method:"POST",body:{decision:"approved"}},403);
       await expectStatus('/api/permissions/check',{as:"editor",method:"POST",body:{permission:"network.scan"}},403);
-      const row=(await (await expectStatus(base,{as:"admin",method:"POST",body:{action:"create",projectId,
-        name:"Synthetic network evidence",targets:["192.0.2.10"],authorization:"Isolated synthetic fixture owned by CI",
-        authorizationConfirmed:true,expiresAt:new Date(Date.now()+3600000).toISOString(),requestId:crypto.randomUUID()}},200)).json()).assessment;
+      const draft={action:"create",projectId,name:"Synthetic network evidence",targets:["192.0.2.10"],authorization:"Isolated synthetic fixture owned by CI",
+        authorizationConfirmed:true,expiresAt:new Date(Date.now()+3600000).toISOString(),requestId:crypto.randomUUID()};
+      const row=(await (await expectStatus(base,{as:"admin",method:"POST",body:draft},200)).json()).assessment;
+      const retry=(await (await expectStatus(base,{as:"admin",method:"POST",body:draft},200)).json()).assessment;assert.equal(retry.id,row.id);
       await expectStatus(base,{as:"admin",method:"POST",body:{action:"approve",id:row.id,scopeDigest:"0".repeat(64)}},400);
       await expectStatus(base,{as:"admin",method:"POST",body:{action:"approve",id:row.id,scopeDigest:row.scope_digest}},200);
       const xml='<nmaprun scanner="nmap" version="fixture"><host><status state="up"/><address addr="192.0.2.10" addrtype="ipv4"/><ports><port protocol="tcp" portid="443"><state state="open"/><service name="https"/></port></ports></host><runstats><finished exit="success"/></runstats></nmaprun>';
@@ -379,6 +382,23 @@ test("real authenticated API permissions and project isolation", async t => {
       assert.match(Buffer.from(await pdf.arrayBuffer()).toString('ascii',0,8),/%PDF/);
       assert.match(pdf.headers.get('content-disposition'),/^attachment/);
       const original=await expectStatus(report+'?format=xml',{as:"admin"},200);assert.equal(await original.text(),xml);
+    });
+
+    await t.test("assessment cursor exposes older pages without duplicating equal timestamps",async()=>{
+      const base="/api/security/assessments";const stamp=new Date().toISOString();
+      for(let i=0;i<27;i++)await db.query(`INSERT INTO security_assessments (id,project_id,created_by,request_id,scope,scope_digest,status,created_at) VALUES ($1,$2,$3,$4,$5,$6,'pending',$7)`,[crypto.randomUUID(),projectId,users.admin.id,crypto.randomUUID(),JSON.stringify({name:"Pagination fixture",targets:["192.0.2.1"],expiresAt:stamp}),"fixture",stamp]);
+      const first=await (await expectStatus(base,{as:"admin"},200)).json();assert.equal(first.assessments.length,25);assert.ok(first.nextCursor);
+      const second=await (await expectStatus(base+"?after="+first.nextCursor,{as:"admin"},200)).json();assert.ok(second.assessments.length>=3);assert.ok(!second.assessments.some(row=>first.assessments.some(old=>old.id===row.id)));
+      await expectStatus(base+"?after=invalid",{as:"admin"},400);
+    });
+
+    await t.test("usage call API exposes only authenticated users' own allowlisted counters",async()=>{
+      const ids=[crypto.randomUUID(),crypto.randomUUID()];
+      for(let i=0;i<2;i++)await db.query(`INSERT INTO usage_events (id,user_id,provider,model,input_tokens,output_tokens,cached_tokens,cost_chf,metadata) VALUES ($1,$2,'ci-ledger','offline',10,2,0,0,$3)`,[ids[i],i?users.outsider.id:users.editor.id,JSON.stringify({kind:"provider-call",usageKnown:true,costStatus:"reported",costUsd:0,reportedCostUsd:0,usdToChfRate:0.8,prompt:"private fixture"})]);
+      await expectStatus('/api/usage/calls',{},401);
+      const page=await (await expectStatus('/api/usage/calls',{as:"editor"},200)).json();assert.ok(page.calls.some(row=>row.id===ids[0]));assert.ok(!page.calls.some(row=>row.id===ids[1]));assert.ok(!JSON.stringify(page).includes('private fixture'));
+      await expectStatus('/api/usage/calls?after='+ids[1],{as:"editor"},400);
+      await db.query('DELETE FROM usage_events WHERE id=ANY($1::text[])',[ids]);
     });
 
     await t.test("tasks are readable by viewer, writable by editor", async () => {

@@ -851,6 +851,7 @@ export default function ProjectWorkbench({
   const [selectedSkillIds,setSelectedSkillIds]=useState([]);
   useEffect(()=>setSelectedSkillIds([]),[project.id]);
   const [privacyEnabled,setPrivacyEnabled]=useState(true);
+  const [freeOnly,setFreeOnly]=useState(false);
   const {privacySend,privacyDialog} = usePrivacySend(`${project.id}:${conversationId || 'new'}`);
 
   async function sendProjectMessage(
@@ -904,7 +905,7 @@ export default function ProjectWorkbench({
     try {
       const response = await privacySend(`/api/projects/${project.id}/chat`,{
         skillIds:selectedSkillIds,
-        message:text,conversationId,mode:chatMode,privacyEnabled
+        message:text,conversationId,mode:chatMode,privacyEnabled,billingPolicy:freeOnly?'free-only':'standard'
       },{localOnly:project.privacy_level==='local_only'});
 
       const data = await response.json();
@@ -1476,7 +1477,7 @@ export default function ProjectWorkbench({
                 </select>
 
                 <ChatControls mode={chatMode} onModeChange={setChatMode} privacyEnabled={privacyEnabled}
-                  onPrivacyChange={setPrivacyEnabled} disabled={chatLoading} />
+                  freeOnly={freeOnly} onFreeOnlyChange={setFreeOnly} onPrivacyChange={setPrivacyEnabled} disabled={chatLoading} />
 
               </div>
 

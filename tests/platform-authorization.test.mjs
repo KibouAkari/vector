@@ -32,3 +32,16 @@ test('bounded JSON blocks oversized inputs and non-JSON bodies',async()=>{
  await assert.rejects(boundedJson(new Request('https://vector.test',{method:'POST',body:'plain'})),/INVALID_REQUEST/);
  await assert.rejects(boundedJson(new Request('https://vector.test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:'x'.repeat(100)})}),{maxBytes:20}),/REQUEST_LIMIT/);
 });
+
+test('malformed JSON yields an input error while valid large Unicode skills remain accepted',async()=>{
+ await assert.rejects(boundedJson(new Request('https://vector.test',{method:'POST',headers:{'content-type':'application/json'},body:'{"broken"'})),/INVALID_REQUEST/);
+ const instructions='界'.repeat(6000);let received;
+ const api=load('../app/api/projects/[id]/skills/route.js',{getSession:async()=>({userId:'editor',role:'member'}),canEditProject:async()=>true,canAccessProject:async()=>true,boundedJson,createSkill:async(_id,_session,input)=>{received=input;return {id:'fixture'};}},['POST']);
+ const response=await api.POST(new Request('https://vector.test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'create',name:'Unicode',instructions})}),{params:{id:'p'}});
+ assert.equal(response.status,200);assert.equal(received.instructions,instructions);
+});
+test('skill context exposes original quoted bytes to the privacy scanner before serialization',async()=>{
+ const id='123e4567-e89b-42d3-a456-426614174000';const instructions='Password: "R7! synthetic phrase"';
+ const api=load('../lib/project-skills.js',{crypto:{},initializeDatabase:async()=>{},db:{query:async sql=>({rows:/SELECT id,name/.test(sql)?[{id,name:'Synthetic',instructions,content_sha256:'fixture'}]:[]})}},['selectedSkillContext']);
+ assert.ok((await api.selectedSkillContext('p',[id])).includes(instructions));
+});

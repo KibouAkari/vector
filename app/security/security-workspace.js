@@ -1,12 +1,20 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
+import {assessmentDraft} from '../../lib/security/client-request.mjs';
 export default function SecurityWorkspace(){
  const [projects,setProjects]=useState([]),[rows,setRows]=useState([]),[projectId,setProjectId]=useState(''),[name,setName]=useState(''),[targets,setTargets]=useState(''),[authorization,setAuthorization]=useState(''),[confirmed,setConfirmed]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const endpoint='/api/security/assessments';
- async function refresh(){const response=await fetch(endpoint,{cache:'no-store'});if(!response.ok)throw Error('Assessments could not be loaded.');setRows((await response.json()).assessments);}
- useEffect(()=>{const controller=new AbortController();Promise.all([fetch('/api/projects',{cache:'no-store',signal:controller.signal}),fetch(endpoint,{cache:'no-store',signal:controller.signal})]).then(async([p,a])=>{if(!p.ok||!a.ok)throw Error('Security workspace could not be loaded.');const [pd,ad]=await Promise.all([p.json(),a.json()]);setProjects(pd.projects);setRows(ad.assessments);}).catch(e=>{if(e.name!=='AbortError')setError(e.message);});return()=>controller.abort();},[]);
- async function change(input){if(busy)return;setBusy(true);setError('');try{const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input)});const data=await response.json();if(!response.ok)throw Error(data.error || 'Assessment update failed.');await refresh();return true;}catch(e){setError(e.message);return false;}finally{setBusy(false);}}
- async function create(e){e.preventDefault();const ok=await change({action:'create',projectId,name,targets:targets.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean),authorization,authorizationConfirmed:confirmed,expiresAt:new Date(Date.now()+24*3600000).toISOString(),requestId:crypto.randomUUID()});if(ok){setName('');setTargets('');setAuthorization('');setConfirmed(false);}}
+ const pending=useRef(null),busyRef=useRef(false);const [nextCursor,setNextCursor]=useState(null);
+ async function refresh(after=null){const response=await fetch(endpoint+(after?'?after='+encodeURIComponent(after):''),{cache:'no-store'});if(!response.ok)throw Error('Assessments could not be loaded.');const data=await response.json();setRows(previous=>after?[...previous,...data.assessments.filter(row=>!previous.some(old=>old.id===row.id))]:data.assessments);setNextCursor(data.nextCursor);}
+ useEffect(()=>{const controller=new AbortController();Promise.all([fetch('/api/projects',{cache:'no-store',signal:controller.signal}),fetch(endpoint,{cache:'no-store',signal:controller.signal})]).then(async([p,a])=>{if(!p.ok||!a.ok)throw Error('Security workspace could not be loaded.');const [pd,ad]=await Promise.all([p.json(),a.json()]);setProjects(pd.projects);setRows(ad.assessments);setNextCursor(ad.nextCursor);}).catch(e=>{if(e.name!=='AbortError')setError(e.message);});return()=>controller.abort();},[]);
+ async function change(input){if(busyRef.current)return false;busyRef.current=true;setBusy(true);setError('');try{const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input)});const data=await response.json();if(!response.ok)throw Error(data.error || 'Assessment update failed.');
+   setRows(previous=>[data.assessment,...previous.filter(row=>row.id!==data.assessment.id)]);
+   try{await refresh();}catch{setError('Saved successfully. The list could not be refreshed; reload to retrieve other assessments.');}
+   return true;
+ }catch(e){setError(e.message);return false;}finally{busyRef.current=false;setBusy(false);}}
+ async function create(e){e.preventDefault();const fields={action:'create',projectId,name,targets:targets.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean),authorization,authorizationConfirmed:confirmed};pending.current=assessmentDraft(pending.current,fields);
+   const ok=await change(pending.current.payload);if(ok){pending.current=null;setName('');setTargets('');setAuthorization('');setConfirmed(false);}}
+ async function more(){if(busyRef.current)return;busyRef.current=true;setBusy(true);try{await refresh(nextCursor);}catch(e){setError(e.message);}finally{busyRef.current=false;setBusy(false);}}
  async function importXml(row,file){if(!file)return;if(file.size>2*1024*1024){setError('XML evidence exceeds the 2 MB limit.');return;}await change({action:'import',id:row.id,xml:await file.text()});}
  return <div className="vp-control"><h1>Security evidence workspace</h1><p>Define authorized scope, approve it, then import Nmap XML and produce an evidence-based report. This workspace does not launch scans, exploit targets or call an AI API.</p>
  {error&&<p role="alert">{error}</p>}
@@ -15,5 +23,5 @@ export default function SecurityWorkspace(){
  {row.status==='pending'&&<div className="vp-control-actions"><button disabled={busy} onClick={()=>change({action:'approve',id:row.id,scopeDigest:row.scope_digest})}>Approve this exact scope</button></div>}
  {row.status==='approved'&&<label>Import tool evidence<input type="file" accept=".xml,application/xml,text/xml" disabled={busy} onChange={e=>{const file=e.target.files?.[0];e.target.value='';importXml(row,file).catch(()=>setError('Evidence could not be read.'));}}/></label>}
  {row.status==='completed'&&<><p>{row.result.observations.length} informational observations. Coverage {row.result.coverage.complete?'reported for every target':'incomplete'}.</p><small>Evidence SHA-256 {row.result.evidenceSha256}</small><div className="vp-control-actions">{['pdf','md','xml'].map(format=><a className="vp-control-button" key={format} href={`${endpoint}/${encodeURIComponent(row.id)}/report?format=${format}`} download>{format==='xml'?'Original XML':format.toUpperCase()+' report'}</a>)}</div></>}
- </section>)}</div></div>;
+ </section>)}</div>{nextCursor&&<button disabled={busy} onClick={more}>Load older assessments</button>}</div>;
 }

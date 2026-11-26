@@ -27,3 +27,7 @@ are immutable instruction drafts activated against an exact content hash and
 selected explicitly before privacy review. The security workbench imports scoped
 Nmap XML and renders local reports; it executes no scan. See
 [platform delivery](PLATFORM_DELIVERY.md) for tests, boundaries and unfinished adapters.
+
+## Privacy and cost source update
+
+Individual placeholder choices and the initial rules-only outage dialog are source-qualified with offline fixtures. Free inference is retained through durable routing; no key provisioning or paid fallback is added. The own-account ledger distinguishes OpenRouter reported USD costs from estimates, unknown usage and CHF conversion. Qualify the native detector and exact app/worker release on the host before claiming deployment. See [delivery contracts](FREE_USAGE_PRIVACY_ACCOUNTING.md).

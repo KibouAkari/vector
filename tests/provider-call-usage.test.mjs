@@ -204,3 +204,14 @@ test('artifact provider failover shares the two-attempt local-worker budget',asy
   assert.equal(budgets[0].calls,2);
   assert.equal(failed.length,1);
 });
+
+test('OpenRouter reported USD cost including zero survives the actual usage normalizer',()=>{
+ for(const cost of [0,'0.00001234',0.42]){
+  const usage=normalizedOpenAiUsage({prompt_tokens:100,completion_tokens:10,cost});
+  const event=quote({...runtime,provider:'openrouter'},{id:'reported-'+cost,usage});
+  assert.equal(event.metadata.costStatus,'reported');assert.equal(event.metadata.reportedCostUsd,Number(cost));assert.equal(event.costChf,Number(cost)*0.8);
+  assert.equal(quote(runtime,{usage}).metadata.costStatus,'estimated','other providers do not inherit OpenRouter billing semantics');
+ }
+ for(const cost of [null,'',true,-1,'NaN'])assert.notEqual(quote({...runtime,provider:'openrouter'},{usage:normalizedOpenAiUsage({prompt_tokens:10,completion_tokens:2,cost})}).metadata.costStatus,'reported');
+ for(const counter of [null,true,'',-1])assert.equal(quote(runtime,{usage:normalizedOpenAiUsage({prompt_tokens:counter,completion_tokens:3})}).metadata.usageKnown,false);
+});

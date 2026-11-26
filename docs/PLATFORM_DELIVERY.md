@@ -133,3 +133,7 @@ lifecycle controls, cross-adapter budget reservations, real scanner executors,
 voice/channel/device adapters and representative model quality evaluation. A
 small owner-selected live evaluation can be budget capped later; it is not run
 implicitly by this change.
+
+## Privacy and inference economics
+
+Individual placeholder choices, a rules-only outage decision, explicit free-inference routing and a per-account provider-call ledger extend this delivery. See [free usage, privacy and accounting](FREE_USAGE_PRIVACY_ACCOUNTING.md) for exact guarantees and limitations.

@@ -252,6 +252,8 @@ export async function POST(
   const body =
     await request.json();
 
+  if(body.billingPolicy!==undefined && !['standard','free-only'].includes(body.billingPolicy))return Response.json({error:'Ungültige Kosteneinstellung.'},{status:400});
+
   if (body.privacyEnabled !== undefined && typeof body.privacyEnabled !== 'boolean') {
     return Response.json({error:'Ungültige Datenschutzeinstellung.'},{status:400});
   }
@@ -503,7 +505,7 @@ export async function POST(
       userId:
         session.userId,
       conversationId,
-      message:safeMessage+(skillContext?'\nskills:'+crypto.createHash('sha256').update(skillContext).digest('hex'):'')+'\nprivacy:'+privacy.destination+':'+(body.privacyEnabled===false?'off':body.privacyDecision||'replace')
+      message:safeMessage+(skillContext?'\nskills:'+crypto.createHash('sha256').update(skillContext).digest('hex'):'')+'\nprivacy:'+privacy.destination+':'+(body.privacyEnabled===false?'off':body.privacyDecision||'replace')+'\nbilling:'+(body.billingPolicy || 'standard')+'\nselection:'+JSON.stringify(body.privacyReplaceIds || null)
     });
 
   const duplicate =
@@ -581,6 +583,7 @@ export async function POST(
 
       payload: {
         requestText:safeMessage,
+        billingPolicy:body.billingPolicy || 'standard',
         privacyPolicy:privacy.policy,
         privacyDestination:privacy.destination,
         userId:

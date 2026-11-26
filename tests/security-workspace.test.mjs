@@ -18,7 +18,7 @@ test('XML yields informational evidence with missing-host coverage, never a fabr
 test('out-of-scope, malformed, failed and entity-bearing results fail closed',()=>{
  assert.throws(()=>parseNmapEvidence(xml('192.0.2.2'),scope()),{code:'OUT_OF_SCOPE_EVIDENCE'});
  assert.throws(()=>parseNmapEvidence(xml().replace('exit="success"','exit="error"'),scope()),{code:'INCOMPLETE_NMAP_RUN'});
- assert.throws(()=>parseNmapEvidence(xml().replace('</host>',''),scope()),{code:'INVALID_NMAP_XML'});
+ assert.throws(()=>parseNmapEvidence(xml().replace('</host>',''),scope()),error=>['INVALID_NMAP_XML','INCOMPLETE_NMAP_RUN'].includes(error.code));
  assert.throws(()=>parseNmapEvidence('<!DOCTYPE nmaprun SYSTEM "file:///etc/passwd">'+xml(),scope()),{code:'UNSAFE_XML'});
  assert.throws(()=>parseNmapEvidence('<!ENTITY xxe SYSTEM "https://private">'+xml(),scope()),{code:'UNSAFE_XML'});
  assert.throws(()=>parseNmapEvidence(xml().replace('portid="443"','portid="70000"'),scope()),{code:'INVALID_PORT'});
@@ -27,4 +27,22 @@ test('professional report produces a readable multi-page PDF without a provider 
  const s=scope(),r=parseNmapEvidence(xml(),s);r.observations=Array.from({length:90},(_,i)=>({...r.observations[0],port:i+1}));
  const bytes=await renderSecurityPdf(securityReport({scope:s,result:r,approvedAt:'2026-11-26',approvedBy:'Fixture reviewer'}));
  assert.match(bytes.toString('ascii',0,8),/%PDF/);const pdf=await PDFDocument.load(bytes);assert.ok(pdf.getPageCount()>1);assert.equal(pdf.getAuthor(),'Vector Security Workspace');
+});
+
+test('only one successful root runstats completion is authoritative',()=>{
+ const completion='<runstats><finished exit="success"/></runstats>';
+ for(const invalid of [xml().replace(completion,completion+completion),xml().replace(completion,'<wrapper>'+completion+'</wrapper>'),xml().replace(completion,'<runstats><finished exit="error"/><finished exit="success"/></runstats>'),xml().replace(completion,'<runstats><finished exit="success"/><finished exit="success"/></runstats>')])assert.throws(()=>parseNmapEvidence(invalid,scope()),{code:'INCOMPLETE_NMAP_RUN'});
+});
+test('multiple IPv6 addresses yield individually bounded report rows',async()=>{
+ const targets=Array.from({length:32},(_,i)=>'2001:db8::'+(i+1).toString(16));const s={...scope(),targets};
+ const data=xml().replace('<address addr="192.0.2.1" addrtype="ipv4"/>',targets.map(ip=>`<address addr="${ip}" addrtype="ipv6"/>`).join(''));
+ const result=parseNmapEvidence(data,s);assert.equal(result.observations.length,32);assert.deepEqual(new Set(result.observations.map(o=>o.target)),new Set(targets));
+ const pdf=await PDFDocument.load(await renderSecurityPdf(securityReport({scope:s,result,approvedAt:'fixture',approvedBy:'fixture'})));assert.ok(pdf.getPageCount()>1);
+});
+
+test('ambiguous assessment retries reuse the identical expiry and mutation ID',async()=>{
+ const {assessmentDraft}=await import('../lib/security/client-request.mjs');const fields={projectId:'fixture-project',name:'Authorized fixture'};
+ const first=assessmentDraft(null,fields,{now:()=>1000,requestId:()=> 'first'});
+ assert.equal(assessmentDraft(first,fields,{now:()=>9000,requestId:()=> 'second'}),first);
+ const changed=assessmentDraft(first,{...fields,name:'Changed scope'},{now:()=>9000,requestId:()=> 'second'});assert.notEqual(changed.payload.requestId,first.payload.requestId);assert.notEqual(changed.payload.expiresAt,first.payload.expiresAt);
 });

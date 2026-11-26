@@ -5,7 +5,7 @@ import {useEffect,useId,useRef,useState} from 'react';
 import {ChevronDown,Check,ShieldCheck,ShieldOff} from 'lucide-react';
 import {CHAT_MODES} from '../../lib/chat-controls.mjs';
 
-export default function ChatControls({mode,onModeChange,privacyEnabled,onPrivacyChange,disabled=false}) {
+export default function ChatControls({mode,onModeChange,privacyEnabled,onPrivacyChange,freeOnly=false,onFreeOnlyChange,disabled=false}) {
   const [open,setOpen]=useState(false);
   const [position,setPosition]=useState(null);
   const root=useRef(null);const trigger=useRef(null);const menu=useRef(null);const id=useId();
@@ -28,6 +28,7 @@ export default function ChatControls({mode,onModeChange,privacyEnabled,onPrivacy
       <Shield size={15} aria-hidden="true"/><span>Datenschutz {privacyEnabled?'an':'aus'}</span>
     </button>
     {privacyEnabled && <span className="vector-tool-privacy-note">Neue Tool-Daten werden geschützt.</span>}
+    {onFreeOnlyChange&&<button type="button" role="switch" aria-checked={freeOnly} disabled={disabled} onClick={()=>onFreeOnlyChange(!freeOnly)} title="Nur lokale oder konfigurierte OpenRouter-Gratisvarianten. Quoten gelten weiterhin. Tool-Dienste können eigene Gebühren haben.">Gratis-Inferenz {freeOnly?'an':'aus'}</button>}
     <div className="vector-mode-picker">
       <button type="button" ref={trigger} disabled={disabled} aria-haspopup="menu" aria-expanded={open}
         aria-controls={open?id:undefined} onClick={()=>{place();setOpen(!open);}} aria-label={`Chatmodus: ${selected.label}`}>

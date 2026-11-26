@@ -50,3 +50,7 @@ approvals, project instruction skills and a scoped local evidence/report flow.
 It maps the requested integrations to explicit adapter and release requirements.
 Live voice, general channels, device installers, parallel agent teams and media
 generation are still incomplete. Source inventory is not runtime readiness.
+
+## Free capacity and billing reconciliation
+
+Delivered source controls include free-inference constraints, selective privacy and own-account provider-call pagination. Next runtime gates are native detector qualification and exact app/worker rollout. Organization billing reconciliation, non-inference tool budgets and full channel/device/voice executors remain separate work; unlimited premium capacity is not a release claim.

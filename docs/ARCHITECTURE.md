@@ -77,3 +77,7 @@ P50/P95 latency and fallback outcomes.
 
 Never replay an irreversible action without appropriate
 idempotency safeguards and authorization.
+
+## Inference policy and accounting
+
+The chat job carries a free-inference constraint through account-scoped selection to the provider adapter. Privacy review can mask selected findings or preserve an explicitly approved exact snapshot. Reported provider charges, configured-rate estimates and unknown usage are separate states. See [the contracts](FREE_USAGE_PRIVACY_ACCOUNTING.md).

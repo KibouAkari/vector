@@ -92,3 +92,10 @@ test('privacy off shows sending instead of scanning and sends the explicit prefe
   await sender.send('/api/chat',{message:'synthetic',mode:'normal',privacyEnabled:false});
   assert.deepEqual(states,['sending','idle']);assert.equal(bodies.length,1);assert.equal(bodies[0].privacyEnabled,false);
 });
+
+test('individual placeholder choices reach the confirmation request unchanged',async()=>{
+ const bodies=[];const sender=createPrivacySender({onState:()=>{},requestChoice:async()=>({decision:'replace',replaceIds:['<VEC_PERSON_fixture>']}),fetchImpl:async(_url,options)=>{
+  bodies.push(JSON.parse(options.body));return bodies.length===1?new Response(JSON.stringify({error:'PRIVACY_REVIEW_REQUIRED',privacyReview:{token:'bound-fixture'}}),{status:409}):new Response('{}');
+ }});
+ await sender.send('/api/chat',{message:'Synthetic input',mode:'normal'});assert.deepEqual(bodies[1].privacyReplaceIds,['<VEC_PERSON_fixture>']);assert.equal(bodies[1].privacyDecision,'replace');assert.equal(bodies[1].toolEvidenceDecision,'replace');
+});

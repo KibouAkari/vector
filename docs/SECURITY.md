@@ -32,3 +32,7 @@ Redact real names, addresses, internal infrastructure,
 identifiers, API details and private project content.
 
 Never present a mockup as an actual application screenshot.
+
+## Privacy review and provider cost boundaries
+
+Selected skill text is scanned before provider JSON serialization. Original send is explicit consent for the exact reviewed snapshot, not blanket approval to disclose newly discovered tool secrets. Detector outages offer a clearly labelled rules-only review. Free inference uses explicit eligible models and an adapter price ceiling, not quota evasion. See [privacy and accounting boundaries](FREE_USAGE_PRIVACY_ACCOUNTING.md).

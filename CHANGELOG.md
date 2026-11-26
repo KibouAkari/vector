@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-11-26 — Selective privacy, free inference constraints and per-call accounting
+
+Add individual/all/none placeholder choices in chat and project privacy review.
+Bind consent to exact context and billing preference. Preserve explicit original
+send and local-only processing; if the local detector fails, present an honest
+rules-only review before enqueue rather than inventing a successful scan. Keep
+new tool evidence separately protected. Fix quoted skill/document credentials
+by scanning original instruction bytes and recognizing JSON-escaped values.
+
+Add a free-inference preference retained in durable jobs, routing and the actual
+adapter. Only configured local models and explicit OpenRouter free variants on
+the official endpoint qualify. Send a zero inference price ceiling and disable
+paid fallback. No accounts, keys, quota circumvention or paid calls are created.
+
+Preserve valid OpenRouter response charges including zero, actual response model
+IDs and real token presence. Separate reported, estimated, incomplete and local
+API-free accounting. Add a user-owned, cursor-paginated call ledger and Usage UI;
+keep CHF conversion and non-reconciled budget totals visibly distinct from bills.
+
+Fix malformed JSON input status, Unicode skill byte limits, duplicate/nested
+Nmap completion acceptance, multi-address PDF overflow, lost-acknowledgement
+assessment retry identity and access to older assessments. Extend offline and
+authenticated API/database regression coverage. Document free service terms and
+publicapis.dev's discovery role. No app or Minecraft rollout, scans or messages.
+
+
 ## 2026-11-26 — Platform control, reviewed skills and security evidence reports
 
 Close an authorization gap in global approval decisions: require platform owner
