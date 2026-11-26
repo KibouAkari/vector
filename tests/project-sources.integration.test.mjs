@@ -14,11 +14,14 @@ test('retained source import, index and recovery on real PostgreSQL',async t=>{
   const schema='sources_fixture_'+crypto.randomBytes(8).toString('hex');
   const admin=new pg.Pool({connectionString:url.toString(),max:1});
   const pool=new pg.Pool({connectionString:url.toString(),max:4,options:`-c search_path=${schema}`});
-  let failIndex=false, allowed=true, calls=0, waitFetch;
+  let failIndex=false, uncertainCommit=false, allowed=true, calls=0, waitFetch;
   const stored=new Map();
   const db={query:(...args)=>pool.query(...args),connect:async()=>{
     const client=await pool.connect();
+    let materializing=false;
     return {release:()=>client.release(),query:async(sql,params)=>{
+      if(/INSERT INTO project_files/.test(sql)) materializing=true;
+      if(sql==='COMMIT' && materializing && uncertainCommit) {await client.query(sql,params);throw Error('lost commit acknowledgement');}
       if(failIndex && /INSERT INTO project_file_chunks/.test(sql))throw Error('injected index failure');
       return client.query(sql,params);
     }};
@@ -79,6 +82,14 @@ test('retained source import, index and recovery on real PostgreSQL',async t=>{
       try {await assert.rejects(run(),{code:'IMPORT_BUSY'});allowed=false;}
       finally{release();waitFetch=null;}
       await assert.rejects(pending,{code:'ACCESS_REVOKED'});allowed=true;
+    });
+    await t.test('a lost commit acknowledgement never deletes a committed evidence file',async()=>{
+      uncertainCommit=true;
+      await assert.rejects(run(),{code:'IMPORT_FAILED'});
+      uncertainCommit=false;
+      const rows=(await pool.query("SELECT file_id FROM project_sources WHERE status='indexed'")).rows;
+      assert.ok(rows.length>=3);
+      for(const row of rows)assert.ok(stored.has(row.file_id));
     });
   } finally {await pool.end();await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);await admin.end();}
 });

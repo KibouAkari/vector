@@ -69,7 +69,9 @@ No project or chat data is sent to an external extraction service.
 
 Source metadata, file metadata and index chunks commit in one transaction. An
 index failure rolls back those writes and records a public error code; cleanup
-only targets the newly staged encrypted file. The original stored response is
+only targets the newly staged encrypted file before a commit is attempted. A lost
+commit acknowledgement or process crash can retain an unreferenced staged file;
+cleanup must reconcile database ownership before removing it. The original stored response is
 encrypted with the existing file key. A revoked project editing permission is
 checked again after acquisition, before materialization. An attempt token prevents
 an expired request from overwriting a newer attempt.
