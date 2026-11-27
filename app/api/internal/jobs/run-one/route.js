@@ -1,3 +1,4 @@
+import {runNextSecurityScan} from '../../../../../lib/security/scan-store';
 import crypto from "node:crypto";
 
 import {
@@ -86,6 +87,8 @@ export async function POST(
   if (
     !job
   ) {
+    const scan=await runNextSecurityScan();
+    if(scan)return Response.json({ok:true,claimed:true,jobId:scan.id,kind:'security-scan'});
     return Response.json({
       ok: true,
       claimed: false

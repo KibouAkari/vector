@@ -152,7 +152,8 @@ async function ensureAssistantMessage({
           role,
           content,
           model,
-          cost_chf
+          cost_chf,
+          cost_status
         )
         VALUES (
           $1,
@@ -160,7 +161,8 @@ async function ensureAssistantMessage({
           'assistant',
           $3,
           $4,
-          $5
+          $5,
+          $6
         )
       `,
       [
@@ -350,6 +352,8 @@ export async function POST(
 ) {
   const session =
     await getSession();
+  if(session?.role==='readonly')return Response.json({error:'READ_ONLY_ACCOUNT'},{status:403});
+
 
   if (
     !session
@@ -485,6 +489,8 @@ export async function DELETE(
 ) {
   const session =
     await getSession();
+  if(session?.role==='readonly')return Response.json({error:'READ_ONLY_ACCOUNT'},{status:403});
+
 
   if (
     !session

@@ -9,6 +9,11 @@ test('public ledger distinguishes reported, estimated and unknown and excludes p
 });
 test('ledger pagination is bounded and scopes both rows and cursor ownership to the user',async()=>{
  const queries=[];const db={query:async(sql,args)=>{queries.push({sql,args});return {rows:Array.from({length:51},(_,i)=>({id:'call_'+i,metadata:{}})),rowCount:0};}};
- const page=await listUsageCalls(db,'alice');assert.equal(page.calls.length,50);assert.equal(page.nextCursor,'call_49');assert.match(queries[0].sql,/user_id=\$1/);assert.match(queries[0].sql,/LIMIT 51/);assert.deepEqual(queries[0].args,['alice',null]);
+ const page=await listUsageCalls(db,'alice');assert.equal(page.calls.length,50);assert.equal(page.nextCursor,'call_49');assert.match(queries[0].sql,/user_id=\$1/);assert.match(queries[0].sql,/LIMIT 51/);assert.deepEqual(queries[0].args,['alice',null,null,null]);
  await assert.rejects(listUsageCalls(db,'bob',{after:'call_1'}),/INVALID_CURSOR/);assert.deepEqual(queries[1].args,['call_1','bob']);
+});
+test('project and exact-model filters are parameterized and never replace user scope',async()=>{
+ const project='123e4567-e89b-42d3-a456-426614174000';const queries=[];const db={query:async(sql,args)=>{queries.push({sql,args});return {rows:[]};}};
+ await listUsageCalls(db,'alice',{project,model:'fixture/model'});assert.deepEqual(queries[0].args,['alice',null,project,'fixture/model']);assert.match(queries[0].sql,/user_id=\$1/);assert.match(queries[0].sql,/model=\$4/);
+ await assert.rejects(listUsageCalls(db,'alice',{project:'../other'}),/INVALID_FILTER/);await assert.rejects(listUsageCalls(db,'alice',{model:' '.repeat(4)}),/INVALID_FILTER/);
 });

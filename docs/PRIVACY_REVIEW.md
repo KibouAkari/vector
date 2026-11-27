@@ -1,6 +1,6 @@
 # Local privacy review
 
-Privacy review is separate from model mode, ownership and tool permissions. `VECTOR_PRIVACY_REVIEW=1` enables the native detector path; the user can explicitly turn review off for a request. Local-only projects remain local regardless of that switch.
+Privacy review is separate from model mode, ownership and tool permissions. `VECTOR_PRIVACY_REVIEW=1` enables fast local rules by default; `VECTOR_PRIVACY_DETECTOR=ner` explicitly adds the optional native encoder; the user can explicitly turn review off for a request. Local-only projects remain local regardless of that switch.
 
 ## Send behavior
 
@@ -14,9 +14,11 @@ A fully local request bypasses detector/review and has no cloud fallback. A clou
 
 ## Detector and failure behavior
 
-PERSON extraction uses the pinned `urchade/gliner_multi_pii-v1` encoder; deterministic rules also inspect credentials and email addresses. Finite synthetic tests do not guarantee detection of every private value. The optional `services/privacy-ner/server.py` has a lightweight parent and a spawned model child. Health does not wake the model. Warm scans reuse it; after300 idle seconds the child exits. The next request loads it again.
+The default rules path detects labelled secrets, keys, emails, contact and private-network patterns without a model call. The live drawer updates selected replacements and a per-message receipt shows the actual protected current prompt. The UI may restore original text locally; that does not mean the provider received it. Processing time is separate from authentication, context/database retrieval and network latency. The small synthetic rules fixture is tested below 100 ms; no end-to-end host latency guarantee is made.
 
-The deployment must supply the private service, strict token ownership, read-only offline model files, resource limits and private networking. There is no cloud/download fallback. Invalid output, overload, unavailable detection, excessive input or scan deadline failure blocks external sending. Cold starts and long contexts can take longer. The current implementation bounds inspected input at160,000 UTF-8 bytes and rejects incomplete coverage.
+Optional PERSON extraction uses the pinned `urchade/gliner_multi_pii-v1` encoder; deterministic rules also inspect credentials and email addresses. Finite synthetic tests do not guarantee detection of every private value. The optional `services/privacy-ner/server.py` has a lightweight parent and a spawned model child. Health does not wake the model. Warm scans reuse it; after300 idle seconds the child exits. The next request loads it again.
+
+The deployment must supply the private service, strict token ownership, read-only offline model files, resource limits and private networking. There is no cloud/download fallback. Invalid consent and excessive input block sending. An optional NER outage presents an explicit rules-only decision before enqueue; it never claims complete native detection. Unknown secrets in later tool evidence remain blocked if the configured detector cannot finish. Optional NER cold starts and long contexts can take longer. The current implementation bounds inspected input at160,000 UTF-8 bytes and rejects incomplete coverage.
 
 ## Verification and accounting
 

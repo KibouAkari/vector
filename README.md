@@ -108,7 +108,7 @@ The web statistics adapter uses private runtime settings `VECTOR_MINECRAFT_DATA_
 
 The existing source provides direct calls, deterministic artifact builders, tool execution, jobs, access policy and usage tracking. The [architecture](docs/ARCHITECTURE.md) also describes target components and benchmark candidates; their names do not imply completed integrations.
 
-The immediate priority is reliable chat/project execution, exact consent, complete server reads and measurable quality, cost and latency. New gateways, orchestration, skills and channels follow representative evaluations rather than replacing working infrastructure prematurely.
+The immediate priority is reliable chat/project execution, exact consent, complete server reads and measurable quality, cost and latency. New gateways, orchestration and channels follow representative evaluations rather than replacing working infrastructure prematurely.
 
 ## Development and publication
 
@@ -116,11 +116,11 @@ Use locked dependencies through `npm ci` and isolated PostgreSQL fixtures for in
 
 Every change extends the [changelog](CHANGELOG.md). Dated history and useful README sections must remain during cleanup. Generalize private references narrowly and preserve exact operational originals privately.
 
-The repository remains private until a separate [publication review](docs/PUBLICATION.md) covers history, branches, PRs, artifacts, screenshots and licenses. A current-tree scan does not inspect those other stores. A merged PR is not evidence of a live release.
+A separate [publication review](docs/PUBLICATION.md) must cover history, branches, PRs, artifacts, screenshots and licenses. A current-tree scan does not inspect those other stores. A merged PR is not evidence of a live release.
 
 ## What comes next
 
-Immediate work focuses on reliable model selection, provider fallbacks and measurable quality. Artifact editing, selective agent orchestration, curated skills and additional communication channels follow in later phases.
+Immediate work focuses on reliable model selection, provider fallbacks and measurable quality. Artifact editing, selective agent orchestration and additional communication channels follow in later phases.
 
 [See the planned milestones →](docs/ROADMAP.md)
 
@@ -158,15 +158,27 @@ state. Project access and outbound-model privacy rules remain in force. Private
 network targets and local-only project imports are blocked. This source feature
 has not been qualified on a live deployment. See [limits, recovery and storage](docs/SOURCE_INGESTION.md).
 
-## Platform control, skills and security evidence
+## Workspace controls
 
-Owners can inspect the source capability map at `/platform`, administer protected
-approvals and use `/security` for scoped Nmap XML evidence and local PDF reports.
-Project editors can draft skills; owners review exact text before activation, and
-users explicitly select active skills in project chat. Quick mode avoids separate
-planner/reviewer calls for routine work. Voice, general messaging, device agents
-and media adapters remain planned, not connected by the capability map. See the
-[delivery details and integration decisions](docs/PLATFORM_DELIVERY.md).
+Core tools are directly available in the sidebar. The authenticated control views
+use quiet tables and compact actions; login/intro and dashboard charts remain.
+
+| Area | Current source behavior |
+| --- | --- |
+| Privacy | Fast local rules, selected live preview, exact protected-message receipt and reversible local mapping; optional NER is explicit |
+| Skills | Global and project Markdown skills, immutable revisions, typed parameters, reviewed activation and actual chat context |
+| Security | Authorized active TCP, HTTP/TLS and Minecraft status checks, opt-in version advisory candidates, queued reports and JSON/Markdown export |
+| Approvals | Owner decisions, audit, exact single-use critical tool grants and saved asset scopes |
+| Access | Owner/admin/member/read-only roles, project access and model/tool allowlists checked before execution |
+| Costs | Own-account call ledger, project/model filters, reported/estimated/unknown costs and shared pre-call budget reservations |
+
+[Setup](docs/CONTROL_CENTRE_SETUP.md) · [Architecture and boundaries](docs/CONTROL_CENTRE.md) ·
+[API](docs/CONTROL_CENTRE_API.md) · [Scanner](docs/SECURITY_SCANNER.md) · [Skills](docs/SKILLS.md)
+
+The previous XML evidence importer remains at `/security/evidence`. Voice,
+general messaging, cross-platform device agents and media adapters are separate
+future integrations. No model, scan or production release is triggered by
+publishing this source.
 
 ## Free inference and accountable privacy
 

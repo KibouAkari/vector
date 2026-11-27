@@ -43,8 +43,8 @@ approved text. No live free quota or provider performance was measured here.
 
 ## Privacy decisions
 
-The existing local GLiNER encoder plus deterministic credential/contact rules
-remains the detector. It is a lightweight local recognition pipeline, not a
+The default path now uses fast deterministic credential/contact rules, without a
+model call. `VECTOR_PRIVACY_DETECTOR=ner` optionally adds the existing local GLiNER encoder. It is a lightweight local recognition pipeline, not a
 second cloud model. A larger generative detector was not added just to classify
 names. Actual native detector quality and latency still need host qualification.
 
@@ -53,8 +53,8 @@ For a cloud-bound request with privacy enabled:
 1. Review covers the message, selected skills, retrieved project context,
    provenance, attachments and the exact owned conversation snapshot.
 2. Each finding has a checkbox. Select all, none or individual findings. Secret
-   values remain hidden in the finding list. The preview explicitly shows the
-   all-replaced version; it does not pretend to preview an unmasked secret.
+   values remain hidden in the finding list. The live preview follows the selected checkboxes. Hidden list values remain masked;
+   a deliberately unselected value is visible in the outgoing-message preview.
 3. Confirm selected replacements or send the original explicitly. Unselected
    findings are sent unchanged. Consent is encrypted, expires and binds the
    user, scope, content, attachments and billing preference.
@@ -71,7 +71,7 @@ bytes before detection. A regression drives the real project route and privacy
 engine through review, confirmation and durable enqueue with a quoted synthetic
 password and checks that its full value is absent.
 
-If the local detector is unavailable or returns an invalid/incomplete response,
+If optional NER is enabled but unavailable or returns an invalid/incomplete response,
 initial review shows a **rules-only warning**, even if no rule finding exists.
 It does not record a successful native scan or fabricate usage. No cloud job is
 queued until the user chooses explicitly. Original-send remains available.
@@ -134,3 +134,10 @@ choices, back up state and retain rollback evidence. Channel sends, device
 agents, live calls and autonomous scanner execution still need their own
 implementations and runtime qualification. See [platform delivery](PLATFORM_DELIVERY.md)
 and [deployment](DEPLOYMENT.md). No Minecraft deployment is implied.
+
+## Shared call admission
+
+Provider calls now reserve configured-price budget under a shared PostgreSQL lock.
+Unknown completion retains the reservation. This is distinct from recorded token
+usage and provider-reported charges. See [limits and accounting](CONTROL_CENTRE.md#accounting-and-budgets)
+for conservative envelopes, operator pricing and reconciliation boundaries.

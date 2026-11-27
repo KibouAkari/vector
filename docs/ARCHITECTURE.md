@@ -81,3 +81,13 @@ idempotency safeguards and authorization.
 ## Inference policy and accounting
 
 The chat job carries a free-inference constraint through account-scoped selection to the provider adapter. Privacy review can mask selected findings or preserve an explicitly approved exact snapshot. Reported provider charges, configured-rate estimates and unknown usage are separate states. See [the contracts](FREE_USAGE_PRIVACY_ACCOUNTING.md).
+
+## Implemented control modules, November 2026
+
+The existing Next.js application now owns instruction skill versions, exact tool
+approval grants, role capability policies, per-call budget reservations and a
+queued active asset scanner. These use the existing PostgreSQL and worker
+boundary; no new orchestration framework replaces it. Fast rules are the default
+privacy detector and optional NER is explicit. See [control centre](CONTROL_CENTRE.md),
+[scanner architecture](SECURITY_SCANNER.md) and [API contracts](CONTROL_CENTRE_API.md).
+The earlier stack-candidate table describes options, not installed dependencies.

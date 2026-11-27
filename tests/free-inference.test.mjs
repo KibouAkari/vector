@@ -26,7 +26,7 @@ test('real resolver keeps the free-only constraint across selection and exhauste
   if(/SELECT\s+p\.\*/.test(sql)){assert.match(sql,/p.owner_user_id = \$1/);assert.equal(args[0],'alice');return {rows};}
   return {rows:[],rowCount:0};
  }};
- const api=load('../lib/model-config.js',{crypto,db,initializeDatabase:async()=>{},freeInferenceEligible,MODEL_CATALOG:[],getCatalogModel:()=>null,automaticPricingFor:()=>null,classifyVectorTask:()=>({primary:'general'}),routingExplanation:()=> 'fixture',chooseCatalogModel:()=>({model:'fixture/paid'}),scoreCatalogModel:()=>50},['resolveProviderForTask','encryptSecret']);
+ const api=load('../lib/model-config.js',{crypto,db,initializeAccessPolicies:async()=>{},roleAllows:()=>true,initializeDatabase:async()=>{},freeInferenceEligible,MODEL_CATALOG:[],getCatalogModel:()=>null,automaticPricingFor:()=>null,classifyVectorTask:()=>({primary:'general'}),routingExplanation:()=> 'fixture',chooseCatalogModel:()=>({model:'fixture/paid'}),scoreCatalogModel:()=>50},['resolveProviderForTask','encryptSecret']);
  const key=api.encryptSecret('fixture-not-real');
  rows=[{id:'paid',provider:'openai',default_model:'paid',api_key_encrypted:key,owner_user_id:'alice'},{id:'free',provider:'openrouter',default_model:'fixture/model:free',api_key_encrypted:key,owner_user_id:'alice'}];
  const result=await api.resolveProviderForTask({userId:'alice',billingPolicy:'free-only',preferredProviderId:'paid'});assert.equal(result.id,'free');assert.equal(result.freeOnly,true);assert.equal(result.model,'fixture/model:free');

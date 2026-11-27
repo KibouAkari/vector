@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {readFileSync} from 'node:fs';
 import * as core from '../lib/privacy-review-core.mjs';
+import {previewRanges} from '../lib/privacy-preview.mjs';
 
 const key=Buffer.alloc(32,7);
 const secret='synthetic-password-for-privacy-tests';
@@ -69,6 +70,7 @@ test('invented findings, unexpected types and placeholders are rejected',()=>{
 });
 
 function loadRuntime({fail=false,truncated=false,extraFindings=[]}={}) {
+  process.env.VECTOR_PRIVACY_DETECTOR='ner';
   const source=readFileSync(new URL('../lib/privacy-review.js',import.meta.url),'utf8')
     .replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm,'').replace(/^export\s+/gm,'');
   const vault=new Map();const usage=[];const requests=[];
@@ -79,7 +81,7 @@ function loadRuntime({fail=false,truncated=false,extraFindings=[]}={}) {
       metrics:{model:'urchade/gliner_multi_pii-v1',processedTextTokens:45,
         tokenCountKind:'raw_text_subwords_including_overlap_and_rechecks'}};
   };
-  const deps={crypto,AsyncLocalStorage,...core,requestPrivacyScan,withLocalWorkerSlot:execute=>execute(),
+  const deps={crypto,AsyncLocalStorage,previewRanges,...core,requestPrivacyScan,withLocalWorkerSlot:execute=>execute(),
     getPrivacyMappings:async id=>vault.get(id)||[],savePrivacyMappings:async({conversationId,mappings})=>vault.set(conversationId,mappings),
     recordUsage:async event=>usage.push(event)};
   const api=new Function(...Object.keys(deps),source+'\nreturn {reviewPrivacyRequest,withJobPrivacy,protectProviderPayload,protectToolEvidence,restoreLocalToolArguments};')(...Object.values(deps));
@@ -512,4 +514,18 @@ test('quoted JSON and escaped credentials are completely replaced with exact res
    const plan=core.makePrivacyPlan(input,core.deterministicFindings(input));assert.ok(!plan.sanitized.includes('R7! synthetic phrase'),plan.sanitized);assert.equal(core.literalReplace(plan.sanitized,plan.mappings,true),input);
    assert.ok(!plan.mappings.some(m=>m.value==='\\'));
  }
+});
+
+test('default privacy path uses no model or worker slot and produces a protected receipt',async()=>{
+ const runtime=loadRuntime({fail:true});delete process.env.VECTOR_PRIVACY_DETECTOR;
+ const input={...args(),body:{...args().body,toolEvidenceDecision:'replace'}};const started=performance.now();
+ const review=await (await runtime.reviewPrivacyRequest(input)).response.json();const elapsed=performance.now()-started;
+ assert.equal(runtime.requests.length,0);assert.equal(runtime.usage.length,0);assert.equal(review.privacyReview.detector,'rules');assert.ok(elapsed<100,'rules-only fixture should finish within 100 ms');
+ const plan=await runtime.reviewPrivacyRequest({...input,body:{...input.body,privacyDecision:'replace',privacyReviewToken:review.privacyReview.token}});
+ assert.equal(plan.receipt.mode,'masked');assert.ok(!plan.receipt.sentText.includes(secret));assert.ok(plan.receipt.sentText.includes('<VEC_PASSWORD_'));runtime.vault.set('rules-only',plan.mappings);
+ await runtime.withJobPrivacy({userId:'alice',conversationId:'rules-only',privacyPolicy:plan.policy},async()=>{
+  const outgoing=runtime.protectProviderPayload({input:[{role:'user',content:plan.apply(text)}]});
+  for(const value of [secret,'erika@example.invalid'])assert.ok(!JSON.stringify(outgoing).includes(value));
+  const evidence=await runtime.protectToolEvidence('{"password":"synthetic new tool secret"}');assert.ok(!evidence.sanitized.includes('synthetic new tool secret'));
+ });assert.equal(runtime.requests.length,0);
 });

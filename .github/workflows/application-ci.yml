@@ -94,6 +94,7 @@ jobs:
           FILE_STORAGE_PATH: /tmp/vector-auth-ci-files
           VECTOR_AUTHZ_TEST_ORIGIN: http://127.0.0.1:3187
           COOKIE_SECURE: 'false'
+          VECTOR_SECURITY_PRIVATE_CIDRS: '10.255.255.254/32'
         run: |
           set -euo pipefail
           mkdir -p "$FILE_STORAGE_PATH"
@@ -112,7 +113,7 @@ jobs:
             cat /tmp/vector-auth-ci-next.log
             false
           fi
-          node --test tests/project-sources.integration.test.mjs tests/project-index.integration.test.mjs tests/project-access-api.integration.test.mjs tests/usage-attribution.integration.test.mjs tests/privacy-vault.integration.test.mjs tests/local-workers-db.integration.test.mjs tests/model-intelligence-api.integration.test.mjs
+          node --test tests/project-sources.integration.test.mjs tests/project-index.integration.test.mjs tests/project-access-api.integration.test.mjs tests/usage-attribution.integration.test.mjs tests/privacy-vault.integration.test.mjs tests/local-workers-db.integration.test.mjs tests/model-intelligence-api.integration.test.mjs tests/budget-reservations.integration.test.mjs
 
   secret-scan:
     name: Working tree secret scan

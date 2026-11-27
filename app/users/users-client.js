@@ -230,7 +230,7 @@ export default function UsersClient({ currentUserId }) {
       <header className="vux-users-head">
         <div>
           <span className="vux-eyebrow">OWNER / ACCESS MANAGEMENT</span>
-          <h1>Users</h1>
+          <h1>Users & Policies</h1><a href="/permissions" className="vux-button">Permission policies</a>
           <p>Give everyone exactly the access they need. Nothing more.</p>
         </div>
         <button className="vux-main-action" type="button" onClick={() => open(null)}>
@@ -336,7 +336,7 @@ export default function UsersClient({ currentUserId }) {
                     </div>
                     <select value={editing.role} disabled={editing.id === currentUserId}
                       onChange={event => patch({ role: event.target.value })}>
-                      <option value="member">Member</option>
+                      <option value="admin">Admin</option><option value="member">Member</option><option value="readonly">Read only</option>
                       <option value="owner">Owner</option>
                     </select>
                   </div>

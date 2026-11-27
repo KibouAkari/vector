@@ -1,446 +1,235 @@
 "use client";
-
-
-import {
-  useState
-} from "react";
-
-
-import Link
-  from "next/link";
-
-
-import {
-  usePathname
-} from "next/navigation";
-
-
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion
-} from "motion/react";
-
-
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Activity,
+  BookOpen,
+  CheckCheck,
+  Coins,
   FolderKanban,
   LayoutDashboard,
   Menu,
   MessageSquareText,
   Server,
+  Shield,
   SlidersHorizontal,
   Users,
-  X
+  X,
 } from "lucide-react";
-
-
-import LogoutButton
-  from "./logout-button";
-
-
-import VectorSoundButton
-  from "./ui/vector-sound-button";
-
-
-const ITEMS = [
-  [
-    "/",
-    "Overview",
-    null,
-    LayoutDashboard
-  ],
-
-  [
-    "/chat",
-    "Chat",
-    "chat",
-    MessageSquareText
-  ],
-
-  [
-    "/projects",
-    "Projects",
-    "projects",
-    FolderKanban
-  ],
-
-  [
-    "/server",
-    "Server",
-    "server",
-    Server
-  ],
-
-  [
-    "/models",
-    "Models & APIs",
-    "models",
-    SlidersHorizontal
-  ],
-
-  [
-    "/audit",
-    "Audit log",
-    "activity",
-    Activity
-  ]
+import LogoutButton from "./logout-button";
+import VectorSoundButton from "./ui/vector-sound-button";
+const WORK = [
+  ["/", "Dashboard", null, LayoutDashboard],
+  ["/chat", "Chat", "chat", MessageSquareText],
+  ["/projects", "Projects", "projects", FolderKanban],
+  ["/skills", "Skills", "projects", BookOpen],
 ];
-
-
-const LOCKED_NOTICES = [
-  "Oops. This area requires a little more clearance.",
-  "Access denied. The secret handshake has not been unlocked.",
-  "This door is locked. Your workspace owner has the key.",
-  "Nice try, explorer. Ask your admin to unlock this feature.",
-  "Restricted area. Even Vector has to respect permissions."
+const CONTROL = [
+  ["/security", "Security Scanner", "operator", Shield],
+  ["/approvals", "Approvals", "owner", CheckCheck],
+  ["/models", "Models & API Keys", "models", SlidersHorizontal],
+  ["/usage", "Usage & Budgets", null, Coins],
+  ["/users", "Users & Policies", "owner", Users],
 ];
-
-export default function Sidebar({
-  session
-}) {
-  const pathname =
-    usePathname();
-
-
-  const reduced =
-    useReducedMotion();
-
-
-  const [
-    open,
-    setOpen
-  ] =
-    useState(
-      false
-    );
-
-  const [lockedNotice, setLockedNotice] = useState("");
-
-
-  // Optional discovery only. Server routes enforce the real permissions.
-  const visible = ITEMS.filter(([, , feature]) =>
+export default function Sidebar({ session }) {
+  const pathname = usePathname(),
+    [open, setOpen] = useState(false),
+    [pending, setPending] = useState(null),
+    nav = useRef(null),
+    trigger = useRef(null);
+  useEffect(() => {
+    if (session.role !== "owner") return;
+    let stopped = false;
+    const controller = new AbortController();
+    async function refresh() {
+      if (document.hidden) return;
+      try {
+        const response = await fetch("/api/approvals?summary=1", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (!stopped) setPending(data.pendingCount);
+        }
+      } catch {}
+    }
+    refresh();
+    const timer = setInterval(refresh, 15000);
+    window.addEventListener("vector:approvals", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      stopped = true;
+      controller.abort();
+      clearInterval(timer);
+      window.removeEventListener("vector:approvals", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [session.role]);
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement;
+    const mains = [...document.querySelectorAll("main")];
+    const states = mains.map((el) => el.inert);
+    mains.forEach((el) => (el.inert = true));
+    nav.current?.querySelector("a")?.focus();
+    function keyboard(e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+      }
+      if (e.key === "Tab") {
+        const targets = [...nav.current.querySelectorAll("a,button")];
+        const first = targets[0],
+          last = targets.at(-1);
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+    document.addEventListener("keydown", keyboard);
+    return () => {
+      mains.forEach((el, i) => (el.inert = states[i]));
+      document.removeEventListener("keydown", keyboard);
+      previous?.focus?.();
+    };
+  }, [open]);
+  const allowed = (feature) =>
     !feature ||
     session.role === "owner" ||
-    session.features?.[feature] ||
-    session.features?.showLockedNavigation
-  );
-
-  function activeFor(
-    href
-  ) {
-    return (
-      href === "/"
-        ? pathname === "/"
-        : pathname.startsWith(
-            href
-          )
-    );
-  }
-
-
+    (feature === "operator"
+      ? session.role === "admin"
+      : feature !== "owner" && session.features?.[feature]);
+  const links = (items) =>
+    items
+      .filter(([, , feature]) => allowed(feature))
+      .map(([href, label, , Icon]) => {
+        const active =
+          href === "/"
+            ? pathname === "/"
+            : pathname === href || pathname.startsWith(href + "/");
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={active ? "active" : ""}
+            aria-current={active ? "page" : undefined}
+            onClick={() => setOpen(false)}
+          >
+            <Icon className="vx-nav-icon" aria-hidden="true" />
+            <span>{label}</span>
+            {href === "/approvals" && pending > 0 && (
+              <span
+                className="nav-approval-count"
+                aria-label={`${pending} pending approvals`}
+              >
+                {pending}
+              </span>
+            )}
+          </Link>
+        );
+      });
   return (
     <>
-
-      <motion.button
+      <a
+        className="vector-skip-link"
+        href="#vector-main"
+        onClick={(event) => {
+          event.preventDefault();
+          setOpen(false);
+          const main = document.querySelector("main");
+          if (main) {
+            main.id = "vector-main";
+            main.tabIndex = -1;
+            main.focus();
+          }
+        }}
+      >
+        Skip to content
+      </a>
+      <button
+        type="button"
+        ref={trigger}
         className="v5-mobile-nav"
         aria-label="Open navigation"
-        onClick={
-          () =>
-            setOpen(
-              true
-            )
-        }
-        whileTap={
-          reduced
-            ? undefined
-            : {
-                scale:
-                  .93
-              }
-        }
+        aria-expanded={open}
+        aria-controls="vector-navigation"
+        onClick={() => setOpen(true)}
       >
-        <Menu
-          className="vx-mobile-menu-icon"
-          aria-hidden="true"
+        <Menu size={20} />
+      </button>
+      {open && (
+        <button
+          type="button"
+          className="v5-nav-shade"
+          aria-label="Close navigation"
+          tabIndex={-1}
+          onClick={() => setOpen(false)}
         />
-      </motion.button>
-
-
-      <AnimatePresence>
-
-        {
-          open && (
-            <motion.button
-              className="v5-nav-shade"
-              aria-label="Close navigation"
-              onClick={
-                () =>
-                  setOpen(
-                    false
-                  )
-              }
-              initial={
-                reduced
-                  ? false
-                  : {
-                      opacity:
-                        0
-                    }
-              }
-              animate={{
-                opacity:
-                  1
-              }}
-              exit={
-                reduced
-                  ? undefined
-                  : {
-                      opacity:
-                        0
-                    }
-              }
-              transition={{
-                duration:
-                  .16
-              }}
-            />
-          )
-        }
-
-      </AnimatePresence>
-
-
+      )}
       <aside
-        className={
-          open
-            ? "sidebar v5-sidebar v5-sidebar-open"
-            : "sidebar v5-sidebar"
-        }
+        id="vector-navigation"
+        ref={nav}
+        className={`sidebar v5-sidebar${open ? " v5-sidebar-open" : ""}`}
+        role={open ? "dialog" : undefined}
+        aria-modal={open ? true : undefined}
+        aria-label="Workspace navigation"
       >
-
         <header className="v5-brand">
-
-          <Link
-            href="/"
-            onClick={
-              () =>
-                setOpen(
-                  false
-                )
-            }
-          >
-
-            <motion.img
+          <Link href="/" onClick={() => setOpen(false)}>
+            <img
               className="v55-sidebar-logo"
               src="/vector-assets/brand/vector-mark.svg"
               alt=""
-              whileHover={
-                reduced
-                  ? undefined
-                  : {
-                      rotate:
-                        -3,
-
-                      scale:
-                        1.04
-                    }
-              }
-              transition={{
-                duration:
-                  .16
-              }}
             />
-
-            <strong>
-              Vector
-            </strong>
-
+            <strong>Vector</strong>
           </Link>
-
-
-          <motion.button
+          <button
+            type="button"
             className="v5-nav-close"
             aria-label="Close navigation"
-            onClick={
-              () =>
-                setOpen(
-                  false
-                )
-            }
-            whileTap={
-              reduced
-                ? undefined
-                : {
-                    scale:
-                      .9
-                  }
-            }
+            onClick={() => setOpen(false)}
           >
-            <X
-              className="vx-mobile-close-icon"
-              aria-hidden="true"
-            />
-          </motion.button>
-
+            <X size={20} />
+          </button>
         </header>
-
-
         <nav className="v5-nav" aria-label="Main navigation">
-          {visible.map(([href, label, feature, Icon]) => {
-            const locked = Boolean(
-              feature && session.role !== "owner" &&
-              !session.features?.[feature]
-            );
-            const active = !locked && activeFor(href);
-
-            if (locked) {
-              return (
-                <button
-                  key={href}
-                  type="button"
-                  className="vux-nav-locked"
-                  aria-label={label + " – locked"}
-                  title={label + " requires permission"}
-                  onClick={() => setLockedNotice(
-                    LOCKED_NOTICES[Math.floor(Math.random() * LOCKED_NOTICES.length)]
-                  )}
-                >
-                  <Icon className="vx-nav-icon" aria-hidden="true" />
-                  <span>{label}</span>
-                  <span className="vux-nav-lock" aria-hidden="true">⌁</span>
-                </button>
-              );
-            }
-
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={active ? "active" : ""}
-                onClick={() => { setOpen(false); setLockedNotice(""); }}
-              >
-                {active && (
-                  <motion.span
-                    className="vx-nav-active-rail"
-                    layoutId="vector-sidebar-active"
-                    transition={{
-                      type: "spring", stiffness: 500, damping: 40, mass: .45
-                    }}
-                  />
-                )}
-                <Icon className="vx-nav-icon" aria-hidden="true" />
-                <span>{label}</span>
-              </Link>
-            );
-          })}
-          {lockedNotice && (
-            <div className="vux-locked-notice" role="status">
-              <p>{lockedNotice}</p>
-              <button type="button" onClick={() => setLockedNotice("")}
-                aria-label="Dismiss locked navigation notice">×</button>
-            </div>
+          {links(WORK)}
+          <span className="nav-section-label">Control</span>
+          {links(CONTROL)}
+          {(session.role === "owner" ||
+            session.features?.server ||
+            session.features?.activity) && (
+            <span className="nav-section-label">Operations</span>
           )}
+          {links([
+            ["/server", "Infrastructure", "server", Server],
+            ["/audit", "Audit log", "activity", Activity],
+          ])}
         </nav>
-
-
-        {
-          session.role ===
-          "owner" && (
-            <div className="v52-owner-nav">
-              <Link href="/platform" className={pathname.startsWith("/platform") ? "active" : ""}>Platform control</Link>
-              <Link href="/security" className={pathname.startsWith("/security") ? "active" : ""}>Security workspace</Link>
-
-              <span>
-                Owner
-              </span>
-
-              <Link
-                href="/users"
-                className={
-                  pathname.startsWith(
-                    "/users"
-                  )
-                    ? "active"
-                    : ""
-                }
-              >
-
-                {
-                  pathname.startsWith(
-                    "/users"
-                  ) && (
-                    <motion.span
-                      className="vx-nav-active-rail"
-                      layoutId="vector-sidebar-active"
-                    />
-                  )
-                }
-
-                <Users
-                  className="vx-nav-icon"
-                  aria-hidden="true"
-                />
-
-                <span>
-                  Users
-                </span>
-
-              </Link>
-
-            </div>
-          )
-        }
-
-
         <footer className="v5-sidebar-footer">
-
           <div className="v5-account">
-
             <div className="v5-account-avatar">
-              {
-                (
-                  session.displayName ||
-                  session.username
-                )[0]
-                  ?.toUpperCase()
-              }
+              {(session.displayName || session.username)?.[0]?.toUpperCase()}
             </div>
-
             <div>
-
-              <strong>
-                {
-                  session.displayName ||
-                  session.username
-                }
-              </strong>
-
+              <strong>{session.displayName || session.username}</strong>
               <span>
-                {
-                  session.role ===
-                  "owner"
-                    ? "Owner"
-                    : "Vector member"
-                }
+                {session.role === "readonly" ? "Read only" : session.role}
               </span>
-
             </div>
-
           </div>
-
-          <div className="vx-sidebar-footer-actions">
-
+          <div className="v5-account-actions">
             <VectorSoundButton />
-
             <LogoutButton />
-
           </div>
-
         </footer>
-
       </aside>
-
     </>
   );
 }

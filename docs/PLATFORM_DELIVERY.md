@@ -1,4 +1,12 @@
-# Platform control, skills and security workspace
+# Platform delivery history
+
+The 27 November control update replaces the inventory landing page with direct
+navigation and adds the [active scanner](SECURITY_SCANNER.md),
+[versioned skills](SKILLS.md), [access/approvals/budgets](CONTROL_CENTRE.md).
+The sections below retain the 26 November implementation record and comparison
+criteria; they are not the current feature checklist.
+
+## 26 November platform control, skills and security workspace
 
 Source delivery, 26 November 2026. This is not a production rollout or a claim
 that all integrations are connected. No paid model call is needed for the tests,

@@ -1,4 +1,5 @@
 "use client";
+import PrivacyReceipt from '../../../components/ui/privacy-receipt';
 import ChatControls from "../../../components/ui/chat-controls";
 
 import {
@@ -849,7 +850,8 @@ export default function ProjectWorkbench({
   }
 
   const [selectedSkillIds,setSelectedSkillIds]=useState([]);
-  useEffect(()=>setSelectedSkillIds([]),[project.id]);
+  const [skillParameters,setSkillParameters]=useState({});
+  useEffect(()=>{setSelectedSkillIds([]);setSkillParameters({});},[project.id]);
   const [privacyEnabled,setPrivacyEnabled]=useState(true);
   const [freeOnly,setFreeOnly]=useState(false);
   const {privacySend,privacyDialog} = usePrivacySend(`${project.id}:${conversationId || 'new'}`);
@@ -904,7 +906,7 @@ export default function ProjectWorkbench({
 
     try {
       const response = await privacySend(`/api/projects/${project.id}/chat`,{
-        skillIds:selectedSkillIds,
+        skillIds:selectedSkillIds,skillParameters:Object.fromEntries(selectedSkillIds.filter(id=>skillParameters[id]).map(id=>[id,skillParameters[id]])),
         message:text,conversationId,mode:chatMode,privacyEnabled,billingPolicy:freeOnly?'free-only':'standard'
       },{localOnly:project.privacy_level==='local_only'});
 
@@ -1340,7 +1342,7 @@ export default function ProjectWorkbench({
         tab ===
         "chat" && (
           <section className="project-chat">
-            <ProjectSkillsPanel projectId={project.id} canEdit={canEdit} selected={selectedSkillIds} onSelection={setSelectedSkillIds}/>
+            <ProjectSkillsPanel projectId={project.id} canEdit={canEdit} selected={selectedSkillIds} onSelection={setSelectedSkillIds} parameters={skillParameters} onParameters={setSkillParameters}/>
 
             {
               privacyNotice && (
@@ -1596,6 +1598,7 @@ export default function ProjectWorkbench({
                                 {
                                   message.content
                                 }
+                                <PrivacyReceipt receipt={message.privacy_summary}/>
                               </div>
                             )
                         }

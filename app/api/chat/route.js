@@ -1,3 +1,4 @@
+import {selectedChatSkillContext} from '../../../lib/project-skills';
 import {requestDestination} from '../../../lib/chat-controls.mjs';
 import {reviewPrivacyRequest} from '../../../lib/privacy-review';
 import crypto from "node:crypto";
@@ -210,6 +211,8 @@ export async function POST(
 ) {
   const session =
     await getSession();
+  if(session?.role==='readonly')return Response.json({error:'READ_ONLY_ACCOUNT'},{status:403});
+
 
   if (!session) {
     return Response.json(
@@ -342,12 +345,15 @@ export async function POST(
       );
     }
 
+    let selectedSkills;
+    try{selectedSkills=await selectedChatSkillContext(session.userId,body.skillIds,body.skillParameters);}catch{return Response.json({error:'SKILL_UNAVAILABLE'},{status:400});}
+    const attachmentContext=[attachmentBundle.context,selectedSkills].filter(Boolean).join('\n\n');
     const rawAgentMessage =
-      attachmentBundle.context
+      attachmentContext
         ? [
             originalMessage,
             CHAT_ATTACHMENT_CONTEXT_MARKER,
-            attachmentBundle.context
+            attachmentContext
           ].join("")
         : originalMessage;
 
@@ -686,6 +692,8 @@ export async function POST(
     }
 
   // Use exactly the reviewed snapshot; never re-read unreviewed concurrent history.
+  if(privacy.receipt)await db.query('UPDATE messages SET privacy_summary=$2::jsonb WHERE id=$1',[userMessageId,JSON.stringify(privacy.receipt)]);
+
   const history = [...priorHistory.map(row=>({role:row.role==='assistant'?'assistant':'user',
     content:privacy.apply(row.content)})),{role:'user',content:safeAgentMessage}];
 
@@ -764,6 +772,7 @@ export async function POST(
       jobId,
       conversationId,
       userMessage: {
+        privacy:privacy.receipt,
         id: userMessageId,
         content: await restorePrivateValues({
           conversationId,

@@ -111,6 +111,8 @@ export async function GET(
           content,
           model,
           cost_chf,
+          privacy_summary,
+          cost_status,
           created_at
 
         FROM messages
@@ -133,6 +135,8 @@ export async function GET(
     of messageResult.rows
   ) {
     messages.push({
+      privacy_summary:message.privacy_summary,
+      costStatus:message.cost_status,
       id:
         message.id,
 
@@ -177,6 +181,8 @@ export async function DELETE(
 ) {
   const session =
     await getSession();
+  if(session?.role==='readonly')return Response.json({error:'READ_ONLY_ACCOUNT'},{status:403});
+
 
   if (!session) {
     return Response.json(

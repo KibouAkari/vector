@@ -96,6 +96,8 @@ export async function GET(
           content,
           model,
           cost_chf,
+          privacy_summary,
+          cost_status,
           created_at
 
         FROM messages
