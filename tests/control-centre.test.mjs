@@ -61,6 +61,56 @@ test("live privacy preview uses offsets without returning secret values in metad
   assert.ok(!preview.includes("Synthetic phrase!"));
   assert.match(preview, /PASSWORD_1/);
 });
+test("privacy preview matches selected literal replacements with overlaps and existing placeholders", () => {
+  const mappings = [
+    { value: "Synthetic-456", type: "PASSWORD", placeholder: "<LONG_ABCDEF>" },
+    { value: "Synthetic", type: "PASSWORD", placeholder: "<SHORT_ABCDEF>" },
+    { value: "aba", type: "PASSWORD", placeholder: "<ABA_ABCDEF>" },
+    { value: "ab", type: "PASSWORD", placeholder: "<AB_ABCDEF>" },
+    { value: "ABCDEF", type: "PASSWORD", placeholder: "<INNER_ABCDEF>" },
+    { value: "Test", type: "PERSON", placeholder: "<NAME_ABCDEF>" },
+  ];
+  const text = "Synthetic-456 ababa <LONG_ABCDEF> Test Testé";
+  const ranges = previewRanges(text, mappings);
+  for (const selected of [
+    [mappings[1]],
+    [mappings[0], mappings[1]],
+    [mappings[2], mappings[3]],
+    [mappings[4], mappings[5]],
+    mappings,
+  ]) {
+    const segments = previewSegments(text, ranges, selected.map(m => m.placeholder));
+    const actual = segments.map(s => s.masked ? "#" : s.text).join("");
+    const expected = literalReplace(text.replace("<LONG_ABCDEF>", "\0"), selected)
+      .replace(/<(?:LONG|SHORT|ABA|AB|INNER|NAME)_ABCDEF>/g, "#")
+      .replace("\0", "<LONG_ABCDEF>");
+    assert.equal(actual, expected);
+  }
+});
+test("completed job recovery binds cost status and remains owner scoped", async () => {
+  let inserted;
+  const db = { query: async (sql, args) => {
+    if (sql.includes("FROM conversations")) return { rowCount: 1, rows: [{ id: "c" }] };
+    if (sql.includes("FROM messages")) return { rowCount: 0, rows: [] };
+    if (sql.includes("INSERT INTO messages")) inserted = args;
+    return { rowCount: 1, rows: [] };
+  }};
+  const { ensureAssistantMessage } = load("../app/api/jobs/[id]/route.js", {
+    crypto, db, getSession: null, cancelAgentJob: null, getAgentJob: null,
+    retryAgentJob: null, restorePrivateValues: null,
+  }, ["ensureAssistantMessage"]);
+  const job = { id: "j", status: "completed", conversation_id: "c", result: { text: "fixture", meta: { costChf: 1, costStatus: "reported" } } };
+  await ensureAssistantMessage({ job, userId: "owner" });
+  assert.equal(inserted.length, 6);
+  assert.equal(inserted[5], "reported");
+  delete job.result.meta.costStatus;
+  await ensureAssistantMessage({ job, userId: "owner" });
+  assert.equal(inserted[5], "incomplete");
+  inserted = null;
+  db.query = async () => ({ rowCount: 0, rows: [] });
+  assert.equal(await ensureAssistantMessage({ job, userId: "other" }), null);
+  assert.equal(inserted, null);
+});
 test("read-only role cannot edit even its own project and role policies fail closed on empty lists", () => {
   const session = {
     role: "readonly",

@@ -180,7 +180,8 @@ async function ensureAssistantMessage({
             ?.meta
             ?.costChf ||
           0
-        )
+        ),
+        job.result?.meta?.costStatus || "incomplete"
       ]
     );
 
