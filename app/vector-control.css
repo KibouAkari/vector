@@ -636,7 +636,7 @@
   gap: 8px;
   padding: 8px 0;
 }
-.chat-skill-menu input {
+.chat-skill-menu input[type="checkbox"] {
   width: 16px;
   height: 16px;
   min-height: 0;

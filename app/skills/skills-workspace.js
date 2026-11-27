@@ -185,7 +185,7 @@ export default function SkillsWorkspace() {
               </label>
             )}
             <div className="ctl-toolbar">
-              <button className="ctl-primary" disabled={busy}>
+              <button className="ctl-primary" disabled={busy || !canEdit}>
                 {busy ? "Saving…" : "Save draft"}
               </button>
               <button type="button" onClick={() => setEditing(null)}>
