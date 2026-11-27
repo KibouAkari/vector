@@ -59,7 +59,7 @@ test('fully local destinations stay quiet and errors clear the progress indicato
 test('both composers place the compact review beside the input, without a modal or eyebrow',()=>{
   const ui=readFileSync(new URL('../components/ui/privacy-review-dialog.js',import.meta.url),'utf8');
   assert.ok(!ui.includes('showModal')&&!ui.includes('<dialog')&&!ui.includes('Vor dem externen Versand'));
-  assert.ok(ui.includes('Vector überprüft die Anfrage'));assert.ok(ui.includes('prefers-reduced-motion'));
+  assert.ok(ui.includes('Angaben prüfen…'));assert.ok(readFileSync(new URL('../app/vector-control.css',import.meta.url),'utf8').includes('prefers-reduced-motion'));
   const chat=readFileSync(new URL('../app/chat/chat-client.js',import.meta.url),'utf8');
   const project=readFileSync(new URL('../app/projects/[id]/project-workspace.js',import.meta.url),'utf8');
   for(const source of [chat,project])assert.ok(source.indexOf('{privacyDialog}')>source.indexOf('<form'));

@@ -17,6 +17,8 @@ export async function GET(request,context) {
 }
 export async function POST(request,context) {
   const session = await getSession();
+  if(session?.role==='readonly')return Response.json({error:'READ_ONLY_ACCOUNT'},{status:403});
+
   if (!session) return reply({error:'Unauthorized'},401);
   const {id} = await context.params;
   if (!await canEditProject(session,id)) return reply({error:'Not found'},404);

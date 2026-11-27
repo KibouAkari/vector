@@ -1,4 +1,7 @@
 "use client";
+import {callCostLabel} from '../../lib/cost-display.mjs';
+import ChatSkills from '../../components/ui/chat-skills';
+import PrivacyReceipt from '../../components/ui/privacy-receipt';
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import ChatControls from '../../components/ui/chat-controls';
@@ -45,6 +48,8 @@ function normaliseMessages(list) {
         ...message,
         content: safeAssistantText(message.content),
         meta: {
+          ...message.meta,
+          costStatus:message.costStatus||message.cost_status||message.meta?.costStatus||'estimated',
           model: message.model || message.meta?.model,
           costChf: message.costChf ?? message.meta?.costChf ?? 0
         }
@@ -211,6 +216,8 @@ export default function ChatClient({
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("auto");
   const [privacyEnabled,setPrivacyEnabled]=useState(true);
+  const [selectedSkillIds,setSelectedSkillIds]=useState([]);
+  const [skillParameters,setSkillParameters]=useState({});
   const [freeOnly,setFreeOnly]=useState(false);
   const [activeJob, setActiveJob] = useState(null);
   const {privacySend,privacyDialog} = usePrivacySend(`${userId}:${conversationId || "new"}`);
@@ -1190,7 +1197,7 @@ export default function ChatClient({
 
     try {
       const response = await privacySend('/api/chat',{
-        message:text,conversationId:conversationIdRef.current || conversationId,mode,privacyEnabled,billingPolicy:freeOnly?'free-only':'standard',
+        message:text,conversationId:conversationIdRef.current || conversationId,mode,privacyEnabled,skillIds:selectedSkillIds,skillParameters:Object.fromEntries(selectedSkillIds.filter(id=>skillParameters[id]).map(id=>[id,skillParameters[id]])),billingPolicy:freeOnly?'free-only':'standard',
         attachmentIds:attachmentSnapshot.map(attachment=>attachment.id)
       });
 
@@ -1248,6 +1255,7 @@ export default function ChatClient({
                 tempId
                 ? {
                     ...message,
+                    privacy_summary:data.userMessage?.privacy,
 
                     id:
                       data.userMessage
@@ -1666,6 +1674,7 @@ export default function ChatClient({
                       <div className="user-message-text">
                         {message.content}
                       </div>
+                      <PrivacyReceipt receipt={message.privacy_summary}/>
 
                         {message.attachments?.length > 0 && (
                           <div className="vx585-artifact-list vx600-uploaded-artifacts">
@@ -1703,7 +1712,7 @@ export default function ChatClient({
                         {message.meta?.model && (
                           <span>{message.meta.model}</span>
                         )}
-                        <span>{formatMoney(message.meta?.costChf || 0)}</span>
+                        <span>{callCostLabel(message.meta?.costChf,message.meta?.costStatus)}</span>
                       </div>
 
                       <div className="chat-bottom-actions v54-message-actions">
@@ -1932,7 +1941,7 @@ export default function ChatClient({
               </div>
 
               <div className="v54-composer-right">
-                <ChatControls mode={mode} onModeChange={setMode} privacyEnabled={privacyEnabled}
+                <ChatSkills selected={selectedSkillIds} onSelection={setSelectedSkillIds} parameters={skillParameters} onParameters={setSkillParameters} disabled={submitting || Boolean(activeJob)}/><ChatControls mode={mode} onModeChange={setMode} privacyEnabled={privacyEnabled}
                   freeOnly={freeOnly} onFreeOnlyChange={setFreeOnly} onPrivacyChange={setPrivacyEnabled} disabled={submitting || Boolean(activeJob)} />
 
                 {activeJob ? (

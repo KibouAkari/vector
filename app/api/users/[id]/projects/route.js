@@ -31,6 +31,8 @@ export async function GET(request, context) {
  */
 export async function PUT(request, context) {
   const session = await getSession();
+  if(session?.role==='readonly')return Response.json({error:'READ_ONLY_ACCOUNT'},{status:403});
+
   if (!session || session.role !== "owner") return forbidden();
 
   await initializeIdentity();

@@ -37,6 +37,7 @@ export default function ApprovalActions({
     );
 
     if (!response.ok) throw new Error("The approval could not be saved. Reload and try again.");
+    window.dispatchEvent(new Event('vector:approvals'));
     router.refresh();
     } catch (err) {setError(err.message);}
     finally {setPending(false); }

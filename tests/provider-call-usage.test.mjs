@@ -7,7 +7,7 @@ import {normalizedOpenAiUsage,normalizedAnthropicUsage} from '../lib/provider-us
 import {runLocalWorker} from '../lib/local-worker-core.mjs';
 
 function load(path, bindings, names) {
-  bindings={protectProviderPayload:payload=>payload,withJobPrivacy:(_payload,execute)=>execute(),...bindings};
+  bindings={executionAccount:async()=>{},protectProviderPayload:payload=>payload,withJobPrivacy:(_payload,execute)=>execute(),...bindings};
   const source=readFileSync(new URL(path,import.meta.url),'utf8')
     .replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'').replace(/^export\s+/gm,'');
   return new Function(...Object.keys(bindings),source+`\nreturn {${names.join(',')}};`)(...Object.values(bindings));
@@ -202,6 +202,40 @@ test('artifact provider failover shares the two-attempt local-worker budget',asy
   assert.equal(workerCalls,2);
   assert.equal(budgets[0],budgets[1]);
   assert.equal(budgets[0].calls,2);
+  assert.equal(failed.length,1);
+});
+
+test('executor does not fail over after an attributed provider attempt is uncertain',async()=>{
+  const fallback={...runtime,id:'fixture-fallback',provider:'anthropic'};
+  const failed=[];
+  let agentAttempts=0;
+  const {executeAgentJob}=load('../lib/background-executor.js',{
+    crypto,withProviderUsageScope,providerUsageEvent,providerUsageTotals,
+    MODEL_PRICING:{},calculateModelCost:()=>({chf:0}),usdToChf:x=>x,
+    calculateConfiguredProviderCost:()=>({chf:0}),
+    db:{query:async()=>({rows:[],rowCount:0})},
+    recordUsage:async()=>{},writeAudit:async()=>{},
+    buildVisionInputs:async()=>[],heartbeatAgentJob:async()=>{},getAgentJob:async()=>({status:'running'}),
+    completeAgentJob:async()=>{},failAgentJob:async result=>{failed.push(result);},
+    bindGeneratedArtifactsToMessage:async()=>[],
+    resolveProviderForTask:async({excludeProviderIds})=>excludeProviderIds.length?fallback:runtime,
+    classifyExecution:()=>({class:'artifact',reason:'fixture',requirements:{server:true},limits:{rounds:2}}),
+    runVectorAgent:async()=>{
+      agentAttempts++;
+      const error=new Error('Provider returned HTTP 503');
+      error.status=503;
+      error.vectorNonReplayableProviderAttempt=true;
+      throw error;
+    }
+  },['executeAgentJob']);
+  const job={id:'fixture-job',user_id:'fixture-user',payload:{conversationId:'fixture-thread',mode:'normal',
+    safeOriginalMessage:'Create a PDF',messages:[{role:'user',content:'Create a PDF'}]}};
+  await assert.rejects(executeAgentJob(job),error=>{
+    assert.equal(error.status,503);
+    assert.equal(error.vectorNonReplayableProviderAttempt,true);
+    return true;
+  });
+  assert.equal(agentAttempts,1);
   assert.equal(failed.length,1);
 });
 

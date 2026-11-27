@@ -28,6 +28,8 @@ const { Pool } = pg;
 const db = new Pool({ connectionString: process.env.DATABASE_URL, max: 3 });
 const users = {
   admin: { role: "owner", features: {} },
+  operator: {role:"admin",features:{chat:true,projects:true,models:true}},
+  reader: {role:"readonly",features:{chat:true,projects:true,models:true}},
   creator: { role: "member", features: { projects: true } },
   viewer: { role: "member", features: { projects: true } },
   editor: { role: "member", features: { projects: true } },
@@ -261,11 +263,17 @@ test("real authenticated API permissions and project isolation", async t => {
       assert.ok(ownerPage.includes(ownerOnlyModel), "owner sees operational usage");
       assert.ok(ownerPage.includes("creator-private-project"), "owner sees operational projects");
 
-      for (const route of ["/models", "/audit", "/api/models", "/usage"]) {
+      for (const route of ["/models", "/audit", "/api/models"]) {
         const response = await request(route, { as: "disabled" });
         assert.ok([302,303,307,308,403].includes(response.status),
           `feature-disabled account unexpectedly accessed ${route}: ${response.status}`);
       }
+      // Own cost visibility is available independently of workspace feature flags.
+      const ownUsagePage=await (await expectStatus('/usage',{as:'disabled'},200)).text();
+      assert.ok(!ownUsagePage.includes(ownerOnlyModel));assert.ok(!ownUsagePage.includes(creatorOnlyModel));
+      const ownBudget=(await (await expectStatus('/api/budgets',{as:'disabled'},200)).json());
+      assert.equal(ownBudget.canManage,false);assert.ok(ownBudget.reservations.every(row=>row.user_id===users.disabled.id));
+      await expectStatus('/api/budgets',{as:'disabled',method:'POST',body:{}},403);
       await expectStatus("/api/models", { as: "disabled" }, 403);
       await expectStatus("/api/models", { as: "creator" }, 403);
       await expectStatus("/api/conversations", { as: "disabled" }, 403);
@@ -401,6 +409,65 @@ test("real authenticated API permissions and project isolation", async t => {
       await db.query('DELETE FROM usage_events WHERE id=ANY($1::text[])',[ids]);
     });
 
+    await t.test("read-only roles cannot mutate or spend even when features are enabled",async()=>{
+      await expectStatus('/api/chat',{as:"reader",method:"POST",body:{message:"Must not enqueue"}},403);
+      await expectStatus('/api/projects',{as:"reader",method:"POST",body:{name:"Must not create"}},403);
+      await expectStatus('/api/skills',{as:"reader",method:"POST",body:{action:"create",name:"No write",instructions:"Must not create a skill."}},403);
+      await expectStatus('/api/permissions/policies',{as:"reader"},403);
+      await expectStatus('/api/budgets',{as:"reader",method:"POST",body:{}},403);
+    });
+    await t.test("global skills retain immutable versions, owner scope and parameter content",async()=>{
+      const draft=(await (await expectStatus('/api/skills',{as:"editor",method:"POST",body:{action:"create",document:'---\nname: Version fixture\nparameters: {"tone":{"type":"string","default":"short"}}\n---\nSummarize supplied facts in a {{tone}} style.'}},200)).json()).skill;
+      await expectStatus('/api/skills',{as:"editor",method:"POST",body:{action:"activate",id:draft.id,contentSha256:draft.content_sha256}},200);
+      await expectStatus('/api/skills',{as:"outsider",method:"POST",body:{action:"activate",id:draft.id,contentSha256:draft.content_sha256}},400);
+      const next=(await (await expectStatus('/api/skills',{as:"editor",method:"POST",body:{action:"revise",parentId:draft.id,baseContentSha256:draft.content_sha256,name:"Version fixture",instructions:"Summarize only supplied facts, with evidence references."}},200)).json()).skill;
+      assert.equal(next.version,2);assert.equal(next.family_id,draft.family_id);assert.notEqual(next.content_sha256,draft.content_sha256);
+      await expectStatus('/api/skills',{as:"editor",method:"POST",body:{action:"activate",id:next.id,contentSha256:next.content_sha256}},200);
+      const skills=(await (await expectStatus('/api/skills',{as:"editor"},200)).json()).skills;assert.equal(skills.find(s=>s.id===draft.id).status,'retired');assert.equal(skills.find(s=>s.id===next.id).status,'active');assert.equal(skills.find(s=>s.id===draft.id).instructions,draft.instructions);
+      await db.query('DELETE FROM project_skills WHERE id=ANY($1::text[])',[[draft.id,next.id]]);
+    });
+    await t.test("active scan API binds saved targets to authorization and never starts an unapproved run",async()=>{
+      const endpoint='/api/security/assets';await expectStatus(endpoint,{as:"editor"},403);await expectStatus(endpoint,{as:"reader"},403);
+      const input={requestId:crypto.randomUUID(),name:"Isolated CI network fixture",target:"10.255.255.254:443",kind:"web",ports:[443],authorized:true,checkAdvisories:true,packages:[{ecosystem:"npm",name:"synthetic-fixture",version:"1.0.0"}]};
+      await expectStatus(endpoint,{as:"operator",method:"POST",body:{...input,authorized:false}},400);
+      await expectStatus(endpoint,{as:"operator",method:"POST",body:{...input,target:'169.254.169.254'}},400);
+      const asset=await (await expectStatus(endpoint,{as:"operator",method:"POST",body:input},201)).json();assert.equal(asset.approvalStatus,'pending');
+      const duplicate=await (await expectStatus(endpoint,{as:"operator",method:"POST",body:input},201)).json();assert.equal(duplicate.id,asset.id);
+      await expectStatus('/api/security/scans',{as:"operator",method:"POST",body:{assetId:asset.id}},403);
+      await expectStatus('/api/approvals',{as:"operator"},403);
+      const approval=(await (await expectStatus('/api/approvals',{as:"admin"},200)).json()).approvals.find(a=>a.id===asset.approvalId);
+      assert.equal(approval.requested_by,users.operator.id);assert.equal(approval.scope.target.host,"10.255.255.254");
+      assert.deepEqual(approval.scope.addresses,["10.255.255.254"]);assert.deepEqual(approval.scope.target.ports,[443]);
+      assert.deepEqual(approval.scope.packages,input.packages);assert.equal(approval.scope.checkAdvisories,true);
+      const decision='/api/approvals/'+asset.approvalId+'/decision';
+      await expectStatus(decision,{as:"admin",method:"POST",body:{decision:'approved'}},409);
+      await db.query("UPDATE security_assets SET scope=jsonb_set(scope,'{checkAdvisories}','false') WHERE id=$1",[asset.id]);
+      const changed=(await (await expectStatus('/api/approvals',{as:"admin"},200)).json()).approvals.find(a=>a.id===asset.approvalId);
+      assert.equal(changed.scope,null);
+      await expectStatus(decision,{as:"admin",method:"POST",body:{decision:'approved',scopeDigest:approval.scope_digest}},409);
+      await db.query("UPDATE security_assets SET scope=$2 WHERE id=$1",[asset.id,JSON.stringify(approval.scope)]);
+      await expectStatus(decision,{as:"admin",method:"POST",body:{decision:'approved',scopeDigest:approval.scope_digest}},200);
+      await db.query("UPDATE security_assets SET scope=jsonb_set(scope,'{checkAdvisories}','false') WHERE id=$1",[asset.id]);
+      await expectStatus('/api/security/scans',{as:"operator",method:"POST",body:{assetId:asset.id}},403);
+      await db.query("UPDATE security_assets SET scope=$2 WHERE id=$1",[asset.id,JSON.stringify(approval.scope)]);
+      const scan=await (await expectStatus('/api/security/scans',{as:"operator",method:"POST",body:{assetId:asset.id}},202)).json();assert.equal(scan.status,'queued');
+      await expectStatus('/api/security/scans/'+scan.id,{as:"admin"},404);
+      const owned=(await (await expectStatus('/api/security/scans/'+scan.id,{as:"operator"},200)).json()).run;assert.equal(owned.status,'queued');assert.equal(owned.result,null);
+      await expectStatus('/api/security/scans/'+scan.id,{as:"operator",method:"DELETE"},200);
+      await expectStatus(endpoint,{as:"operator",method:"DELETE",body:{id:asset.id}},200);
+      const state=await db.query('SELECT status FROM security_scan_runs WHERE id=$1',[scan.id]);assert.equal(state.rows[0].status,'cancelled');
+      await db.query('DELETE FROM security_scan_runs WHERE id=$1',[scan.id]);await db.query('DELETE FROM security_assets WHERE id=$1',[asset.id]);await db.query('DELETE FROM approvals WHERE id=$1',[asset.approvalId]);
+    });
+    await t.test("owner policy and budget writes are validated and audited",async()=>{
+      await expectStatus('/api/permissions/policies',{as:"editor",method:"POST",body:{role:"admin",policy:{models:[]}}},403);
+      await expectStatus('/api/permissions/policies',{as:"admin",method:"POST",body:{role:"admin",policy:{models:['openai/fixture'],tools:['project_search']}}},200);
+      const policies=await (await expectStatus('/api/permissions/policies',{as:"admin"},200)).json();assert.deepEqual(policies.roles.find(r=>r.role==='admin').policy.models,['openai/fixture']);
+      await expectStatus('/api/budgets',{as:"admin",method:"POST",body:{scope:'user:'+users.editor.id,currency:'CHF',monthlyWarning:'0.1',monthlyHard:'0.2'}},200);
+      await expectStatus('/api/budgets',{as:"admin",method:"POST",body:{scope:'user:'+users.editor.id,currency:'CHF',monthlyWarning:'5',monthlyHard:'1'}},400);
+      const budgets=await (await expectStatus('/api/budgets',{as:"editor"},200)).json();assert.equal(budgets.canManage,false);assert.ok(budgets.limits.every(row=>row.scope==='workspace'||row.scope==='user:'+users.editor.id));
+      await db.query('DELETE FROM budget_limits WHERE scope=$1',['user:'+users.editor.id]);await db.query("DELETE FROM role_capability_policies WHERE role='admin'");
+    });
+
     await t.test("tasks are readable by viewer, writable by editor", async () => {
       await expectStatus(`/api/projects/${projectId}/tasks`, { as: "viewer" }, 200);
       await expectStatus(`/api/projects/${projectId}/tasks`, { as: "outsider" }, 404);
@@ -459,4 +526,3 @@ test("real authenticated API permissions and project isolation", async t => {
     await db.end();
   }
 });
-

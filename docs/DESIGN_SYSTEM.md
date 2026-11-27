@@ -36,3 +36,18 @@ identity when Vector modifies its own frontend.
 
 External UI libraries are inspiration,
 not the final authority on Vector's visual design.
+
+## Implemented control views
+
+`app/vector-control.css` is a scoped layer for the authenticated shell. Direct
+navigation, compact forms and tables replace the source-inventory card grid.
+Use an 8px spacing rhythm, 1px borders, shared 8/12px radii, restrained mint
+selection and no heavy shadows. Numeric cost, token, latency and port columns
+use tabular figures. Every control needs a programmatic label and visible focus.
+Mobile navigation supports Escape, focus return and background inertness.
+Loading uses bounded skeletons; errors remain actionable. Do not alter login or
+intro through this stylesheet or replace existing dashboard charts.
+
+The [Web Interface Guidelines](https://vercel.com/design/guidelines) informed
+keyboard, responsive, focus and reduced-motion behavior. Local synthetic
+component rendering is not a screenshot of a live deployment.

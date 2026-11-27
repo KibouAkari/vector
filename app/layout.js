@@ -21,6 +21,7 @@ import "./vector-ui-585e.css";
 import "./vector-ui-585f.css";
 import "./vector-workspace-ux.css";
 import "./vector-chat-600.css";
+import "./vector-control.css";
 
 import VectorRouteTransition from "../components/ui/vector-route-transition";
 

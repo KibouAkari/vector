@@ -21,6 +21,8 @@ export const runtime = "nodejs";
 export async function POST(request) {
   const session =
     await getSession();
+  if(session?.role==='readonly')return Response.json({error:'READ_ONLY_ACCOUNT'},{status:403});
+
 
   if (!session) {
     return Response.json(

@@ -214,6 +214,8 @@ export async function POST(
 ) {
   const session =
     await getSession();
+  if(session?.role==='readonly')return Response.json({error:'READ_ONLY_ACCOUNT'},{status:403});
+
 
   if (!session) {
     return Response.json(
@@ -396,7 +398,7 @@ export async function POST(
   const sourceEvidence = await sourceEvidenceForFiles(projectId, chunks.map(chunk => chunk.file_id).filter(Boolean));
 
   let skillContext;
-  try { skillContext = await selectedSkillContext(projectId, body.skillIds); }
+  try { skillContext = await selectedSkillContext(projectId, body.skillIds,body.skillParameters); }
   catch { return Response.json({error: "Selected skills are invalid, unavailable or no longer active."}, {status: 400}); }
 
   const rawContext =
@@ -554,6 +556,8 @@ export async function POST(
     ]
   );
 
+  if(privacy.receipt)await db.query('UPDATE messages SET privacy_summary=$2::jsonb WHERE id=$1',[userMessageId,JSON.stringify(privacy.receipt)]);
+
   const history = [...priorHistory.map(row=>({role:row.role==='assistant'?'assistant':'user',
     content:privacy.apply(row.content)})),{role:'user',content:safeMessage}];
 
@@ -650,6 +654,7 @@ export async function POST(
       jobId,
       conversationId,
       userMessage: {
+        privacy:privacy.receipt,
         id: userMessageId,
         content: await restorePrivateValues({
           conversationId,

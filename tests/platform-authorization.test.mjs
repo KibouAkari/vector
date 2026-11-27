@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {skillDocument,renderSkill} from '../lib/skill-document.mjs';
 import {boundedJson} from '../lib/bounded-json.mjs';
 import {SecurityInputError} from '../lib/security/evidence.mjs';
-const load=(path,deps,names)=>new Function(...Object.keys(deps),readFileSync(new URL(path,import.meta.url),'utf8').replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'').replace(/\bexport\s+/g,'')+`\nreturn {${names.join(',')}};`)(...Object.values(deps));
+const load=(path,deps,names)=>{deps={skillDocument,renderSkill,...deps};return new Function(...Object.keys(deps),readFileSync(new URL(path,import.meta.url),'utf8').replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'').replace(/\bexport\s+/g,'')+`\nreturn {${names.join(',')}};`)(...Object.values(deps));};
 test('members cannot approve global privileged actions or inspect policy',async()=>{
  for(const path of ['../app/api/approvals/[id]/decision/route.js','../app/api/permissions/check/route.js']){
   let accesses=0;const deps={getSession:async()=>({userId:'member',role:'member'}),db:{query:async()=>{accesses++;}},initializeDatabase:async()=>{accesses++;},writeAudit:async()=>{},getPermissionPolicy:async()=>{accesses++;}};

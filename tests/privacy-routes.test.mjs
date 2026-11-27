@@ -1,4 +1,5 @@
 process.env.VECTOR_MINECRAFT_DATA_PATH='/srv/example-minecraft/data';
+import {previewRanges} from '../lib/privacy-preview.mjs';
 import {boundedLocalContext} from '../lib/local-context.mjs';
 import {requestDestination} from '../lib/chat-controls.mjs';
 import {localServerStatistics} from '../lib/local-server-statistics.mjs';
@@ -9,6 +10,7 @@ import {readFileSync} from 'node:fs';
 import {providerUsageTotals} from '../lib/provider-call-usage.mjs';
 
 function load(path,bindings,names) {
+  bindings={selectedChatSkillContext:async()=>'',assertModelAccess:async()=>{},assertToolAccess:async()=>{},...bindings};
   const source=readFileSync(new URL(path,import.meta.url),'utf8')
     .replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm,'').replace(/^export\s+/gm,'');
   return new Function(...Object.keys(bindings),source+`\nreturn {${names.join(',')}};`)(...Object.values(bindings));
@@ -216,7 +218,7 @@ test('free inference preference is validated and retained in the durable chat jo
 test('actual project route and privacy engine mask quoted skill credentials before durable enqueue',async()=>{
  const core=await import('../lib/privacy-review-core.mjs');const {AsyncLocalStorage}=await import('node:async_hooks');
  process.env.VECTOR_PRIVACY_REVIEW='1';process.env.FILE_ENCRYPTION_KEY='07'.repeat(32);
- const vault=new Map();const privacy=load('../lib/privacy-review.js',{crypto,AsyncLocalStorage,...core,requestPrivacyScan:async()=>({findings:[],metrics:{model:'offline-detector-fixture'}}),withLocalWorkerSlot:fn=>fn(),recordUsage:async()=>{},getPrivacyMappings:async id=>vault.get(id)||[],savePrivacyMappings:async({conversationId,mappings})=>vault.set(conversationId,mappings)},['reviewPrivacyRequest']);
+ const vault=new Map();const privacy=load('../lib/privacy-review.js',{crypto,AsyncLocalStorage,previewRanges,...core,requestPrivacyScan:async()=>({findings:[],metrics:{model:'offline-detector-fixture'}}),withLocalWorkerSlot:fn=>fn(),recordUsage:async()=>{},getPrivacyMappings:async id=>vault.get(id)||[],savePrivacyMappings:async({conversationId,mappings})=>vault.set(conversationId,mappings)},['reviewPrivacyRequest']);
  const jobs=[],instructions='Password: "R7! synthetic phrase"';
  const api=load('../app/api/projects/[id]/chat/route.js',{crypto,requestDestination,selectedSkillContext:async()=>instructions,sourceEvidenceForFiles:async()=>new Map(),getSession:async()=>({userId:'alice',role:'owner',username:'alice'}),canAccessProject:async()=>true,initializeDatabase:async()=>{},assertUserBudget:async()=>({allowed:true}),db:{query:async sql=>/SELECT \*/.test(sql)?{rowCount:1,rows:[{privacy_level:'personal'}]}:{rowCount:1,rows:[]}},searchProjectChunks:async()=>[],...privacy,determineTaskMode:()=> 'normal',getModelForMode:()=> 'fixture',shouldUseWebSearch:()=>false,getMaximumOutputTokens:()=>100,estimateRequestCost:()=>({chf:0}),usdToChf:()=>0,checkCost:async()=>({allowed:true}),savePrivacyMappings:async({conversationId,mappings})=>vault.set(conversationId,mappings),findRecentDuplicate:async()=>null,makeRequestHash:args=>args.message,enqueueAgentJob:async job=>{jobs.push(job);return 'job';},restorePrivateValues:async({text})=>text},['POST']);
  const send=body=>api.POST(new Request('http://vector.test',{method:'POST',body:JSON.stringify(body)}),{params:{id:'project'}});

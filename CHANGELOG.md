@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-11-27 — Local capability policy follow-up for PR #145
+
+Enforce role model and server-inspection allowlists at local private execution,
+without requiring a model for deterministic statistics or adding cloud fallback.
+Verification uses synthetic fixtures; no deployment or live server read is implied.
+
+## 2026-11-27 — Review fixes for PR #145
+
+Show verified saved scan scopes and requesters to owners before approval, bind
+the decision to the reviewed digest, and reject changed scopes before execution.
+Disable automatic retries of attributed inference attempts so uncertain
+reservations remain held. Repair completed-job cost-status recovery and match
+selective privacy previews to overlapping replacements and existing placeholders.
+
+Verification uses local synthetic fixtures; no deployment or external scan is implied.
+
+## 2026-11-27 — Remaining PR #145 review follow-ups
+
+Prevent automatic provider failover after an attributed request has an uncertain
+physical attempt. Preserve complete sanitized critical-tool arguments in owner
+approval details, and make usage refresh explicit so older call pages remain visible.
+
+Verification uses local synthetic fixtures; no deployment or external scan is implied.
+
+## 2026-11-27 — Calm controls, fast privacy and authorized active scanning
+
+Replace the platform inventory page with direct sidebar navigation, an approval
+count and quiet authenticated control views. Preserve login/intro sources and
+dashboard charts. Add keyboard focus, mobile navigation and reduced-motion states.
+
+Make deterministic local privacy rules the default; optional native NER is explicit.
+Show selected live replacements and an exact protected current-message receipt.
+Keep bound consent, encrypted mappings and local restoration. Add regression
+coverage proving protected values do not enter the provider payload.
+
+Implement authorized asset scopes, serialized background scans, pinned TCP/HTTP/TLS
+and Minecraft status probes, opt-in OSV/NVD candidates and JSON/Markdown reports.
+Block metadata/reserved addresses and unauthorized private ranges. Retain the old
+XML evidence importer separately. No exploit execution or online-mode inference.
+
+Add global/project skill revisions and typed parameters used by chat, exact
+single-use tool grants with audit, four account roles and model/tool allowlists.
+Serialize pre-call budget reservations across concurrent attributed requests;
+retain uncertain completion. Label reported charges, estimates and unknown usage,
+with project/model filters and latency. Document setup, APIs and limitations.
+
+Verification uses synthetic local fixtures and disposable PostgreSQL CI, without
+paid model calls, external target scans, outgoing messages or a production rollout.
+
 ## 2026-11-26 — Selective privacy, free inference constraints and per-call accounting
 
 Add individual/all/none placeholder choices in chat and project privacy review.
@@ -1258,5 +1307,3 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The operator observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at [private release reference]. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
-
-
