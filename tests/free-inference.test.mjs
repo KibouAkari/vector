@@ -30,7 +30,10 @@ test('attributed inference never retries uncertain physical attempts and retains
    fetch:async()=>{attempts++;if(failure==='network')throw Error('response lost');return {ok:false,status:503,text:async()=>'',headers:new Headers()};}
   },['requestProviderResponse']);
   const runtime={requestingUserId:'fixture-user',provider:adapter==='anthropic'?'anthropic':'openai',adapter,apiBase:'https://fixture.invalid',apiKey:'fixture-not-a-key',model:'fixture'};
-  await assert.rejects(requestProviderResponse({providerRuntime:runtime,payload:{input:[],max_output_tokens:20}}));
+  await assert.rejects(requestProviderResponse({providerRuntime:runtime,payload:{input:[],max_output_tokens:20}}),error=>{
+   assert.equal(error.vectorNonReplayableProviderAttempt,true);
+   return true;
+  });
   assert.equal(attempts,1,`${adapter} ${failure}`);
   assert.deepEqual(settlements,[['fixture',false]]);
  }

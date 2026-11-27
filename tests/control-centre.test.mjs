@@ -37,6 +37,46 @@ test("scanner approval verifies the full saved scope across JSONB key ordering",
     { scope: { ...reordered, extra: true } },
   ]) assert.equal(securityApprovalScope({ ...row, ...change }), null);
 });
+test("owner approval details disclose an admin-requested saved scope only when its digests match", async () => {
+  const scope = {
+    target: { host: "fixture.invalid", ports: [443], scheme: "https", explicitPort: 443 },
+    addresses: ["192.0.2.1"],
+    packages: [{ ecosystem: "npm", name: "fixture", version: "1.0.0" }],
+    checkAdvisories: true,
+  };
+  const digest = crypto.createHash("sha256").update(JSON.stringify(scope)).digest("hex");
+  const approval = {
+    id: "approval", permission: "network.scan", action: "Scan fixture",
+    description: "Saved asset authorization for bounded TCP/web probes.",
+    status: "pending", requested_at: "2026-11-27T00:00:00.000Z",
+    resource_type: "security-asset", resource_id: "asset", requested_by: "admin-id",
+    requester: "fixture-admin", scope_digest: digest, asset_id: "asset",
+    approval_id: "approval", owner_user_id: "admin-id", active: true,
+    scope, asset_scope_digest: digest,
+  };
+  const { GET } = load("../app/api/approvals/route.js", {
+    getSession: async () => ({ role: "owner", userId: "owner-id" }),
+    db: { query: async (sql) => sql.includes("COUNT(*)")
+      ? { rows: [{ n: 1 }] }
+      : { rows: [approval] } },
+    initializeDatabase: async () => {},
+    initializeScanner: async () => {},
+    securityApprovalScope,
+  }, ["GET"]);
+  const response = await GET(new Request("https://vector.invalid/api/approvals"));
+  const data = await response.json();
+  assert.equal(data.approvals[0].requester, "fixture-admin");
+  assert.equal(data.approvals[0].requested_by, "admin-id");
+  assert.deepEqual(data.approvals[0].scope, scope);
+  assert.equal(data.approvals[0].scope.checkAdvisories, true);
+  assert.equal(data.approvals[0].scope_digest, digest);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+
+  approval.asset_scope_digest = "0".repeat(64);
+  const changed = await (await GET(new Request("https://vector.invalid/api/approvals"))).json();
+  assert.equal(changed.approvals[0].scope, null);
+  assert.equal(changed.approvals[0].scope_digest, null);
+});
 test("scan worker rejects a changed saved scope before opening any probe", async () => {
   const scope = { target: { host: "fixture.invalid", ports: [443], scheme: null, explicitPort: null }, addresses: ["192.0.2.1"], packages: [], checkAdvisories: false };
   const digest = crypto.createHash("sha256").update(JSON.stringify(scope)).digest("hex");
@@ -258,7 +298,7 @@ test("tool approval binds exact arguments and consumes a grant only once", async
   let approved = false,
     consumed = false,
     created = 0;
-  let savedHash;
+  let savedHash, savedDescription;
   const db = {
     connect: async () => ({
       release() {},
@@ -278,6 +318,7 @@ test("tool approval binds exact arguments and consumes a grant only once", async
         if (sql.startsWith("INSERT INTO approvals")) {
           created++;
           savedHash = args[5];
+          savedDescription = args[3];
         }
         return { rows: [], rowCount: 0 };
       },
@@ -299,10 +340,12 @@ test("tool approval binds exact arguments and consumes a grant only once", async
     userId: "u",
     projectId: "p",
     name: "network_scan",
-    args: { target: "owned.example", profile: "web" },
+    args: { target: "owned.example", profile: "web", command: "A".repeat(2500) + " visible suffix" },
   };
   assert.equal((await toolApproval(input)).error, "APPROVAL_REQUIRED");
   assert.equal(created, 1);
+  assert.ok(savedDescription.length > 2000);
+  assert.ok(savedDescription.endsWith("visible suffix\"}"));
   await toolApproval(input);
   assert.equal(created, 1);
   approved = true;

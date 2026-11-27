@@ -10,6 +10,14 @@ selective privacy previews to overlapping replacements and existing placeholders
 
 Verification uses local synthetic fixtures; no deployment or external scan is implied.
 
+## 2026-11-27 — Remaining PR #145 review follow-ups
+
+Prevent automatic provider failover after an attributed request has an uncertain
+physical attempt. Preserve complete sanitized critical-tool arguments in owner
+approval details, and make usage refresh explicit so older call pages remain visible.
+
+Verification uses local synthetic fixtures; no deployment or external scan is implied.
+
 ## 2026-11-27 — Calm controls, fast privacy and authorized active scanning
 
 Replace the platform inventory page with direct sidebar navigation, an approval

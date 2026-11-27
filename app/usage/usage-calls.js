@@ -50,12 +50,8 @@ export default function UsageCalls() {
   useEffect(() => {
     const controller = new AbortController();
     load(null, controller.signal);
-    const timer = setInterval(() => {
-      if (!document.hidden) load(null, controller.signal);
-    }, 15000);
     return () => {
       controller.abort();
-      clearInterval(timer);
     };
   }, [filters]);
   useEffect(() => {
