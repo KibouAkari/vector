@@ -19,6 +19,23 @@ test('actual adapter sends a zero price ceiling without paid fallbacks and rejec
  await assert.rejects(requestProviderResponse({providerRuntime:{...runtime,model:'fixture/paid'},payload:{input:[]}}),{code:'FREE_INFERENCE_UNAVAILABLE'});assert.equal(bodies.length,1);
 });
 
+test('attributed inference never retries uncertain physical attempts and retains the reservation',async()=>{
+ for(const adapter of ['openai-responses','openai-chat','anthropic'])for(const failure of ['network','server']){
+  let attempts=0;const settlements=[];
+  const {requestProviderResponse}=load('../lib/provider-runtime.js',{
+   normalizedOpenAiUsage,normalizedAnthropicUsage,enforceFreeInference,protectProviderPayload:p=>p,
+   assertModelAccess:async()=>{},reserveProviderBudget:async()=>({id:'fixture'}),
+   settleProviderBudget:async(ticket,accounted)=>settlements.push([ticket.id,accounted]),
+   captureProviderUsage:async()=>{},observeProviderRequest:({execute})=>execute(),
+   fetch:async()=>{attempts++;if(failure==='network')throw Error('response lost');return {ok:false,status:503,text:async()=>'',headers:new Headers()};}
+  },['requestProviderResponse']);
+  const runtime={requestingUserId:'fixture-user',provider:adapter==='anthropic'?'anthropic':'openai',adapter,apiBase:'https://fixture.invalid',apiKey:'fixture-not-a-key',model:'fixture'};
+  await assert.rejects(requestProviderResponse({providerRuntime:runtime,payload:{input:[],max_output_tokens:20}}));
+  assert.equal(attempts,1,`${adapter} ${failure}`);
+  assert.deepEqual(settlements,[['fixture',false]]);
+ }
+});
+
 test('real resolver keeps the free-only constraint across selection and exhausted candidates',async()=>{
  const crypto=await import('node:crypto');process.env.FILE_ENCRYPTION_KEY='07'.repeat(32);let rows=[];
  const db={query:async(sql,args)=>{
