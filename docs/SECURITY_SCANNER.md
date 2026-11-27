@@ -12,6 +12,9 @@ owner queue. Each scope retains its resolved addresses, selected checks and
 external-advisory consent in an immutable digest. Subsequent runs use the saved
 grant. Revocation cancels queued runs. Address changes require reauthorization.
 A request UUID makes asset-save retries idempotent.
+The owner queue shows the requester, addresses, ports, packages and advisory
+consent before approval. Approval requires the reviewed digest; the saved scope
+is rechecked at decision, queue and worker execution.
 
 DNS resolution is bounded and every returned address must pass the network
 policy. The worker resolves again and refuses changed addresses before probing.

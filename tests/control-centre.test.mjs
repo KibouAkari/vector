@@ -7,6 +7,7 @@ import { previewRanges, previewSegments } from "../lib/privacy-preview.mjs";
 import { roleAllows, normalizeRolePolicy } from "../lib/role-policy.mjs";
 import { callCostLabel } from "../lib/cost-display.mjs";
 import { projectAccessAllowed } from "../lib/project-access-policy.mjs";
+import { securityApprovalScope } from "../lib/security/approval-scope.mjs";
 import {
   deterministicFindings,
   literalReplace,
@@ -19,6 +20,42 @@ const load = (path, deps, names) =>
       .replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "")
       .replace(/^export\s+/gm, "") + `\nreturn {${names.join(",")}};`,
   )(...Object.values(deps));
+test("scanner approval verifies the full saved scope across JSONB key ordering", () => {
+  const scope = {
+    target: { host: "fixture.invalid", ports: [443], scheme: "https", explicitPort: 443 },
+    addresses: ["192.0.2.1"],
+    packages: [{ ecosystem: "npm", name: "fixture", version: "1.0.0" }],
+    checkAdvisories: true,
+  };
+  const digest = crypto.createHash("sha256").update(JSON.stringify(scope)).digest("hex");
+  const reordered = JSON.parse('{"packages":[{"version":"1.0.0","name":"fixture","ecosystem":"npm"}],"addresses":["192.0.2.1"],"checkAdvisories":true,"target":{"explicitPort":443,"scheme":"https","ports":[443],"host":"fixture.invalid"}}');
+  const row = { id: "p", resource_id: "a", requested_by: "u", scope_digest: digest, asset_id: "a", approval_id: "p", owner_user_id: "u", active: true, scope: reordered, asset_scope_digest: digest };
+  assert.deepEqual(securityApprovalScope(row), scope);
+  for (const change of [
+    { requested_by: "other" }, { active: false }, { asset_id: "other" },
+    { asset_scope_digest: "bad" }, { scope: { ...reordered, checkAdvisories: false } },
+    { scope: { ...reordered, extra: true } },
+  ]) assert.equal(securityApprovalScope({ ...row, ...change }), null);
+});
+test("scan worker rejects a changed saved scope before opening any probe", async () => {
+  const scope = { target: { host: "fixture.invalid", ports: [443], scheme: null, explicitPort: null }, addresses: ["192.0.2.1"], packages: [], checkAdvisories: false };
+  const digest = crypto.createHash("sha256").update(JSON.stringify(scope)).digest("hex");
+  const row = { id: "run", asset_id: "asset", scope_digest: digest, current_digest: digest, approved_digest: digest, scope: { ...scope, checkAdvisories: true }, kind: "web", active: true, owner_user_id: "user", approval_id: "approval", approval_record_id: "approval", approval_resource_id: "asset", requested_by: "user", approval_status: "approved", enabled: true, role: "admin" };
+  let probes = 0, failure;
+  const client = { release() {}, query: async (sql) => sql.includes("WHERE r.status='queued'") ? { rows: [row] } : { rows: [] } };
+  const db = { connect: async () => client, query: async (sql, args) => {
+    if (sql.includes("SET status=$2,error=$3")) failure = args;
+    return { rows: [] };
+  }};
+  class ScanError extends Error { constructor(code) { super(code); this.code = code; } }
+  const { runNextSecurityScan } = load("../lib/security/scan-store.js", {
+    crypto, db, initializeDatabase: async () => {}, parseTarget: null, resolveTarget: null, ScanError,
+    validatePackages: null, securityApprovalScope, runActiveScan: async () => { probes++; },
+  }, ["runNextSecurityScan"]);
+  await runNextSecurityScan();
+  assert.equal(probes, 0);
+  assert.deepEqual(failure, ["run", "failed", "AUTHORIZATION_CHANGED"]);
+});
 test("skill documents validate frontmatter, parameters and exact non-recursive interpolation", () => {
   const skill = skillDocument({
     document:

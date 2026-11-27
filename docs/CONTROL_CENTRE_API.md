@@ -11,8 +11,8 @@ the API and again before execution. Request bodies are bounded JSON.
 | `/api/security/scans/{id}` | GET, DELETE | Own run/status/report or cancellation. `?format=json` / `?format=md` downloads an attachment. |
 | `/api/skills` | GET, POST | Own global skills. POST `create`, `revise`, `activate` or `retire`. |
 | `/api/projects/{id}/skills` | GET, POST | Same lifecycle with existing project permissions and owner activation. |
-| `/api/approvals` | GET | Owner-only bounded queue. `?summary=1` returns pending count. |
-| `/api/approvals/{id}/decision` | POST | Owner CAS decision `{decision:"approved"}` or `rejected`; immutable decision audit. |
+| `/api/approvals` | GET | Owner-only bounded queue, including the requester and verified saved scope for scanner approvals. `?summary=1` returns pending count. |
+| `/api/approvals/{id}/decision` | POST | Owner CAS decision `{decision:"approved"}` or `rejected`; scanner approval also requires the reviewed `scopeDigest`. Decisions are audited. |
 | `/api/permissions/policies` | GET, POST | Owner role allowlists and critical-action policy. |
 | `/api/budgets` | GET, POST | Own limits/reservations, or owner administration. POST scope, currency, monthlyWarning, monthlyHard. |
 | `/api/usage/calls` | GET | Own cursor-paginated provider ledger. Optional `after`, exact `model` and `project` UUID filters. |

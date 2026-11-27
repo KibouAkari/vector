@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-27 — Review fixes for PR #145
+
+Show verified saved scan scopes and requesters to owners before approval, bind
+the decision to the reviewed digest, and reject changed scopes before execution.
+Disable automatic retries of attributed inference attempts so uncertain
+reservations remain held. Repair completed-job cost-status recovery and match
+selective privacy previews to overlapping replacements and existing placeholders.
+
+Verification uses local synthetic fixtures; no deployment or external scan is implied.
+
 ## 2026-11-27 — Calm controls, fast privacy and authorized active scanning
 
 Replace the platform inventory page with direct sidebar navigation, an approval
@@ -1283,5 +1293,4 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The operator observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at [private release reference]. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
-
 

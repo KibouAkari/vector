@@ -32,8 +32,9 @@ or an explicitly free OpenRouter model at `https://openrouter.ai/api/v1`.
 The adapter rechecks eligibility immediately before a call and sends a zero
 prompt/completion price ceiling with provider fallback disabled. No eligible
 model means a visible failure, not paid fallback. Exclusions on a later attempt
-cannot remove this restriction. Existing bounded retries still apply; no key
-rotation loop is introduced.
+cannot remove this restriction. Attributed inference calls do not automatically
+retry an uncertain provider attempt; their reservation remains held if
+completion cannot be accounted for. No key rotation loop is introduced.
 
 This switch controls **inference fees**, not paid search, image/video generation,
 telephony, storage, external tools, taxes or host costs. Those need their own

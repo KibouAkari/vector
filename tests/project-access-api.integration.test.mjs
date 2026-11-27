@@ -428,13 +428,28 @@ test("real authenticated API permissions and project isolation", async t => {
     });
     await t.test("active scan API binds saved targets to authorization and never starts an unapproved run",async()=>{
       const endpoint='/api/security/assets';await expectStatus(endpoint,{as:"editor"},403);await expectStatus(endpoint,{as:"reader"},403);
-      const input={requestId:crypto.randomUUID(),name:"Isolated CI network fixture",target:"10.255.255.254:443",kind:"web",ports:[443],authorized:true,checkAdvisories:false};
+      const input={requestId:crypto.randomUUID(),name:"Isolated CI network fixture",target:"10.255.255.254:443",kind:"web",ports:[443],authorized:true,checkAdvisories:true,packages:[{ecosystem:"npm",name:"synthetic-fixture",version:"1.0.0"}]};
       await expectStatus(endpoint,{as:"operator",method:"POST",body:{...input,authorized:false}},400);
       await expectStatus(endpoint,{as:"operator",method:"POST",body:{...input,target:'169.254.169.254'}},400);
       const asset=await (await expectStatus(endpoint,{as:"operator",method:"POST",body:input},201)).json();assert.equal(asset.approvalStatus,'pending');
       const duplicate=await (await expectStatus(endpoint,{as:"operator",method:"POST",body:input},201)).json();assert.equal(duplicate.id,asset.id);
       await expectStatus('/api/security/scans',{as:"operator",method:"POST",body:{assetId:asset.id}},403);
-      await expectStatus('/api/approvals/'+asset.approvalId+'/decision',{as:"admin",method:"POST",body:{decision:'approved'}},200);
+      await expectStatus('/api/approvals',{as:"operator"},403);
+      const approval=(await (await expectStatus('/api/approvals',{as:"admin"},200)).json()).approvals.find(a=>a.id===asset.approvalId);
+      assert.equal(approval.requested_by,users.operator.id);assert.equal(approval.scope.target.host,"10.255.255.254");
+      assert.deepEqual(approval.scope.addresses,["10.255.255.254"]);assert.deepEqual(approval.scope.target.ports,[443]);
+      assert.deepEqual(approval.scope.packages,input.packages);assert.equal(approval.scope.checkAdvisories,true);
+      const decision='/api/approvals/'+asset.approvalId+'/decision';
+      await expectStatus(decision,{as:"admin",method:"POST",body:{decision:'approved'}},409);
+      await db.query("UPDATE security_assets SET scope=jsonb_set(scope,'{checkAdvisories}','false') WHERE id=$1",[asset.id]);
+      const changed=(await (await expectStatus('/api/approvals',{as:"admin"},200)).json()).approvals.find(a=>a.id===asset.approvalId);
+      assert.equal(changed.scope,null);
+      await expectStatus(decision,{as:"admin",method:"POST",body:{decision:'approved',scopeDigest:approval.scope_digest}},409);
+      await db.query("UPDATE security_assets SET scope=$2 WHERE id=$1",[asset.id,JSON.stringify(approval.scope)]);
+      await expectStatus(decision,{as:"admin",method:"POST",body:{decision:'approved',scopeDigest:approval.scope_digest}},200);
+      await db.query("UPDATE security_assets SET scope=jsonb_set(scope,'{checkAdvisories}','false') WHERE id=$1",[asset.id]);
+      await expectStatus('/api/security/scans',{as:"operator",method:"POST",body:{assetId:asset.id}},403);
+      await db.query("UPDATE security_assets SET scope=$2 WHERE id=$1",[asset.id,JSON.stringify(approval.scope)]);
       const scan=await (await expectStatus('/api/security/scans',{as:"operator",method:"POST",body:{assetId:asset.id}},202)).json();assert.equal(scan.status,'queued');
       await expectStatus('/api/security/scans/'+scan.id,{as:"admin"},404);
       const owned=(await (await expectStatus('/api/security/scans/'+scan.id,{as:"operator"},200)).json()).run;assert.equal(owned.status,'queued');assert.equal(owned.result,null);
@@ -511,4 +526,3 @@ test("real authenticated API permissions and project isolation", async t => {
     await db.end();
   }
 });
-
