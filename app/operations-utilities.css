@@ -1,0 +1,8 @@
+@layer theme, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(vx);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(vx);
+@source "../components/operations";
+@source "./brain";
+@source "./connections";
+@source "./teams";
+@source "./traffic";

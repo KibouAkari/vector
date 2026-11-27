@@ -4,11 +4,11 @@
 
 | Token | Color | Usage |
 | :-- | :-- | :-- |
-| Canvas | `#0A0D11` | Main dark background |
-| Surface | `#131A1B` | Secondary surfaces |
-| Text | `#F0F7F3` | Primary text |
-| Muted | `#9EB5AD` | Descriptions |
-| Mint | `#8DE0B7` | Important active states |
+| Canvas | `#090C10` | Main dark background |
+| Surface | `#10151B` | Secondary surfaces |
+| Text | `#E8EEF2` | Primary text |
+| Muted | `#87959F` | Descriptions |
+| Glacier | `#7BCDD2` | Important active states |
 
 These are documentation design tokens, not a claim
 that every existing CSS declaration already uses them.
@@ -51,3 +51,17 @@ intro through this stylesheet or replace existing dashboard charts.
 The [Web Interface Guidelines](https://vercel.com/design/guidelines) informed
 keyboard, responsive, focus and reduced-motion behavior. Local synthetic
 component rendering is not a screenshot of a live deployment.
+
+## Operations interface
+
+`app/operations.css` scopes the new authenticated theme. Use the components in
+`components/operations` for headings, panels, empty states, metrics and statuses.
+The topbar is 64px, grouped rail 220px and content gap 24px. Mobile navigation is
+a drawer; numeric tables scroll within their own surface rather than widening
+the page. Avoid nesting a full generic card grid inside another card.
+
+Tailwind theme/utilities use the `vx:` prefix and omit preflight. Do not reset
+login/intro styles. Motion must respect both device reduced motion and interface
+preferences. Three.js loads only on the Traffic route and plots observed data;
+keep a readable non-WebGL alternative. Never fabricate service status, confidence
+scores, geographic events or percentage improvements for visual density.

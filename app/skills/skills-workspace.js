@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import SkillImport from "../../components/operations/skill-import";
 import Markdown from "react-markdown";
 const template =
   '---\nname: Evidence report\ndescription: A concise report grounded in supplied sources.\nparameters: {"tone":{"type":"string","default":"concise"}}\n---\nSummarize the provided evidence in a {{tone}} style. Distinguish observations from assumptions and include source references.';
@@ -93,6 +94,7 @@ export default function SkillsWorkspace() {
     versions.sort((a, b) => b.version - a.version);
   return (
     <div className="ctl-page">
+      {canEdit && <SkillImport projectId={project} onImported={load}/>}
       <header className="ctl-page-header">
         <div>
           <h1>Skills</h1>

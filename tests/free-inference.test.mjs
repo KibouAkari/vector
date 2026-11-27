@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {freeInferenceEligible,enforceFreeInference} from '../lib/free-inference-policy.mjs';
 import {normalizedOpenAiUsage,normalizedAnthropicUsage} from '../lib/provider-usage-normalization.mjs';
-const load=(path,deps,names)=>new Function(...Object.keys(deps),readFileSync(new URL(path,import.meta.url),'utf8').replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'').replace(/^export\s+/gm,'')+`\nreturn {${names.join(',')}};`)(...Object.values(deps));
+const load=(path,originalDeps,names)=>{const deps={admitTeamCall:async()=>{},...originalDeps};return new Function(...Object.keys(deps),readFileSync(new URL(path,import.meta.url),'utf8').replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'').replace(/^export\s+/gm,'')+`\nreturn {${names.join(',')}};`)(...Object.values(deps));};
 test('free inference requires an explicit free model on the official endpoint',()=>{
  assert.ok(freeInferenceEligible('local','installed','http://vector-local-inference:11434/v1'));
  for(const model of ['openrouter/free','fixture/model:free'])assert.ok(freeInferenceEligible('openrouter',model,'https://openrouter.ai/api/v1'));

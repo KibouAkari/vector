@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-11-28 — Operations interface, Brain and bounded teams
+
+Rebuild the authenticated shell, grouped navigation, overview charts and chat
+surfaces with account-specific interface preferences and reduced-motion support.
+Preserve login, intro and branding. Add encrypted account-private Brain memories,
+revisioned corrections, expiry, export and deterministic bounded retrieval before
+privacy review. Add explicit specialist teams with a durable shared call limit,
+existing provider budgets and an optional completed quality review.
+
+Add scoped connection adapters for Checkmk, Wazuh, PatchMon and workspace
+services, exact approved single-use GitHub/Slack writes, signed traffic ingestion,
+observed-location view and pinned GitHub Agent Skills draft imports. Website/API
+profiles use Host/SNI web probes rather than shared-host TCP discovery. Update
+setup/API/security documentation and record integration tradeoffs and limits.
+
+Validation uses offline fixtures, an isolated PostgreSQL/API instance and browser
+checks with synthetic records. No paid inference, live scan, external message,
+host update or production deployment is implied.
+
 ## 2026-11-27 — Local capability policy follow-up for PR #145
 
 Enforce role model and server-inspection allowlists at local private execution,

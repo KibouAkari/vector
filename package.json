@@ -11,6 +11,7 @@
   "dependencies": {
     "@radix-ui/react-tooltip": "1.4.0",
     "@react-three/fiber": "9.8.0",
+    "@tailwindcss/postcss": "4.3.5",
     "docx": "9.7.2",
     "exceljs": "4.4.0",
     "htmlparser2": "10.0.0",
@@ -21,14 +22,17 @@
     "next": "16.4.6",
     "pdf-lib": "1.17.1",
     "pg": "8.16.3",
+    "postcss": "8.5.34",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "^10.1.0",
     "recharts": "3.10.1",
     "remark-gfm": "^4.0.1",
     "saxes": "6.0.0",
+    "tailwindcss": "4.3.5",
     "three": "0.186.0",
-    "unpdf": "1.8.1"
+    "unpdf": "1.8.1",
+    "yaml": "2.9.1"
   },
   "overrides": {
     "exceljs": {

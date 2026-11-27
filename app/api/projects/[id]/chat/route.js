@@ -1,3 +1,5 @@
+import {teamPolicy,teamContext} from '../../../../../lib/teams/policy.mjs';
+import {brainContext} from '../../../../../lib/brain/store';
 import {selectedSkillContext} from "../../../../../lib/project-skills";
 import {sourceEvidenceForFiles} from "../../../../../lib/project-sources";
 import {reviewPrivacyRequest} from '../../../../../lib/privacy-review';
@@ -256,7 +258,7 @@ export async function POST(
 
   if(body.billingPolicy!==undefined && !['standard','free-only'].includes(body.billingPolicy))return Response.json({error:'Ungültige Kosteneinstellung.'},{status:400});
 
-  if (body.privacyEnabled !== undefined && typeof body.privacyEnabled !== 'boolean') {
+  if ((body.brainEnabled !== undefined && typeof body.brainEnabled !== 'boolean') || (body.privacyEnabled !== undefined && typeof body.privacyEnabled !== 'boolean')) {
     return Response.json({error:'Ungültige Datenschutzeinstellung.'},{status:400});
   }
 
@@ -397,12 +399,15 @@ export async function POST(
 
   const sourceEvidence = await sourceEvidenceForFiles(projectId, chunks.map(chunk => chunk.file_id).filter(Boolean));
 
+  let team;
+  try {team=teamPolicy(body.team);if(team&&(requestedMode==='local'||project.privacy_level==='local_only'))return Response.json({error:'Teams require an API provider; use a single local worker for local-only tasks.'},{status:400});}catch{return Response.json({error:'INVALID_TEAM'},{status:400});}
   let skillContext;
   try { skillContext = await selectedSkillContext(projectId, body.skillIds,body.skillParameters); }
   catch { return Response.json({error: "Selected skills are invalid, unavailable or no longer active."}, {status: 400}); }
 
+  const memoryContext=await brainContext(session.userId,originalMessage,body.brainEnabled);
   const rawContext =
-    skillContext + "\n\n" + chunks
+    teamContext(team) + '\n\n' + memoryContext + '\n\n' + skillContext + "\n\n" + chunks
       .map(
         (
           chunk,
@@ -428,6 +433,7 @@ export async function POST(
       {status:503,headers:{'Cache-Control':'no-store'}});
   }
   if (privacy.response) return privacy.response;
+  if(team&&privacy.destination==='local')return Response.json({error:'Teams are not available for a local-only privacy decision.'},{status:400});
   const mappings = privacy.mappings;
   const safeMessage = privacy.apply(originalMessage);
   const safeContext = privacy.apply(rawContext);
@@ -507,7 +513,7 @@ export async function POST(
       userId:
         session.userId,
       conversationId,
-      message:safeMessage+(skillContext?'\nskills:'+crypto.createHash('sha256').update(skillContext).digest('hex'):'')+'\nprivacy:'+privacy.destination+':'+(body.privacyEnabled===false?'off':body.privacyDecision||'replace')+'\nbilling:'+(body.billingPolicy || 'standard')+'\nselection:'+JSON.stringify(body.privacyReplaceIds || null)
+      message:safeMessage+'\ncontext:'+crypto.createHash('sha256').update(safeContext).digest('hex')+(skillContext?'\nskills:'+crypto.createHash('sha256').update(skillContext).digest('hex'):'')+'\nprivacy:'+privacy.destination+':'+(body.privacyEnabled===false?'off':body.privacyDecision||'replace')+'\nbilling:'+(body.billingPolicy || 'standard')+'\nselection:'+JSON.stringify(body.privacyReplaceIds || null)
     });
 
   const duplicate =
@@ -586,6 +592,7 @@ export async function POST(
       requestHash,
 
       payload: {
+        team,
         requestText:safeMessage,
         billingPolicy:body.billingPolicy || 'standard',
         privacyPolicy:privacy.policy,

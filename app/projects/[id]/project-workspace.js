@@ -19,6 +19,7 @@ import ReactMarkdown
 import remarkGfm
   from "remark-gfm";
 
+import BrainToggle from "../../../components/operations/brain-toggle";
 import {usePrivacySend} from '../../../components/ui/privacy-review-dialog';
 import ProjectSkillsPanel from "./project-skills-panel";
 import ProjectFilesWorkspace from "./project-files-workspace";
@@ -854,6 +855,7 @@ export default function ProjectWorkbench({
   useEffect(()=>{setSelectedSkillIds([]);setSkillParameters({});},[project.id]);
   const [privacyEnabled,setPrivacyEnabled]=useState(true);
   const [freeOnly,setFreeOnly]=useState(false);
+  const [brainEnabled,setBrainEnabled]=useState(true);
   const {privacySend,privacyDialog} = usePrivacySend(`${project.id}:${conversationId || 'new'}`);
 
   async function sendProjectMessage(
@@ -905,7 +907,7 @@ export default function ProjectWorkbench({
     );
 
     try {
-      const response = await privacySend(`/api/projects/${project.id}/chat`,{
+      const response = await privacySend(`/api/projects/${project.id}/chat`,{brainEnabled,
         skillIds:selectedSkillIds,skillParameters:Object.fromEntries(selectedSkillIds.filter(id=>skillParameters[id]).map(id=>[id,skillParameters[id]])),
         message:text,conversationId,mode:chatMode,privacyEnabled,billingPolicy:freeOnly?'free-only':'standard'
       },{localOnly:project.privacy_level==='local_only'});
@@ -1478,7 +1480,7 @@ export default function ProjectWorkbench({
 
                 </select>
 
-                <ChatControls mode={chatMode} onModeChange={setChatMode} privacyEnabled={privacyEnabled}
+                <BrainToggle enabled={brainEnabled} onChange={setBrainEnabled} disabled={Boolean(activeJob)}/><ChatControls mode={chatMode} onModeChange={setChatMode} privacyEnabled={privacyEnabled}
                   freeOnly={freeOnly} onFreeOnlyChange={setFreeOnly} onPrivacyChange={setPrivacyEnabled} disabled={chatLoading} />
 
               </div>

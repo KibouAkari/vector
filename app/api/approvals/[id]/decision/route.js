@@ -1,3 +1,4 @@
+import {decryptSecret} from '../../../../../lib/model-config';
 import crypto from "node:crypto";
 import { getSession } from "../../../../../lib/auth";
 import { db, initializeDatabase } from "../../../../../lib/db";
@@ -44,6 +45,12 @@ export async function POST(request, context) {
         await client.query("ROLLBACK");
         return Response.json({ error: "ASSET_SCOPE_CHANGED" }, { status: 409 });
       }
+    }
+    if(result.rows[0].resource_type==='connector-action'&&body.decision==='approved'){
+      const action=(await client.query(`SELECT c.scope_digest,c.encrypted_spec,n.id AS connection_id,n.base FROM connector_actions c JOIN connector_connections n ON n.id=c.connection_id WHERE c.id=$1 AND c.approval_id=$2 AND c.status='pending' FOR UPDATE OF c,n`,[result.rows[0].resource_id,id])).rows[0];
+      const spec=action?JSON.parse(decryptSecret(action.encrypted_spec)):null;
+      const digest=action?crypto.createHash('sha256').update(JSON.stringify({connectionId:action.connection_id,base:action.base,spec})).digest('hex'):null;
+      if(!action||digest!==action.scope_digest||body.scopeDigest!==digest||result.rows[0].scope_digest!==digest){await client.query('ROLLBACK');return Response.json({error:'ACTION_SCOPE_CHANGED'},{status:409});}
     }
     await client.query(
       "INSERT INTO audit_log(id,actor,action,resource,details,source) VALUES ($1,$2,$3,$4,$5,'web')",

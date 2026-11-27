@@ -1,3 +1,4 @@
+import {navigationFor} from '../lib/operations-navigation.mjs';
 import {
   requireSession
 } from "../lib/auth";
@@ -330,6 +331,7 @@ export default async function Home() {
       <main className="main v5-main vx85-dashboard-main">
 
         <DashboardClient
+          allowedPaths={navigationFor(session).flatMap(group=>group.items.map(item=>item.href))}
           displayName={
             displayName
           }

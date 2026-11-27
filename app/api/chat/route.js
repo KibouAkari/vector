@@ -1,3 +1,4 @@
+import {brainContext} from '../../../lib/brain/store';
 import {selectedChatSkillContext} from '../../../lib/project-skills';
 import {requestDestination} from '../../../lib/chat-controls.mjs';
 import {reviewPrivacyRequest} from '../../../lib/privacy-review';
@@ -235,7 +236,7 @@ export async function POST(
 
   if(body.billingPolicy!==undefined && !['standard','free-only'].includes(body.billingPolicy))return Response.json({error:'Ungültige Kosteneinstellung.'},{status:400});
 
-  if (body.privacyEnabled !== undefined && typeof body.privacyEnabled !== 'boolean') {
+  if ((body.brainEnabled !== undefined && typeof body.brainEnabled !== 'boolean') || (body.privacyEnabled !== undefined && typeof body.privacyEnabled !== 'boolean')) {
     return Response.json({error:'Ungültige Datenschutzeinstellung.'},{status:400});
   }
 
@@ -347,7 +348,8 @@ export async function POST(
 
     let selectedSkills;
     try{selectedSkills=await selectedChatSkillContext(session.userId,body.skillIds,body.skillParameters);}catch{return Response.json({error:'SKILL_UNAVAILABLE'},{status:400});}
-    const attachmentContext=[attachmentBundle.context,selectedSkills].filter(Boolean).join('\n\n');
+    const memoryContext=await brainContext(session.userId,originalMessage,body.brainEnabled);
+    const attachmentContext=[attachmentBundle.context,selectedSkills,memoryContext].filter(Boolean).join('\n\n');
     const rawAgentMessage =
       attachmentContext
         ? [

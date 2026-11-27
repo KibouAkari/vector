@@ -45,7 +45,7 @@ export default function ApprovalQueue() {
   async function decide(id, decision) {
     if (pending) return;
     const row = rows.find((item) => item.id === id);
-    if (decision === "approved" && row?.resource_type === "security-asset" &&
+    if (decision === "approved" && ["security-asset","connector-action"].includes(row?.resource_type) &&
         (!row.scope || reviewed[id] !== row.scope_digest)) return;
     setPending(id);
     setError("");
@@ -53,7 +53,7 @@ export default function ApprovalQueue() {
       const response = await fetch(`/api/approvals/${id}/decision`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision, ...(row?.resource_type === "security-asset" && decision === "approved" ? { scopeDigest: row.scope_digest } : {}) }),
+        body: JSON.stringify({ decision, ...(["security-asset","connector-action"].includes(row?.resource_type) && decision === "approved" ? { scopeDigest: row.scope_digest } : {}) }),
       });
       if (!response.ok)
         throw Error("Decision was not saved. Refresh and try again.");
@@ -128,18 +128,18 @@ export default function ApprovalQueue() {
                         <summary>Details</summary>
                         <pre>{row.description}</pre>
                         <small>{row.permission}</small>
-                        {row.resource_type === "security-asset" && (
+                        {["security-asset","connector-action"].includes(row.resource_type) && (
                           row.scope ? (
                             <>
                               <p>Requested by: {row.requester || row.requested_by} ({row.requested_by})</p>
-                              <p>This authorization permits repeated scans of the saved scope.</p>
+                              <p>{row.resource_type==='connector-action'?'Exact action. Approval does not execute it; use Connections to execute once.':'This authorization permits repeated scans of the saved scope.'}</p>
                               <pre>{JSON.stringify(row.scope, null, 2)}</pre>
                               <p>Scope digest: {row.scope_digest}</p>
                               {status(row) === "pending" && (
                                 <label>
                                   <input type="checkbox" checked={reviewed[row.id] === row.scope_digest}
                                     onChange={(e) => setReviewed((old) => ({ ...old, [row.id]: e.target.checked ? row.scope_digest : null }))} />
-                                  I reviewed this scope and its advisory consent.
+                                  I reviewed this exact scope and content.
                                 </label>
                               )}
                             </>
@@ -170,7 +170,7 @@ export default function ApprovalQueue() {
                         <div className="ctl-toolbar">
                           <button
                             className="ctl-primary"
-                            disabled={pending !== null || (row.resource_type === "security-asset" && (!row.scope || reviewed[row.id] !== row.scope_digest))}
+                            disabled={pending !== null || (["security-asset","connector-action"].includes(row.resource_type) && (!row.scope || reviewed[row.id] !== row.scope_digest))}
                             onClick={() => decide(row.id, "approved")}
                           >
                             {pending === row.id ? "Saving…" : "Approve"}

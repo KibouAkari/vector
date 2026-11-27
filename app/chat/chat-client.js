@@ -5,6 +5,7 @@ import PrivacyReceipt from '../../components/ui/privacy-receipt';
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import ChatControls from '../../components/ui/chat-controls';
+import BrainToggle from "../../components/operations/brain-toggle";
 import {usePrivacySend} from '../../components/ui/privacy-review-dialog';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -220,6 +221,7 @@ export default function ChatClient({
   const [skillParameters,setSkillParameters]=useState({});
   const [freeOnly,setFreeOnly]=useState(false);
   const [activeJob, setActiveJob] = useState(null);
+  const [brainEnabled,setBrainEnabled]=useState(true);
   const {privacySend,privacyDialog} = usePrivacySend(`${userId}:${conversationId || "new"}`);
 
 
@@ -1196,7 +1198,7 @@ export default function ChatClient({
     );
 
     try {
-      const response = await privacySend('/api/chat',{
+      const response = await privacySend('/api/chat',{brainEnabled,
         message:text,conversationId:conversationIdRef.current || conversationId,mode,privacyEnabled,skillIds:selectedSkillIds,skillParameters:Object.fromEntries(selectedSkillIds.filter(id=>skillParameters[id]).map(id=>[id,skillParameters[id]])),billingPolicy:freeOnly?'free-only':'standard',
         attachmentIds:attachmentSnapshot.map(attachment=>attachment.id)
       });
@@ -1941,7 +1943,7 @@ export default function ChatClient({
               </div>
 
               <div className="v54-composer-right">
-                <ChatSkills selected={selectedSkillIds} onSelection={setSelectedSkillIds} parameters={skillParameters} onParameters={setSkillParameters} disabled={submitting || Boolean(activeJob)}/><ChatControls mode={mode} onModeChange={setMode} privacyEnabled={privacyEnabled}
+                <BrainToggle enabled={brainEnabled} onChange={setBrainEnabled} disabled={submitting||Boolean(activeJob)}/><ChatSkills selected={selectedSkillIds} onSelection={setSelectedSkillIds} parameters={skillParameters} onParameters={setSkillParameters} disabled={submitting || Boolean(activeJob)}/><ChatControls mode={mode} onModeChange={setMode} privacyEnabled={privacyEnabled}
                   freeOnly={freeOnly} onFreeOnlyChange={setFreeOnly} onPrivacyChange={setPrivacyEnabled} disabled={submitting || Boolean(activeJob)} />
 
                 {activeJob ? (

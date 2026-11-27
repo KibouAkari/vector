@@ -280,15 +280,13 @@ export default function ModelsClient() {
     );
 
 
-  function openNew() {
+  function openNew(provider = "openai") {
     setMessage(
       null
     );
 
     setEditing(
-      newProvider(
-        "openai"
-      )
+      newProvider(typeof provider==='string'?provider:'openai')
     );
   }
 
@@ -742,13 +740,13 @@ export default function ModelsClient() {
             Connections and routing
           </span>
 
-          <h1>Models & APIs</h1>
+          <h1>Models & keys</h1>
 
           <p>
             {
               role ===
               "owner"
-                ? "Manage connections, sharing and automatic model selection."
+                ? "Your providers, keys and task routing."
                 : "Use APIs shared by the workspace, or connect your own keys. Your own credentials are private to your account."
             }
           </p>
@@ -768,6 +766,7 @@ export default function ModelsClient() {
 
       </header>
 
+      <div className="op-provider-shortcuts" aria-label="Add provider">{Object.entries(OPTIONS).map(([key,option])=><button key={key} onClick={()=>openNew(key)}><span aria-hidden="true">+</span>{option.name}</button>)}</div>
       {
         message && (
           <div

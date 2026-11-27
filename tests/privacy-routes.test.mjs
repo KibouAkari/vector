@@ -1,3 +1,4 @@
+import {teamPolicy,teamContext} from '../lib/teams/policy.mjs';
 process.env.VECTOR_MINECRAFT_DATA_PATH='/srv/example-minecraft/data';
 import {previewRanges} from '../lib/privacy-preview.mjs';
 import {boundedLocalContext} from '../lib/local-context.mjs';
@@ -10,7 +11,7 @@ import {readFileSync} from 'node:fs';
 import {providerUsageTotals} from '../lib/provider-call-usage.mjs';
 
 function load(path,bindings,names) {
-  bindings={selectedChatSkillContext:async()=>'',assertModelAccess:async()=>{},assertToolAccess:async()=>{},...bindings};
+  bindings={brainContext:async()=>'',teamPolicy,teamContext,selectedChatSkillContext:async()=>'',assertModelAccess:async()=>{},assertToolAccess:async()=>{},...bindings};
   const source=readFileSync(new URL(path,import.meta.url),'utf8')
     .replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm,'').replace(/^export\s+/gm,'');
   return new Function(...Object.keys(bindings),source+`\nreturn {${names.join(',')}};`)(...Object.values(bindings));
