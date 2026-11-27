@@ -263,11 +263,17 @@ test("real authenticated API permissions and project isolation", async t => {
       assert.ok(ownerPage.includes(ownerOnlyModel), "owner sees operational usage");
       assert.ok(ownerPage.includes("creator-private-project"), "owner sees operational projects");
 
-      for (const route of ["/models", "/audit", "/api/models", "/usage"]) {
+      for (const route of ["/models", "/audit", "/api/models"]) {
         const response = await request(route, { as: "disabled" });
         assert.ok([302,303,307,308,403].includes(response.status),
           `feature-disabled account unexpectedly accessed ${route}: ${response.status}`);
       }
+      // Own cost visibility is available independently of workspace feature flags.
+      const ownUsagePage=await (await expectStatus('/usage',{as:'disabled'},200)).text();
+      assert.ok(!ownUsagePage.includes(ownerOnlyModel));assert.ok(!ownUsagePage.includes(creatorOnlyModel));
+      const ownBudget=(await (await expectStatus('/api/budgets',{as:'disabled'},200)).json());
+      assert.equal(ownBudget.canManage,false);assert.ok(ownBudget.reservations.every(row=>row.user_id===users.disabled.id));
+      await expectStatus('/api/budgets',{as:'disabled',method:'POST',body:{}},403);
       await expectStatus("/api/models", { as: "disabled" }, 403);
       await expectStatus("/api/models", { as: "creator" }, 403);
       await expectStatus("/api/conversations", { as: "disabled" }, 403);
