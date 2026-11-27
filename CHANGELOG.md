@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-27 — Local capability policy follow-up for PR #145
+
+Enforce role model and server-inspection allowlists at local private execution,
+without requiring a model for deterministic statistics or adding cloud fallback.
+Verification uses synthetic fixtures; no deployment or live server read is implied.
+
 ## 2026-11-27 — Review fixes for PR #145
 
 Show verified saved scan scopes and requesters to owners before approval, bind
@@ -1301,4 +1307,3 @@ Add a bounded read-only saved-statistics collector, deterministic rankings with 
 ## 2026-10-16 Composer release closure (#33)
 
 The operator observed successful app/source release f38e44f with image 9a2b01e, persistent Compose pinning, health checks and rollback at [private release reference]. Preserve the guarded historical release script. Syntax and archived-helper preparation were verified. The later runtime-release preflight found a changed app image; this does not invalidate the observed composer deployment and does not establish what is currently deployed. Reconcile current release records before another cutover. No production action is performed by merging this PR.
-

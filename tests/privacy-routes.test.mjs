@@ -10,7 +10,7 @@ import {readFileSync} from 'node:fs';
 import {providerUsageTotals} from '../lib/provider-call-usage.mjs';
 
 function load(path,bindings,names) {
-  bindings={selectedChatSkillContext:async()=>'',...bindings};
+  bindings={selectedChatSkillContext:async()=>'',assertModelAccess:async()=>{},assertToolAccess:async()=>{},...bindings};
   const source=readFileSync(new URL(path,import.meta.url),'utf8')
     .replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm,'').replace(/^export\s+/gm,'');
   return new Function(...Object.keys(bindings),source+`\nreturn {${names.join(',')}};`)(...Object.values(bindings));
