@@ -218,7 +218,7 @@ def install(endpoint,app):
     run(['systemctl','restart','vector-observatory.service'])
     active=run(['systemctl','is-active','vector-observatory.service']).stdout.strip()=='active'
     ingest_seen=False
-    probe="const{Pool}=require('pg');const p=new Pool({connectionString:process.env.DATABASE_URL});p.query('SELECT received_at FROM traffic_sources WHERE id=$1 AND received_at>NOW()-INTERVAL \'30 seconds\'',[process.argv[1]]).then(r=>console.log(r.rowCount)).catch(()=>console.log(0)).finally(()=>p.end());"
+    probe=r"const{Pool}=require('pg');const p=new Pool({connectionString:process.env.DATABASE_URL});p.query('SELECT received_at FROM traffic_sources WHERE id=$1 AND received_at>NOW()-INTERVAL \'30 seconds\'',[process.argv[1]]).then(r=>console.log(r.rowCount)).catch(()=>console.log(0)).finally(()=>p.end());"
     for _ in range(8):
         result=run(['docker','exec',app,'node','-e',probe,config['sourceId']],check=False)
         if result.returncode==0 and result.stdout.strip()=='1':
