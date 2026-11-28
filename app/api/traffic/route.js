@@ -1,3 +1,4 @@
+import { ownActivity } from "../../../lib/traffic/activity";
 import { getSession } from "../../../lib/auth";
 import { verifyTrafficSignature } from "../../../lib/traffic/events.mjs";
 import { ingestTraffic, trafficOverview } from "../../../lib/traffic/store";
@@ -6,12 +7,23 @@ const reply = (data, status = 200) =>
     status,
     headers: { "Cache-Control": "private, no-store" },
   });
-export async function GET() {
+export async function GET(request) {
   const session = await getSession();
   if (!session || !["owner", "admin"].includes(session.role))
     return reply({ error: "Forbidden" }, 403);
   try {
-    return reply(await trafficOverview());
+    const minutes = Number(
+      new URL(request.url).searchParams.get("minutes") || 60,
+    );
+    if (![15, 60, 360, 1440].includes(minutes))
+      return reply({ error: "INVALID_TRAFFIC_WINDOW" }, 400);
+    const data = await trafficOverview({ windowMinutes: minutes });
+    const activity = await ownActivity(session.userId).catch(() => ({
+      unavailable: true,
+      jobs: [],
+      scans: [],
+    }));
+    return reply({ ...data, activity });
   } catch {
     return reply({ error: "TRAFFIC_UNAVAILABLE" }, 503);
   }
@@ -55,6 +67,13 @@ export async function POST(request) {
           "TRAFFIC_RATE_LIMIT",
           "INVALID_TRAFFIC_EVENT",
           "INVALID_TRAFFIC_EVENTS",
+          "INVALID_SAMPLE_TIME",
+          "INVALID_HOST_METRICS",
+          "INVALID_CONNECTION_SAMPLE",
+          "INVALID_COLLECTOR_SOURCE",
+          "CONNECTION_SAMPLE_LIMIT",
+          "COLLECTOR_LIMIT",
+          "STALE_COLLECTOR_SAMPLE",
         ].includes(error.message)
           ? error.message
           : "INGEST_FAILED",

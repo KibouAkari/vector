@@ -31,3 +31,8 @@ Budget scopes are `workspace`, `user:{UUID}` or `project:{UUID}`. Role allowlist
 use `null` for the existing allowed set and `[]` to deny all. Model entries are
 exact `provider/model`; tool entries are exact runtime names. Unknown or invalid
 scope, version, digest or selection fails before execution.
+
+## Observatory telemetry
+
+The authenticated activity/resource endpoints, extended signed traffic payloads,
+limits and collection permissions are specified in [Observatory](OBSERVATORY.md#api-additions).

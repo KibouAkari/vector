@@ -699,7 +699,8 @@ export default function ChatClient({
        * Restore the user's selected conversation first.
        * Do not navigate to an arbitrary background job.
        */
-      const saved = localStorage.getItem(
+      const requested=new URLSearchParams(window.location.search).get("conversation");
+      const saved = requested || localStorage.getItem(
         `vector.activeConversation:${userId}`
       );
 

@@ -24,6 +24,7 @@ import "./vector-chat-600.css";
 import "./vector-control.css";
 import "./operations-utilities.css";
 import "./operations.css";
+import "./observatory.css";
 
 import VectorRouteTransition from "../components/ui/vector-route-transition";
 

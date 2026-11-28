@@ -4,11 +4,11 @@
 
 | Token | Color | Usage |
 | :-- | :-- | :-- |
-| Canvas | `#090C10` | Main dark background |
-| Surface | `#10151B` | Secondary surfaces |
-| Text | `#E8EEF2` | Primary text |
-| Muted | `#87959F` | Descriptions |
-| Glacier | `#7BCDD2` | Important active states |
+| Canvas | `#000000` | Main dark background |
+| Surface | `#060708` | Secondary surfaces |
+| Text | `#EDF0F2` | Primary text |
+| Muted | `#969DA5` | Descriptions |
+| Glacier | `#D5E1EA` | Important active states |
 
 These are documentation design tokens, not a claim
 that every existing CSS declaration already uses them.
@@ -65,3 +65,16 @@ login/intro styles. Motion must respect both device reduced motion and interface
 preferences. Three.js loads only on the Traffic route and plots observed data;
 keep a readable non-WebGL alternative. Never fabricate service status, confidence
 scores, geographic events or percentage improvements for visual density.
+
+## Observatory surfaces
+
+Authenticated routes use `app/observatory.css` after the existing component
+styles. Flat hairline sections, restrained controls and tabular operational
+figures keep the content hierarchy clear. Decorative planets sit behind content
+and never encode telemetry. The account ambient/motion preferences and system
+reduced-motion setting control them. Login/intro source stays separate.
+
+Overview gives tasks, cost and model/token figures the main column. Host health
+is compact. Traffic uses actual country polygons with explicit unknown location,
+stale sample and partial-coverage states. Do not add fake maps, fictional activity
+or fabricated CPU percentages to make empty installations appear busy.

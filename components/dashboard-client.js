@@ -1,17 +1,20 @@
 "use client";
-import { useState } from "react";
-import {useInterfaceMotion} from "./operations/use-interface-motion";
+import { useEffect, useState, Component } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Activity,
   ArrowUpRight,
-  BrainCircuit,
-  Coins,
-  FolderKanban,
-  MessageSquare,
-  Workflow,
   ArrowDownToLine,
   ChevronRight,
+  Plus,
+  Clock3,
+  FolderKanban,
+  Check,
+  CornerDownRight,
+  Workflow,
+  MessageSquare,
+  Pause,
 } from "lucide-react";
 import {
   Area,
@@ -22,7 +25,28 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Page, Panel, Metric, Empty, Sparkline } from "./operations/primitives";
+import { Page, Panel, Empty, Status, Sparkline } from "./operations/primitives";
+import { useInterfaceMotion } from "./operations/use-interface-motion";
+import { useObservatory } from "./operations/use-observatory";
+import ServerVitals from "./operations/server-vitals";
+import Donut from "./operations/donut";
+const Globe = dynamic(() => import("./operations/traffic-globe"), {
+  ssr: false,
+  loading: () => <div className="ob-globe" />,
+});
+class GlobeGuard extends Component {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      <div className="ob-globe-fallback" />
+    ) : (
+      this.props.children
+    );
+  }
+}
 const number = (value) =>
   new Intl.NumberFormat("en", {
     notation: "compact",
@@ -37,22 +61,66 @@ export default function DashboardClient({
   projects = [],
   allowedPaths = null,
 }) {
-  const reduced = useInterfaceMotion();
-  const [metric, setMetric] = useState("requests");
-  const trend = timeline.map((row) => row[metric] || 0);
-  const totalCalls = totals.providerCalls || 0;
+  const reduced = useInterfaceMotion(),
+    allowChat = !allowedPaths || allowedPaths.includes("/chat"),
+    allowProjects = !allowedPaths || allowedPaths.includes("/projects"),
+    allowTraffic = !allowedPaths || allowedPaths.includes("/traffic"),
+    allowServer = !allowedPaths || allowedPaths.includes("/server");
+  const telemetry = useObservatory({
+    traffic: allowTraffic,
+    server: allowServer,
+  });
+  const [activity, setActivity] = useState(null),
+    [metric, setMetric] = useState("requests"),
+    [tab, setTab] = useState("recent");
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true,
+      inFlight = false;
+    const load = async () => {
+      if (document.hidden || inFlight) return;
+      inFlight = true;
+      try {
+        const response = await fetch("/api/operations/activity", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (response.ok && active) setActivity(await response.json());
+      } catch {
+      } finally {
+        inFlight = false;
+      }
+    };
+    load();
+    const timer = setInterval(load, 5000);
+    return () => {
+      active = false;
+      controller.abort();
+      clearInterval(timer);
+    };
+  }, []);
+  const work =
+      activity?.jobs?.filter((row) =>
+        tab === "active" ? ["running", "queued"].includes(row.status) : true,
+      ) || [],
+    traffic = telemetry.traffic;
+  const uncached = Math.max(
+    0,
+    (totals.inputTokens || 0) - (totals.cachedTokens || 0),
+  );
   function download() {
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          { period: "30 days UTC", totals, models, timeline },
-          null,
-          2,
-        ),
-      ],
-      { type: "application/json" },
+    const url = URL.createObjectURL(
+      new Blob(
+        [
+          JSON.stringify(
+            { period: "30 UTC calendar days", totals, models, timeline },
+            null,
+            2,
+          ),
+        ],
+        { type: "application/json" },
+      ),
     );
-    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = "vector-usage.json";
@@ -62,11 +130,11 @@ export default function DashboardClient({
   return (
     <Page
       title="Overview"
-      eyebrow="Workspace"
-      description={`Welcome back, ${displayName}.`}
+      description={displayName ? `Your workspace, ${displayName}.` : undefined}
+      className="ob-dashboard"
       actions={
         <>
-          <span className="op-period">Last 30 days · UTC</span>
+          <span className="ob-period">Last 30 days</span>
           <button className="op-button" onClick={download}>
             <ArrowDownToLine size={14} />
             Export
@@ -74,74 +142,133 @@ export default function DashboardClient({
         </>
       }
     >
-      <div className="op-dashboard">
-        <div className="op-dashboard-primary">
-          <section className="op-welcome">
+      <div className="ob-dashboard-layout">
+        <div className="ob-work-column">
+          <section className="ob-launch">
             <div>
-              <span className="op-eyebrow">Your next move</span>
-              <h2>What are we working on?</h2>
-              <p>Pick up a project, ask a question or check your services.</p>
-              <div className="op-actions">
-                <Link href="/chat" className="op-button primary">
-                  <MessageSquare size={15} />
-                  New conversation
-                  <ArrowUpRight size={14} />
-                </Link>
-                <Link href="/projects" className="op-button">
-                  Open projects
-                </Link>
-              </div>
+              <span className="ob-section-index">01 / Workspace</span>
+              <h2>What’s next?</h2>
             </div>
-            <div className="op-orbit" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-              <img src="/vector-assets/brand/vector-mark.svg" alt="" />
-            </div>
+            {allowChat && (
+              <Link href="/chat" className="ob-new-task">
+                <Plus size={16} />
+                <span>New conversation</span>
+                <ArrowUpRight size={15} />
+              </Link>
+            )}
           </section>
-          <div className="op-metrics">
-            <Metric
-              label="Provider calls"
-              value={number(totalCalls)}
-              icon={Activity}
-              detail={`${number(totals.requests)} ledger entries`}
-            >
-              <Sparkline values={timeline.map((row) => row.requests)} />
-            </Metric>
-            <Metric
-              label="Tokens"
-              value={number(totals.totalTokens)}
-              icon={Workflow}
-              detail={`${number(totals.cachedTokens)} cached input`}
-            >
-              <Sparkline values={timeline.map((row) => row.totalTokens)} />
-            </Metric>
-            <Metric
-              label="Recorded spend"
-              value={money(totals.spend)}
-              icon={Coins}
-              detail={
-                totals.incompleteCalls
-                  ? `${totals.incompleteCalls} calls with incomplete cost`
-                  : "Reported and configured price records"
-              }
-            >
-              <Sparkline values={timeline.map((row) => row.spend)} />
-            </Metric>
-            <Metric
-              label="Recent projects"
-              value={projects.length}
-              icon={FolderKanban}
-              detail="Up to 5 recently updated"
-            />
+          <div className="ob-stat-line">
+            <div>
+              <span>Provider calls</span>
+              <strong>{number(totals.providerCalls)}</strong>
+              <Sparkline
+                values={timeline.map((row) => row.requests)}
+                height={28}
+              />
+            </div>
+            <div>
+              <span>Recorded spend</span>
+              <strong>{money(totals.spend)}</strong>
+              <small>
+                {totals.incompleteCalls
+                  ? `${totals.incompleteCalls} incomplete cost records`
+                  : "Reported and configured rates"}
+              </small>
+            </div>
+            <div>
+              <span>Tokens</span>
+              <strong>{number(totals.totalTokens)}</strong>
+              <small>{number(totals.cachedTokens)} cached input</small>
+            </div>
           </div>
           <Panel
-            title="Activity"
-            subtitle="Your usage ledger"
+            title="My tasks"
             actions={
-              <div className="op-segment" aria-label="Chart metric">
+              <div className="op-segment">
+                <button
+                  onClick={() => setTab("recent")}
+                  aria-pressed={tab === "recent"}
+                >
+                  Recent
+                </button>
+                <button
+                  onClick={() => setTab("active")}
+                  aria-pressed={tab === "active"}
+                >
+                  Active{" "}
+                  {activity?.counts
+                    ? activity.counts.running + activity.counts.queued
+                    : ""}
+                </button>
+              </div>
+            }
+            className="ob-work-panel"
+          >
+            {work.length ? (
+              <div className="ob-task-list">
+                {work.slice(0, 5).map((row) => (
+                  <Link
+                    key={row.id}
+                    href={
+                      row.conversationId
+                        ? `/chat?conversation=${encodeURIComponent(row.conversationId)}`
+                        : "/chat"
+                    }
+                  >
+                    <span className={"ob-task-marker " + row.status}>
+                      {row.status === "completed" ? (
+                        <Check size={13} />
+                      ) : row.status === "running" ? (
+                        <Activity size={13} />
+                      ) : (
+                        <Clock3 size={13} />
+                      )}
+                    </span>
+                    <div>
+                      <strong>{row.title}</strong>
+                      <span>{row.stage || row.status}</span>
+                    </div>
+                    <Status value={row.status} />
+                    <ChevronRight size={13} />
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="ob-quiet-empty">
+                <Workflow size={22} strokeWidth={1.1} />
+                <div>
+                  <strong>
+                    {activity
+                      ? "No active tasks"
+                      : "Your recent work appears here"}
+                  </strong>
+                  <p>Start a conversation or continue a project.</p>
+                </div>
+                <Link className="op-link" href="/teams">
+                  Agent teams
+                  <ArrowUpRight size={13} />
+                </Link>
+              </div>
+            )}
+            <div className="ob-work-counts">
+              <span>
+                <i className="dot-running" />
+                {activity?.counts?.running ?? "—"} running
+              </span>
+              <span>
+                <i />
+                {activity?.counts?.queued ?? "—"} queued
+              </span>
+              <span>{activity?.counts?.completed ?? "—"} completed · 24h</span>
+            </div>
+          </Panel>
+          <Panel
+            title="Usage"
+            subtitle="30 UTC calendar days"
+            actions={
+              <div className="op-segment">
                 {[
-                  ["requests", "Requests"],
+                  ["requests", "Entries"],
                   ["totalTokens", "Tokens"],
                   ["spend", "Spend"],
                 ].map(([key, label]) => (
@@ -157,59 +284,51 @@ export default function DashboardClient({
             }
           >
             <div
-              className="op-chart"
+              className="ob-usage-chart"
               role="img"
-              aria-label={`${metric} over the last 30 days`}
+              aria-label={metric + " over the last 30 days"}
             >
-              <ResponsiveContainer width="100%" height={245}>
+              <ResponsiveContainer width="100%" height={225}>
                 <AreaChart
                   data={timeline}
-                  margin={{ top: 16, right: 10, bottom: 0, left: -20 }}
+                  margin={{ top: 12, right: 4, left: -20, bottom: 0 }}
                 >
                   <defs>
                     <linearGradient
-                      id="op-chart-fill"
+                      id="ob-usage-fill"
                       x1="0"
                       y1="0"
                       x2="0"
                       y2="1"
                     >
-                      <stop
-                        offset="0%"
-                        stopColor="var(--op-accent)"
-                        stopOpacity={0.18}
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor="var(--op-accent)"
-                        stopOpacity={0}
-                      />
+                      <stop stopColor="#a5bdcc" stopOpacity={0.13} />
+                      <stop offset="1" stopColor="#a5bdcc" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
-                    stroke="var(--op-line)"
                     vertical={false}
-                    strokeDasharray="3 5"
+                    stroke="#ffffff08"
+                    strokeDasharray="2 6"
                   />
                   <XAxis
                     dataKey="label"
-                    tickLine={false}
                     axisLine={false}
-                    minTickGap={55}
-                    tick={{ fill: "#87959f", fontSize: 10 }}
+                    tickLine={false}
+                    minTickGap={50}
+                    tick={{ fill: "#6f7a84", fontSize: 10 }}
                   />
                   <YAxis
-                    tickLine={false}
                     axisLine={false}
+                    tickLine={false}
                     tickFormatter={number}
-                    tick={{ fill: "#87959f", fontSize: 10 }}
+                    tick={{ fill: "#6f7a84", fontSize: 10 }}
                   />
                   <Tooltip
                     contentStyle={{
-                      background: "#121920",
-                      border: "1px solid #29343e",
+                      background: "#090b0e",
+                      border: "1px solid #ffffff16",
                       borderRadius: 8,
-                      fontSize: 12,
+                      fontSize: 11,
                     }}
                     formatter={(value) =>
                       metric === "spend"
@@ -220,23 +339,22 @@ export default function DashboardClient({
                   <Area
                     type="monotone"
                     dataKey={metric}
-                    stroke="var(--op-accent)"
-                    strokeWidth={2}
-                    fill="url(#op-chart-fill)"
+                    stroke="#b5cad8"
+                    strokeWidth={1.7}
+                    fill="url(#ob-usage-fill)"
                     isAnimationActive={!reduced}
-                    animationDuration={650}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            <details className="op-details">
-              <summary>View data table</summary>
+            <details className="ob-data-details">
+              <summary>View figures</summary>
               <div className="op-table-scroll">
                 <table className="op-table">
                   <thead>
                     <tr>
                       <th>Day</th>
-                      <th>Requests</th>
+                      <th>Entries</th>
                       <th>Tokens</th>
                       <th>CHF</th>
                     </tr>
@@ -255,125 +373,173 @@ export default function DashboardClient({
               </div>
             </details>
           </Panel>
-          <Panel
-            title="Recent projects"
-            actions={
-              <Link className="op-link" href="/projects">
-                All projects
-                <ArrowUpRight size={13} />
-              </Link>
-            }
-          >
-            {projects.length ? (
-              <div className="op-project-list">
+          <div className="ob-chart-pair">
+            <Panel title="Token mix">
+              <Donut
+                label="Tokens"
+                format={number}
+                items={[
+                  { label: "Input", value: uncached },
+                  {
+                    label: "Cached input",
+                    value: Math.min(
+                      totals.cachedTokens || 0,
+                      totals.inputTokens || 0,
+                    ),
+                  },
+                  { label: "Output", value: totals.outputTokens || 0 },
+                ]}
+              />
+            </Panel>
+            <Panel title="Model activity" subtitle="Ledger entries">
+              <Donut
+                label="Entries"
+                format={number}
+                items={models
+                  .slice(0, 3)
+                  .map((row) => ({ label: row.model, value: row.requests }))
+                  .concat(
+                    models.length > 3
+                      ? [
+                          {
+                            label: "Others",
+                            value: models
+                              .slice(3)
+                              .reduce((sum, row) => sum + row.requests, 0),
+                          },
+                        ]
+                      : [],
+                  )}
+              />
+            </Panel>
+          </div>
+          {allowProjects && (
+            <Panel
+              title="Projects"
+              actions={
+                <Link className="op-link" href="/projects">
+                  Open all
+                  <ArrowUpRight size={13} />
+                </Link>
+              }
+            >
+              <div className="ob-project-rows">
                 {projects.map((project) => (
                   <Link key={project.id} href={"/projects/" + project.id}>
-                    <span className="op-square">
-                      <FolderKanban size={17} />
-                    </span>
+                    <FolderKanban size={16} />
                     <div>
                       <strong>{project.name}</strong>
-                      <small>{project.description || "Open workspace"}</small>
+                      <span>{project.description || "Project workspace"}</span>
                     </div>
-                    <ChevronRight size={15} />
+                    <ChevronRight size={14} />
                   </Link>
                 ))}
-              </div>
-            ) : (
-              <Empty
-                title="Start with a project"
-                description="Keep tasks, files and conversations together."
-                action={
-                  <Link className="op-button" href="/projects">
-                    Create project
-                  </Link>
-                }
-              />
-            )}
-          </Panel>
-        </div>
-        <div className="op-dashboard-secondary">
-          <Panel
-            title="Model mix"
-            subtitle="Ledger entries in the last 30 days"
-          >
-            {models.length ? (
-              <div className="op-model-list">
-                {models.slice(0, 6).map((model) => (
-                  <div key={model.provider + model.model}>
-                    <div>
-                      <strong title={model.model}>{model.model}</strong>
-                      <span>{model.requests}</span>
-                    </div>
-                    <div className="op-meter">
-                      <i
-                        style={{
-                          width:
-                            Math.max(
-                              2,
-                              (model.requests / Math.max(1, totals.requests)) *
-                                100,
-                            ) + "%",
-                        }}
-                      />
-                    </div>
-                    <small>
-                      {model.provider} · {money(model.spend)}
-                    </small>
+                {!projects.length && (
+                  <div className="ob-quiet-empty">
+                    Create a project to keep files, tasks and context together.
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
-              <Empty
-                title="No model usage yet"
-                description="Your first request will appear here."
-              />
-            )}
-          </Panel>
-          <Panel title="Brain" subtitle="Knowledge that follows your work">
-            <div className="op-brain-signal" aria-hidden="true">
-              <BrainCircuit size={48} strokeWidth={1} />
-            </div>
-            <p className="op-muted">
-              Keep useful facts and preferences in one place. Review what is
-              shared with each task.
-            </p>
-            <Link href="/brain" className="op-button">
-              Open Brain
-              <ArrowUpRight size={14} />
-            </Link>
-          </Panel>
-          <Panel title="Operations">
-            <div className="op-shortcuts">
-              {[
-                ["/server", "Infrastructure", "Services and resource use"],
-                [
-                  "/connections",
-                  "Connections",
-                  "Monitoring and workspace tools",
-                ],
-                ["/security", "Security", "Assets, checks and findings"],
-                ["/approvals", "Approvals", "Review actions before execution"],
-              ]
-                .filter(
-                  ([href]) => !allowedPaths || allowedPaths.includes(href),
-                )
-                .map(([href, title, sub]) => (
-                  <Link key={href} href={href}>
-                    <div>
-                      <strong>{title}</strong>
-                      <small>{sub}</small>
-                    </div>
-                    <ArrowUpRight size={14} />
-                  </Link>
-                ))}
-            </div>
-          </Panel>
-          <p className="op-footnote">
-            Cost totals follow ledger attribution. Incomplete provider records
-            remain marked in Usage.
-          </p>
+            </Panel>
+          )}
         </div>
+        <aside className="ob-side-column">
+          {allowTraffic && (
+            <section className="ob-earth-panel">
+              <header>
+                <span className="ob-section-index">02 / Network</span>
+                {allowTraffic && (
+                  <Link href="/traffic" aria-label="Open traffic map">
+                    <ArrowUpRight size={15} />
+                  </Link>
+                )}
+              </header>
+              <div className="ob-earth-title">
+                <h2>Connected world</h2>
+                <span
+                  className={
+                    "ob-live" +
+                    (!telemetry.errors.traffic &&
+                    traffic?.sources?.some((row) => !row.stale)
+                      ? ""
+                      : " muted")
+                  }
+                >
+                  <i />
+                  {!telemetry.errors.traffic &&
+                  traffic?.sources?.some((row) => !row.stale)
+                    ? "Receiving"
+                    : "No live source"}
+                </span>
+              </div>
+              <GlobeGuard>
+                <Globe
+                  clients={
+                    telemetry.errors.traffic
+                      ? []
+                      : traffic?.activeConnections || []
+                  }
+                  dbip={traffic?.sources?.some(
+                    (row) => row.geoipProvider === "db-ip",
+                  )}
+                  compact
+                />
+              </GlobeGuard>
+              <div className="ob-earth-counts">
+                <div>
+                  <strong>
+                    {telemetry.errors.traffic
+                      ? "—"
+                      : (traffic?.activeConnectionCount ?? "—")}
+                  </strong>
+                  <span>Tracked flows</span>
+                </div>
+                <div>
+                  <strong>{traffic?.countries?.length ?? "—"}</strong>
+                  <span>Countries · 1 hour</span>
+                </div>
+              </div>
+              <p className="ob-earth-note">
+                {traffic?.latestAt
+                  ? "Latest activity " +
+                    new Date(traffic.latestAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Live locations appear when the collector sends data."}
+              </p>
+            </section>
+          )}
+          {allowServer && (
+            <ServerVitals
+              resources={telemetry.resources}
+              loading={telemetry.loading}
+            />
+          )}
+          <section className="ob-context-links">
+            {(!allowedPaths || allowedPaths.includes("/brain")) && (
+              <Link href="/brain">
+                <span>Brain</span>
+                <small>Your saved context</small>
+                <ArrowUpRight size={14} />
+              </Link>
+            )}
+            {(!allowedPaths || allowedPaths.includes("/skills")) && (
+              <Link href="/skills">
+                <span>Skills</span>
+                <small>Instructions and workflows</small>
+                <ArrowUpRight size={14} />
+              </Link>
+            )}
+            {(!allowedPaths || allowedPaths.includes("/approvals")) && (
+              <Link href="/approvals">
+                <span>Approvals</span>
+                <small>Actions waiting for you</small>
+                <ArrowUpRight size={14} />
+              </Link>
+            )}
+          </section>
+        </aside>
       </div>
     </Page>
   );
