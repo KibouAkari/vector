@@ -21,6 +21,7 @@ import urllib.request
 import uuid
 from urllib.parse import urlsplit
 from nginx_config import FORMAT, instrument, listed_files
+from core import listening_services
 
 ETC=Path('/etc/vector-observatory')
 CODE=Path('/opt/vector-observatory')
@@ -197,7 +198,8 @@ def install(endpoint,app):
     ids=run(['docker','ps','-q']).stdout.split()
     rows=json.loads(run(['docker','inspect',*ids]).stdout) if ids else []
     old=json.loads((ETC/'config.json').read_text()) if (ETC/'config.json').exists() else {}
-    ports={'tcp/22':'SSH','tcp/80':'HTTP gateway','tcp/443':'HTTPS gateway','tcp/25565':'Minecraft'}
+    ports=listening_services(run(['ss','-H','-lntup']).stdout)
+    ports.update({'tcp/22':'SSH','tcp/80':'HTTP gateway','tcp/443':'HTTPS gateway','tcp/25565':'Minecraft'})
     for row in rows:
         for container_port,bindings in (row.get('NetworkSettings',{}).get('Ports') or {}).items():
             protocol=container_port.split('/')[-1]

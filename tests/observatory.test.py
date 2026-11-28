@@ -7,7 +7,7 @@ import unittest
 from datetime import datetime, timezone
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts/collectors/observatory'))
-from core import conntrack_line,nginx_line,HostSampler,socket_line
+from core import conntrack_line,nginx_line,HostSampler,socket_line,listening_services
 from nginx_config import instrument,listed_files
 
 class Observatory(unittest.TestCase):
@@ -52,6 +52,9 @@ class Observatory(unittest.TestCase):
         self.assertIn('"access_log and { ; }"',updated)
         self.assertEqual(instrument(updated,'/ignored',True),(updated,False))
         self.assertEqual(listed_files('# configuration file /etc/nginx/nginx.conf:\n'),['/etc/nginx/nginx.conf'])
+    def test_host_network_services_are_discovered_without_connections(self):
+        sample='tcp LISTEN 0 128 0.0.0.0:2222 0.0.0.0:* users:(("sshd",pid=42,fd=4))\nudp UNCONN 0 0 [::]:5353 [::]:*\ninvalid row'
+        self.assertEqual(listening_services(sample),{'tcp/2222':'sshd','udp/5353':'UDP service'})
     def test_service_never_receives_docker_socket_or_root_identity(self):
         unit=(ROOT/'scripts/collectors/observatory/vector-observatory.service').read_text()
         self.assertIn('User=vector-observatory',unit)

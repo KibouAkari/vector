@@ -91,7 +91,8 @@ Local files:
 | `/opt/vector-observatory` | Collector source copied from the pinned release |
 | `/var/log/vector-observatory` | Dedicated metadata logs for host nginx |
 
-Docker published ports are discovered once at installation, with an explicit
+Host listeners (including host-network containers) and Docker published ports
+are discovered once at installation, with an explicit
 Minecraft default. Configure additional host services and NAT destinations in
 `config.json`. A port shared by several destinations needs an unambiguous
 service label; HTTP service names come from trusted `server_name` mappings.

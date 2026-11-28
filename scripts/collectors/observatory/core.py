@@ -152,3 +152,21 @@ def geoip_lookup(path):
             pass
         return event
     return enrich
+
+
+def listening_services(output):
+    """Discover host/host-network listeners without contacting any service."""
+    services={}
+    for line in output.splitlines():
+        fields=line.split()
+        if len(fields)<6 or fields[0] not in ('tcp','udp'):
+            continue
+        try:
+            port=int(fields[4].rsplit(':',1)[1])
+        except (ValueError,IndexError):
+            continue
+        if not 1<=port<=65535:
+            continue
+        process=re.search(r'users:\(\("([^"\x00-\x1f]+)"',line)
+        services[fields[0]+'/'+str(port)]=(process.group(1)[:90] if process else fields[0].upper()+' service')
+    return services
