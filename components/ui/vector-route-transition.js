@@ -1,5 +1,7 @@
 "use client";
 
+import {useState,useEffect} from "react";
+
 
 import {
   motion,
@@ -17,8 +19,9 @@ export default function VectorRouteTransition() {
     usePathname();
 
 
-  const reduced =
-    useReducedMotion();
+  const preference = useReducedMotion();
+  const [reduced,setReduced]=useState(false);
+  useEffect(()=>setReduced(Boolean(preference)),[preference]);
 
 
   return (

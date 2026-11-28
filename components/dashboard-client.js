@@ -1,1586 +1,380 @@
 "use client";
-
-
-import {
-  useMemo,
-  useState
-} from "react";
-
-
-import Link
-  from "next/link";
-
-
-import {
-  motion,
-  useReducedMotion
-} from "motion/react";
-
-
+import { useState } from "react";
+import {useInterfaceMotion} from "./operations/use-interface-motion";
+import Link from "next/link";
 import {
   Activity,
   ArrowUpRight,
+  BrainCircuit,
   Coins,
   FolderKanban,
-  MessageSquareText,
-  Sparkles,
-  WalletCards,
-  Workflow
+  MessageSquare,
+  Workflow,
+  ArrowDownToLine,
+  ChevronRight,
 } from "lucide-react";
-
-
 import {
   Area,
   AreaChart,
   CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis
+  YAxis,
 } from "recharts";
-
-
-const MODEL_COLORS = [
-  "#70d6ae",
-  "#7697ff",
-  "#e4ae67",
-  "#ab8df0",
-  "#66bfd0",
-  "#d47f9c"
-];
-
-
-function compactNumber(
-  value
-) {
-  return new Intl.NumberFormat(
-    "en",
-    {
-      notation:
-        "compact",
-
-      maximumFractionDigits:
-        1
-    }
-  ).format(
-    Number(
-      value ||
-      0
-    )
-  );
-}
-
-
-function integer(
-  value
-) {
-  return new Intl.NumberFormat(
-    "en"
-  ).format(
-    Number(
-      value ||
-      0
-    )
-  );
-}
-
-
-function money(
-  value,
-  decimals = 2
-) {
-  return (
-    "CHF " +
-    Number(
-      value ||
-      0
-    ).toFixed(
-      decimals
-    )
-  );
-}
-
-
-function modelName(
-  value
-) {
-  return String(
-    value ||
-    "Unknown"
-  )
-    .split(
-      "-"
-    )
-    .map(
-      part => {
-        const lower =
-          part.toLowerCase();
-
-
-        if (
-          lower ===
-          "gpt"
-        ) {
-          return "GPT";
-        }
-
-
-        if (
-          lower ===
-          "gemini"
-        ) {
-          return "Gemini";
-        }
-
-
-        if (
-          lower ===
-          "claude"
-        ) {
-          return "Claude";
-        }
-
-
-        return (
-          part.charAt(0)
-            .toUpperCase() +
-          part.slice(1)
-        );
-      }
-    )
-    .join(
-      " "
-    );
-}
-
-
-function relativeDate(
-  value
-) {
-  if (
-    !value
-  ) {
-    return "";
-  }
-
-
-  const date =
-    new Date(
-      value
-    );
-
-
-  const diff =
-    Math.max(
-      0,
-      Date.now() -
-      date.getTime()
-    );
-
-
-  const days =
-    Math.floor(
-      diff /
-      86400000
-    );
-
-
-  if (
-    days === 0
-  ) {
-    return "Updated today";
-  }
-
-
-  if (
-    days === 1
-  ) {
-    return "Updated yesterday";
-  }
-
-
-  return (
-    `Updated ${days}d ago`
-  );
-}
-
-
-function MetricCard({
-  label,
-  value,
-  detail,
-  icon: Icon,
-  reduced
-}) {
-  return (
-    <motion.article
-      className="vx85-stat-card"
-      whileHover={
-        reduced
-          ? undefined
-          : {
-              y:
-                -2
-            }
-      }
-      transition={{
-        duration:
-          .16
-      }}
-    >
-
-      <div className="vx85-stat-head">
-
-        <span>
-          {label}
-        </span>
-
-        <span className="vx85-stat-icon">
-          <Icon
-            aria-hidden="true"
-          />
-        </span>
-
-      </div>
-
-
-      <strong>
-        {value}
-      </strong>
-
-
-      <small>
-        {detail}
-      </small>
-
-    </motion.article>
-  );
-}
-
-
-function TrendTooltip({
-  active,
-  payload,
-  label
-}) {
-  if (
-    !active ||
-    !payload?.length
-  ) {
-    return null;
-  }
-
-
-  const item =
-    payload[0]
-      ?.payload;
-
-
-  if (
-    !item
-  ) {
-    return null;
-  }
-
-
-  return (
-    <div className="vx85-chart-tooltip">
-
-      <strong>
-        {label}
-      </strong>
-
-      <span>
-        {integer(item.requests)}
-        {" "}
-        requests
-      </span>
-
-      <span>
-        {compactNumber(item.totalTokens)}
-        {" "}
-        tokens
-      </span>
-
-      <span>
-        {money(item.spend, 4)}
-      </span>
-
-    </div>
-  );
-}
-
-
-function DistributionTooltip({
-  active,
-  payload
-}) {
-  if (
-    !active ||
-    !payload?.length
-  ) {
-    return null;
-  }
-
-
-  const item =
-    payload[0]
-      ?.payload;
-
-
-  if (
-    !item
-  ) {
-    return null;
-  }
-
-
-  return (
-    <div className="vx85-chart-tooltip vx85-model-tooltip">
-
-      <strong>
-        {modelName(item.model)}
-      </strong>
-
-      <span>
-        {item.percent.toFixed(1)}
-        %
-      </span>
-
-      <span>
-        {integer(item.requests)}
-        {" "}
-        requests
-      </span>
-
-      <span>
-        {compactNumber(item.totalTokens)}
-        {" "}
-        tokens
-      </span>
-
-      <span>
-        {money(item.spend, 4)}
-      </span>
-
-    </div>
-  );
-}
-
-
+import { Page, Panel, Metric, Empty, Sparkline } from "./operations/primitives";
+const number = (value) =>
+  new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value) || 0);
+const money = (value) => "CHF " + Number(value || 0).toFixed(2);
 export default function DashboardClient({
   displayName,
-  totals,
-  models,
-  timeline,
-  projects
+  totals = {},
+  models = [],
+  timeline = [],
+  projects = [],
+  allowedPaths = null,
 }) {
-  const reduced =
-    useReducedMotion();
-
-
-  const [
-    trendMetric,
-    setTrendMetric
-  ] =
-    useState(
-      "spend"
-    );
-
-
-  const [
-    distributionMetric,
-    setDistributionMetric
-  ] =
-    useState(
-      "requests"
-    );
-
-
-  const averageCost =
-    totals.requests > 0
-      ? totals.spend /
-        totals.requests
-      : 0;
-
-
-  const chartData =
-    useMemo(
-      () =>
-        timeline.map(
-          row => ({
-            ...row,
-
-            chartValue:
-              trendMetric ===
-              "requests"
-                ? row.requests
-                : (
-                    trendMetric ===
-                    "tokens"
-                      ? row.totalTokens
-                      : row.spend
-                  )
-          })
+  const reduced = useInterfaceMotion();
+  const [metric, setMetric] = useState("requests");
+  const trend = timeline.map((row) => row[metric] || 0);
+  const totalCalls = totals.providerCalls || 0;
+  function download() {
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          { period: "30 days UTC", totals, models, timeline },
+          null,
+          2,
         ),
-      [
-        timeline,
-        trendMetric
-      ]
+      ],
+      { type: "application/json" },
     );
-
-
-  const distribution =
-    useMemo(
-      () => {
-        const total =
-          models.reduce(
-            (
-              sum,
-              model
-            ) => {
-              if (
-                distributionMetric ===
-                "tokens"
-              ) {
-                return (
-                  sum +
-                  model.totalTokens
-                );
-              }
-
-
-              if (
-                distributionMetric ===
-                "spend"
-              ) {
-                return (
-                  sum +
-                  model.spend
-                );
-              }
-
-
-              return (
-                sum +
-                model.requests
-              );
-            },
-            0
-          );
-
-
-        return models.map(
-          (
-            model,
-            index
-          ) => {
-            let value =
-              model.requests;
-
-
-            if (
-              distributionMetric ===
-              "tokens"
-            ) {
-              value =
-                model.totalTokens;
-            }
-
-
-            if (
-              distributionMetric ===
-              "spend"
-            ) {
-              value =
-                model.spend;
-            }
-
-
-            return {
-              ...model,
-
-              value,
-
-              color:
-                MODEL_COLORS[
-                  index %
-                  MODEL_COLORS.length
-                ],
-
-              percent:
-                total > 0
-                  ? (
-                      value /
-                      total
-                    ) *
-                    100
-                  : 0
-            };
-          }
-        );
-      },
-      [
-        models,
-        distributionMetric
-      ]
-    );
-
-
-  const bestEconomics =
-    useMemo(
-      () => {
-        const candidates =
-          models
-            .filter(
-              model =>
-                model.totalTokens >
-                  0 &&
-                model.spend >
-                  0
-            )
-            .sort(
-              (
-                left,
-                right
-              ) =>
-                left.effectiveCost -
-                right.effectiveCost
-            );
-
-
-        return (
-          candidates[0]
-            ?.model ||
-          null
-        );
-      },
-      [
-        models
-      ]
-    );
-
-
-  const container =
-    reduced
-      ? undefined
-      : {
-          hidden: {
-            opacity:
-              0
-          },
-
-          visible: {
-            opacity:
-              1,
-
-            transition: {
-              staggerChildren:
-                .045
-            }
-          }
-        };
-
-
-  const item =
-    reduced
-      ? undefined
-      : {
-          hidden: {
-            opacity:
-              0,
-
-            y:
-              10
-          },
-
-          visible: {
-            opacity:
-              1,
-
-            y:
-              0,
-
-            transition: {
-              duration:
-                .32,
-
-              ease: [
-                .16,
-                1,
-                .3,
-                1
-              ]
-            }
-          }
-        };
-
-
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "vector-usage.json";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   return (
-    <motion.div
-      className="vx85-dashboard"
-      variants={container}
-      initial={
-        reduced
-          ? undefined
-          : "hidden"
-      }
-      animate={
-        reduced
-          ? undefined
-          : "visible"
+    <Page
+      title="Overview"
+      eyebrow="Workspace"
+      description={`Welcome back, ${displayName}.`}
+      actions={
+        <>
+          <span className="op-period">Last 30 days · UTC</span>
+          <button className="op-button" onClick={download}>
+            <ArrowDownToLine size={14} />
+            Export
+          </button>
+        </>
       }
     >
-
-      <motion.header
-        className="vx85-dashboard-header"
-        variants={item}
-      >
-
-        <div>
-
-          <span className="vx85-dashboard-kicker">
-            Overview
-          </span>
-
-          <h1>
-            Good to see you,
-            {" "}
-            <strong>
-              {displayName}
-            </strong>
-            .
-          </h1>
-
-          <p>
-            Your Vector usage over the
-            last 30 calendar days, in UTC.
-          </p>
-
-        </div>
-
-
-        <motion.div
-          whileHover={
-            reduced
-              ? undefined
-              : {
-                  y:
-                    -2
-                }
-          }
-          whileTap={
-            reduced
-              ? undefined
-              : {
-                  scale:
-                    .97
-                }
-          }
-        >
-          <Link
-            href="/chat"
-            className="vx85-new-chat"
-          >
-            <MessageSquareText />
-
-            <span>
-              New chat
-            </span>
-
-            <ArrowUpRight />
-          </Link>
-        </motion.div>
-
-      </motion.header>
-
-
-      <motion.section
-        className="vx85-stat-grid"
-        variants={item}
-      >
-
-        <MetricCard
-          label="Usage entries"
-          value={
-            integer(
-              totals.requests
-            )
-          }
-          detail={`${integer(totals.providerCalls || 0)} provider responses · ${integer(totals.legacyEntries || 0)} legacy entries`}
-          icon={Activity}
-          reduced={reduced}
-        />
-
-
-        <MetricCard
-          label="Tokens"
-          value={
-            compactNumber(
-              totals.totalTokens
-            )
-          }
-          detail={
-            `${compactNumber(
-              totals.inputTokens
-            )} input · ${compactNumber(
-              totals.outputTokens
-            )} output`
-          }
-          icon={Workflow}
-          reduced={reduced}
-        />
-
-
-        <MetricCard
-          label="Estimated spend"
-          value={
-            money(
-              totals.spend
-            )
-          }
-          detail={totals.incompleteCalls ? `${integer(totals.incompleteCalls)} entries need reconciliation` : "Recorded usage · configured prices"}
-          icon={WalletCards}
-          reduced={reduced}
-        />
-
-
-        <MetricCard
-          label="Average"
-          value={
-            money(
-              averageCost,
-              3
-            )
-          }
-          detail="Cost per recorded entry"
-          icon={Coins}
-          reduced={reduced}
-        />
-
-      </motion.section>
-
-
-      <motion.section
-        className="vx85-analytics-grid"
-        variants={item}
-      >
-
-        <article className="vx85-panel vx85-trend-panel">
-
-          <header className="vx85-panel-header">
-
+      <div className="op-dashboard">
+        <div className="op-dashboard-primary">
+          <section className="op-welcome">
             <div>
-
-              <span>
-                Performance
-              </span>
-
-              <strong>
-                Usage trend
-              </strong>
-
-            </div>
-
-
-            <div className="vx85-segmented">
-
-              {
-                [
-                  [
-                    "spend",
-                    "Spend"
-                  ],
-                  [
-                    "requests",
-                    "Entries"
-                  ],
-                  [
-                    "tokens",
-                    "Tokens"
-                  ]
-                ].map(
-                  (
-                    [
-                      value,
-                      label
-                    ]
-                  ) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={
-                        trendMetric ===
-                        value
-                          ? "active"
-                          : ""
-                      }
-                      onClick={
-                        () =>
-                          setTrendMetric(
-                            value
-                          )
-                      }
-                    >
-                      {label}
-                    </button>
-                  )
-                )
-              }
-
-            </div>
-
-          </header>
-
-
-          <div className="vx85-trend-summary">
-
-            <strong>
-              {
-                trendMetric ===
-                "spend"
-                  ? money(
-                      totals.spend
-                    )
-                  : (
-                      trendMetric ===
-                      "requests"
-                        ? integer(
-                            totals.requests
-                          )
-                        : compactNumber(
-                            totals.totalTokens
-                          )
-                    )
-              }
-            </strong>
-
-            <span>
-              {
-                trendMetric ===
-                "spend"
-                  ? "total spend"
-                  : (
-                      trendMetric ===
-                      "requests"
-                        ? "entries"
-                        : "tokens"
-                    )
-              }
-              {" "}
-              over 30 days
-            </span>
-
-          </div>
-
-
-          <div className="vx85-trend-chart">
-
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
-              <AreaChart
-                data={
-                  chartData
-                }
-                margin={{
-                  top:
-                    12,
-
-                  right:
-                    6,
-
-                  bottom:
-                    0,
-
-                  left:
-                    0
-                }}
-              >
-
-                <defs>
-
-                  <linearGradient
-                    id="vx85TrendFill"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="0%"
-                      stopColor="#70d6ae"
-                      stopOpacity=".30"
-                    />
-
-                    <stop
-                      offset="100%"
-                      stopColor="#70d6ae"
-                      stopOpacity="0"
-                    />
-                  </linearGradient>
-
-                </defs>
-
-
-                <CartesianGrid
-                  vertical={
-                    false
-                  }
-                  stroke="rgba(255,255,255,.05)"
-                />
-
-
-                <XAxis
-                  dataKey="label"
-                  axisLine={
-                    false
-                  }
-                  tickLine={
-                    false
-                  }
-                  minTickGap={
-                    38
-                  }
-                  tick={{
-                    fill:
-                      "#65717a",
-
-                    fontSize:
-                      10
-                  }}
-                />
-
-
-                <YAxis
-                  width={
-                    38
-                  }
-                  axisLine={
-                    false
-                  }
-                  tickLine={
-                    false
-                  }
-                  tickFormatter={
-                    value =>
-                      trendMetric ===
-                      "spend"
-                        ? Number(
-                            value
-                          )
-                            .toFixed(
-                              1
-                            )
-                        : compactNumber(
-                            value
-                          )
-                  }
-                  tick={{
-                    fill:
-                      "#59656e",
-
-                    fontSize:
-                      9
-                  }}
-                />
-
-
-                <Tooltip
-                  content={
-                    <TrendTooltip />
-                  }
-                  cursor={{
-                    stroke:
-                      "rgba(112,214,174,.18)",
-
-                    strokeWidth:
-                      1
-                  }}
-                />
-
-
-                <Area
-                  type="monotone"
-                  dataKey="chartValue"
-                  stroke="#70d6ae"
-                  strokeWidth={
-                    2
-                  }
-                  fill="url(#vx85TrendFill)"
-                  dot={
-                    false
-                  }
-                  activeDot={{
-                    r:
-                      4,
-
-                    fill:
-                      "#70d6ae",
-
-                    stroke:
-                      "#0b0f12",
-
-                    strokeWidth:
-                      2
-                  }}
-                  isAnimationActive={
-                    !reduced
-                  }
-                  animationDuration={
-                    850
-                  }
-                  animationEasing="ease-out"
-                />
-
-              </AreaChart>
-            </ResponsiveContainer>
-
-          </div>
-
-        </article>
-
-
-        <article className="vx85-panel vx85-distribution-panel">
-
-          <header className="vx85-panel-header">
-
-            <div>
-
-              <span>
-                AI models
-              </span>
-
-              <strong>
-                Model distribution
-              </strong>
-
-            </div>
-
-
-            <div className="vx85-segmented vx85-segmented-small">
-
-              {
-                [
-                  [
-                    "requests",
-                    "Entries"
-                  ],
-                  [
-                    "tokens",
-                    "Tokens"
-                  ],
-                  [
-                    "spend",
-                    "Cost"
-                  ]
-                ].map(
-                  (
-                    [
-                      value,
-                      label
-                    ]
-                  ) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={
-                        distributionMetric ===
-                        value
-                          ? "active"
-                          : ""
-                      }
-                      onClick={
-                        () =>
-                          setDistributionMetric(
-                            value
-                          )
-                      }
-                    >
-                      {label}
-                    </button>
-                  )
-                )
-              }
-
-            </div>
-
-          </header>
-
-
-          <div className="vx85-donut-wrap">
-
-            <div className="vx85-donut">
-
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-              >
-                <PieChart>
-
-                  <Pie
-                    data={
-                      distribution
-                    }
-                    dataKey="value"
-                    nameKey="model"
-                    innerRadius="67%"
-                    outerRadius="91%"
-                    paddingAngle={
-                      2.5
-                    }
-                    cornerRadius={
-                      4
-                    }
-                    stroke="none"
-                    isAnimationActive={
-                      !reduced
-                    }
-                    animationDuration={
-                      900
-                    }
-                    animationEasing="ease-out"
-                  >
-
-                    {
-                      distribution.map(
-                        entry => (
-                          <Cell
-                            key={
-                              `${entry.provider}-${entry.model}`
-                            }
-                            fill={
-                              entry.color
-                            }
-                          />
-                        )
-                      )
-                    }
-
-                  </Pie>
-
-
-                  <Tooltip
-                    content={
-                      <DistributionTooltip />
-                    }
-                    allowEscapeViewBox={{ x: true, y: true }}
-                    wrapperStyle={{
-                      zIndex: 30,
-                      pointerEvents: "none"
-                    }}
-                  />
-
-                </PieChart>
-              </ResponsiveContainer>
-
-
-              <div className="vx85-donut-center">
-
-                <strong>
-                  {
-                    distributionMetric ===
-                    "requests"
-                      ? integer(
-                          totals.requests
-                        )
-                      : (
-                          distributionMetric ===
-                          "tokens"
-                            ? compactNumber(
-                                totals.totalTokens
-                              )
-                            : money(
-                                totals.spend
-                              )
-                        )
-                  }
-                </strong>
-
-                <span>
-                  {
-                    distributionMetric ===
-                    "requests"
-                      ? "entries"
-                      : (
-                          distributionMetric ===
-                          "tokens"
-                            ? "tokens"
-                            : "spend"
-                        )
-                  }
-                </span>
-
+              <span className="op-eyebrow">Your next move</span>
+              <h2>What are we working on?</h2>
+              <p>Pick up a project, ask a question or check your services.</p>
+              <div className="op-actions">
+                <Link href="/chat" className="op-button primary">
+                  <MessageSquare size={15} />
+                  New conversation
+                  <ArrowUpRight size={14} />
+                </Link>
+                <Link href="/projects" className="op-button">
+                  Open projects
+                </Link>
               </div>
-
             </div>
-
-
-            <div className="vx85-model-legend">
-
-              {
-                distribution.map(
-                  entry => (
-                    <div
-                      className="vx85-model-legend-row"
-                      key={
-                        `${entry.provider}-${entry.model}`
-                      }
-                    >
-
-                      <span
-                        className="vx85-model-color"
-                        style={{
-                          background:
-                            entry.color
-                        }}
-                      />
-
-
-                      <div>
-
-                        <strong>
-                          {
-                            modelName(
-                              entry.model
-                            )
-                          }
-                        </strong>
-
-                        <span>
-                          {
-                            entry.percent
-                              .toFixed(
-                                1
-                              )
-                          }
-                          %
-                        </span>
-
-                      </div>
-
-                    </div>
-                  )
-                )
+            <div className="op-orbit" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <img src="/vector-assets/brand/vector-mark.svg" alt="" />
+            </div>
+          </section>
+          <div className="op-metrics">
+            <Metric
+              label="Provider calls"
+              value={number(totalCalls)}
+              icon={Activity}
+              detail={`${number(totals.requests)} ledger entries`}
+            >
+              <Sparkline values={timeline.map((row) => row.requests)} />
+            </Metric>
+            <Metric
+              label="Tokens"
+              value={number(totals.totalTokens)}
+              icon={Workflow}
+              detail={`${number(totals.cachedTokens)} cached input`}
+            >
+              <Sparkline values={timeline.map((row) => row.totalTokens)} />
+            </Metric>
+            <Metric
+              label="Recorded spend"
+              value={money(totals.spend)}
+              icon={Coins}
+              detail={
+                totals.incompleteCalls
+                  ? `${totals.incompleteCalls} calls with incomplete cost`
+                  : "Reported and configured price records"
               }
-
-            </div>
-
+            >
+              <Sparkline values={timeline.map((row) => row.spend)} />
+            </Metric>
+            <Metric
+              label="Recent projects"
+              value={projects.length}
+              icon={FolderKanban}
+              detail="Up to 5 recently updated"
+            />
           </div>
-
-        </article>
-
-      </motion.section>
-
-
-      <motion.section
-        className="vx85-lower-grid"
-        variants={item}
-      >
-
-        <article className="vx85-panel vx85-economics">
-
-          <header className="vx85-panel-header">
-
-            <div>
-
-              <span>
-                Model economics
-              </span>
-
-              <strong>
-                Cost comparison
-              </strong>
-
-            </div>
-
-
-            <div className="vx85-panel-note">
-              Observed Vector usage
-            </div>
-
-          </header>
-
-
-          <div className="vx85-model-table">
-
-            <div className="vx85-model-table-head">
-
-              <span>
-                Model
-              </span>
-
-              <span>
-                Entries
-              </span>
-
-              <span>
-                Tokens
-              </span>
-
-              <span>
-                Spend
-              </span>
-
-              <span>
-                Avg / entry
-              </span>
-
-              <span>
-                CHF / 1M
-              </span>
-
-            </div>
-
-
-            {
-              models.map(
-                (
-                  model,
-                  index
-                ) => (
-                  <motion.div
-                    className="vx85-model-table-row"
-                    key={
-                      `${model.provider}-${model.model}`
-                    }
-                    whileHover={
-                      reduced
-                        ? undefined
-                        : {
-                            x:
-                              2
-                          }
-                    }
+          <Panel
+            title="Activity"
+            subtitle="Your usage ledger"
+            actions={
+              <div className="op-segment" aria-label="Chart metric">
+                {[
+                  ["requests", "Requests"],
+                  ["totalTokens", "Tokens"],
+                  ["spend", "Spend"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    aria-pressed={metric === key}
+                    onClick={() => setMetric(key)}
                   >
-
-                    <div className="vx85-model-name">
-
-                      <span
-                        className="vx85-model-color"
+                    {label}
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            <div
+              className="op-chart"
+              role="img"
+              aria-label={`${metric} over the last 30 days`}
+            >
+              <ResponsiveContainer width="100%" height={245}>
+                <AreaChart
+                  data={timeline}
+                  margin={{ top: 16, right: 10, bottom: 0, left: -20 }}
+                >
+                  <defs>
+                    <linearGradient
+                      id="op-chart-fill"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor="var(--op-accent)"
+                        stopOpacity={0.18}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="var(--op-accent)"
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    stroke="var(--op-line)"
+                    vertical={false}
+                    strokeDasharray="3 5"
+                  />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={55}
+                    tick={{ fill: "#87959f", fontSize: 10 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={number}
+                    tick={{ fill: "#87959f", fontSize: 10 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#121920",
+                      border: "1px solid #29343e",
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                    formatter={(value) =>
+                      metric === "spend"
+                        ? money(value)
+                        : Number(value).toLocaleString("en")
+                    }
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey={metric}
+                    stroke="var(--op-accent)"
+                    strokeWidth={2}
+                    fill="url(#op-chart-fill)"
+                    isAnimationActive={!reduced}
+                    animationDuration={650}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <details className="op-details">
+              <summary>View data table</summary>
+              <div className="op-table-scroll">
+                <table className="op-table">
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Requests</th>
+                      <th>Tokens</th>
+                      <th>CHF</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {timeline.map((row) => (
+                      <tr key={row.day}>
+                        <td>{row.label}</td>
+                        <td>{row.requests}</td>
+                        <td>{row.totalTokens}</td>
+                        <td>{row.spend.toFixed(4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </Panel>
+          <Panel
+            title="Recent projects"
+            actions={
+              <Link className="op-link" href="/projects">
+                All projects
+                <ArrowUpRight size={13} />
+              </Link>
+            }
+          >
+            {projects.length ? (
+              <div className="op-project-list">
+                {projects.map((project) => (
+                  <Link key={project.id} href={"/projects/" + project.id}>
+                    <span className="op-square">
+                      <FolderKanban size={17} />
+                    </span>
+                    <div>
+                      <strong>{project.name}</strong>
+                      <small>{project.description || "Open workspace"}</small>
+                    </div>
+                    <ChevronRight size={15} />
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <Empty
+                title="Start with a project"
+                description="Keep tasks, files and conversations together."
+                action={
+                  <Link className="op-button" href="/projects">
+                    Create project
+                  </Link>
+                }
+              />
+            )}
+          </Panel>
+        </div>
+        <div className="op-dashboard-secondary">
+          <Panel
+            title="Model mix"
+            subtitle="Ledger entries in the last 30 days"
+          >
+            {models.length ? (
+              <div className="op-model-list">
+                {models.slice(0, 6).map((model) => (
+                  <div key={model.provider + model.model}>
+                    <div>
+                      <strong title={model.model}>{model.model}</strong>
+                      <span>{model.requests}</span>
+                    </div>
+                    <div className="op-meter">
+                      <i
                         style={{
-                          background:
-                            MODEL_COLORS[
-                              index %
-                              MODEL_COLORS.length
-                            ]
+                          width:
+                            Math.max(
+                              2,
+                              (model.requests / Math.max(1, totals.requests)) *
+                                100,
+                            ) + "%",
                         }}
                       />
-
-                      <div>
-
-                        <strong>
-                          {
-                            modelName(
-                              model.model
-                            )
-                          }
-                        </strong>
-
-                        <span>
-                          {model.provider}
-
-                          {
-                            bestEconomics ===
-                            model.model && (
-                              <em>
-                                Best observed
-                              </em>
-                            )
-                          }
-                        </span>
-
-                      </div>
-
                     </div>
-
-
-                    <span>
-                      {
-                        integer(
-                          model.requests
-                        )
-                      }
-                    </span>
-
-
-                    <span>
-                      {
-                        compactNumber(
-                          model.totalTokens
-                        )
-                      }
-                    </span>
-
-
-                    <span>
-                      {
-                        money(
-                          model.spend,
-                          3
-                        )
-                      }
-                    </span>
-
-
-                    <span>
-                      {
-                        money(
-                          model.avgCost,
-                          4
-                        )
-                      }
-                    </span>
-
-
-                    <span>
-                      {
-                        money(
-                          model.effectiveCost,
-                          3
-                        )
-                      }
-                    </span>
-
-                  </motion.div>
-                )
-              )
-            }
-
-          </div>
-
-
-          <footer className="vx85-economics-footer">
-
-            <span>
-              Estimates use recorded provider tokens and configured prices.
-              Provider invoices are not yet reconciled. Older entries may group multiple calls.
-            </span>
-
-            <span>
-              CHF / 1M is an observed effective rate,
-              not a provider list price.
-            </span>
-
-          </footer>
-
-        </article>
-
-
-        <article className="vx85-panel vx85-project-panel">
-
-          <header className="vx85-panel-header">
-
-            <div>
-
-              <span>
-                Workspace
-              </span>
-
-              <strong>
-                Recent projects
-              </strong>
-
-            </div>
-
-
-            <Link href="/projects">
-              View all
-              <ArrowUpRight />
-            </Link>
-
-          </header>
-
-
-          <div className="vx85-project-list">
-
-            {
-              projects.length ===
-              0
-                ? (
-                  <div className="vx85-empty">
-                    No projects yet.
+                    <small>
+                      {model.provider} · {money(model.spend)}
+                    </small>
                   </div>
-                )
-                : projects.map(
-                  project => (
-                    <motion.div
-                      key={
-                        project.id
-                      }
-                      whileHover={
-                        reduced
-                          ? undefined
-                          : {
-                              x:
-                                3
-                            }
-                      }
-                    >
-
-                      <Link
-                        href={
-                          `/projects/${project.id}`
-                        }
-                      >
-
-                        <span className="vx85-project-icon">
-                          <FolderKanban />
-                        </span>
-
-
-                        <div>
-
-                          <strong>
-                            {project.name}
-                          </strong>
-
-                          <span>
-                            {
-                              project.description ||
-                              relativeDate(
-                                project.updatedAt
-                              ) ||
-                              "Vector project"
-                            }
-                          </span>
-
-                        </div>
-
-
-                        <ArrowUpRight />
-
-                      </Link>
-
-                    </motion.div>
-                  )
-                )
-            }
-
-          </div>
-
-
-          <div className="vx85-project-action">
-
-            <Link href="/chat">
-              <Sparkles />
-
-              Ask Vector
-
-              <ArrowUpRight />
+                ))}
+              </div>
+            ) : (
+              <Empty
+                title="No model usage yet"
+                description="Your first request will appear here."
+              />
+            )}
+          </Panel>
+          <Panel title="Brain" subtitle="Knowledge that follows your work">
+            <div className="op-brain-signal" aria-hidden="true">
+              <BrainCircuit size={48} strokeWidth={1} />
+            </div>
+            <p className="op-muted">
+              Keep useful facts and preferences in one place. Review what is
+              shared with each task.
+            </p>
+            <Link href="/brain" className="op-button">
+              Open Brain
+              <ArrowUpRight size={14} />
             </Link>
-
-          </div>
-
-        </article>
-
-      </motion.section>
-
-    </motion.div>
+          </Panel>
+          <Panel title="Operations">
+            <div className="op-shortcuts">
+              {[
+                ["/server", "Infrastructure", "Services and resource use"],
+                [
+                  "/connections",
+                  "Connections",
+                  "Monitoring and workspace tools",
+                ],
+                ["/security", "Security", "Assets, checks and findings"],
+                ["/approvals", "Approvals", "Review actions before execution"],
+              ]
+                .filter(
+                  ([href]) => !allowedPaths || allowedPaths.includes(href),
+                )
+                .map(([href, title, sub]) => (
+                  <Link key={href} href={href}>
+                    <div>
+                      <strong>{title}</strong>
+                      <small>{sub}</small>
+                    </div>
+                    <ArrowUpRight size={14} />
+                  </Link>
+                ))}
+            </div>
+          </Panel>
+          <p className="op-footnote">
+            Cost totals follow ledger attribution. Incomplete provider records
+            remain marked in Usage.
+          </p>
+        </div>
+      </div>
+    </Page>
   );
 }
-

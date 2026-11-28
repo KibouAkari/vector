@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   Activity, Boxes, ChevronDown, Clock3, Cpu, HardDrive,
@@ -157,12 +158,13 @@ export default function ServerClient() {
 
   return <div className="vx586-server">
     <header className="simple-page-head vx586-server-head">
-      <div><h1>Server Control Center</h1><p>Host status, resource usage and the services running on your server.</p></div>
+      <div><h1>Infrastructure</h1><p>Host, containers and connected monitoring.</p></div>
       <button type="button" className="vx586-refresh" onClick={() => void load(true)} disabled={refreshing}>
         <RefreshCw size={16} className={refreshing ? "vx586-spin" : ""} aria-hidden="true" /> Refresh
       </button>
     </header>
 
+    <div className="op-infra-links"><Link href="/connections">Monitoring connections <span aria-hidden="true">↗</span></Link><Link href="/traffic">Client traffic <span aria-hidden="true">↗</span></Link><Link href="/security">Security checks <span aria-hidden="true">↗</span></Link></div>
     {error && <div className="vx586-server-alert" role="alert"><WifiOff size={17} aria-hidden="true" />
       <span>{error}{hasSnapshot ? " · Displaying the last successful snapshot." : ""}</span>
     </div>}

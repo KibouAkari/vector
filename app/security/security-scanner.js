@@ -10,6 +10,8 @@ const errors = {
   SCAN_COOLDOWN: "Wait one minute before scanning this asset again.",
   APPROVAL_REQUIRED: "Owner approval is pending.",
   SCAN_QUEUE_LIMIT: "Three scans are already queued or running.",
+  WEB_SCOPE_REAUTHORIZE: "Re-authorize this website with the web profile to avoid scanning shared hosting infrastructure.",
+  SHARED_HOST_REQUIRES_WEB_PROFILE: "Use the Website profile for a shared hosting deployment.",
   ASSET_AUTHORIZATION_REQUIRED:
     "Confirm that you are authorized to check this target.",
 };
@@ -223,8 +225,8 @@ export default function SecurityScanner() {
             </div>
             <div className="ctl-split">
               <label>
-                Type
-                <select value={kind} onChange={(e) => setKind(e.target.value)}>
+                Profile
+                <select value={kind} onChange={(e) => {setKind(e.target.value);setPorts('');}}>
                   {["web", "api", "minecraft", "nas", "network"].map((v) => (
                     <option key={v} value={v}>
                       {v === "web"
@@ -243,10 +245,11 @@ export default function SecurityScanner() {
               <label>
                 TCP ports
                 <input
+                  disabled={['web','api'].includes(kind)}
                   value={ports}
                   onChange={(e) => setPorts(e.target.value)}
                   placeholder={
-                    kind === "minecraft"
+                    ['web','api'].includes(kind) ? "80 / 443, or the URL’s explicit port" : kind === "minecraft"
                       ? "25565"
                       : "Common ports · optional comma-separated list"
                   }

@@ -51,3 +51,23 @@ log out normally. Model/tool allowlists are checked at actual execution. Critica
 sandbox/network tool grants bind exact arguments and are consumed once. Budget
 reservations serialize admission, retain unknown completion and do not pretend
 to be reconciled provider invoices. [Operational contracts](CONTROL_CENTRE.md).
+
+## Operations boundaries
+
+Brain bodies and connection credentials/snapshots reuse encrypted secret storage.
+Memory titles/tags/provenance remain metadata. Retrieval is account-private,
+bounded and included in the exact privacy review. Expiry affects future reads;
+forgetting does not erase already retained conversation context.
+
+Connector requests pin DNS addresses, retain TLS verification, reject redirects,
+block metadata/special addresses and require explicit private CIDR allowances.
+Only implemented fixed actions can enter the connector approval queue. An exact
+content digest, atomic consumption and no automatic replay protect execution.
+Traffic ingestion uses a separate HMAC key, exact-body signature, short timestamp
+window and a database nonce constraint. Operators are trusted to view host-wide
+traffic; ordinary members cannot read it. A compromised collector can submit
+false evidence, so observed location is not treated as threat attribution.
+
+Teams add a shared durable call counter, not extra permissions. A model or
+specialist note cannot grant access, approve its own action or bypass existing
+privacy/monetary policies. See [setup and contracts](OPERATIONS_CENTRE.md).

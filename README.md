@@ -20,6 +20,27 @@ Vector brings conversations, project work, model providers and file workflows in
 
 The experience is deliberately restrained: dark surfaces, clear typography, precise interactions and no ornamental dashboards.
 
+## Operations centre
+
+The authenticated workspace now uses grouped navigation, a command palette and
+account-specific density, accent and motion preferences. Brain shares a compact,
+private memory snapshot across your configured models. Agent teams are explicit,
+with bounded parallelism and one durable call limit across all roles.
+
+Connect Checkmk, Wazuh and PatchMon for monitored snapshots, or add workspace
+services with scoped credentials. Review exact GitHub/Slack actions before a
+single execution. Signed traffic ingestion shows observed clients and services;
+public Website profiles support Host/SNI checks on deployments such as Vercel.
+Import public GitHub SKILL.md instructions at an exact commit into a reviewed draft.
+
+[Operations setup, API and limits](docs/OPERATIONS_CENTRE.md) ·
+[Integration choices](docs/INTEGRATION_CHOICES.md)
+
+This is a source release. Connecting a service does not configure its credentials,
+install an agent, enable every vendor action or prove live interoperability.
+Calls/voice, general MCP execution and installable desktop agents remain separate
+work. Release checks use synthetic data and no paid inference or real target scans.
+
 ## Inside Vector
 
 **Conversations and projects.** Work in persistent chat threads, organize tasks in projects and inspect generated files without switching between tools.
@@ -31,6 +52,12 @@ The experience is deliberately restrained: dark surfaces, clear typography, prec
 The interface is under active development. The current implementation is not presented as a complete autonomous system.
 
 ## The interface
+
+![Vector operations overview with synthetic usage records](docs/screenshots/vector-operations-overview.png)
+
+The operations capture uses the real application with an isolated synthetic dataset.
+It does not show live service health or paid model evaluations.
+
 
 Vector includes a cinematic black-hole login, workspace dashboard, conversations, model administration and a server view. The reference captures below show the login and workspace dashboard. They may predate current chat controls.
 
@@ -161,7 +188,7 @@ has not been qualified on a live deployment. See [limits, recovery and storage](
 ## Workspace controls
 
 Core tools are directly available in the sidebar. The authenticated control views
-use quiet tables and compact actions; login/intro and dashboard charts remain.
+use quiet tables and compact actions; login and intro remain unchanged. The operations update redesigns dashboard charts around the same scoped ledger.
 
 | Area | Current source behavior |
 | --- | --- |

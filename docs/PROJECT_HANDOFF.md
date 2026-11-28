@@ -44,3 +44,12 @@ reconciliation; they are not actual token usage. Source delivery does not imply
 an app or worker deployment. See [setup](CONTROL_CENTRE_SETUP.md) and
 [API contracts](CONTROL_CENTRE_API.md). Do not run paid evaluations or real
 external scans as implicit release tests.
+
+## Operations source handoff
+
+The authenticated shell and overview are rebuilt. Login/intro sources are
+unchanged. Brain, teams, connection snapshots/actions, signed traffic ingest and
+pinned GitHub skill import are additive modules. Read [operations setup](OPERATIONS_CENTRE.md)
+and [integration decisions](INTEGRATION_CHOICES.md). Connecting a vendor still
+requires private operator credentials and installed-version verification. Do not
+run paid team benchmarks, real writes or target probes as implicit release tests.

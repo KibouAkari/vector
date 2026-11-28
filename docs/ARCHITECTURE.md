@@ -91,3 +91,18 @@ boundary; no new orchestration framework replaces it. Fast rules are the default
 privacy detector and optional NER is explicit. See [control centre](CONTROL_CENTRE.md),
 [scanner architecture](SECURITY_SCANNER.md) and [API contracts](CONTROL_CENTRE_API.md).
 The earlier stack-candidate table describes options, not installed dependencies.
+
+## Operations centre source
+
+Brain retrieval is account-scoped and happens before request privacy review.
+`lib/brain` stores encrypted bodies, revisioned corrections and keyed keyword
+indexes. `lib/teams` extends the existing job executor with bounded specialists,
+a worker, review and a PostgreSQL call-admission counter. All provider calls keep
+the same monetary reservations and usage capture. It adds no recursive agent
+framework or second worker contract.
+
+`lib/connectors` separates fixed-origin reads from exact, approved single-use
+actions. `lib/traffic` accepts signed collector observations and returns operator
+views. The security web profile uses Host/SNI requests instead of shared-IP port
+discovery. See [operations contracts](OPERATIONS_CENTRE.md) for scopes, failure
+states, setup, limits and incomplete vendor workflows.

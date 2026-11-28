@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-11-28 — Operations release corrections and app installer
+
+Keep native statistics local with Brain enabled, preserve exact selectively
+reviewed messages and the current goal in team forks, retain artifact execution
+profiles, and propagate non-replayable provider failures without replacing them.
+Reclaim expired memory capacity and normalize blank tags. Correct model-mix
+labels, share animation preferences and hide closed mobile navigation from focus.
+Synchronize the concurrent team fixture explicitly instead of relying on a short
+timer under CI load. Bound website audit coverage, disable collector redirects and flush idle traffic
+batches. Add a revision-pinned app-only installer with offline image checks,
+private evidence and automatic configuration recovery on failed health checks.
+No model evaluation, external scan or host update is performed by source tests.
+
+## 2026-11-28 — Operations interface, Brain and bounded teams
+
+Rebuild the authenticated shell, grouped navigation, overview charts and chat
+surfaces with account-specific interface preferences and reduced-motion support.
+Preserve login, intro and branding. Add encrypted account-private Brain memories,
+revisioned corrections, expiry, export and deterministic bounded retrieval before
+privacy review. Add explicit specialist teams with a durable shared call limit,
+existing provider budgets and an optional completed quality review.
+
+Add scoped connection adapters for Checkmk, Wazuh, PatchMon and workspace
+services, exact approved single-use GitHub/Slack writes, signed traffic ingestion,
+observed-location view and pinned GitHub Agent Skills draft imports. Website/API
+profiles use Host/SNI web probes rather than shared-host TCP discovery. Update
+setup/API/security documentation and record integration tradeoffs and limits.
+
+Validation uses offline fixtures, an isolated PostgreSQL/API instance and browser
+checks with synthetic records. No paid inference, live scan, external message,
+host update or production deployment is implied.
+
 ## 2026-11-27 — Local capability policy follow-up for PR #145
 
 Enforce role model and server-inspection allowlists at local private execution,
