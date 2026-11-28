@@ -202,6 +202,7 @@ class Collector:
                     snapshot,truncated = self.snapshot()
                     sample_at = stamp()
                 except (OSError,subprocess.SubprocessError,RuntimeError):
+                    snapshot, sample_at, truncated = [], None, False
                     self.status['sockets']={'kind':'sockets','status':'unavailable','message':'Cannot obtain a current connection sample.'}
                 next_sample = started+15
             events=[]
