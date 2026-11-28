@@ -474,6 +474,7 @@ export default function Traffic() {
           />
         )}
         {((data?.activeTruncated && mode === "connections") ||
+          (data?.clientsTruncated && mode !== "connections") ||
           data?.capped) && (
           <p className="op-muted">
             The collection or display limit was reached. This is a bounded view
