@@ -40,3 +40,21 @@ test("chat file downloads keep URL validation and accessible actions", () => {
   assert.match(artifact, /aria-label=\{\`Download/);
   assert.match(artifact, /download=\{name\}/);
 });
+
+test("open conversation title is independent of filtered history and guarded on load", () => {
+  const chat = readFileSync(new URL("../app/chat/chat-client.js", import.meta.url), "utf8");
+  assert.match(chat, /const currentTitle = conversationLabel\(conversationTitle\)/);
+  assert.doesNotMatch(chat, /conversations\.find\(\(row\) => row\.id === conversationId\)/);
+  assert.match(chat, /if \(conversationIdRef\.current !== id\) \{\s*setConversationTitle\(null\)/);
+  assert.match(chat, /setConversationTitle\(data\.conversation\?\.title\)/);
+  assert.match(chat, /if \(isVisibleConversation\(id\) && result\)/);
+  assert.match(chat, /setConversationId\(null\);\s*setConversationTitle\(null\)/);
+});
+
+test("conversation scope retains responsive attachment and viewport preview styles", () => {
+  const css = readFileSync(new URL("../app/conversation.css", import.meta.url), "utf8");
+  assert.match(css, /\.vector-conversation-main \.vx600-document \{[^}]*display:\s*flex/);
+  assert.match(css, /\.vector-conversation-main \.vx585-image-open \{[^}]*aspect-ratio:\s*16\/10/);
+  assert.match(css, /\.vector-conversation-main \.vx585-preview-overlay \{[^}]*position:\s*fixed;[^}]*inset:\s*0/);
+  assert.match(css, /@media \(max-width: 650px\) \{[^}]*\.vector-conversation-main \.vx600-document \{[^}]*flex-wrap:\s*wrap/);
+});

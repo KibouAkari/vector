@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-28 — Review corrections for PR #148
+
+Keep the open conversation's server title independent of filtered history and
+restore the attachment card and image-preview styles within the new chat scope.
+Source checks: targeted chat/privacy tests and a production build pass; a
+synthetic browser fixture confirms desktop and mobile preview/card layout. The
+build reports existing filesystem-tracing warnings. No deployment is implied.
+
 ## 2026-11-28 — Conversation and skill library refinement
 
 Replace nested chat containers with a scoped conversation surface informed by

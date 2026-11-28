@@ -206,6 +206,7 @@ export default function ChatClient({ displayName, userId }) {
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
+  const [conversationTitle, setConversationTitle] = useState(null);
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("auto");
   const [privacyEnabled, setPrivacyEnabled] = useState(true);
@@ -327,6 +328,9 @@ export default function ChatClient({ displayName, userId }) {
 
     conversationLoadRef.current = loadToken;
 
+    if (conversationIdRef.current !== id) {
+      setConversationTitle(null);
+    }
     conversationIdRef.current = id;
 
     setConversationId(id);
@@ -411,6 +415,7 @@ export default function ChatClient({ displayName, userId }) {
 
     localStorage.setItem(`vector.activeConversation:${userId}`, id);
 
+    setConversationTitle(data.conversation?.title);
     setMessages(normaliseMessages(hydratedMessages));
 
     if (closeHistory) {
@@ -690,6 +695,7 @@ export default function ChatClient({ displayName, userId }) {
     stopVisiblePolling();
 
     setConversationId(null);
+    setConversationTitle(null);
     setActiveJob(null);
     setFailedJob(null);
     setRetryingJobId(null);
@@ -884,12 +890,24 @@ export default function ChatClient({ displayName, userId }) {
       setAttachments([]);
 
       const id = data.conversationId;
+      const isNewConversation = !conversationIdRef.current;
 
       conversationLoadRef.current += 1;
 
       conversationIdRef.current = id;
 
       setConversationId(id);
+
+      if (isNewConversation) {
+        fetch(`/api/conversations/${encodeURIComponent(id)}`, { cache: "no-store" })
+          .then((response) => response.ok ? response.json() : null)
+          .then((result) => {
+            if (isVisibleConversation(id) && result) {
+              setConversationTitle(result.conversation?.title);
+            }
+          })
+          .catch(() => {});
+      }
 
       localStorage.setItem(`vector.activeConversation:${userId}`, id);
 
@@ -1064,9 +1082,7 @@ export default function ChatClient({ displayName, userId }) {
     }
   }
 
-  const currentTitle = conversationLabel(
-    conversations.find((row) => row.id === conversationId)?.title,
-  );
+  const currentTitle = conversationLabel(conversationTitle);
   const historyPanel = (
     <aside
       id="vector-chat-history"
