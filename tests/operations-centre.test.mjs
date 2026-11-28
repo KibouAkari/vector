@@ -298,3 +298,18 @@ test("web profile uses Host/SNI probes without TCP discovery and remains bound t
     /WEB_SCOPE_REAUTHORIZE/,
   );
 });
+
+test('team preserves exact reviewed messages, task visibility and immutable failure flags',async()=>{
+ const {teamMessages,nonReplayable}=await import('../lib/teams/context.mjs');
+ const task='Create a fixture workbook for person@example.com';
+ const exact='Keep person@example.com unchanged; mask the fixture password.';
+ const messages=teamMessages([{role:'user',content:'x'.repeat(40000)},{role:'user',content:exact}],task);
+ assert.equal(messages.at(-1).content,task);assert.ok(messages.some(row=>row.content===exact));assert.ok(!messages.some(row=>row.content.length===40000));
+ const error=Object.defineProperty(Object.assign(Error('provider failed'),{status:429}),'vectorNonReplayableProviderAttempt',{value:true});
+ assert.equal(nonReplayable(error),error);assert.equal(nonReplayable(Error('failed')).vectorNonReplayableProviderAttempt,true);
+});
+test('web profile reports requested versus attempted coverage and caps full web audits',async()=>{
+ const addresses=Array.from({length:8},(_,i)=>'93.184.216.'+(30+i));let calls=0;
+ const result=await runActiveScan({target:{host:'fixture.example.org',ports:[80,443],profile:'web'},addresses},{resolve:async()=>addresses,web:async(address,port)=>{calls++;return{address,port,status:200,findings:[]}}});
+ assert.equal(calls,6);assert.equal(result.coverage.portsRequested,16);assert.equal(result.coverage.portsAttempted,6);assert.equal(result.complete,false);
+});

@@ -1,5 +1,6 @@
 "use client";
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
+import {useInterfaceMotion} from "./use-interface-motion";
 import { ArrowUpRight, Inbox, RefreshCw } from "lucide-react";
 export function Page({
   title,
@@ -9,7 +10,7 @@ export function Page({
   children,
   className = "",
 }) {
-  const reduced = useReducedMotion();
+  const reduced = useInterfaceMotion();
   return (
     <motion.div
       className={"op-page vx:min-w-0 " + className}

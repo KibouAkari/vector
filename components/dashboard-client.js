@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useReducedMotion } from "motion/react";
+import {useInterfaceMotion} from "./operations/use-interface-motion";
 import Link from "next/link";
 import {
   Activity,
@@ -37,7 +37,7 @@ export default function DashboardClient({
   projects = [],
   allowedPaths = null,
 }) {
-  const reduced = useReducedMotion();
+  const reduced = useInterfaceMotion();
   const [metric, setMetric] = useState("requests");
   const trend = timeline.map((row) => row[metric] || 0);
   const totalCalls = totals.providerCalls || 0;
@@ -295,7 +295,7 @@ export default function DashboardClient({
         <div className="op-dashboard-secondary">
           <Panel
             title="Model mix"
-            subtitle="Calls recorded in the last 30 days"
+            subtitle="Ledger entries in the last 30 days"
           >
             {models.length ? (
               <div className="op-model-list">

@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useMemo, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useReducedMotion } from "motion/react";
+import {useInterfaceMotion} from "./use-interface-motion";
 import * as THREE from "three";
 function Earth({ clients, reduced }) {
   const group = useRef();
@@ -51,7 +51,7 @@ function Earth({ clients, reduced }) {
   );
 }
 export default function TrafficGlobe({ clients = [] }) {
-  const reduced = useReducedMotion();
+  const reduced = useInterfaceMotion();
   return (
     <div
       className="op-globe"

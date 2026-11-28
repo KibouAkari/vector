@@ -1,3 +1,4 @@
+import {teamMessages,nonReplayable} from "../lib/teams/context.mjs";
 import { readFileSync } from "node:fs";
 import { SPECIALISTS, teamPolicy } from "../lib/teams/policy.mjs";
 import { withTeamCalls, admitTeamCall } from "../lib/teams/call-scope.mjs";
@@ -149,6 +150,12 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
         );
       },
     );
+    await t.test('expired memories free capacity without exposing unreadable expired records',async()=>{
+      const ids=Array.from({length:200},()=>crypto.randomUUID());await db.query("INSERT INTO brain_memories(id,owner_user_id,title,encrypted_body,source,expires_at) SELECT unnest($1::text[]),$2,'Expired fixture','unread expired ciphertext','Fixture',NOW()-INTERVAL '1 day'",[ids,owner]);
+      const saved=await request('/api/brain',{id:owner,method:'POST',body:{title:'Fresh fixture',body:'Use source references.',tags:[],pinned:false}});assert.equal(saved.status,200);
+      assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM brain_memories WHERE owner_user_id=$1',[owner])).rows[0].n,1);
+      await request('/api/brain',{id:owner,method:'DELETE',body:{id:saved.data.memory.id,revision:1}});
+    });
     await t.test(
       "connection save stores credentials privately without contacting the service",
       async () => {
@@ -267,7 +274,7 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
           requestingUserId: owner,
           freeOnly: true,
         };
-        const dependencies = {
+        const dependencies = {teamMessages,nonReplayable,
           db,
           initializeDatabase: async () => {},
           SPECIALISTS,
@@ -293,7 +300,8 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
               cachedTokens: 0,
             };
           },
-          runVectorAgent: async () => {
+          runVectorAgent: async options => {
+            assert.equal(options.executionClass,"artifact");assert.equal(options.toolDomains.artifact,true);assert.ok(options.roundLimit>=2);
             await admitTeamCall();
             calls++;
             await admitTeamCall();
@@ -320,6 +328,7 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
         const jobId = prefix + "-team",
           args = {
             jobId,
+            executionClass:"artifact",toolDomains:{artifact:true},
             userId: owner,
             projectId: null,
             messages: [{ role: "user", content: "Fixture task" }],

@@ -170,8 +170,8 @@ updating a Git checkout alone does not update running containers.
 
 ## Source validation
 
-The source was checked with a production Next.js build, 293 deterministic Node
-tests and 45 isolated PostgreSQL/API tests. The browser pass covered 13 authenticated
+The source was checked with a production Next.js build, 296 deterministic Node
+tests and 46 isolated PostgreSQL/API tests. The browser pass covered 13 authenticated
 pages at 1440px and 390px widths, command navigation and memory creation, with no
 page errors or document-level horizontal overflow. A known reduced-motion route
 hydration mismatch was repaired. Dependency audit reported zero known advisories
@@ -179,3 +179,15 @@ at check time; this is not a guarantee against undisclosed vulnerabilities.
 Provider calls were stubbed for team admission tests. Live provider quality,
 vendor credentials, service versions, external scans and production deployment
 were not exercised by these checks.
+
+## Pinned app update
+
+`scripts/deploy/update-operations-web.py --workspace /private/operator-workspace --revision <40-character-main-commit>`
+builds the exact checkout using the existing Docker/Compose app identity. It
+retains secrets/mounts/networks, escapes literal Compose dollar values, qualifies
+packaged routes without network or credentials, waits for observed running work
+and recreates only the web app. Health checks cover database/cache and anonymous
+access guards. An unsuccessful activation restores the previous app configuration
+while the script still holds it in memory. No database backup or worker/game
+restart is performed. Build/deployment logs stay in a private operator release
+directory. The caller must fetch and pin an already qualified revision first.

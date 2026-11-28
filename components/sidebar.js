@@ -50,7 +50,8 @@ const Icons = {
   UsersRound,
   Fingerprint,
 };
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import {useInterfaceMotion} from "./operations/use-interface-motion";
 import { navigationFor, pageTitle } from "../lib/operations-navigation.mjs";
 import LogoutButton from "./logout-button";
 import VectorSoundButton from "./ui/vector-sound-button";
@@ -63,7 +64,7 @@ const defaults = {
 export default function Sidebar({ session }) {
   const path = usePathname(),
     router = useRouter(),
-    reduced = useReducedMotion();
+    reduced = useInterfaceMotion();
   const groups = navigationFor(session);
   const [open, setOpen] = useState(false),
     [command, setCommand] = useState(false),
@@ -94,8 +95,9 @@ export default function Sidebar({ session }) {
     if (shell) {
       shell.dataset.accent = prefs.accent;
       shell.dataset.density = prefs.density;
-      shell.dataset.motion = reduced || !prefs.motion ? "reduced" : "full";
+      shell.dataset.motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches || !prefs.motion ? "reduced" : "full";
       shell.dataset.ambient = String(prefs.ambient);
+      window.dispatchEvent(new Event("vector:interface-change"));
     }
   }, [prefs, reduced, path]);
   useEffect(() => {
@@ -226,7 +228,8 @@ export default function Sidebar({ session }) {
         </div>
         <div className="op-top-actions">
           <button
-            className="op-command-trigger"
+            aria-label="Go anywhere"
+          className="op-command-trigger"
             onClick={() => setCommand(true)}
           >
             <Icons.Search size={15} />

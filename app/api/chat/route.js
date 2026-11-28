@@ -371,7 +371,7 @@ export async function POST(
       WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT $2`,[conversationId,historyLimit-1])).rows.reverse() : [];
     let destination;
     try {
-      destination=requestDestination({mode:requestedMode,text:rawAgentMessage,recentMessages:priorHistory,
+      destination=requestDestination({mode:requestedMode,text:originalMessage,recentMessages:priorHistory,
         allowServer:session.role==='owner'||Boolean(session.features?.server),
         localEnabled:process.env.VECTOR_LOCAL_WORKERS==='1',hasAttachments:attachmentIds.length>0});
     } catch { return Response.json({error:'Unbekannter Chatmodus.'},{status:400}); }

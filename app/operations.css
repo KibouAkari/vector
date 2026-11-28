@@ -2307,3 +2307,4 @@
     min-height: 44px;
   }
 }
+@media(max-width:760px){.op-sidebar:not(.is-open){visibility:hidden;pointer-events:none}.op-sidebar.is-open{visibility:visible}}

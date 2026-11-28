@@ -53,7 +53,7 @@ export default function Brain() {
       const response = await fetch("/api/brain", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(draft),
+          body: JSON.stringify({...draft,tags:draft.tags.map(tag=>tag.trim()).filter(Boolean)}),
         }),
         value = await response.json();
       if (!response.ok) throw Error(value.error);

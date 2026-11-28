@@ -135,9 +135,9 @@ test('confirmed project jobs keep originals out of finding metadata and retrieve
 });
 
 
-function acceptedChat({role='owner',budgetAllowed=true}={}) {
+function acceptedChat({role='owner',budgetAllowed=true,brain=''}={}) {
   const jobs=[],reviews=[],queries=[];
-  const deps={selectedSkillContext:async()=>'',sourceEvidenceForFiles:async()=>new Map(),crypto,requestDestination,getSession:async()=>({userId:'alice',role,features:{chat:true}}),hasFeature:()=>true,
+  const deps={brainContext:async()=>brain,selectedSkillContext:async()=>'',sourceEvidenceForFiles:async()=>new Map(),crypto,requestDestination,getSession:async()=>({userId:'alice',role,features:{chat:true}}),hasFeature:()=>true,
     initializeDatabase:async()=>{},initializeChatAttachmentDatabase:async()=>{},
     assertUserBudget:async()=>({allowed:budgetAllowed}),
     prepareChatAttachmentContext:async()=>({context:'',attachments:[]}),CHAT_ATTACHMENT_CONTEXT_MARKER:'\nATTACHMENTS\n',
@@ -228,3 +228,5 @@ test('actual project route and privacy engine mask quoted skill credentials befo
  assert.equal((await send({...input,privacyDecision:'replace',privacyReplaceIds:[...review.findings,...review.contextFindings].map(f=>f.placeholder),privacyReviewToken:review.token})).status,202);
  assert.equal(jobs[0].payload.billingPolicy,'free-only');assert.ok(!JSON.stringify(jobs[0].payload).includes('R7! synthetic phrase'));assert.ok(jobs[0].payload.messages.at(-1).content.includes('<VEC_PASSWORD_'));
 });
+
+test('saved Brain context cannot turn native statistics into paid routing',async()=>{const previous=process.env.VECTOR_LOCAL_WORKERS;process.env.VECTOR_LOCAL_WORKERS='1';try{const api=acceptedChat({brain:'RELEVANT SAVED MEMORY: Use concise answers.'});const response=await api.POST(new Request('http://vector.test',{method:'POST',body:JSON.stringify({mode:'auto',message:'Welche Rekorde hat ExampleOne auf Minecraft?',privacyEnabled:false})}));assert.equal(response.status,202);assert.equal(api.jobs[0].payload.privacyDestination,'local');assert.match(api.reviews[0].text,/RELEVANT SAVED MEMORY/);}finally{if(previous===undefined)delete process.env.VECTOR_LOCAL_WORKERS;else process.env.VECTOR_LOCAL_WORKERS=previous;}});
