@@ -1591,15 +1591,22 @@
 @media (prefers-reduced-motion: reduce) {
   .vc-workspace *,
   .vector-popover,
+  .vector-popover *,
   .vector-dialog-overlay,
   .vector-dialog,
+  .vector-dialog *,
+  .vc-history,
+  .vc-history *,
+  .vc-history-backdrop,
   .vs-loading > div {
     animation: none !important;
     scroll-behavior: auto !important;
     transition: none !important;
   }
 }
-.vector-shell[data-motion="reduced"] :is(.vc-workspace *, .vs-loading > div) {
+.vector-shell[data-motion="reduced"] :is(.vc-workspace *, .vs-loading > div),
+body:has(.vector-shell[data-motion="reduced"])
+  :is(.vector-popover, .vector-popover *, .vector-dialog-overlay, .vector-dialog, .vector-dialog *, .vc-history, .vc-history *, .vc-history-backdrop) {
   animation: none !important;
   scroll-behavior: auto !important;
   transition: none !important;
