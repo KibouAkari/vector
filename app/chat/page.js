@@ -11,7 +11,7 @@ export default async function ChatPage() {
     <div className="vector-shell">
       <Sidebar session={session} />
 
-      <main className="main vector-chat-page">
+      <main className="main vector-conversation-main">
         <ChatClient
           userId={session.userId}
           displayName={

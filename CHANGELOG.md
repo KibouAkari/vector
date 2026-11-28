@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-11-28 — Review corrections for PR #148
+
+Keep the open conversation's server title independent of filtered history and
+restore the attachment card and image-preview styles within the new chat scope.
+Source checks: targeted chat/privacy tests and a production build pass; a
+synthetic browser fixture confirms desktop and mobile preview/card layout. The
+build reports existing filesystem-tracing warnings. No deployment is implied.
+
+## 2026-11-28 — Conversation and skill library refinement
+
+Replace nested chat containers with a scoped conversation surface informed by
+Prompt Kit and assistant-ui. Keep attachment, mode and send controls in the
+composer; move privacy, Brain, free-inference and skill settings to a Radix
+popover. Use a focused mobile history drawer, quieter message actions, readable
+privacy-token titles and an autosizing editor with an IME-safe Enter shortcut.
+Retain send/retry/upload/consent handling and the existing request contract.
+
+Move skill editing/import into Radix dialogs, retain exact source/license/hash
+review and activation, improve first-run/search states and discard stale scope
+loads. Compact the overview and correct the globe material when geography loads
+asynchronously. Preserve Traffic, branding, login and intro. Attribute reused
+MIT UI source and pin the added Radix dependencies.
+
+Validation: production build, 304 deterministic Node checks and 48 isolated
+PostgreSQL/API checks pass; runtime audit reports no known findings. Rendered
+desktop and 390px viewport checks cover composer/settings, draft persistence,
+modal keyboard/focus behavior and the no-WebGL map fallback. No paid model
+requests or external scans; deployment remains an operator action.
+
 ## 2026-11-28 — Black observatory and local connection telemetry
 
 Add a black authenticated canvas with visible planets, quieter frames, optional

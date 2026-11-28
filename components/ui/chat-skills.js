@@ -7,6 +7,7 @@ export default function ChatSkills({
   parameters = {},
   onParameters = () => {},
   disabled,
+  inline = false,
 }) {
   const [skills, setSkills] = useState([]),
     [error, setError] = useState("");
@@ -27,50 +28,55 @@ export default function ChatSkills({
       active = false;
     };
   }, []);
-  return (
+  const list = (
+    <div className={inline ? "vc-skills-list" : "chat-skill-menu"}>
+      {error && <p role="alert">{error}</p>}
+      {skills.length ? (
+        skills.map((skill) => (
+          <div key={skill.id}>
+            <label>
+              <input
+                type="checkbox"
+                disabled={
+                  disabled ||
+                  (!selected.includes(skill.id) && selected.length >= 3)
+                }
+                checked={selected.includes(skill.id)}
+                onChange={(e) =>
+                  onSelection(
+                    e.target.checked
+                      ? [...selected, skill.id]
+                      : selected.filter((id) => id !== skill.id),
+                  )
+                }
+              />
+              {skill.name}
+              <small>v{skill.version || 1}</small>
+            </label>
+            {selected.includes(skill.id) && (
+              <SkillParameters
+                skill={skill}
+                values={parameters[skill.id]}
+                onChange={(values) =>
+                  onParameters({ ...parameters, [skill.id]: values })
+                }
+                disabled={disabled}
+              />
+            )}
+          </div>
+        ))
+      ) : (
+        <p>No active chat skills.</p>
+      )}
+      <a href="/skills">Manage skills →</a>
+    </div>
+  );
+  return inline ? (
+    list
+  ) : (
     <details className="chat-skill-picker">
       <summary>Skills{selected.length ? ` (${selected.length})` : ""}</summary>
-      <div className="chat-skill-menu">
-        {error && <p role="alert">{error}</p>}
-        {skills.length ? (
-          skills.map((skill) => (
-            <div key={skill.id}>
-              <label>
-                <input
-                  type="checkbox"
-                  disabled={
-                    disabled ||
-                    (!selected.includes(skill.id) && selected.length >= 3)
-                  }
-                  checked={selected.includes(skill.id)}
-                  onChange={(e) =>
-                    onSelection(
-                      e.target.checked
-                        ? [...selected, skill.id]
-                        : selected.filter((id) => id !== skill.id),
-                    )
-                  }
-                />
-                {skill.name}
-                <small>v{skill.version || 1}</small>
-              </label>
-              {selected.includes(skill.id) && (
-                <SkillParameters
-                  skill={skill}
-                  values={parameters[skill.id]}
-                  onChange={(values) =>
-                    onParameters({ ...parameters, [skill.id]: values })
-                  }
-                  disabled={disabled}
-                />
-              )}
-            </div>
-          ))
-        ) : (
-          <p>No active chat skills.</p>
-        )}
-        <a href="/skills">Manage skills →</a>
-      </div>
+      {list}
     </details>
   );
 }

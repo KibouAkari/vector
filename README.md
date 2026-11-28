@@ -55,6 +55,9 @@ freshness, limits, local GeoIP licensing and installation are documented in
 [Observatory](docs/OBSERVATORY.md). This source change does not by itself install
 anything on an operator's server.
 
+The conversation interface now uses Prompt Kit composition and Radix overlays: a
+compact composer, separate options and focused skill dialogs. [Interface references](docs/UI_REFERENCES.md) explain the sources and retained behavior.
+
 ## Inside Vector
 
 **Conversations and projects.** Work in persistent chat threads, organize tasks in projects and inspect generated files without switching between tools.

@@ -19,14 +19,15 @@ function useTexture(world) {
     for (const country of world.features)
       for (const polygon of country.polygons) {
         context.beginPath();
-        for (const ring of polygon)
+        for (const ring of polygon) {
           ring.forEach(([lon, lat], index) => {
             const x = ((lon + 180) / 360) * 2048,
               y = ((90 - lat) / 180) * 1024;
             if (index === 0) context.moveTo(x, y);
             else context.lineTo(x, y);
           });
-        context.closePath();
+          context.closePath();
+        }
         context.fill("evenodd");
         context.stroke();
       }
@@ -76,6 +77,7 @@ function Earth({ clients, reduced, world }) {
       <mesh>
         <sphereGeometry args={[1, 64, 48]} />
         <meshStandardMaterial
+          key={texture ? "geography-ready" : "geography-loading"}
           map={texture}
           color={texture ? "#c0cdd0" : "#10191f"}
           roughness={1}
