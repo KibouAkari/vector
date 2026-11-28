@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import ServerVitals from "../../components/operations/server-vitals";
+import {useObservatory} from "../../components/operations/use-observatory";
 import { useEffect, useRef, useState } from "react";
 import {
   Activity, Boxes, ChevronDown, Clock3, Cpu, HardDrive,
@@ -109,6 +111,7 @@ function ContainerResources({resources, stale}) {
 }
 
 export default function ServerClient() {
+  const liveHost=useObservatory({traffic:false,fallback:false});
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -190,7 +193,7 @@ export default function ServerClient() {
         <p><strong>Recent activity</strong> · This snapshot does not include event logs.</p>
       </div>
 
-      <ContainerResources resources={data.containerResources} stale={Boolean(error)}/>
+        <ContainerResources resources={data.containerResources} stale={Boolean(error)}/>
 
       <div className="vx586-server-panels">
         <DetailPanel icon={MemoryStick} title="Memory" description="Host memory allocation" raw={data.memory}>
@@ -222,6 +225,6 @@ export default function ServerClient() {
         </DetailPanel>
       </div>
     </>}
+    {liveHost.resources?.available&&<ServerVitals resources={liveHost.resources}/>}
   </div>;
 }
-

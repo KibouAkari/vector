@@ -175,6 +175,10 @@ class Update:
         check = "const fs=require('node:fs'),a=require('node:assert');const m=JSON.parse(fs.readFileSync('.next/server/app-paths-manifest.json'));for(const p of ['/brain/page','/teams/page','/connections/page','/traffic/page','/api/brain/route','/api/traffic/route'])a.ok(m[p],p);a.ok(fs.existsSync('public/vector-assets/brand/vector-mark.svg'));console.log('Packaged routes and branding verified');"
         self.run(['docker', 'run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--pids-limit', '128', '--memory', '512m', '--cpus', '1', '--entrypoint', 'node', image, '-e', check])
         candidate = candidate_profile(profile, self.service, image)
+        if getattr(self.args,'traffic_key_file',None):
+            key=safe(self.args.traffic_key_file).read_text().strip()
+            require(len(key)>=32 and not any(ch.isspace() for ch in key),'INVALID_COLLECTOR_KEY')
+            candidate['services'][self.service].setdefault('environment',{})['VECTOR_TRAFFIC_INGEST_TOKEN']=key
         temporary = self.release / 'compose.check.json'
         temporary.write_bytes(compose_bytes(candidate))
         require(self.profile(temporary) == candidate, 'COMPOSE_ROUNDTRIP_FAILED')
@@ -192,7 +196,7 @@ class Update:
         changed = False
         try:
             print('Replacing only the web app. Minecraft, inference and worker stay online.', flush=True)
-            atomic(self.path, temporary.read_bytes(), meta.st_mode & 0o777, meta.st_uid, meta.st_gid)
+            atomic(self.path, temporary.read_bytes(), 0o600 if getattr(self.args,'traffic_key_file',None) else meta.st_mode & 0o777, meta.st_uid, meta.st_gid)
             changed = True
             self.run(self.compose(self.path, 'up', '-d', '--no-deps', '--no-build', '--pull', 'never', self.service), timeout=120)
             deadline = time.monotonic()+100
@@ -232,6 +236,7 @@ def main():
     parser.add_argument('--app', default='vector-app')
     parser.add_argument('--revision', required=True)
     parser.add_argument('--public-url')
+    parser.add_argument('--traffic-key-file')
     args = parser.parse_args()
     if args.public_url:
         url = urlsplit(args.public_url)

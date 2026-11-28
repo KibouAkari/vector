@@ -18,7 +18,7 @@ Self-hosted · Active development · Built with Next.js
 
 Vector brings conversations, project work, model providers and file workflows into one application. Its goal is simple: **finish useful work with predictable quality, sensible costs and clear human control.**
 
-The experience is deliberately restrained: dark surfaces, clear typography, precise interactions and no ornamental dashboards.
+The authenticated workspace uses a black canvas, clear typography and optional celestial depth. Operational charts show recorded data, with explicit empty and stale states.
 
 ## Operations centre
 
@@ -41,6 +41,20 @@ install an agent, enable every vendor action or prove live interoperability.
 Calls/voice, general MCP execution and installable desktop agents remain separate
 work. Release checks use synthetic data and no paid inference or real target scans.
 
+## Black canvas and live telemetry
+
+The observatory overview puts AI tasks, recorded costs and token/model charts
+first, with a compact Earth view and host CPU/RAM/storage gauges. Traffic has a
+world map, service/country filters, current connections, HTTP request metadata
+and source-health details. Login and intro remain unchanged.
+
+An optional, explicitly authorized Linux collector reads local connection
+metadata, nginx logs and host resources. It includes forwarded Docker/Minecraft
+connections without packet payload capture or a Docker socket. Coverage,
+freshness, limits, local GeoIP licensing and installation are documented in
+[Observatory](docs/OBSERVATORY.md). This source change does not by itself install
+anything on an operator's server.
+
 ## Inside Vector
 
 **Conversations and projects.** Work in persistent chat threads, organize tasks in projects and inspect generated files without switching between tools.
@@ -55,7 +69,7 @@ The interface is under active development. The current implementation is not pre
 
 ![Vector operations overview with synthetic usage records](docs/screenshots/vector-operations-overview.png)
 
-The operations capture uses the real application with an isolated synthetic dataset.
+The capture shows the earlier operations layout, before the black observatory update, using the real application with an isolated synthetic dataset.
 It does not show live service health or paid model evaluations.
 
 

@@ -30,7 +30,8 @@ import ProjectWorkbench
 export const dynamic = "force-dynamic";
 
 export default async function ProjectPage({
-  params
+  params,
+  searchParams
 }) {
   const session =
     await requireSession();
@@ -39,6 +40,8 @@ export default async function ProjectPage({
     id
   } =
     await params;
+  const requestedConversationId =
+    (await searchParams)?.conversation;
 
   if (!await canAccessProject(session, id)) {
     notFound();
@@ -295,6 +298,11 @@ export default async function ProjectPage({
 
         <ProjectWorkbench
           canEdit={canEdit}
+          initialConversationId={
+            typeof requestedConversationId === "string"
+              ? requestedConversationId
+              : null
+          }
           project={
             project
           }
@@ -342,4 +350,3 @@ export default async function ProjectPage({
     </div>
   );
 }
-

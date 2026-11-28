@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-11-28 — Black observatory and local connection telemetry
+
+Add a black authenticated canvas with visible planets, quieter frames, optional
+motion and an AI-first overview. Show own background tasks, ledger charts, token
+and model donuts, geographic activity and compact host resource gauges. Rework
+Traffic around a real world map, measurement/service/country filters, native
+keyboard-accessible observation details, source health and scan activity. Keep
+login and intro source unchanged.
+
+Add encrypted source heartbeats/current flows/host samples and bounded APIs with
+existing access controls. Add a Linux collector, read-only conntrack original
+tuple parsing for forwarded game traffic, metadata-only nginx logging, local
+GeoIP, resource sampling and an opt-in installer. Preserve the app-only rollout
+guards; collection setup is reported independently. Document coverage, privilege,
+privacy, retention and license limits. Serialize cold login rate-limit schema
+initialization across concurrent module copies to avoid a PostgreSQL catalog race.
+
+Validation: production build, 302 deterministic Node checks, 48 isolated
+PostgreSQL/API checks and Python collector/installer tests pass without paid
+inference or external scans. Managed browser preview could not start because
+the preview launcher passes Vite-specific flags to Next.js; visual/browser QA
+for this revision remains unverified. Host collector installation and real
+traffic coverage require the operator update and are not claimed by source CI.
+
+## 2026-11-28 — Review corrections for PR #147
+
+Preserve the full-height chat layout under observatory page padding and display
+collector host vitals even when the legacy server snapshot is unavailable.
+Include active jobs independently from the recent-history limit, return project
+IDs for task links, and open project conversations through the project workspace's
+authorized conversation endpoint. Add isolated database coverage for an older
+active project job behind newer completed jobs.
+
+Validation: 23 focused Node tests and a production build pass. The isolated
+PostgreSQL/API integration fixture is added but was not run locally; browser and
+live-host behavior remain unverified.
+
 ## 2026-11-28 — Operations release corrections and app installer
 
 Keep native statistics local with Brain enabled, preserve exact selectively

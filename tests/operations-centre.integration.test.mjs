@@ -1,4 +1,4 @@
-import {teamMessages,nonReplayable} from "../lib/teams/context.mjs";
+import { teamMessages, nonReplayable } from "../lib/teams/context.mjs";
 import { readFileSync } from "node:fs";
 import { SPECIALISTS, teamPolicy } from "../lib/teams/policy.mjs";
 import { withTeamCalls, admitTeamCall } from "../lib/teams/call-scope.mjs";
@@ -150,12 +150,41 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
         );
       },
     );
-    await t.test('expired memories free capacity without exposing unreadable expired records',async()=>{
-      const ids=Array.from({length:200},()=>crypto.randomUUID());await db.query("INSERT INTO brain_memories(id,owner_user_id,title,encrypted_body,source,expires_at) SELECT unnest($1::text[]),$2,'Expired fixture','unread expired ciphertext','Fixture',NOW()-INTERVAL '1 day'",[ids,owner]);
-      const saved=await request('/api/brain',{id:owner,method:'POST',body:{title:'Fresh fixture',body:'Use source references.',tags:[],pinned:false}});assert.equal(saved.status,200);
-      assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM brain_memories WHERE owner_user_id=$1',[owner])).rows[0].n,1);
-      await request('/api/brain',{id:owner,method:'DELETE',body:{id:saved.data.memory.id,revision:1}});
-    });
+    await t.test(
+      "expired memories free capacity without exposing unreadable expired records",
+      async () => {
+        const ids = Array.from({ length: 200 }, () => crypto.randomUUID());
+        await db.query(
+          "INSERT INTO brain_memories(id,owner_user_id,title,encrypted_body,source,expires_at) SELECT unnest($1::text[]),$2,'Expired fixture','unread expired ciphertext','Fixture',NOW()-INTERVAL '1 day'",
+          [ids, owner],
+        );
+        const saved = await request("/api/brain", {
+          id: owner,
+          method: "POST",
+          body: {
+            title: "Fresh fixture",
+            body: "Use source references.",
+            tags: [],
+            pinned: false,
+          },
+        });
+        assert.equal(saved.status, 200);
+        assert.equal(
+          (
+            await db.query(
+              "SELECT COUNT(*)::int AS n FROM brain_memories WHERE owner_user_id=$1",
+              [owner],
+            )
+          ).rows[0].n,
+          1,
+        );
+        await request("/api/brain", {
+          id: owner,
+          method: "DELETE",
+          body: { id: saved.data.memory.id, revision: 1 },
+        });
+      },
+    );
     await t.test(
       "connection save stores credentials privately without contacting the service",
       async () => {
@@ -263,9 +292,13 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
     );
     await t.test(
       "team forks share the real PostgreSQL call counter and retry cannot reset it",
-      {timeout:10000}, async () => {
+      { timeout: 10000 },
+      async () => {
         await request("/api/teams", { id: owner });
-        let releaseSpecialists;const pairedSpecialists=new Promise(resolve=>{releaseSpecialists=resolve;});
+        let releaseSpecialists;
+        const pairedSpecialists = new Promise((resolve) => {
+          releaseSpecialists = resolve;
+        });
         let calls = 0,
           active = 0,
           peak = 0;
@@ -275,7 +308,9 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
           requestingUserId: owner,
           freeOnly: true,
         };
-        const dependencies = {teamMessages,nonReplayable,
+        const dependencies = {
+          teamMessages,
+          nonReplayable,
           db,
           initializeDatabase: async () => {},
           SPECIALISTS,
@@ -290,7 +325,10 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
             calls++;
             active++;
             peak = Math.max(peak, active);
-            if(!input.instructions.startsWith("Review")){if(active===2)releaseSpecialists();await pairedSpecialists;}
+            if (!input.instructions.startsWith("Review")) {
+              if (active === 2) releaseSpecialists();
+              await pairedSpecialists;
+            }
             active--;
             return {
               text: input.instructions.startsWith("Review")
@@ -301,8 +339,10 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
               cachedTokens: 0,
             };
           },
-          runVectorAgent: async options => {
-            assert.equal(options.executionClass,"artifact");assert.equal(options.toolDomains.artifact,true);assert.ok(options.roundLimit>=2);
+          runVectorAgent: async (options) => {
+            assert.equal(options.executionClass, "artifact");
+            assert.equal(options.toolDomains.artifact, true);
+            assert.ok(options.roundLimit >= 2);
             await admitTeamCall();
             calls++;
             await admitTeamCall();
@@ -329,7 +369,8 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
         const jobId = prefix + "-team",
           args = {
             jobId,
-            executionClass:"artifact",toolDomains:{artifact:true},
+            executionClass: "artifact",
+            toolDomains: { artifact: true },
             userId: owner,
             projectId: null,
             messages: [{ role: "user", content: "Fixture task" }],
@@ -415,6 +456,253 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
             (row) => row.service === "Fixture web",
           ),
         );
+      },
+    );
+    await t.test(
+      "parallel cold login schema initialization is serialized across module copies",
+      async () => {
+        const name = "fixture_login_" + crypto.randomBytes(6).toString("hex");
+        const source = readFileSync(
+          new URL("../lib/login-security.js", import.meta.url),
+          "utf8",
+        )
+          .replace(/^import\s[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "")
+          .replace(/^export\s+/gm, "")
+          .replaceAll("vector_login_rate_limits", name);
+        const create = () =>
+          new Function("db", "crypto", source + ";return ensureTable;")(
+            db,
+            crypto,
+          );
+        try {
+          const first = create(),
+            second = create();
+          await Promise.all([first(), first(), second()]);
+          assert.equal(
+            (await db.query("SELECT COUNT(*) FROM " + name)).rows[0].count,
+            "0",
+          );
+        } finally {
+          await db.query("DROP TABLE IF EXISTS " + name);
+        }
+      },
+    );
+    await t.test(
+      "host telemetry is encrypted, scoped, bounded and rejects stale source state",
+      async () => {
+        assert.equal((await request("/api/server/resources")).status, 401);
+        assert.equal((await request("/api/operations/activity")).status, 401);
+        const sourceId = crypto.randomUUID(),
+          now = Date.now();
+        const sample = {
+          source: {
+            id: sourceId,
+            name: "Synthetic sampler",
+            observedAt: new Date(now).toISOString(),
+            connectionSampleAt: new Date(now).toISOString(),
+            readers: [
+              { kind: "conntrack", status: "ok" },
+              { kind: "metrics", status: "ok" },
+            ],
+            dropped: 0,
+          },
+          connections: [
+            {
+              connectionId: "a".repeat(64),
+              sourceIp: "198.51.100.52",
+              destinationIp: "203.0.113.1",
+              sourcePort: 52000,
+              destinationPort: 25565,
+              transport: "tcp",
+              service: "Fixture game",
+              state: "ESTABLISHED",
+              observedAt: new Date(now).toISOString(),
+              country: "CH",
+            },
+          ],
+          vitals: {
+            observedAt: new Date(now).toISOString(),
+            cpuPercent: 32,
+            logicalCpus: 8,
+            memory: { totalBytes: 1000, availableBytes: 600 },
+            storage: [
+              { name: "System", totalBytes: 10000, availableBytes: 9000 },
+            ],
+          },
+        };
+        async function signed(body) {
+          const nonce = crypto.randomUUID(),
+            timestamp = String(Date.now()),
+            raw = JSON.stringify(body),
+            signature = crypto
+              .createHmac("sha256", process.env.VECTOR_TRAFFIC_INGEST_TOKEN)
+              .update(timestamp + "\n" + nonce + "\n" + raw)
+              .digest("hex");
+          return request("/api/traffic", {
+            method: "POST",
+            body,
+            headers: {
+              "x-vector-nonce": nonce,
+              "x-vector-timestamp": timestamp,
+              "x-vector-signature": signature,
+            },
+          });
+        }
+        try {
+          assert.equal((await signed(sample)).status, 200);
+          const state = await db.query(
+            "SELECT encrypted_state FROM traffic_sources WHERE id=$1",
+            [sourceId],
+          );
+          assert.equal(
+            state.rows[0].encrypted_state.includes("198.51.100.52"),
+            false,
+          );
+          const host = await request("/api/server/resources", { id: owner });
+          assert.equal(host.status, 200);
+          assert.equal(host.data.cpuPercent, 32);
+          assert.equal(host.data.memory.usedBytes, 400);
+          const view = await request("/api/traffic?minutes=60", { id: owner });
+          assert.equal(view.status, 200);
+          assert.ok(
+            view.data.activeConnections.some(
+              (row) =>
+                row.destinationPort === 25565 && row.collectorId === sourceId,
+            ),
+          );
+          assert.equal(
+            (
+              await signed({
+                ...sample,
+                source: {
+                  ...sample.source,
+                  observedAt: new Date(now - 1000).toISOString(),
+                },
+              })
+            ).data.error,
+            "STALE_COLLECTOR_SAMPLE",
+          );
+          assert.equal(
+            (await signed({ ...sample, events: {} })).data.error,
+            "INVALID_TRAFFIC_EVENTS",
+          );
+          assert.equal(
+            (await request("/api/traffic?minutes=999", { id: owner })).status,
+            400,
+          );
+          await db.query(
+            "UPDATE vector_users SET features=$2::jsonb WHERE id=$1",
+            [readonly, { chat: false, projects: false }],
+          );
+          assert.equal(
+            (await request("/api/server/resources", { id: readonly })).status,
+            403,
+          );
+          assert.equal(
+            (await request("/api/operations/activity", { id: readonly }))
+              .status,
+            403,
+          );
+          await request("/api/security/assets", { id: owner });
+          const jobSchema = readFileSync(
+            new URL("../lib/background-jobs.js", import.meta.url),
+            "utf8",
+          ).match(/CREATE TABLE IF NOT EXISTS agent_jobs[\s\S]*?\n    \)/)[0];
+          await db.query(jobSchema);
+          const jobIds = [prefix + "-visible-job", prefix + "-hidden-job"],
+            recentJobIds = Array.from(
+              { length: 13 },
+              (_, index) => `${prefix}-recent-job-${index}`,
+            ),
+            oldActiveJobId = prefix + "-old-active-job",
+            projectId = prefix + "-activity-project",
+            projectConversationId = prefix + "-project-conversation",
+            assetId = prefix + "-asset",
+            scanId = prefix + "-scan";
+          try {
+            await db.query(
+              "INSERT INTO conversations(id,owner_user_id,title) VALUES($1,$2,'Visible fixture task'),($3,$4,'Hidden fixture task')",
+              [jobIds[0], owner, jobIds[1], member],
+            );
+            await db.query(
+              "INSERT INTO agent_jobs(id,user_id,conversation_id,status,payload) VALUES($1,$2,$1,'completed','{}'),($3,$4,$3,'completed','{}')",
+              [jobIds[0], owner, jobIds[1], member],
+            );
+            await db.query("INSERT INTO projects(id,name) VALUES($1,'Fixture project')", [
+              projectId,
+            ]);
+            await db.query(
+              "INSERT INTO conversations(id,owner_user_id,project_id,title) VALUES($1,$2,$3,'Project task fixture')",
+              [projectConversationId, owner, projectId],
+            );
+            await db.query(
+              "INSERT INTO agent_jobs(id,user_id,conversation_id,project_id,status,created_at,payload) VALUES($1,$2,$3,$4,'running',NOW()-INTERVAL '2 days','{}')",
+              [oldActiveJobId, owner, projectConversationId, projectId],
+            );
+            await db.query(
+              "INSERT INTO agent_jobs(id,user_id,status,payload) SELECT unnest($1::text[]),$2,'completed','{}'",
+              [recentJobIds, owner],
+            );
+            await db.query(
+              "INSERT INTO security_assets(id,owner_user_id,request_id,request_digest,name,kind,scope,scope_digest,active) VALUES($1,$2,$1,'fixture','Visible fixture asset','web','{}','fixture',FALSE)",
+              [assetId, owner],
+            );
+            await db.query(
+              "INSERT INTO security_scan_runs(id,asset_id,user_id,scope_digest,status) VALUES($1,$2,$3,'fixture','completed')",
+              [scanId, assetId, owner],
+            );
+            const owned = (
+              await request("/api/operations/activity", { id: owner })
+            ).data;
+            assert.ok(owned.jobs.some((row) => row.id === jobIds[0]));
+            const oldActiveJob = owned.activeJobs.find(
+              (row) => row.id === oldActiveJobId,
+            );
+            assert.equal(oldActiveJob?.status, "running");
+            assert.equal(oldActiveJob?.projectId, projectId);
+            assert.equal(
+              owned.jobs.some((row) => row.id === jobIds[1]),
+              false,
+            );
+            assert.ok(owned.scans.some((row) => row.id === scanId));
+            const others = (
+              await request("/api/operations/activity", { id: member })
+            ).data;
+            assert.equal(
+              others.scans.some((row) => row.id === scanId),
+              false,
+            );
+            assert.equal(
+              others.jobs.some((row) => row.id === jobIds[0]),
+              false,
+            );
+          } finally {
+            await db.query("DELETE FROM security_scan_runs WHERE id=$1", [
+              scanId,
+            ]);
+            await db.query("DELETE FROM security_assets WHERE id=$1", [
+              assetId,
+            ]);
+            await db.query("DELETE FROM agent_jobs WHERE id=ANY($1)", [
+              [...jobIds, ...recentJobIds, oldActiveJobId],
+            ]);
+            await db.query("DELETE FROM conversations WHERE id=ANY($1)", [
+              [...jobIds, projectConversationId],
+            ]);
+            await db.query("DELETE FROM projects WHERE id=$1", [projectId]);
+          }
+          const activity = await request("/api/operations/activity", {
+            id: member,
+          });
+          assert.equal(activity.status, 200);
+          assert.ok(Array.isArray(activity.data.jobs));
+        } finally {
+          await db.query(
+            "DELETE FROM host_resource_samples WHERE source_id=$1",
+            [sourceId],
+          );
+          await db.query("DELETE FROM traffic_sources WHERE id=$1", [sourceId]);
+        }
       },
     );
   } finally {

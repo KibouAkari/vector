@@ -53,10 +53,11 @@ const Icons = {
 import { AnimatePresence, motion } from "motion/react";
 import {useInterfaceMotion} from "./operations/use-interface-motion";
 import { navigationFor, pageTitle } from "../lib/operations-navigation.mjs";
+import SpaceBackdrop from "./operations/space-backdrop";
 import LogoutButton from "./logout-button";
 import VectorSoundButton from "./ui/vector-sound-button";
 const defaults = {
-  accent: "teal",
+  accent: "ice",
   density: "comfortable",
   ambient: true,
   motion: true,
@@ -85,7 +86,7 @@ export default function Sidebar({ session }) {
         ...stored,
         accent: ["teal", "ice", "sand"].includes(stored.accent)
           ? stored.accent
-          : "teal",
+          : "ice",
         density: stored.density === "compact" ? "compact" : "comfortable",
       });
     } catch {}
@@ -194,6 +195,7 @@ export default function Sidebar({ session }) {
     );
   return (
     <>
+      <SpaceBackdrop/>
       <a
         className="op-skip"
         href="#vector-main"
@@ -282,9 +284,9 @@ export default function Sidebar({ session }) {
                   setPreference("accent", event.target.value)
                 }
               >
-                <option value="teal">Glacier teal</option>
-                <option value="ice">Cold silver</option>
-                <option value="sand">Warm sand</option>
+                <option value="teal">Glacier</option>
+                <option value="ice">Silver</option>
+                <option value="sand">Warm light</option>
               </select>
             </label>
             <label>
