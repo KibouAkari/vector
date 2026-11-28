@@ -547,7 +547,7 @@ function ObservationDetails({ selected, onClose }) {
               autoFocus
               className="op-icon"
               aria-label="Close details"
-              onClick={() => setSelected(null)}
+              onClick={onClose}
             >
               <X size={18} />
             </button>
