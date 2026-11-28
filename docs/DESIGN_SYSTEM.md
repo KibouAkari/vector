@@ -78,3 +78,12 @@ Overview gives tasks, cost and model/token figures the main column. Host health
 is compact. Traffic uses actual country polygons with explicit unknown location,
 stale sample and partial-coverage states. Do not add fake maps, fictional activity
 or fabricated CPU percentages to make empty installations appear busy.
+
+## Conversation surface
+
+Chat uses `app/conversation.css` and `components/chat`, with a compact composer,
+separate options, one user bubble and a bounded reading column. Radix handles
+overlays. Skills uses focused dialogs and a quieter library view. See
+[UI references and behavior](UI_REFERENCES.md) for pinned source attribution,
+keyboard behavior and retained execution/privacy contracts. Traffic keeps its
+existing layout.

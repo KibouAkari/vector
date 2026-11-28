@@ -628,9 +628,10 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
               "INSERT INTO agent_jobs(id,user_id,conversation_id,status,payload) VALUES($1,$2,$1,'completed','{}'),($3,$4,$3,'completed','{}')",
               [jobIds[0], owner, jobIds[1], member],
             );
-            await db.query("INSERT INTO projects(id,name) VALUES($1,'Fixture project')", [
-              projectId,
-            ]);
+            await db.query(
+              "INSERT INTO projects(id,name) VALUES($1,'Fixture project')",
+              [projectId],
+            );
             await db.query(
               "INSERT INTO conversations(id,owner_user_id,project_id,title) VALUES($1,$2,$3,'Project task fixture')",
               [projectConversationId, owner, projectId],
@@ -640,7 +641,7 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
               [oldActiveJobId, owner, projectConversationId, projectId],
             );
             await db.query(
-              "INSERT INTO agent_jobs(id,user_id,status,payload) SELECT unnest($1::text[]),$2,'completed','{}'",
+              "INSERT INTO agent_jobs(id,user_id,status,created_at,payload) SELECT unnest($1::text[]),$2,'completed',NOW()-INTERVAL '1 hour','{}'",
               [recentJobIds, owner],
             );
             await db.query(
@@ -655,6 +656,11 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
               await request("/api/operations/activity", { id: owner })
             ).data;
             assert.ok(owned.jobs.some((row) => row.id === jobIds[0]));
+            assert.equal(owned.jobs.length, 12);
+            assert.equal(
+              owned.jobs.some((row) => row.id === oldActiveJobId),
+              false,
+            );
             const oldActiveJob = owned.activeJobs.find(
               (row) => row.id === oldActiveJobId,
             );
