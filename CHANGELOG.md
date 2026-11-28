@@ -24,6 +24,19 @@ the preview launcher passes Vite-specific flags to Next.js; visual/browser QA
 for this revision remains unverified. Host collector installation and real
 traffic coverage require the operator update and are not claimed by source CI.
 
+## 2026-11-28 — Review corrections for PR #147
+
+Preserve the full-height chat layout under observatory page padding and display
+collector host vitals even when the legacy server snapshot is unavailable.
+Include active jobs independently from the recent-history limit, return project
+IDs for task links, and open project conversations through the project workspace's
+authorized conversation endpoint. Add isolated database coverage for an older
+active project job behind newer completed jobs.
+
+Validation: 23 focused Node tests and a production build pass. The isolated
+PostgreSQL/API integration fixture is added but was not run locally; browser and
+live-host behavior remain unverified.
+
 ## 2026-11-28 — Operations release corrections and app installer
 
 Keep native statistics local with Brain enabled, preserve exact selectively

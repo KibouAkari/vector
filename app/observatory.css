@@ -90,7 +90,7 @@
 .op-top-actions .op-icon:hover {
   background: #ffffff06;
 }
-.vector-shell > .main[class] {
+.vector-shell > .main[class]:not(.vector-chat-page) {
   padding-top: 100px !important;
   background: transparent !important;
   position: relative;
@@ -1108,7 +1108,7 @@
   }
 }
 @media (max-width: 760px) {
-  .vector-shell > .main[class] {
+  .vector-shell > .main[class]:not(.vector-chat-page) {
     padding-top: 88px !important;
   }
   .op-topbar {

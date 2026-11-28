@@ -194,6 +194,7 @@ export default function ProjectWorkbench({
   files,
   tasks,
   conversations,
+  initialConversationId = null,
   activity,
   stats,
   canEdit = false
@@ -392,14 +393,26 @@ export default function ProjectWorkbench({
           const list =
             await refreshConversations();
 
-          if (
-            !cancelled &&
-            list?.length >
-              0
-          ) {
-            await loadConversation(
-              list[0].id
-            );
+          if (!cancelled) {
+            const selectedConversationId =
+              initialConversationId || list[0]?.id;
+            const loaded = selectedConversationId
+              ? await loadConversation(selectedConversationId)
+              : false;
+            if (
+              loaded &&
+              initialConversationId
+            ) {
+              setTab("chat");
+              if (!list.some(
+                (conversation) => conversation.id === initialConversationId,
+              )) {
+                setProjectConversations((current) => [
+                  ...current,
+                  { id: initialConversationId, title: "Selected task" },
+                ]);
+              }
+            }
           }
         }
       )();
@@ -490,7 +503,7 @@ export default function ProjectWorkbench({
         []
       );
 
-      return;
+      return false;
     }
 
     const response =
@@ -505,7 +518,7 @@ export default function ProjectWorkbench({
     if (
       !response.ok
     ) {
-      return;
+      return false;
     }
 
     const data =
@@ -548,6 +561,7 @@ export default function ProjectWorkbench({
         })
       )
     );
+    return true;
   }
 
 
@@ -2086,5 +2100,3 @@ export default function ProjectWorkbench({
     </div>
   );
 }
-
-

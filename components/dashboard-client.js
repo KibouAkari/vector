@@ -100,9 +100,9 @@ export default function DashboardClient({
     };
   }, []);
   const work =
-      activity?.jobs?.filter((row) =>
-        tab === "active" ? ["running", "queued"].includes(row.status) : true,
-      ) || [],
+      tab === "active"
+        ? activity?.activeJobs || []
+        : activity?.jobs || [],
     traffic = telemetry.traffic;
   const uncached = Math.max(
     0,
@@ -210,9 +210,13 @@ export default function DashboardClient({
                   <Link
                     key={row.id}
                     href={
-                      row.conversationId
-                        ? `/chat?conversation=${encodeURIComponent(row.conversationId)}`
-                        : "/chat"
+                      row.projectId
+                        ? row.conversationId
+                          ? `/projects/${encodeURIComponent(row.projectId)}?conversation=${encodeURIComponent(row.conversationId)}`
+                          : `/projects/${encodeURIComponent(row.projectId)}`
+                        : row.conversationId
+                          ? `/chat?conversation=${encodeURIComponent(row.conversationId)}`
+                          : "/chat"
                     }
                   >
                     <span className={"ob-task-marker " + row.status}>

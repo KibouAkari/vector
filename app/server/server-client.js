@@ -193,7 +193,6 @@ export default function ServerClient() {
         <p><strong>Recent activity</strong> · This snapshot does not include event logs.</p>
       </div>
 
-      {liveHost.resources?.available&&<ServerVitals resources={liveHost.resources}/>}
         <ContainerResources resources={data.containerResources} stale={Boolean(error)}/>
 
       <div className="vx586-server-panels">
@@ -226,6 +225,6 @@ export default function ServerClient() {
         </DetailPanel>
       </div>
     </>}
+    {liveHost.resources?.available&&<ServerVitals resources={liveHost.resources}/>}
   </div>;
 }
-

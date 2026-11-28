@@ -610,6 +610,13 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
           ).match(/CREATE TABLE IF NOT EXISTS agent_jobs[\s\S]*?\n    \)/)[0];
           await db.query(jobSchema);
           const jobIds = [prefix + "-visible-job", prefix + "-hidden-job"],
+            recentJobIds = Array.from(
+              { length: 13 },
+              (_, index) => `${prefix}-recent-job-${index}`,
+            ),
+            oldActiveJobId = prefix + "-old-active-job",
+            projectId = prefix + "-activity-project",
+            projectConversationId = prefix + "-project-conversation",
             assetId = prefix + "-asset",
             scanId = prefix + "-scan";
           try {
@@ -620,6 +627,21 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
             await db.query(
               "INSERT INTO agent_jobs(id,user_id,conversation_id,status,payload) VALUES($1,$2,$1,'completed','{}'),($3,$4,$3,'completed','{}')",
               [jobIds[0], owner, jobIds[1], member],
+            );
+            await db.query("INSERT INTO projects(id,name) VALUES($1,'Fixture project')", [
+              projectId,
+            ]);
+            await db.query(
+              "INSERT INTO conversations(id,owner_user_id,project_id,title) VALUES($1,$2,$3,'Project task fixture')",
+              [projectConversationId, owner, projectId],
+            );
+            await db.query(
+              "INSERT INTO agent_jobs(id,user_id,conversation_id,project_id,status,created_at,payload) VALUES($1,$2,$3,$4,'running',NOW()-INTERVAL '2 days','{}')",
+              [oldActiveJobId, owner, projectConversationId, projectId],
+            );
+            await db.query(
+              "INSERT INTO agent_jobs(id,user_id,status,payload) SELECT unnest($1::text[]),$2,'completed','{}'",
+              [recentJobIds, owner],
             );
             await db.query(
               "INSERT INTO security_assets(id,owner_user_id,request_id,request_digest,name,kind,scope,scope_digest,active) VALUES($1,$2,$1,'fixture','Visible fixture asset','web','{}','fixture',FALSE)",
@@ -633,6 +655,11 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
               await request("/api/operations/activity", { id: owner })
             ).data;
             assert.ok(owned.jobs.some((row) => row.id === jobIds[0]));
+            const oldActiveJob = owned.activeJobs.find(
+              (row) => row.id === oldActiveJobId,
+            );
+            assert.equal(oldActiveJob?.status, "running");
+            assert.equal(oldActiveJob?.projectId, projectId);
             assert.equal(
               owned.jobs.some((row) => row.id === jobIds[1]),
               false,
@@ -656,10 +683,13 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
             await db.query("DELETE FROM security_assets WHERE id=$1", [
               assetId,
             ]);
-            await db.query("DELETE FROM agent_jobs WHERE id=ANY($1)", [jobIds]);
-            await db.query("DELETE FROM conversations WHERE id=ANY($1)", [
-              jobIds,
+            await db.query("DELETE FROM agent_jobs WHERE id=ANY($1)", [
+              [...jobIds, ...recentJobIds, oldActiveJobId],
             ]);
+            await db.query("DELETE FROM conversations WHERE id=ANY($1)", [
+              [...jobIds, projectConversationId],
+            ]);
+            await db.query("DELETE FROM projects WHERE id=$1", [projectId]);
           }
           const activity = await request("/api/operations/activity", {
             id: member,
