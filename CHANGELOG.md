@@ -7,7 +7,8 @@ reviewed messages and the current goal in team forks, retain artifact execution
 profiles, and propagate non-replayable provider failures without replacing them.
 Reclaim expired memory capacity and normalize blank tags. Correct model-mix
 labels, share animation preferences and hide closed mobile navigation from focus.
-Bound website audit coverage, disable collector redirects and flush idle traffic
+Synchronize the concurrent team fixture explicitly instead of relying on a short
+timer under CI load. Bound website audit coverage, disable collector redirects and flush idle traffic
 batches. Add a revision-pinned app-only installer with offline image checks,
 private evidence and automatic configuration recovery on failed health checks.
 No model evaluation, external scan or host update is performed by source tests.

@@ -263,8 +263,9 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
     );
     await t.test(
       "team forks share the real PostgreSQL call counter and retry cannot reset it",
-      async () => {
+      {timeout:10000}, async () => {
         await request("/api/teams", { id: owner });
+        let releaseSpecialists;const pairedSpecialists=new Promise(resolve=>{releaseSpecialists=resolve;});
         let calls = 0,
           active = 0,
           peak = 0;
@@ -289,7 +290,7 @@ test("operations APIs enforce account scope, revisions, signature replay and exa
             calls++;
             active++;
             peak = Math.max(peak, active);
-            await new Promise((resolve) => setTimeout(resolve, 5));
+            if(!input.instructions.startsWith("Review")){if(active===2)releaseSpecialists();await pairedSpecialists;}
             active--;
             return {
               text: input.instructions.startsWith("Review")
